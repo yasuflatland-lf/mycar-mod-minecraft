@@ -45,7 +45,12 @@ CI runs the Biome check, type checking, tests, the build, and packaging on every
 
 ## Releasing
 
-Push a `v*` tag that matches the Behavior Pack version in `packs/mycar_bp/manifest.json` (for example `v0.1.0` for `[0, 1, 0]`). The release workflow runs the checks, builds `mycar-<version>.mcaddon`, and attaches it to a new GitHub Release. Opening the file on a device imports both packs into Minecraft.
+Bump the Behavior Pack version in `packs/mycar_bp/manifest.json`, merge it to `main`, then either:
+
+- open **Actions → Release → Run workflow** on `main`, which tags the commit as `v<version>` (for example `v0.1.0` for `[0, 1, 0]`), or
+- push a matching tag yourself: `git tag v0.1.0 && git push origin v0.1.0`.
+
+The release workflow runs the checks, builds `mycar-<version>.mcaddon`, and attaches it to a new GitHub Release. Opening the file on a device imports both packs into Minecraft.
 
 ## License
 
