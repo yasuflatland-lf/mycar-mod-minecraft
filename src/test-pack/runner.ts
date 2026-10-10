@@ -5,17 +5,8 @@ import { type Dimension, type Entity, system, world } from "@minecraft/server";
 const VEHICLE = "mycar:suv";
 const INPUT_EVENT = "mycar:test_input";
 const MAX_SPEED = 0.9;
-const LOG = (msg: string) => console.warn(`[MYCAR-TEST] ${msg}`);
-const wait = (ticks: number) =>
-  new Promise<void>((r) => system.runTimeout(r, ticks));
-const hlen = (v: { x: number; z: number }) => Math.hypot(v.x, v.z);
-const fwd = (yaw: number) => ({
-  x: -Math.sin((yaw * Math.PI) / 180),
-  z: Math.cos((yaw * Math.PI) / 180),
-});
 
-interface Result {
-  name: string;
+interface Outcome {
   pass: boolean;
   detail: string;
 }
@@ -23,13 +14,36 @@ interface Arena {
   dim: Dimension;
   gy: number;
 }
-
-function drive(car: Entity, x: number, y: number, jump = false) {
-  system.sendScriptEvent(INPUT_EVENT, `${car.id},${x},${y},${jump ? 1 : 0}`);
+interface Horizontal {
+  x: number;
+  z: number;
 }
 
-function clearInput(car: Entity) {
-  system.sendScriptEvent(INPUT_EVENT, `${car.id},clear`);
+function log(msg: string): void {
+  console.warn(`[MYCAR-TEST] ${msg}`);
+}
+
+function wait(ticks: number): Promise<void> {
+  return new Promise((resolve) => system.runTimeout(resolve, ticks));
+}
+
+function hlen(v: Horizontal): number {
+  return Math.hypot(v.x, v.z);
+}
+
+function fwd(yaw: number): Horizontal {
+  const rad = (yaw * Math.PI) / 180;
+  return { x: -Math.sin(rad), z: Math.cos(rad) };
+}
+
+function slipAngleDeg(v: Horizontal, yaw: number): number {
+  const f = fwd(yaw);
+  const cos = (v.x * f.x + v.z * f.z) / hlen(v);
+  return (Math.acos(Math.min(1, Math.max(-1, cos))) * 180) / Math.PI;
+}
+
+function drive(car: Entity, x: number, y: number, jump = false): void {
+  system.sendScriptEvent(INPUT_EVENT, `${car.id},${x},${y},${jump ? 1 : 0}`);
 }
 
 function spawnCar(a: Arena, x: number, z: number, yaw: number): Entity {
@@ -42,6 +56,22 @@ function spawnCar(a: Arena, x: number, z: number, yaw: number): Entity {
   if (!car) throw new Error(`car not spawned at ${x},${z}`);
   car.setRotation({ x: 0, y: yaw });
   return car;
+}
+
+async function withCar<T>(
+  a: Arena,
+  x: number,
+  z: number,
+  yaw: number,
+  run: (car: Entity) => Promise<T>,
+): Promise<T> {
+  const car = spawnCar(a, x, z, yaw);
+  try {
+    return await run(car);
+  } finally {
+    system.sendScriptEvent(INPUT_EVENT, `${car.id},clear`);
+    if (car.isValid) car.remove();
+  }
 }
 
 async function setupArena(): Promise<Arena> {
@@ -61,10 +91,9 @@ async function setupArena(): Promise<Arena> {
   return { dim, gy };
 }
 
-async function accelAndStep1(a: Arena): Promise<Result> {
+function accelAndStep1(a: Arena): Promise<Outcome> {
   a.dim.runCommand(`fill 60 ${a.gy} 15 70 ${a.gy} 25 stone`);
-  const car = spawnCar(a, 5.5, 20.5, -90);
-  try {
+  return withCar(a, 5.5, 20.5, -90, async (car) => {
     drive(car, 0, 1);
     let reach = -1;
     for (let t = 0; t < 200; t++) {
@@ -76,93 +105,75 @@ async function accelAndStep1(a: Arena): Promise<Result> {
     // The tick the input takes effect shifts by 0 or 1 depending on pack run
     // order, so the 45-tick target gets one tick of slack.
     return {
-      name: "accel_and_step1",
       pass: reach >= 0 && reach <= 46 && climbed,
       detail: `reach95=${reach} climbed=${climbed}`,
     };
-  } finally {
-    clearInput(car);
-    if (car.isValid) car.remove();
-  }
+  });
 }
 
-async function turnAndHandbrake(a: Arena): Promise<Result> {
-  const slip = async (hb: boolean) => {
-    const car = spawnCar(a, 5.5, 10.5, -90);
-    try {
+async function turnAndHandbrake(a: Arena): Promise<Outcome> {
+  function measureTurn(
+    handbrake: boolean,
+  ): Promise<{ maxSlip: number; maxSpeed: number }> {
+    return withCar(a, 5.5, 10.5, -90, async (car) => {
       drive(car, 0, 1);
       await wait(45);
-      drive(car, 1, 1, hb);
+      drive(car, 1, 1, handbrake);
       let maxSlip = 0;
       let maxSpeed = 0;
       for (let t = 0; t < 20; t++) {
         await wait(1);
         const v = car.getVelocity();
-        const s = hlen(v);
-        maxSpeed = Math.max(maxSpeed, s);
-        if (s > 0.02) {
-          const f = fwd(car.getRotation().y);
-          maxSlip = Math.max(
-            maxSlip,
-            (Math.acos(Math.min(1, Math.max(-1, (v.x * f.x + v.z * f.z) / s))) *
-              180) /
-              Math.PI,
-          );
+        const speed = hlen(v);
+        maxSpeed = Math.max(maxSpeed, speed);
+        if (speed > 0.02) {
+          maxSlip = Math.max(maxSlip, slipAngleDeg(v, car.getRotation().y));
         }
       }
       return { maxSlip, maxSpeed };
-    } finally {
-      clearInput(car);
-      if (car.isValid) car.remove();
-    }
-  };
-  const grip = await slip(false);
-  const hb = await slip(true);
-  const pass = hb.maxSlip > grip.maxSlip && hb.maxSpeed <= MAX_SPEED * 1.02;
+    });
+  }
+  const grip = await measureTurn(false);
+  const hb = await measureTurn(true);
   return {
-    name: "turn_and_handbrake",
-    pass,
+    pass: hb.maxSlip > grip.maxSlip && hb.maxSpeed <= MAX_SPEED * 1.02,
     detail: `slip grip=${grip.maxSlip.toFixed(1)} hb=${hb.maxSlip.toFixed(1)} hbMaxSpeed=${hb.maxSpeed.toFixed(3)}`,
   };
 }
 
-async function ramCow(a: Arena): Promise<Result> {
-  const car = spawnCar(a, 5.5, 30.5, -90);
-  let cow: Entity | undefined;
-  try {
+function ramCow(a: Arena): Promise<Outcome> {
+  return withCar(a, 5.5, 30.5, -90, async (car) => {
     // Mobs from spawnEntity far from players despawn at once, so use summon.
     a.dim.runCommand(`summon minecraft:cow 25 ${a.gy} 30`);
-    cow = a.dim.getEntities({
+    const cow = a.dim.getEntities({
       type: "minecraft:cow",
       location: { x: 25.5, y: a.gy, z: 30.5 },
       maxDistance: 2,
     })[0];
-    if (!cow) return { name: "ram_cow", pass: false, detail: "cow not found" };
-    const hp0 = cow.getComponent("minecraft:health")!.currentValue;
-    const x0 = cow.location.x;
-    drive(car, 0, 1);
-    await wait(60);
-    const hp1 = cow.isValid
-      ? cow.getComponent("minecraft:health")!.currentValue
-      : 0;
-    const pushed = cow.isValid ? cow.location.x - x0 : Number.NaN;
-    // A cow that died and despawned cannot show the push, so judge by damage alone.
-    return {
-      name: "ram_cow",
-      pass: hp1 < hp0 && (Number.isNaN(pushed) || pushed > 1),
-      detail: `hp ${hp0}->${hp1} pushed=${pushed.toFixed(2)}`,
-    };
-  } finally {
-    clearInput(car);
-    if (car.isValid) car.remove();
-    if (cow?.isValid) cow.remove();
-  }
+    if (!cow) return { pass: false, detail: "cow not found" };
+    try {
+      const hp0 = cow.getComponent("minecraft:health")!.currentValue;
+      const x0 = cow.location.x;
+      drive(car, 0, 1);
+      await wait(60);
+      const hp1 = cow.isValid
+        ? cow.getComponent("minecraft:health")!.currentValue
+        : 0;
+      const pushed = cow.isValid ? cow.location.x - x0 : Number.NaN;
+      // A cow that died and despawned cannot show the push, so judge by damage alone.
+      return {
+        pass: hp1 < hp0 && (Number.isNaN(pushed) || pushed > 1),
+        detail: `hp ${hp0}->${hp1} pushed=${pushed.toFixed(2)}`,
+      };
+    } finally {
+      if (cow.isValid) cow.remove();
+    }
+  });
 }
 
-async function wallDiagonal(a: Arena): Promise<Result> {
+function wallDiagonal(a: Arena): Promise<Outcome> {
   a.dim.runCommand(`fill 45 ${a.gy} 20 45 ${a.gy + 3} 40 stone`);
-  const car = spawnCar(a, 20.5, 24.5, -70);
-  try {
+  return withCar(a, 20.5, 24.5, -70, async (car) => {
     drive(car, 0, 1);
     let before = 0;
     let maxAfter = 0;
@@ -175,35 +186,28 @@ async function wallDiagonal(a: Arena): Promise<Result> {
       else before = Math.abs(v.z);
     }
     const x = car.location.x;
-    const pass = hit && x < 45 && maxAfter <= before + 0.1;
     return {
-      name: "wall_diagonal",
-      pass,
+      pass: hit && x < 45 && maxAfter <= before + 0.1,
       detail: `x=${x.toFixed(2)} sideBefore=${before.toFixed(3)} sideAfterMax=${maxAfter.toFixed(3)}`,
     };
-  } finally {
-    clearInput(car);
-    if (car.isValid) car.remove();
-  }
+  });
 }
 
-async function step2(
+function step2(
   a: Arena,
-  name: string,
   z: number,
   yaw: number,
   stepX: number,
-): Promise<Result> {
+): Promise<Outcome> {
   // Place a 2-high step spanning z ± 6, and back-compute the start so that a
   // diagonal approach still meets the step at its z center.
   a.dim.runCommand(
     `fill ${stepX} ${a.gy} ${z - 6} ${stepX + 8} ${a.gy + 1} ${z + 6} stone`,
   );
   const dir = fwd(yaw);
-  const x0 = stepX - 25;
-  const z0 = z - 25 * (dir.z / dir.x);
-  const car = spawnCar(a, x0 + 0.5, z0 + 0.5, yaw);
-  try {
+  const startX = stepX - 25 + 0.5;
+  const startZ = z - 25 * (dir.z / dir.x) + 0.5;
+  return withCar(a, startX, startZ, yaw, async (car) => {
     drive(car, 0, 1);
     let maxY = a.gy;
     for (let t = 0; t < 120; t++) {
@@ -212,48 +216,44 @@ async function step2(
       if (car.location.x > stepX + 3) break;
     }
     const side = Math.abs(
-      (car.location.x - (x0 + 0.5)) * dir.z -
-        (car.location.z - (z0 + 0.5)) * dir.x,
+      (car.location.x - startX) * dir.z - (car.location.z - startZ) * dir.x,
     );
     const climbed = maxY >= a.gy + 1.9;
     return {
-      name,
       pass: climbed && side < 0.5,
       detail: `maxY=${(maxY - a.gy).toFixed(2)} sideOffset=${side.toFixed(2)}`,
     };
-  } finally {
-    clearInput(car);
-    if (car.isValid) car.remove();
-  }
+  });
 }
 
-async function runAll() {
+async function runAll(): Promise<void> {
   const a = await setupArena();
-  const tests: [string, () => Promise<Result>][] = [
+  const tests: [string, () => Promise<Outcome>][] = [
     ["accel_and_step1", () => accelAndStep1(a)],
     ["turn_and_handbrake", () => turnAndHandbrake(a)],
     ["ram_cow", () => ramCow(a)],
     ["wall_diagonal", () => wallDiagonal(a)],
-    ["step2_front", () => step2(a, "step2_front", 8, -90, 100)],
-    ["step2_diagonal", () => step2(a, "step2_diagonal", 30, -60, 100)],
+    ["step2_front", () => step2(a, 8, -90, 100)],
+    ["step2_diagonal", () => step2(a, 30, -60, 100)],
   ];
-  const results: Result[] = [];
-  for (const [name, t] of tests) {
+  let passed = 0;
+  const lines: string[] = [];
+  for (const [name, test] of tests) {
+    let outcome: Outcome;
     try {
-      results.push(await t());
+      outcome = await test();
     } catch (e) {
-      results.push({ name, pass: false, detail: `error: ${e}` });
+      outcome = { pass: false, detail: `error: ${e}` };
     }
+    if (outcome.pass) passed++;
+    lines.push(`${outcome.pass ? "PASS" : "FAIL"} ${name} ${outcome.detail}`);
   }
-  for (const r of results)
-    LOG(`${r.pass ? "PASS" : "FAIL"} ${r.name} ${r.detail}`);
-  LOG(
-    `SUMMARY pass=${results.filter((r) => r.pass).length} fail=${results.filter((r) => !r.pass).length}`,
-  );
+  for (const line of lines) log(line);
+  log(`SUMMARY pass=${passed} fail=${tests.length - passed}`);
 }
 
 system.afterEvents.scriptEventReceive.subscribe((ev) => {
   if (ev.id === "mycar:test")
-    runAll().catch((e) => LOG(`SUMMARY pass=0 fail=1 error=${e}`));
+    runAll().catch((e) => log(`SUMMARY pass=0 fail=1 error=${e}`));
 });
-console.warn("[MYCAR-TEST] loaded");
+log("loaded");
