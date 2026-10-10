@@ -5,7 +5,7 @@ import { Vehicle } from "../../src/domain/vehicle/vehicle";
 import { FakeWorld, InMemoryRepo } from "./fakes";
 
 describe("HitVehicle (ADR 0008)", () => {
-  it("3 回目でアイテムを落として車を消し、集約も捨てる", () => {
+  it("on the third hit, drops the item, removes the vehicle, and discards the aggregate", () => {
     const world = new FakeWorld();
     const repo = new InMemoryRepo();
     repo.save(Vehicle.create("a", 0));
@@ -17,7 +17,7 @@ describe("HitVehicle (ADR 0008)", () => {
     expect(repo.get("a")).toBeUndefined();
   });
 
-  it("リポジトリにない車は何もしない", () => {
+  it("does nothing for a vehicle not in the repository", () => {
     const world = new FakeWorld();
     expect(
       new HitVehicle(world, new InMemoryRepo()).execute({
