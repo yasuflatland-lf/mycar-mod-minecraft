@@ -2,13 +2,13 @@
 import { world, system, InputButton, ButtonState, EntityDamageCause } from "@minecraft/server";
 
 const CFG = {
-  maxSpeed: 0.6, // blocks/tick (= 12 blocks/s)
+  maxSpeed: 0.9, // blocks/tick (= 18 blocks/s、最初の 0.6 の 1.5 倍)
   maxReverse: 0.2,
-  accel: 0.015,
+  accel: 0.0225,
   brake: 0.04,
-  drag: 0.008,
+  drag: 0.02,
   turnRate: 6.0, // deg/tick at full lock
-  grip: 0.3, // 速度ベクトルを向きへ寄せる割合 (1 = 滑らない)
+  grip: 0.6, // 速度ベクトルを向きへ寄せる割合 (1 = 滑らない)
   handbrakeGrip: 0.04,
   airFriction: 0.91, // 空中の水平方向の減衰率
   stepVelocity: 0.75, // 2 段の段差に飛び乗るときの上向き速度
@@ -72,7 +72,7 @@ function stepScriptCar(car) {
   st.speed = Math.max(-CFG.maxReverse, Math.min(CFG.maxSpeed, st.speed));
 
   // 旋回: 低速では曲がりにくく、後退時は逆向き。左入力 (x>0) で yaw 減少
-  const steerFactor = Math.min(1, Math.abs(st.speed) / 0.15) * Math.sign(st.speed);
+  const steerFactor = Math.min(1, Math.abs(st.speed) / 0.08) * Math.sign(st.speed);
   st.yaw -= input.x * CFG.turnRate * steerFactor;
 
   // 前 tick に与えた速度 (st.expected) のうち、どれだけ残ったかで摩擦と衝突を見分ける
