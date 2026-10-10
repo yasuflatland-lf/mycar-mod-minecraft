@@ -1,4 +1,3 @@
-// tests/domain/placement.test.ts
 import { describe, expect, it } from "vitest";
 import { canPlaceAt } from "../../src/domain/vehicle/placement";
 
