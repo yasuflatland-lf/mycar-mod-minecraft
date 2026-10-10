@@ -1,5 +1,4 @@
-// src/domain/vehicle/motion.ts
-// Compute vehicle movement for 1 tick (ADR 0002, 0003).
+// One tick of vehicle movement (ADR 0002, 0003).
 import {
   clamp,
   clampLength,
@@ -20,12 +19,9 @@ export interface MotionState {
   blocked: boolean; // Whether a wall collision was detected this tick
 }
 
-export const initialMotion = (yaw: number): MotionState => ({
-  speed: 0,
-  yaw: normalizeYaw(yaw),
-  stepTicks: 0,
-  blocked: false,
-});
+export function initialMotion(yaw: number): MotionState {
+  return { speed: 0, yaw: normalizeYaw(yaw), stepTicks: 0, blocked: false };
+}
 
 export interface Observation {
   velocity: Vec2;
@@ -68,17 +64,19 @@ export function stepMotion(
   const v = obs.velocity;
   const vLong = dot(v, f);
 
-  // Distinguish friction from wall collisions by how much of the previous tick's given velocity remains (ADR 0003)
+  // Distinguish friction from wall collisions by how much of the previous
+  // tick's given velocity remains (ADR 0003).
   st.blocked = false;
   if (st.expected && obs.onGround) {
     const e = st.expected;
     const limit = (st.friction ?? SPEC.defaultFriction) * SPEC.blockedRatio;
-    // The engine zeroes velocity per axis at walls, so check the x and z axes separately
+    // The engine zeroes velocity per axis at walls, so check x and z separately.
     const axisBlocked = (ve: number, ee: number) =>
       Math.abs(ee) > SPEC.blockedAxisMin && ve / ee < limit;
     st.blocked = axisBlocked(v.x, e.x) || axisBlocked(v.z, e.z);
     if (st.blocked) {
-      // While colliding, stop updating the friction estimate and lower the internal speed to the actual forward speed. Clamp it at the reverse limit
+      // While colliding, freeze the friction estimate and lower the internal
+      // speed to the actual forward speed, clamped at the reverse limit.
       if (Math.abs(vLong) < Math.abs(st.speed))
         st.speed = clamp(vLong, -SPEC.maxReverse, SPEC.maxSpeed);
     } else {
@@ -111,7 +109,8 @@ export function stepMotion(
   const stepping = st.stepTicks > 0;
   if (stepping) st.stepTicks--;
 
-  // Set the forward/reverse component to the internal speed and cancel a fraction of the sideways component equal to grip. Cap the combined speed at the max speed (ADR 0002)
+  // Set the forward component to the internal speed, cancel a grip-sized
+  // fraction of the sideways component, and cap the result at max speed (ADR 0002).
   const lat = { x: v.x - f.x * vLong, z: v.z - f.z * vLong };
   const grip = input.handbrake ? SPEC.handbrakeGrip : SPEC.grip;
   const keepLat = stepping ? 0 : 1 - grip;
@@ -122,14 +121,15 @@ export function stepMotion(
     },
     SPEC.maxSpeed,
   );
-  // Add compensation for the expected loss to friction
-  const n = { x: target.x / friction, z: target.z / friction };
-  st.expected = n;
+  // Pre-divide by friction so the velocity left after the engine applies
+  // friction this tick is the target.
+  const given = { x: target.x / friction, z: target.z / friction };
+  st.expected = given;
   const control = obs.onGround || stepping ? 1 : SPEC.airControl;
   return {
     state: st,
     forward: f,
     jumped,
-    impulse: { x: (n.x - v.x) * control, z: (n.z - v.z) * control },
+    impulse: { x: (given.x - v.x) * control, z: (given.z - v.z) * control },
   };
 }

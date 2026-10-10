@@ -1,4 +1,3 @@
-// tests/architecture.test.ts
 // Layer dependencies (ADR 0012): infrastructure -> application -> domain only
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
@@ -13,10 +12,12 @@ function tsFiles(dir: string): string[] {
   });
 }
 
-const importsOf = (file: string): string[] =>
-  [...readFileSync(file, "utf8").matchAll(/from\s+["']([^"']+)["']/g)].map(
-    (m) => m[1]!,
+function importsOf(file: string): string[] {
+  const matches = readFileSync(file, "utf8").matchAll(
+    /from\s+["']([^"']+)["']/g,
   );
+  return [...matches].map((m) => m[1] ?? "");
+}
 
 const RULES = [
   {
@@ -31,8 +32,9 @@ describe("Layer dependency direction (ADR 0012)", () => {
     it(`${layer} does not import ${forbidden.join(", ")}`, () => {
       for (const file of tsFiles(layer)) {
         for (const imp of importsOf(file)) {
-          for (const f of forbidden)
-            expect(imp.includes(f), `${file} imports ${imp}`).toBe(false);
+          for (const pattern of forbidden) {
+            expect(imp.includes(pattern), `${file} imports ${imp}`).toBe(false);
+          }
         }
       }
     });
