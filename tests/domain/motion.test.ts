@@ -61,7 +61,7 @@ const inputs = fc.array(driveInput, { minLength: 1, maxLength: 300 });
 const mu = fc.double({ min: 0.6, max: 0.75, noNaN: true });
 
 describe("updateSpeed / steerYaw", () => {
-  it("全開で約 40 tick で最高速度の 95% に達する", () => {
+  it("reaches 95% of max speed in about 40 ticks at full throttle", () => {
     let s = 0;
     let t = 0;
     while (s < SPEC.maxSpeed * 0.95) {
@@ -72,19 +72,19 @@ describe("updateSpeed / steerYaw", () => {
     expect(t).toBeLessThanOrEqual(42);
   });
 
-  it("入力なしなら惰性で止まり、符号は反転しない", () => {
+  it("coasts to a stop without input and without reversing the sign of speed", () => {
     let s: number = SPEC.maxSpeed;
     for (let i = 0; i < 100; i++) s = updateSpeed(s, 0);
     expect(s).toBe(0);
   });
 
-  it("停止中はハンドルを切っても向きが変わらない。後退中は逆に曲がる", () => {
+  it("steering does not change heading when stopped and turns the opposite way in reverse", () => {
     expect(steerYaw(10, 0, 1)).toBe(10);
     expect(steerYaw(10, 0.5, 1)).toBeLessThan(10);
     expect(steerYaw(10, -0.1, 1)).toBeGreaterThan(10);
   });
 
-  it("向きはどれだけ回っても (-180, 180] に収まる", () => {
+  it("keeps heading within (-180, 180] regardless of how many turns it makes", () => {
     let yaw = 0;
     for (let i = 0; i < 10_000; i++) yaw = steerYaw(yaw, SPEC.maxSpeed, 1);
     expect(yaw).toBeGreaterThan(-180);
@@ -92,8 +92,8 @@ describe("updateSpeed / steerYaw", () => {
   });
 });
 
-describe("stepMotion (性質, ADR 0002/0003)", () => {
-  it("地上の水平速度は最高速度を超えない (立ち上がりの 30 tick は推定の誤差で 10% まで)", () => {
+describe("stepMotion (properties, ADR 0002/0003)", () => {
+  it("horizontal velocity on the ground stays within max speed (up to 10% estimation error during the first 30 ticks)", () => {
     fc.assert(
       fc.property(inputs, mu, (ins, m) => {
         simulate(ins, { mu: m }).forEach((fr, i) => {
@@ -104,7 +104,7 @@ describe("stepMotion (性質, ADR 0002/0003)", () => {
     );
   });
 
-  it("内部の速度は、壁に当たっても後退の上限から最高速度の範囲に収まる", () => {
+  it("keeps internal speed between the reverse limit and max speed even when hitting a wall", () => {
     const wall = fc.option(fc.double({ min: 2, max: 20, noNaN: true }), {
       nil: undefined,
     });
@@ -121,7 +121,7 @@ describe("stepMotion (性質, ADR 0002/0003)", () => {
     );
   });
 
-  it("壁のない地面では衝突中と判定しない", () => {
+  it("does not detect collisions on ground without walls", () => {
     fc.assert(
       fc.property(inputs, mu, (ins, m) => {
         for (const fr of simulate(ins, { mu: m }))
@@ -130,7 +130,7 @@ describe("stepMotion (性質, ADR 0002/0003)", () => {
     );
   });
 
-  it("入力をやめると、横滑りの速度は増えずに減っていく", () => {
+  it("sideways velocity decreases without increasing after input stops", () => {
     const quiet: DriveInput[] = Array.from({ length: 60 }, () => NEUTRAL_INPUT);
     fc.assert(
       fc.property(inputs, mu, (warm, m) => {
@@ -146,8 +146,8 @@ describe("stepMotion (性質, ADR 0002/0003)", () => {
     );
   });
 
-  it("壁に斜めに当たったら止まり、壁沿いの速度は当たる直前の壁沿いの成分を超えない", () => {
-    const yaw0 = fc.double({ min: -130, max: -50, noNaN: true }); // おおむね +x (壁) を向く
+  it("stops when hitting a wall at an angle, with speed along the wall no greater than the along-wall component just before impact", () => {
+    const yaw0 = fc.double({ min: -130, max: -50, noNaN: true }); // Faces roughly toward +x (the wall)
     const wallX = fc.double({ min: 8, max: 20, noNaN: true });
     fc.assert(
       fc.property(yaw0, wallX, mu, (y, w, m) => {
@@ -170,7 +170,7 @@ describe("stepMotion (性質, ADR 0002/0003)", () => {
     );
   });
 
-  it("ハンドブレーキ中は通常より大きく横滑りする", () => {
+  it("slides sideways more under the handbrake than during normal driving", () => {
     const run = (hb: boolean) => {
       const accel: DriveInput[] = Array.from({ length: 60 }, () => ({
         throttle: 1,
@@ -190,7 +190,7 @@ describe("stepMotion (性質, ADR 0002/0003)", () => {
     expect(run(true)).toBeGreaterThan(run(false));
   });
 
-  it("段差で跳ぶと、上向きに跳んだことを返し、内部の速度を下限まで上げる", () => {
+  it("reports an upward jump when jumping up a step and raises internal speed to the minimum", () => {
     const r = stepMotion(
       initialMotion(0),
       { throttle: 1, steer: 0, handbrake: false },
