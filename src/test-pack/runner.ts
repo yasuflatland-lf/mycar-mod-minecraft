@@ -1,5 +1,5 @@
-// src/test-pack/runner.ts
-// ゲーム内テスト (ADR 0010)。本体の Behavior Pack と別のスクリプト環境で動く。
+// In-game tests (ADR 0010). They run in a script environment separate from the
+// main Behavior Pack, so they drive the vehicle through script events.
 import { type Dimension, type Entity, system, world } from "@minecraft/server";
 
 const VEHICLE = "mycar:suv";
@@ -51,7 +51,7 @@ async function setupArena(): Promise<Arena> {
   const top = dim.getTopmostBlock({ x: 5, z: 20 });
   if (!top) throw new Error("arena chunk not loaded");
   const gy = top.location.y + 1;
-  // fill は 1 回 32768 ブロックまでなので分割する
+  // fill is capped at 32,768 blocks per call, so the clear is split in two.
   dim.runCommand(`fill 0 ${gy} 0 60 ${gy + 6} 40 air`);
   dim.runCommand(`fill 61 ${gy} 0 120 ${gy + 6} 40 air`);
   dim.runCommand(`fill 0 ${gy - 1} 0 120 ${gy - 1} 40 stone`);
@@ -73,7 +73,8 @@ async function accelAndStep1(a: Arena): Promise<Result> {
       if (car.location.x > 63) break;
     }
     const climbed = car.location.y >= a.gy + 0.9;
-    // 入力が効く tick はパックの実行順で 0 か 1 tick 揺れるので、45 に 1 tick の余裕を足す
+    // The tick the input takes effect shifts by 0 or 1 depending on pack run
+    // order, so the 45-tick target gets one tick of slack.
     return {
       name: "accel_and_step1",
       pass: reach >= 0 && reach <= 46 && climbed,
@@ -129,7 +130,8 @@ async function ramCow(a: Arena): Promise<Result> {
   const car = spawnCar(a, 5.5, 30.5, -90);
   let cow: Entity | undefined;
   try {
-    a.dim.runCommand(`summon minecraft:cow 25 ${a.gy} 30`); // spawnEntity のモブはプレイヤーから離れていると消える
+    // Mobs from spawnEntity far from players despawn at once, so use summon.
+    a.dim.runCommand(`summon minecraft:cow 25 ${a.gy} 30`);
     cow = a.dim.getEntities({
       type: "minecraft:cow",
       location: { x: 25.5, y: a.gy, z: 30.5 },
@@ -144,7 +146,7 @@ async function ramCow(a: Arena): Promise<Result> {
       ? cow.getComponent("minecraft:health")!.currentValue
       : 0;
     const pushed = cow.isValid ? cow.location.x - x0 : Number.NaN;
-    // 牛が倒れて消えた場合は押し出しを測れないので、ダメージだけで判定する
+    // A cow that died and despawned cannot show the push, so judge by damage alone.
     return {
       name: "ram_cow",
       pass: hp1 < hp0 && (Number.isNaN(pushed) || pushed > 1),
@@ -192,7 +194,8 @@ async function step2(
   yaw: number,
   stepX: number,
 ): Promise<Result> {
-  // 高さ 2 の段差を z ± 6 の幅で置き、斜めに進んでも段差の z の中心に着くよう出発位置を逆算する
+  // Place a 2-high step spanning z ± 6, and back-compute the start so that a
+  // diagonal approach still meets the step at its z center.
   a.dim.runCommand(
     `fill ${stepX} ${a.gy} ${z - 6} ${stepX + 8} ${a.gy + 1} ${z + 6} stone`,
   );

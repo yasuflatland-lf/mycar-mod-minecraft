@@ -9,7 +9,7 @@ const input = fc.record({
 });
 
 describe("TestInputStore", () => {
-  it("未登録の車の入力は undefined", () => {
+  it("input for an unregistered vehicle is undefined", () => {
     fc.assert(
       fc.property(fc.string(), (id) => {
         expect(new TestInputStore().get(id)).toBeUndefined();
@@ -17,7 +17,7 @@ describe("TestInputStore", () => {
     );
   });
 
-  it("登録した入力を取得でき、同じ id の入力を更新できる", () => {
+  it("returns a registered input and updates the input for the same id", () => {
     fc.assert(
       fc.property(fc.string(), input, input, (id, first, next) => {
         const store = new TestInputStore();
@@ -29,7 +29,7 @@ describe("TestInputStore", () => {
     );
   });
 
-  it("clear は指定した車の入力だけを削除する", () => {
+  it("clear removes only the input of the given vehicle", () => {
     fc.assert(
       fc.property(
         fc.tuple(fc.string(), fc.string()).filter(([a, b]) => a !== b),
@@ -49,7 +49,7 @@ describe("TestInputStore", () => {
     );
   });
 
-  it("retain は指定集合にある車の入力だけを残す", () => {
+  it("retain keeps only the inputs of vehicles in the given set", () => {
     fc.assert(
       fc.property(
         fc.uniqueArray(fc.string(), { minLength: 2 }),

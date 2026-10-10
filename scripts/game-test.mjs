@@ -1,4 +1,3 @@
-// scripts/game-test.mjs
 import { execFileSync } from "node:child_process";
 
 const CONTAINER = "mycar-bds";

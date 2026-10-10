@@ -1,5 +1,4 @@
-// src/infrastructure/bedrock/subscriptions.ts
-// ゲームのイベントをユースケースにつなぐ。
+// Connects game events to the use cases.
 import {
   Direction,
   GameMode,
@@ -12,7 +11,12 @@ import type { HitVehicle } from "../../application/hitVehicle";
 import type { PlaceVehicle } from "../../application/placeVehicle";
 import { parseTestInputMessage } from "../testInput/testInputMessage";
 import type { TestInputStore } from "../testInput/testInputStore";
-import { ITEM_TYPE, TEST_INPUT_EVENT, VEHICLE_TYPE } from "./identifiers";
+import {
+  ITEM_TYPE,
+  PLAYER_TYPE,
+  TEST_INPUT_EVENT,
+  VEHICLE_TYPE,
+} from "./identifiers";
 
 export function registerSubscriptions(
   useCases: {
@@ -64,7 +68,7 @@ export function registerSubscriptions(
   world.afterEvents.entityHitEntity.subscribe((ev) => {
     if (
       ev.hitEntity.typeId !== VEHICLE_TYPE ||
-      ev.damagingEntity.typeId !== "minecraft:player"
+      ev.damagingEntity.typeId !== PLAYER_TYPE
     )
       return;
     useCases.hit.execute({

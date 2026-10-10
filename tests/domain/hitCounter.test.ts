@@ -1,4 +1,3 @@
-// tests/domain/hitCounter.test.ts
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import {
@@ -8,7 +7,7 @@ import {
 import { SPEC } from "../../src/domain/vehicle/spec";
 
 describe("registerHit (ADR 0008)", () => {
-  it("短い間隔で 3 回殴ると壊れる", () => {
+  it("breaks after 3 hits in quick succession", () => {
     let c = EMPTY_COUNTER;
     const results = [0, 10, 20].map((t) => {
       const r = registerHit(c, t, false);
@@ -18,7 +17,7 @@ describe("registerHit (ADR 0008)", () => {
     expect(results).toEqual([false, false, true]);
   });
 
-  it("乗員がいる間は何回殴っても壊れない", () => {
+  it("never breaks while there are occupants, no matter how many hits", () => {
     fc.assert(
       fc.property(
         fc.array(fc.integer({ min: 0, max: 1000 }), { maxLength: 50 }),
@@ -34,7 +33,7 @@ describe("registerHit (ADR 0008)", () => {
     );
   });
 
-  it("100 tick より長く殴られなければ、回数は 0 に戻る", () => {
+  it("resets the count to 0 when not hit for more than 100 ticks", () => {
     let c = registerHit(EMPTY_COUNTER, 0, false).counter;
     c = registerHit(c, 10, false).counter;
     const r = registerHit(c, 10 + SPEC.hitResetTicks + 1, false);

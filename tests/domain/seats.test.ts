@@ -1,7 +1,6 @@
-// tests/domain/seats.test.ts
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { forward, leftOf } from "../../src/domain/shared/vec";
+import { forward, leftOf, type Vec2 } from "../../src/domain/shared/vec";
 import {
   nearestSeat,
   occupiedSeats,
@@ -13,7 +12,7 @@ import {
 const yaw = fc.double({ min: -180, max: 180, noNaN: true });
 const seat = fc.integer({ min: 0, max: 3 });
 
-function worldOffset(yawDeg: number, i: number) {
+function worldOffset(yawDeg: number, i: number): Vec2 {
   const f = forward(yawDeg);
   const l = leftOf(f);
   const s = SEAT_POSITIONS[i]!;
@@ -21,11 +20,11 @@ function worldOffset(yawDeg: number, i: number) {
 }
 
 describe("seats (ADR 0007)", () => {
-  it("座席 0 は右前 (x が負 = 右、z が正 = 前)", () => {
+  it("seat 0 is front right (negative x = right, positive z = forward)", () => {
     expect(SEAT_POSITIONS[0]).toEqual({ x: -0.38, z: 0.35 });
   });
 
-  it("どの向きでも、座席の位置にいる乗員はその座席と判定される", () => {
+  it("assigns an occupant at a seat position to that seat for any facing", () => {
     fc.assert(
       fc.property(yaw, seat, (y, i) => {
         expect(nearestSeat(toLocal(worldOffset(y, i), forward(y)))).toBe(i);
@@ -33,7 +32,7 @@ describe("seats (ADR 0007)", () => {
     );
   });
 
-  it("getRiders の順番に関係なく、運転席の人を座席 0 と判定する", () => {
+  it("assigns the occupant in the driver's seat to seat 0 regardless of getRiders order", () => {
     fc.assert(
       fc.property(
         yaw,
@@ -50,7 +49,7 @@ describe("seats (ADR 0007)", () => {
     );
   });
 
-  it("いなくなった乗員の座席を返す", () => {
+  it("returns the seats of occupants who left", () => {
     const prev = new Map([
       ["a", 0],
       ["b", 2],

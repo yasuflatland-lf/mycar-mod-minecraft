@@ -1,4 +1,3 @@
-// src/domain/vehicle/vehicleRepository.ts
 import type { Vehicle } from "./vehicle";
 
 export interface VehicleRepository {

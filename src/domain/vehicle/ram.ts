@@ -1,6 +1,5 @@
-// src/domain/vehicle/ram.ts
-// 車の前方 (後退中は後方) の長方形にいる相手を選び、ダメージと押し出しを決める (ADR 0006)。
-import type { Vec2, Vec3 } from "../shared/vec";
+// Select targets in a rectangle in front of the car (behind it when reversing) and decide the damage and push (ADR 0006).
+import { dot, rightOf, type Vec2, type Vec3 } from "../shared/vec";
 import { SPEC } from "./spec";
 
 export interface RamTarget {
@@ -15,8 +14,9 @@ export interface RamHit {
   pushUp: number;
 }
 
-export const ramDamage = (speed: number): number =>
-  Math.max(1, Math.round(Math.abs(speed) * SPEC.ramDamagePerSpeed));
+export function ramDamage(speed: number): number {
+  return Math.max(1, Math.round(Math.abs(speed) * SPEC.ramDamagePerSpeed));
+}
 
 export function selectHits(
   f: Vec2,
@@ -27,24 +27,23 @@ export function selectHits(
 ): RamHit[] {
   if (Math.abs(speed) <= SPEC.ramMinSpeed) return [];
   const dir = Math.sign(speed);
+  const right = rightOf(f);
   const reach = SPEC.bodyFront + SPEC.targetHalfWidth;
   const halfWidth = SPEC.bodyHalfWidth + SPEC.targetHalfWidth;
+  const damage = ramDamage(speed);
+  const pushSpeed =
+    dir * (SPEC.ramPushBase + Math.abs(speed) * SPEC.ramPushPerSpeed);
+  const push = { x: f.x * pushSpeed, z: f.z * pushSpeed };
   const hits: RamHit[] = [];
   for (const t of targets) {
-    if (t.protectedOccupant) continue; // 乗っている人は常に守る
-    const ahead = (t.offset.x * f.x + t.offset.z * f.z) * dir;
-    const side = Math.abs(t.offset.x * f.z - t.offset.z * f.x);
+    if (t.protectedOccupant) continue;
+    const ahead = dot(t.offset, f) * dir;
+    const side = Math.abs(dot(t.offset, right));
     if (ahead < 0 || ahead > reach || side > halfWidth) continue;
     if (t.offset.y < SPEC.ramMinDy || t.offset.y > SPEC.ramMaxDy) continue;
     const last = lastHit.get(t.id);
     if (last !== undefined && tick - last < SPEC.ramCooldown) continue;
-    const push = SPEC.ramPushBase + Math.abs(speed) * SPEC.ramPushPerSpeed;
-    hits.push({
-      id: t.id,
-      damage: ramDamage(speed),
-      push: { x: f.x * dir * push, z: f.z * dir * push },
-      pushUp: SPEC.ramPushUp,
-    });
+    hits.push({ id: t.id, damage, push, pushUp: SPEC.ramPushUp });
   }
   return hits;
 }
