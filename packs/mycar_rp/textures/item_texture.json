@@ -1,0 +1,5 @@
+{
+  "resource_pack_name": "mycar",
+  "texture_name": "atlas.items",
+  "texture_data": { "mycar_suv_item": { "textures": "textures/items/suv_item" } }
+}

@@ -1,0 +1,18 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "mycar:suv",
+      "materials": { "default": "entity_alphatest" },
+      "textures": { "default": "textures/entity/suv" },
+      "geometry": { "default": "geometry.mycar.suv" },
+      "animations": {
+        "wheels": "animation.mycar.suv.wheels",
+        "exhaust": "animation.mycar.suv.exhaust"
+      },
+      "particle_effects": { "exhaust": "minecraft:basic_smoke_particle" },
+      "scripts": { "animate": ["wheels", { "exhaust": "query.has_rider" }] },
+      "render_controllers": ["controller.render.default"]
+    }
+  }
+}
