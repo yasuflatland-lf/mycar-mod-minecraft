@@ -3,3 +3,5 @@ dist/
 .DS_Store
 spike/server/data/
 docs/superpowers/
+packs/*/scripts/main.js
+server/data/

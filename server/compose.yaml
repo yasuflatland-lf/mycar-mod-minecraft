@@ -1,0 +1,27 @@
+# server/compose.yaml (ADR 0011)
+services:
+  bds:
+    image: itzg/minecraft-bedrock-server
+    container_name: mycar-bds
+    environment:
+      EULA: "TRUE"
+      VERSION: "LATEST"
+      LEVEL_NAME: "mycar-dev"
+      LEVEL_TYPE: "FLAT"
+      GAMEMODE: "creative"
+      ALLOW_CHEATS: "true"
+      ALLOW_LIST: "false"
+      TRANSPORT: "raknet"
+      TEXTUREPACK_REQUIRED: "true"
+      CONTENT_LOG_FILE_ENABLED: "true"
+      CONTENT_LOG_CONSOLE_OUTPUT_ENABLED: "true"
+    ports:
+      - "19132:19132/udp"
+    volumes:
+      - ./data:/data
+      - ../packs/mycar_bp:/data/behavior_packs/mycar_bp:ro
+      - ../packs/mycar_test_bp:/data/behavior_packs/mycar_test_bp:ro
+      - ../packs/mycar_rp:/data/resource_packs/mycar_rp:ro
+    network_mode: bridge
+    stdin_open: true
+    tty: true
