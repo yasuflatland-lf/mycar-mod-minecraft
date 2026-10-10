@@ -1,4 +1,4 @@
-name: CI
+name: Unit Tests
 
 on:
   pull_request:
@@ -9,10 +9,11 @@ permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
+  # The main ruleset requires a status check named "check", so keep this job id.
   check:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -38,7 +39,16 @@ jobs:
         run: pnpm run typecheck
 
       - if: steps.src.outputs.present == 'true'
-        run: pnpm test
+        run: pnpm run test:coverage
 
       - if: steps.src.outputs.present == 'true'
         run: pnpm run build
+
+      - name: Upload coverage to Codecov
+        if: always() && steps.src.outputs.present == 'true'
+        uses: codecov/codecov-action@v7
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage/lcov.info
+          flags: unit
+          fail_ci_if_error: false

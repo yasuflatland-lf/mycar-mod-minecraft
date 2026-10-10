@@ -19,10 +19,11 @@ pnpm lint:fix      # apply Biome fixes
 pnpm lint:lang     # fail on Japanese/CJK text in tracked and unignored files
 pnpm typecheck     # once tsconfig.json exists
 pnpm test          # vitest + fast-check, once source exists
+pnpm test:coverage # same, with a coverage report in coverage/ (CI uploads it to Codecov)
 pnpm build         # esbuild bundle into the Behavior Pack
 ```
 
-Before you say a change is done, run `pnpm lint` and `pnpm lint:lang`, plus `pnpm typecheck` and `pnpm test` when source code is present. CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs the same checks on every pull request.
+Before you say a change is done, run `pnpm lint` and `pnpm lint:lang`, plus `pnpm typecheck` and `pnpm test` when source code is present. CI runs the same checks on every pull request ([unit-test.yml](.github/workflows/unit-test.yml), which also uploads coverage to Codecov) and runs the in-game tests against a BDS container once `scripts/game-test.mjs` exists ([integration-test.yml](.github/workflows/integration-test.yml)).
 
 ## Language and comments
 

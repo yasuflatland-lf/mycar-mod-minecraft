@@ -1,0 +1,72 @@
+name: Integration Test
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Runs the in-game tests (ADR 0010) against the dev BDS from server/compose.yaml (ADR 0011).
+  in-game:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      # main has no in-game test runner yet, so only run the rest once it exists
+      - id: runner
+        run: |
+          if [ -f scripts/game-test.mjs ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::scripts/game-test.mjs does not exist yet; skipping in-game tests"
+          fi
+
+      - if: steps.runner.outputs.present == 'true'
+        uses: jdx/mise-action@v5
+
+      - if: steps.runner.outputs.present == 'true'
+        run: pnpm install --frozen-lockfile
+
+      - if: steps.runner.outputs.present == 'true'
+        run: pnpm run build
+
+      - name: Start the dev BDS
+        if: steps.runner.outputs.present == 'true'
+        run: |
+          node scripts/setup-dev-world.mjs
+          # The container writes the world into this bind mount as a different UID than the runner.
+          chmod -R a+rwX server/data
+          docker compose -f server/compose.yaml up -d
+
+      - name: Wait for the server to start
+        if: steps.runner.outputs.present == 'true'
+        # The image downloads BDS on first start, which takes a while on a fresh runner.
+        run: |
+          for _ in $(seq 1 120); do
+            if docker logs mycar-bds 2>&1 | grep -q "Server started"; then
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::BDS did not start within 10 minutes"
+          exit 1
+
+      - if: steps.runner.outputs.present == 'true'
+        run: pnpm run test:game
+
+      - name: Dump BDS logs on failure
+        if: failure() && steps.runner.outputs.present == 'true'
+        run: docker logs mycar-bds 2>&1 | tail -n 500
+
+      - name: Stop the dev BDS
+        if: always() && steps.runner.outputs.present == 'true'
+        run: docker compose -f server/compose.yaml down

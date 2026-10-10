@@ -1,5 +1,10 @@
 # 🚗 mycar-mod-minecraft
 
+[![Unit Tests](https://github.com/yasuflatland-lf/mycar-mod-minecraft/actions/workflows/unit-test.yml/badge.svg?branch=main)](https://github.com/yasuflatland-lf/mycar-mod-minecraft/actions/workflows/unit-test.yml)
+[![Integration Test](https://github.com/yasuflatland-lf/mycar-mod-minecraft/actions/workflows/integration-test.yml/badge.svg?branch=main)](https://github.com/yasuflatland-lf/mycar-mod-minecraft/actions/workflows/integration-test.yml)
+[![codecov](https://codecov.io/gh/yasuflatland-lf/mycar-mod-minecraft/branch/main/graph/badge.svg)](https://codecov.io/gh/yasuflatland-lf/mycar-mod-minecraft)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 A vehicle add-on for Minecraft Bedrock Edition, inspired by [MrCrayfish's Vehicle Mod](https://www.curseforge.com/minecraft/mc-mods/mrcrayfishs-vehicle-mod). It is built as a Behavior Pack + Resource Pack driven by the stable Script API (`@minecraft/server` 2.x), with no experimental toggles required.
 
 The target setup is a Bedrock Dedicated Server on a home LAN, with players joining from PC (keyboard) and mobile (touch).
