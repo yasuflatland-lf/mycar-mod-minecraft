@@ -1,6 +1,7 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import {
+  hitTick,
   judgeRam,
   MIN_PUSH,
   PUSH_WINDOW,
@@ -66,6 +67,7 @@ describe("judgeRam", () => {
         const samples = rammed(hp, g, before, 5).map((s, i) =>
           i < before ? s : { valid: false, hp: 0, x: Number.NaN },
         );
+        expect(hitTick(hp, samples)).toBe(-1);
         expect(judgeRam(hp, g, samples).pass).toBe(false);
       }),
     );
