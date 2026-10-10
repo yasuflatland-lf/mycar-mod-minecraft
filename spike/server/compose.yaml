@@ -10,6 +10,7 @@ services:
       GAMEMODE: "creative"
       ALLOW_CHEATS: "true"
       ALLOW_LIST: "false"
+      TRANSPORT: "raknet"
       TEXTUREPACK_REQUIRED: "true"
       CONTENT_LOG_FILE_ENABLED: "true"
       CONTENT_LOG_CONSOLE_OUTPUT_ENABLED: "true"
