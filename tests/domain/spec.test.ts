@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { SPEC } from "../../src/domain/vehicle/spec";
 
 describe("SPEC", () => {
-  it("ADR の値と一致する", () => {
+  it("matches the values in the ADRs", () => {
     expect(SPEC.maxSpeed).toBe(0.9);
     expect(SPEC.maxReverse).toBe(0.2);
     expect(SPEC.accel).toBe(0.0225);
@@ -12,7 +12,7 @@ describe("SPEC", () => {
     expect(SPEC.hitsToBreak).toBe(3);
   });
 
-  it("衝突判定の奥行きは 1 tick の最大移動距離より長い (すり抜けない)", () => {
+  it("collision detection depth exceeds the maximum distance traveled in 1 tick (no passing through targets)", () => {
     expect(SPEC.bodyFront + SPEC.targetHalfWidth).toBeGreaterThan(
       SPEC.maxSpeed,
     );

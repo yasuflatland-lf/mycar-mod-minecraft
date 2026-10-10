@@ -1,22 +1,22 @@
-# 0001. Bedrock の Add-on として作り、Script API は安定版だけを使う
+# 0001. Build a Bedrock add-on and use only the stable Script API
 
-- 状態: 承認
-- 日付: 2026-10-10
+- Status: Accepted
+- Date: 2026-10-10
 
-## 状況
+## Context
 
-MrCrayfish's Vehicle Mod に近い遊び方を、Minecraft Bedrock Edition で実現したい。Bedrock には Java 版の Forge や Fabric のようにゲーム本体を拡張する仕組みがなく、作れるのは Add-on（Behavior Pack と Resource Pack）である。動きの制御には、JSON のエンティティ定義と Script API（`@minecraft/server`）を使う。
+We want gameplay close to MrCrayfish's Vehicle Mod on Minecraft Bedrock Edition. Bedrock has nothing like Forge or Fabric on Java Edition for extending the game itself; what we can build is an add-on (a Behavior Pack and a Resource Pack). Movement is controlled with JSON entity definitions and the Script API (`@minecraft/server`).
 
-Script API には安定版とベータ版がある。ベータ版はワールドで実験機能を有効にする必要があり、ゲームの更新で互換性なく変わることがある。遊ぶ環境は自宅 LAN の Bedrock Dedicated Server（BDS）で、PC とスマホが参加する。
+The Script API comes in a stable and a beta flavor. Beta requires turning on experimental features in the world and can change incompatibly with game updates. The play environment is a Bedrock Dedicated Server (BDS) on a home LAN, joined from PC and mobile.
 
-## 決定
+## Decision
 
-- Behavior Pack・Resource Pack・Script API の Add-on として作る
-- Script API は安定版の `@minecraft/server` 2.x だけを使う。ベータ API と実験機能は使わない
-- スクリプトは TypeScript で書き、esbuild で 1 ファイルにまとめて Behavior Pack に入れる
+- Build an add-on made of a Behavior Pack, a Resource Pack, and the Script API
+- Use only the stable `@minecraft/server` 2.x. Do not use beta APIs or experimental features
+- Write scripts in TypeScript, bundle them into a single file with esbuild, and ship it in the Behavior Pack
 
-## 結果
+## Consequences
 
-- ゲームの更新で動かなくなる危険が小さい。必要な入力 API（`InputInfo.getMovementVector()`）は v1.21.70 で安定版になっていて、ベータに頼らずに済む
-- ベータにしかない API が必要になったら、この ADR を見直す
-- スクリプトはサーバー側でしか動かない。クライアント側で車の動きを先回りして計算する手段はない（0002 の制約の原因）
+- Game updates are less likely to break the add-on. The input API we need (`InputInfo.getMovementVector()`) became stable in v1.21.70, so we do not depend on beta
+- If we ever need an API that exists only in beta, revisit this ADR
+- Scripts run only on the server. There is no way to predict vehicle movement on the client (this is the root of the constraint in 0002)
