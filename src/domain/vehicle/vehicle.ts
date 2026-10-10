@@ -75,6 +75,23 @@ export class Vehicle {
     return new Vehicle(id, yaw);
   }
 
+  /**
+   * Rebuilds a vehicle whose aggregate was lost (e.g. after `/reload`) while
+   * riders may already be seated. Seeding the seats and the driver keeps the
+   * first tick from treating the current driver as newly mounted, which would
+   * snap the heading to the driver's view.
+   */
+  static rebuild(
+    id: string,
+    yaw: number,
+    riders: readonly RiderView[],
+  ): Vehicle {
+    const v = new Vehicle(id, yaw);
+    v.seats = occupiedSeats(riders, forward(yaw));
+    v.driverId = riders.find((r) => v.seats.get(r.id) === 0)?.id;
+    return v;
+  }
+
   get speed(): number {
     return this.motion.speed;
   }
