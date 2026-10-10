@@ -1,5 +1,4 @@
-// src/domain/vehicle/vehicle.ts
-// Aggregate: one vehicle. Holds the motion state, the driver, the seats, the record of repeat ram damage, and the hit count.
+// Aggregate for one vehicle: motion, driver, seats, ram cooldowns, and the hit count.
 import { forward, rightOf, type Vec2, type Vec3 } from "../shared/vec";
 import { NEUTRAL_INPUT, type RawInput, toDriveInput } from "./driveInput";
 import type { VehicleEvent } from "./events";
@@ -43,6 +42,21 @@ export interface TickOutcome {
   events: VehicleEvent[];
 }
 
+function stepProbe(ctx: TickContext): StepProbe {
+  return (f, speed) => {
+    const r = rightOf(f);
+    return shouldStepUp(
+      (ahead, side, dy) =>
+        ctx.solidAt({
+          x: f.x * ahead + r.x * side,
+          y: dy,
+          z: f.z * ahead + r.z * side,
+        }),
+      speed,
+    );
+  };
+}
+
 export class Vehicle {
   private motion: MotionState;
   private driverId: string | undefined;
@@ -70,7 +84,34 @@ export class Vehicle {
   }
 
   tick(ctx: TickContext): TickOutcome {
-    const seats = occupiedSeats(ctx.riders, forward(this.motion.yaw));
+    const events = this.updateSeats(ctx.riders);
+    const driver = this.updateDriver(ctx.riders);
+
+    const raw = driver ? driver.raw : ctx.testInput;
+    const input = raw ? toDriveInput(raw) : NEUTRAL_INPUT;
+    const step = stepMotion(
+      this.motion,
+      input,
+      { velocity: ctx.velocity, onGround: ctx.onGround },
+      stepProbe(ctx),
+    );
+    this.motion = step.state;
+
+    return {
+      impulse: {
+        x: step.impulse.x,
+        y: step.jumped ? SPEC.stepVelocity : 0,
+        z: step.impulse.z,
+      },
+      yaw: step.state.yaw,
+      hits: this.ram(ctx, step.forward),
+      driverId: driver?.id,
+      events,
+    };
+  }
+
+  private updateSeats(riders: readonly RiderView[]): VehicleEvent[] {
+    const seats = occupiedSeats(riders, forward(this.motion.yaw));
     const events: VehicleEvent[] = vacatedSeats(this.seats, seats).map(
       (seat) => ({
         type: "SeatVacated",
@@ -80,9 +121,12 @@ export class Vehicle {
       }),
     );
     this.seats = seats;
+    return events;
+  }
 
+  private updateDriver(riders: readonly RiderView[]): RiderView | undefined {
     // Driver = the rider in the driver's seat (seat 0) (ADR 0007)
-    const driver = ctx.riders.find((r) => seats.get(r.id) === 0);
+    const driver = riders.find((r) => this.seats.get(r.id) === 0);
     if (
       driver &&
       this.driverId !== driver.id &&
@@ -91,54 +135,23 @@ export class Vehicle {
       this.motion = { ...this.motion, yaw: driver.yaw };
     }
     this.driverId = driver?.id;
+    return driver;
+  }
 
-    const raw = driver ? driver.raw : ctx.testInput;
-    const input = raw ? toDriveInput(raw) : NEUTRAL_INPUT;
-    const probe: StepProbe = (f, speed) => {
-      const r = rightOf(f);
-      return shouldStepUp(
-        (ahead, side, dy) =>
-          ctx.solidAt({
-            x: f.x * ahead + r.x * side,
-            y: dy,
-            z: f.z * ahead + r.z * side,
-          }),
-        speed,
-      );
-    };
-    const res = stepMotion(
-      this.motion,
-      input,
-      { velocity: ctx.velocity, onGround: ctx.onGround },
-      probe,
-    );
-    this.motion = res.state;
-
+  private ram(ctx: TickContext, f: Vec2): RamHit[] {
     for (const [id, t] of this.lastHit)
       if (ctx.tick - t >= SPEC.ramCooldown) this.lastHit.delete(id);
-    const hits =
-      Math.abs(res.state.speed) > SPEC.ramMinSpeed
-        ? selectHits(
-            res.forward,
-            res.state.speed,
-            ctx.targets(),
-            this.lastHit,
-            ctx.tick,
-          )
-        : [];
+    // selectHits checks the speed too; checking here skips the targets() query.
+    if (Math.abs(this.motion.speed) <= SPEC.ramMinSpeed) return [];
+    const hits = selectHits(
+      f,
+      this.motion.speed,
+      ctx.targets(),
+      this.lastHit,
+      ctx.tick,
+    );
     for (const h of hits) this.lastHit.set(h.id, ctx.tick);
-
-    return {
-      impulse: {
-        x: res.impulse.x,
-        y: res.jumped ? SPEC.stepVelocity : 0,
-        z: res.impulse.z,
-      },
-      yaw: res.state.yaw,
-      hits,
-      driverId: driver?.id,
-      events,
-    };
+    return hits;
   }
 
   /** Hit by a player. Returns VehicleBroken when the vehicle breaks (ADR 0008). */

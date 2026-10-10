@@ -1,4 +1,3 @@
-// src/domain/vehicle/driveInput.ts
 import { clamp } from "../shared/vec";
 import { SPEC } from "./spec";
 
@@ -24,10 +23,10 @@ export function toDriveInput(raw: RawInput): DriveInput {
   if (!Number.isFinite(raw.moveX) || !Number.isFinite(raw.moveY)) {
     return NEUTRAL_INPUT;
   }
-  const y = raw.moveY;
+  const magnitude = Math.abs(raw.moveY);
   const throttle =
-    Math.abs(y) <= SPEC.throttleDeadzone
+    magnitude <= SPEC.throttleDeadzone
       ? 0
-      : Math.sign(y) * Math.min(1, Math.abs(y) / SPEC.throttleFullAt);
+      : Math.sign(raw.moveY) * Math.min(1, magnitude / SPEC.throttleFullAt);
   return { throttle, steer: clamp(raw.moveX, -1, 1), handbrake: raw.jump };
 }

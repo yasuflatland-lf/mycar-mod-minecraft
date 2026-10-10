@@ -1,7 +1,6 @@
-// tests/domain/seats.test.ts
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { forward, leftOf } from "../../src/domain/shared/vec";
+import { forward, leftOf, type Vec2 } from "../../src/domain/shared/vec";
 import {
   nearestSeat,
   occupiedSeats,
@@ -13,7 +12,7 @@ import {
 const yaw = fc.double({ min: -180, max: 180, noNaN: true });
 const seat = fc.integer({ min: 0, max: 3 });
 
-function worldOffset(yawDeg: number, i: number) {
+function worldOffset(yawDeg: number, i: number): Vec2 {
   const f = forward(yawDeg);
   const l = leftOf(f);
   const s = SEAT_POSITIONS[i]!;

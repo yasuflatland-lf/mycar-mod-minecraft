@@ -1,4 +1,3 @@
-// src/application/placeVehicle.ts
 // Use case: place a vehicle by using the vehicle item on the top face of a block (ADR 0008).
 import type { Vec3 } from "../domain/shared/vec";
 import { canPlaceAt } from "../domain/vehicle/placement";
@@ -22,17 +21,18 @@ export class PlaceVehicle {
   ) {}
 
   execute(cmd: PlaceVehicleCommand): boolean {
-    const b = cmd.blockLocation;
+    const block = cmd.blockLocation;
     const isAir = (dx: number, dy: number, dz: number) =>
       this.world.isAir(cmd.dimensionId, {
-        x: b.x + dx,
-        y: b.y + dy,
-        z: b.z + dz,
+        x: block.x + dx,
+        y: block.y + dy,
+        z: block.z + dz,
       });
-    if (!canPlaceAt(isAir)) return false; // If there is no room for the vehicle, do not place it and do not consume the item
+    // Returning before the spawn also leaves the item unconsumed.
+    if (!canPlaceAt(isAir)) return false;
     const id = this.world.spawnVehicle(
       cmd.dimensionId,
-      { x: b.x + 0.5, y: b.y + 1, z: b.z + 0.5 },
+      { x: block.x + 0.5, y: block.y + 1, z: block.z + 0.5 },
       cmd.yaw,
     );
     this.repo.save(Vehicle.create(id, cmd.yaw));

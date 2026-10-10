@@ -2,18 +2,28 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { DOOR_BY_SEAT } from "../../src/domain/vehicle/seats";
 
+type Vec3 = [number, number, number];
+
+interface Bone {
+  name: string;
+  cubes?: { origin: Vec3 }[];
+  locators?: Record<string, Vec3>;
+}
+
 const geo = JSON.parse(
   readFileSync("packs/mycar_rp/models/entity/suv.geo.json", "utf8"),
 );
-const g = geo["minecraft:geometry"][0];
-const bones = new Map<string, any>(g.bones.map((b: any) => [b.name, b]));
+const geometry = geo["minecraft:geometry"][0];
+const bones = new Map<string, Bone>(
+  geometry.bones.map((b: Bone) => [b.name, b]),
+);
 const anims = JSON.parse(
   readFileSync("packs/mycar_rp/animations/suv.animation.json", "utf8"),
 ).animations;
 
 describe("SUV model (ADR 0009)", () => {
   it("has the geometry identifier", () => {
-    expect(g.description.identifier).toBe("geometry.mycar.suv");
+    expect(geometry.description.identifier).toBe("geometry.mycar.suv");
   });
 
   it("has all the conventional bones", () => {
@@ -35,12 +45,12 @@ describe("SUV model (ADR 0009)", () => {
   });
 
   it("faces -z (the hood and grille boxes are on the -z side)", () => {
-    const zs = bones.get("body").cubes.map((c: any) => c.origin[2]);
+    const zs = bones.get("body")?.cubes?.map((c) => c.origin[2]) ?? [];
     expect(Math.min(...zs)).toBeLessThan(-24);
   });
 
   it("has the exhaust locator on body", () => {
-    expect(bones.get("body").locators.exhaust).toHaveLength(3);
+    expect(bones.get("body")?.locators?.exhaust).toHaveLength(3);
   });
 
   it("has an open/close animation for each door", () => {

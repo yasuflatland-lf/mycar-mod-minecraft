@@ -1,4 +1,3 @@
-// src/application/ports.ts
 // Capabilities the application layer requires from the game (ports). Implementations live in the infrastructure layer (ADR 0012).
 import type { Vec2, Vec3 } from "../domain/shared/vec";
 import type { RawInput } from "../domain/vehicle/driveInput";
