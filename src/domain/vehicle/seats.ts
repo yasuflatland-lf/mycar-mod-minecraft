@@ -1,8 +1,8 @@
 // src/domain/vehicle/seats.ts
-// 座席の判定と降車の検出 (ADR 0007)。座席の位置は packs/mycar_bp/entities/suv.json の minecraft:rideable と一致させる。
+// Seat assignment and dismount detection (ADR 0007). Seat positions must match minecraft:rideable in packs/mycar_bp/entities/suv.json.
 import { dot, leftOf, type Vec2 } from "../shared/vec";
 
-/** 車の向きに合わせた座標 (x = 左、z = 前)。0 = 運転席 (右前)、1 = 助手席、2 = 運転席の後ろ、3 = 助手席の後ろ。 */
+/** Coordinates aligned with the vehicle's facing (x = left, z = forward). 0 = driver's seat (front right), 1 = front passenger seat, 2 = behind the driver, 3 = behind the front passenger. */
 export const SEAT_POSITIONS: readonly Vec2[] = [
   { x: -0.38, z: 0.35 },
   { x: 0.38, z: 0.35 },
@@ -10,7 +10,7 @@ export const SEAT_POSITIONS: readonly Vec2[] = [
   { x: 0.38, z: -0.8 },
 ];
 
-/** 座席ごとのドアのボーン名 (ADR 0009)。 */
+/** Door bone name for each seat (ADR 0009). */
 export const DOOR_BY_SEAT: readonly string[] = [
   "door_fr",
   "door_fl",

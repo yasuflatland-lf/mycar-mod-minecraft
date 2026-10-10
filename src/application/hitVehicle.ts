@@ -1,5 +1,5 @@
 // src/application/hitVehicle.ts
-// ユースケース: プレイヤーが車を殴った (ADR 0008)。
+// Use case: a player hit a vehicle (ADR 0008).
 import type { VehicleRepository } from "../domain/vehicle/vehicleRepository";
 import type { BreakWorld } from "./ports";
 

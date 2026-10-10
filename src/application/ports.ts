@@ -1,5 +1,5 @@
 // src/application/ports.ts
-// アプリケーション層がゲーム側に求める機能 (ポート)。実装はインフラストラクチャ層にある (ADR 0012)。
+// Capabilities the application layer requires from the game (ports). Implementations live in the infrastructure layer (ADR 0012).
 import type { Vec2, Vec3 } from "../domain/shared/vec";
 import type { RawInput } from "../domain/vehicle/driveInput";
 import type { RamHit, RamTarget } from "../domain/vehicle/ram";

@@ -19,7 +19,7 @@ export const NEUTRAL_INPUT: DriveInput = {
   handbrake: false,
 };
 
-/** 移動ベクトルとジャンプを、アクセル量・ハンドル量・ハンドブレーキに変換する (ADR 0005)。 */
+/** Converts the movement vector and jump input to throttle, steering, and handbrake (ADR 0005). */
 export function toDriveInput(raw: RawInput): DriveInput {
   const y = raw.moveY;
   const throttle =

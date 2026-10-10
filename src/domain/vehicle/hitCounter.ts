@@ -1,5 +1,5 @@
 // src/domain/vehicle/hitCounter.ts
-// 車を殴った回数を数え、壊れるかを決める (ADR 0008)。
+// Counts how many times the vehicle is hit and decides whether it breaks (ADR 0008).
 import { SPEC } from "./spec";
 
 export interface HitCounter {
@@ -16,7 +16,7 @@ export function registerHit(
   tick: number,
   hasRiders: boolean,
 ): { counter: HitCounter; broken: boolean } {
-  if (hasRiders) return { counter: c, broken: false }; // 乗員がいる間は数えない
+  if (hasRiders) return { counter: c, broken: false }; // Hits are not counted while there are occupants
   const base = tick - c.lastTick > SPEC.hitResetTicks ? 0 : c.count;
   const count = base + 1;
   if (count >= SPEC.hitsToBreak)
