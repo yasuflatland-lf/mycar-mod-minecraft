@@ -1,9 +1,10 @@
-// tests/domain/motion.test.ts
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { dot, forward, length, type Vec2 } from "../../src/domain/shared/vec";
-import type { DriveInput } from "../../src/domain/vehicle/driveInput";
-import { NEUTRAL_INPUT } from "../../src/domain/vehicle/driveInput";
+import {
+  type DriveInput,
+  NEUTRAL_INPUT,
+} from "../../src/domain/vehicle/driveInput";
 import {
   initialMotion,
   type MotionState,
@@ -15,6 +16,11 @@ import { SPEC } from "../../src/domain/vehicle/spec";
 import { type Body, type Engine, engineStep } from "../support/engineModel";
 
 const noStep = () => false;
+const FULL_THROTTLE: DriveInput = { throttle: 1, steer: 0, handbrake: false };
+
+function repeat(input: DriveInput, ticks: number): DriveInput[] {
+  return Array.from({ length: ticks }, () => input);
+}
 
 interface Frame {
   state: MotionState;
@@ -46,11 +52,11 @@ function simulate(
   return frames;
 }
 
-const lateral = (v: Vec2, yaw: number): number => {
+function lateral(v: Vec2, yaw: number): number {
   const f = forward(yaw);
   const l = dot(v, f);
   return Math.hypot(v.x - f.x * l, v.z - f.z * l);
-};
+}
 
 const driveInput = fc.record({
   throttle: fc.double({ min: -1, max: 1, noNaN: true }),
@@ -131,16 +137,15 @@ describe("stepMotion (properties, ADR 0002/0003)", () => {
   });
 
   it("sideways velocity decreases without increasing after input stops", () => {
-    const quiet: DriveInput[] = Array.from({ length: 60 }, () => NEUTRAL_INPUT);
+    const quiet = repeat(NEUTRAL_INPUT, 60);
     fc.assert(
       fc.property(inputs, mu, (warm, m) => {
         const frames = simulate([...warm, ...quiet], { mu: m });
-        for (let i = warm.length + 1; i < frames.length; i++) {
-          const prev = frames[i - 1]!;
-          const cur = frames[i]!;
-          expect(lateral(cur.body.vel, cur.state.yaw)).toBeLessThanOrEqual(
-            lateral(prev.body.vel, prev.state.yaw) + 1e-9,
-          );
+        let previous = Number.POSITIVE_INFINITY;
+        for (const fr of frames.slice(warm.length)) {
+          const current = lateral(fr.body.vel, fr.state.yaw);
+          expect(current).toBeLessThanOrEqual(previous + 1e-9);
+          previous = current;
         }
       }),
     );
@@ -151,12 +156,11 @@ describe("stepMotion (properties, ADR 0002/0003)", () => {
     const wallX = fc.double({ min: 8, max: 20, noNaN: true });
     fc.assert(
       fc.property(yaw0, wallX, mu, (y, w, m) => {
-        const full: DriveInput[] = Array.from({ length: 200 }, () => ({
-          throttle: 1,
-          steer: 0,
-          handbrake: false,
-        }));
-        const frames = simulate(full, { mu: m, wallX: w }, y);
+        const frames = simulate(
+          repeat(FULL_THROTTLE, 200),
+          { mu: m, wallX: w },
+          y,
+        );
         const first = frames.findIndex((f) => f.touching);
         expect(first).toBeGreaterThan(0);
         const before = Math.abs(frames[first - 1]!.body.vel.z);
@@ -172,16 +176,8 @@ describe("stepMotion (properties, ADR 0002/0003)", () => {
 
   it("slides sideways more under the handbrake than during normal driving", () => {
     const run = (hb: boolean) => {
-      const accel: DriveInput[] = Array.from({ length: 60 }, () => ({
-        throttle: 1,
-        steer: 0,
-        handbrake: false,
-      }));
-      const turn: DriveInput[] = Array.from({ length: 20 }, () => ({
-        throttle: 1,
-        steer: 1,
-        handbrake: hb,
-      }));
+      const accel = repeat(FULL_THROTTLE, 60);
+      const turn = repeat({ throttle: 1, steer: 1, handbrake: hb }, 20);
       const frames = simulate([...accel, ...turn], { mu: 0.688 });
       return Math.max(
         ...frames.slice(60).map((f) => lateral(f.body.vel, f.state.yaw)),
@@ -193,7 +189,7 @@ describe("stepMotion (properties, ADR 0002/0003)", () => {
   it("reports an upward jump when jumping up a step and raises internal speed to the minimum", () => {
     const r = stepMotion(
       initialMotion(0),
-      { throttle: 1, steer: 0, handbrake: false },
+      FULL_THROTTLE,
       { velocity: { x: 0, z: 0 }, onGround: true },
       () => true,
     );

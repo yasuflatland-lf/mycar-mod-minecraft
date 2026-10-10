@@ -1,4 +1,3 @@
-// scripts/build.mjs
 import { build } from "esbuild";
 
 const common = {
