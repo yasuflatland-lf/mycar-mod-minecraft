@@ -1,28 +1,28 @@
-# 0004. 2 段の段差はスクリプトの先読みで越える
+# 0004. Climb two-block steps by looking ahead in the script
 
-- 状態: 承認
-- 日付: 2026-10-10
+- Status: Accepted
+- Date: 2026-10-10
 
-## 状況
+## Context
 
-段差は 2 段まで越えられ、3 段以上は壁として止まるようにしたい。高さ 1 の段差は、エンティティの `minecraft:variable_max_auto_step` に任せると、スクリプトで動かしていても越えられた。高さ 2 は、この値を 2.0625 に上げても越えられなかった。
+We want vehicles to climb steps up to two blocks high and to stop at anything three blocks or higher as if it were a wall. One-block steps can be left to the entity's `minecraft:variable_max_auto_step`; this works even while the script is moving the vehicle. Two-block steps could not be climbed even with this value raised to 2.0625.
 
-スクリプトで跳ばせる方式にすると、次の問題が順に出た。
+Making the script launch the vehicle upward ran into these problems, one after another:
 
-- 壁に当たってから跳ぶと、一度止まってから跳ねるので、タイミングが遅く感じる
-- 先読みが中心線だけだと、斜めに近づいたときに車の角が先に段差へ当たり、跳ぶ前に止まる
-- 上がりきる前に段差の側面へ当たると、車が側面に沿って横へ押し出される（横ずれ 4.78 ブロック）
+- Jumping only after hitting the wall feels late, because the vehicle stops once and then hops
+- With a look-ahead along the centerline only, a vehicle approaching at an angle hits the step with a corner first and stops before it jumps
+- If the vehicle hits the side of the step before it has fully risen, it is pushed sideways along that side (4.78 blocks of sideways drift)
 
-## 決定
+## Decision
 
-- 高さ 1 は `minecraft:variable_max_auto_step`（1.0625）に任せる
-- 高さ 2 は、走りながら前方を先読みして跳ぶ。先読みの距離は「速度 × 4 + 0.3」ブロックで、当たり判定の前端から測る
-- 先読みは中心線と左右の端（中心から ±0.8）の 3 本で行う。どれかの線で「高さ 2 の段差 + その上に 1.6 ブロック以上の空間」を見つけたら、上向きの速度 0.75 を与える
-- 3 本のどれかの線に高さ 3 以上の障害物があれば跳ばない。段差の上に車が入る空間がないときも跳ばない
-- 跳んでから 10 tick は空中でも制御し、横方向の速度を打ち消す
+- Leave one-block steps to `minecraft:variable_max_auto_step` (1.0625)
+- For two-block steps, look ahead while driving and jump. The look-ahead distance is "speed × 4 + 0.3" blocks, measured from the front edge of the collision box
+- Look ahead along three lines: the centerline and the left and right edges (±0.8 from the center). If any line finds "a two-block step with at least 1.6 blocks of clear space above it", give an upward velocity of 0.75
+- Do not jump if any of the three lines has an obstacle three blocks or higher, or if there is no room for the vehicle on top of the step
+- For 10 ticks after the jump, keep controlling the vehicle in the air and cancel sideways velocity
 
-## 結果
+## Consequences
 
-- スパイクでは、正面からも斜め 30° からも横ずれ 0.00 で 2 段の上に乗った
-- 跳ぶ高さは段の上面より約 0.9 ブロック高くなる。跳ねる感じが気になるなら、上向きの速度を調整する
-- 先読みの線は 3 本なので、車の端（中心から 0.8〜0.9）だけに掛かる段差は見落とし、壁として止まることがある
+- In the spike, the vehicle landed on top of a two-block step with 0.00 sideways drift, both head-on and at a 30° angle
+- The jump peaks about 0.9 blocks above the top of the step. If the hop feels wrong, tune the upward velocity
+- With only three look-ahead lines, a step that catches just the edge of the vehicle (0.8–0.9 from the center) can be missed, and the vehicle stops as if at a wall

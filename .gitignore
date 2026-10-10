@@ -3,3 +3,7 @@ dist/
 .DS_Store
 spike/server/data/
 docs/superpowers/
+.claude/worktrees/
+.claude/settings.local.json
+server/data/
+CLAUDE.local.md

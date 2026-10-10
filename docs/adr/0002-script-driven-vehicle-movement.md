@@ -1,28 +1,28 @@
-# 0002. 走行はスクリプトで速度を与える方式にする
+# 0002. Drive vehicles by setting their velocity from the script
 
-- 状態: 承認
-- 日付: 2026-10-10
+- Status: Accepted
+- Date: 2026-10-10
 
-## 状況
+## Context
 
-走行は「アーケード寄り」にしたい。加速と惰性があり、ハンドルを切るとすぐ曲がり、ハンドブレーキで横滑りする挙動である。Bedrock で車を動かす方法は 3 つ考えた。
+We want arcade-style driving: acceleration and coasting, turning as soon as you steer, and sliding sideways under the handbrake. We considered three ways to move a vehicle in Bedrock:
 
-1. 毎 tick、スクリプトで速度と向きを計算し、`applyImpulse` で車に速度を与える
-2. 馬と同じ `minecraft:input_ground_controlled` で、エンジンに動かさせる
-3. 2 の方式のまま、スクリプトで最高速度の属性値を上げ下げする
+1. Every tick, compute speed and heading in the script and give the vehicle its velocity with `applyImpulse`
+2. Use `minecraft:input_ground_controlled`, the same as horses, and let the engine move the vehicle
+3. Keep approach 2, but raise and lower the max-speed attribute from the script
 
-スパイクで 1 と 2 を作って比べた。2 は左右の入力で車が向きを変えずに真横へ滑り（カニ歩き）、車らしく曲がらなかった。3 は進む方向が常に車の向きと一致するので、横滑りを作れない。1 は加速・惰性・横滑りをすべて作れた。
+The spike built and compared 1 and 2. With 2, left/right input slid the vehicle straight sideways without turning it (crab walking), so it did not turn like a car. With 3, the direction of travel always matches the vehicle's facing, so sideways sliding is impossible. Approach 1 produced acceleration, coasting, and sliding.
 
-## 決定
+## Decision
 
-方式 1 を採る。車のエンティティは「乗れる箱」として定義し、移動はすべてスクリプトで計算する。
+Adopt approach 1. The vehicle entity is defined as a "box you can ride", and all movement is computed in the script.
 
-- 設定値（最高速度 0.9 ブロック/tick、後退 0.2、加速 0.0225、ブレーキ 0.04、惰性の減速 0.02、ハンドル 6°/tick、グリップ 0.6、ハンドブレーキ中のグリップ 0.04）は一か所にまとめる
-- 水平速度の大きさは、毎 tick 最高速度で頭打ちにする。スパイクでは、横滑りの成分を残したまま前方の速度を足していたので、ハンドブレーキ中に合成した速さが最高速度を超えた（0.9 に対して 1.15）
-- 停車中に運転席へ乗り込んだら、車の向きを運転者の視線に合わせる。運転席に `lock_rider_rotation: 90` を付け、曲がるとカメラが車についてくるようにする
+- Keep the tuning values in one place: max speed 0.9 blocks/tick, reverse 0.2, acceleration 0.0225, braking 0.04, coasting deceleration 0.02, steering 6°/tick, grip 0.6, grip under handbrake 0.04
+- Cap the magnitude of horizontal velocity at the max speed every tick. In the spike, forward velocity was added on top of the remaining sideways component, so the combined speed exceeded the max speed under the handbrake (1.15 against 0.9)
+- When a player gets into the driver seat while the vehicle is stopped, turn the vehicle to face the driver's view direction. Give the driver seat `lock_rider_rotation: 90` so the camera follows the vehicle when it turns
 
-## 結果
+## Consequences
 
-- 挙動を自由に作れ、パーツ交換（サブプロジェクト 3）でも設定値を差し替えるだけで済む
-- 計算がサーバー側なので、運転者の画面では車の位置が 1 tick 以上遅れる。LAN では通信の往復は数 ms だが、tick 待ちと補間の遅れは消えない。運転者カメラの滑らかさはまだ評価していない。評価が悪ければ、この ADR を見直す
-- エンジンの地面摩擦や壁との相互作用をスクリプト側で扱う必要がある（0003、0004）
+- We can shape the handling freely, and parts swapping (sub-project 3) only needs to swap tuning values
+- Because the computation runs on the server, the driver sees the vehicle's position at least one tick late. On a LAN the round trip is a few milliseconds, but the wait for the next tick and the interpolation delay remain. The smoothness of the driver camera has not been evaluated yet. If it rates poorly, revisit this ADR
+- The script has to deal with the engine's ground friction and wall interactions itself (0003, 0004)
