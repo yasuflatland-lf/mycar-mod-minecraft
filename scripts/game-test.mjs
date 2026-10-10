@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { setTimeout as sleep } from "node:timers/promises";
 
 const CONTAINER = "mycar-bds";
 const since = new Date().toISOString();
@@ -12,7 +13,7 @@ const deadline = Date.now() + 5 * 60_000;
 let summary;
 let lines = [];
 while (Date.now() < deadline) {
-  await new Promise((r) => setTimeout(r, 3000));
+  await sleep(3000);
   const logs = execFileSync("docker", ["logs", "--since", since, CONTAINER], {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
