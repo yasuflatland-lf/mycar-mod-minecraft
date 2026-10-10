@@ -5,6 +5,8 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "typecheck": "tsc --noEmit",
+    "lint": "biome check",
+    "lint:fix": "biome check --write",
     "test": "vitest run",
     "model": "python3 -I tools/gen_model.py packs/mycar_rp",
     "server:up": "node scripts/setup-dev-world.mjs && docker compose -f server/compose.yaml up -d",
@@ -12,6 +14,7 @@
     "test:game": "node scripts/game-test.mjs"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.15",
     "@minecraft/server": "2.0.0",
     "@types/node": "24.19.1",
     "esbuild": "0.28.2",
