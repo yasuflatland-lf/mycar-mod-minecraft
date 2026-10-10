@@ -43,6 +43,10 @@ jobs:
         if: steps.runner.outputs.present == 'true'
         run: |
           node scripts/setup-dev-world.mjs
+          # The packs are bind-mounted inside server/data, so Docker would create
+          # behavior_packs/ and resource_packs/ as root and the container (not root)
+          # could not unpack the vanilla packs next to ours. Create them first.
+          mkdir -p server/data/behavior_packs server/data/resource_packs
           # The container writes the world into this bind mount as a different UID than the runner.
           chmod -R a+rwX server/data
           docker compose -f server/compose.yaml up -d
@@ -51,9 +55,16 @@ jobs:
         if: steps.runner.outputs.present == 'true'
         # The image downloads BDS on first start, which takes a while on a fresh runner.
         run: |
-          for _ in $(seq 1 120); do
+          for i in $(seq 1 120); do
             if docker logs mycar-bds 2>&1 | grep -q "Server started"; then
               exit 0
+            fi
+            if [ "$(docker inspect -f '{{.State.Running}}' mycar-bds)" != true ]; then
+              echo "::error::BDS container exited before the server started"
+              exit 1
+            fi
+            if [ $((i % 6)) = 0 ]; then
+              echo "still waiting ($((i * 5))s): $(docker logs mycar-bds 2>&1 | tail -n 1)"
             fi
             sleep 5
           done
@@ -63,9 +74,16 @@ jobs:
       - if: steps.runner.outputs.present == 'true'
         run: pnpm run test:game
 
+      # Show the start as well as the end: a burst of repeated errors can push
+      # the first, telling line out of a plain tail.
       - name: Dump BDS logs on failure
         if: failure() && steps.runner.outputs.present == 'true'
-        run: docker logs mycar-bds 2>&1 | tail -n 500
+        run: |
+          docker logs mycar-bds > bds.log 2>&1 || true
+          echo "--- first 150 lines ---"
+          head -n 150 bds.log
+          echo "--- last 150 lines ---"
+          tail -n 150 bds.log
 
       - name: Stop the dev BDS
         if: always() && steps.runner.outputs.present == 'true'
