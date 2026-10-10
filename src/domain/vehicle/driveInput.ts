@@ -21,6 +21,9 @@ export const NEUTRAL_INPUT: DriveInput = {
 
 /** 移動ベクトルとジャンプを、アクセル量・ハンドル量・ハンドブレーキに変換する (ADR 0005)。 */
 export function toDriveInput(raw: RawInput): DriveInput {
+  if (!Number.isFinite(raw.moveX) || !Number.isFinite(raw.moveY)) {
+    return NEUTRAL_INPUT;
+  }
   const y = raw.moveY;
   const throttle =
     Math.abs(y) <= SPEC.throttleDeadzone
