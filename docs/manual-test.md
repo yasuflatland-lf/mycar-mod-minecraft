@@ -1,20 +1,20 @@
-# 手動テスト
+# Manual test
 
-開発用サーバー: `pnpm run build && pnpm run server:up`。接続先は Mac の LAN の IP アドレス、ポート 19132。
-コマンドを使うには、`docker exec mycar-bds send-command op <プレイヤー名>` を実行する。
+Dev server: `pnpm run build && pnpm run server:up`. Connect to the Mac's LAN IP address on port 19132.
+To use commands, run `docker exec mycar-bds send-command op <player name>`.
 
-| # | 手順 | 合格の条件 | PC | スマホ |
+| # | Steps | Pass condition | PC | Mobile |
 |---|---|---|---|---|
-| 1 | クラフト台で鉄インゴット 5・鉄ブロック 1・石炭ブロック 2 から車のアイテムを作る | アイテム「SUV」ができる | | |
-| 2 | アイテムを地面に使う / 天井の低い場所で使う | 車が出てアイテムが 1 つ減る（クリエイティブでは減らない）/ 出ずにアイテムも減らない | | |
-| 3 | 乗って走る、曲がる、ハンドブレーキで滑る | 視線の方向に進み、すぐ曲がる。ハンドブレーキで滑る | | |
-| 4 | 運転者のカメラの滑らかさ | 5 段階で 3 以上 | | |
-| 5 | 高さ 2 の段差に正面と斜めから近づく | 止まらずに乗り越える | | |
-| 6 | 壁に全速力でぶつかる / 10 ブロックの高さから乗ったまま落ちる（サバイバル） | ハートが減らない | | |
-| 7 | 豚にぶつかる | 豚にダメージが入り、押しのけられる | | |
-| 8 | 降りる | 座った席のドアが外側に開き、ドアの開く音が鳴る | | |
-| 9 | 乗車中の排気ガス | 右後ろのマフラーの先から煙が出る | | |
-| 10 | 2 人で乗り、運転者が降りる | 同乗者は運転席へ移らない | | |
-| 11 | 乗っていない車を 3 回殴る / 乗っている車を殴る | 壊れてアイテムを落とす / 壊れない | | |
-| 12 | 同乗者から見た運転中の車 | 5 段階で 3 以上 | | |
-| 13 | 見た目（SUV の形、カーキ、内装・外装） | 意図どおり | | |
+| 1 | At a crafting table, craft the vehicle item from 5 iron ingots, 1 iron block, and 2 coal blocks | An "SUV" item is created | | |
+| 2 | Use the item on the ground / use it under a low ceiling | The vehicle appears and the item count drops by one (not in Creative) / no vehicle appears and the item count stays the same | | |
+| 3 | Get in, drive, turn, and slide with the handbrake | The vehicle moves where you look and turns right away. The handbrake makes it slide | | |
+| 4 | Smoothness of the driver's camera | 3 or higher on a 5-point scale | | |
+| 5 | Approach a 2-block step head-on and at an angle | The vehicle climbs it without stopping | | |
+| 6 | Hit a wall at full speed / fall 10 blocks while riding (Survival) | No hearts are lost | | |
+| 7 | Hit a pig | The pig takes damage and is pushed aside | | |
+| 8 | Get out | The door of the seat you sat in swings outward and a door-open sound plays | | |
+| 9 | Exhaust while riding | Smoke comes out of the tip of the rear-right muffler | | |
+| 10 | Ride with two players, then the driver gets out | The passenger does not move to the driver's seat | | |
+| 11 | Hit an empty vehicle 3 times / hit an occupied vehicle | It breaks and drops the item / it does not break | | |
+| 12 | The moving vehicle as seen by a passenger | 3 or higher on a 5-point scale | | |
+| 13 | Appearance (SUV shape, khaki, interior and exterior) | As intended | | |
