@@ -28,7 +28,7 @@ export interface TickContext {
   testInput?: RawInput;
   velocity: Vec2;
   onGround: boolean;
-  /** Whether the position relative to the vehicle is blocked. */
+  /** Whether the block at entity location + offset (world axes, y from the feet) is solid; air and liquids are not. */
   solidAt(offset: Vec3): boolean;
   /** Nearby targets. Called only when the speed exceeds the ram threshold. */
   targets(): readonly RamTarget[];
