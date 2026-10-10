@@ -35,12 +35,22 @@ pnpm install
 pnpm lint            # format and lint check with Biome
 pnpm test            # unit tests, property-based tests, and the layer dependency check
 pnpm build           # bundle the TypeScript into the Behavior Pack
+pnpm package         # zip the packs into dist/mycar-<version>.mcaddon (run after build)
 pnpm model           # generate the vehicle model and texture
 pnpm server:up       # start the dev BDS in Docker
 pnpm test:game       # in-game tests
 ```
 
-CI runs the Biome check, type checking, tests, and the build on every pull request.
+CI runs the Biome check, type checking, tests, the build, and packaging on every pull request.
+
+## Releasing
+
+Bump the Behavior Pack version in `packs/mycar_bp/manifest.json`, merge it to `main`, then either:
+
+- open **Actions → Release → Run workflow** on `main`, which tags the commit as `v<version>` (for example `v0.1.0` for `[0, 1, 0]`), or
+- push a matching tag yourself: `git tag v0.1.0 && git push origin v0.1.0`.
+
+The release workflow runs the checks, builds `mycar-<version>.mcaddon`, and attaches it to a new GitHub Release. Opening the file on a device imports both packs into Minecraft.
 
 ## License
 
