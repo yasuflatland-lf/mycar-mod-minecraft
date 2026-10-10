@@ -6,11 +6,20 @@ import type { HitVehicle } from "../../application/hitVehicle";
 import type { PlaceVehicle } from "../../application/placeVehicle";
 import { ITEM_TYPE, VEHICLE_TYPE } from "./identifiers";
 
-export function registerSubscriptions(useCases: { drive: DriveVehicles; place: PlaceVehicle; hit: HitVehicle }): void {
+export function registerSubscriptions(useCases: {
+  drive: DriveVehicles;
+  place: PlaceVehicle;
+  hit: HitVehicle;
+}): void {
   system.runInterval(() => useCases.drive.execute(system.currentTick), 1);
 
   world.afterEvents.playerInteractWithBlock.subscribe((ev) => {
-    if (!ev.isFirstEvent || ev.itemStack?.typeId !== ITEM_TYPE || ev.blockFace !== Direction.Up) return;
+    if (
+      !ev.isFirstEvent ||
+      ev.itemStack?.typeId !== ITEM_TYPE ||
+      ev.blockFace !== Direction.Up
+    )
+      return;
     useCases.place.execute({
       playerId: ev.player.id,
       dimensionId: ev.block.dimension.id,
@@ -21,7 +30,14 @@ export function registerSubscriptions(useCases: { drive: DriveVehicles; place: P
   });
 
   world.afterEvents.entityHitEntity.subscribe((ev) => {
-    if (ev.hitEntity.typeId !== VEHICLE_TYPE || ev.damagingEntity.typeId !== "minecraft:player") return;
-    useCases.hit.execute({ vehicleId: ev.hitEntity.id, tick: system.currentTick });
+    if (
+      ev.hitEntity.typeId !== VEHICLE_TYPE ||
+      ev.damagingEntity.typeId !== "minecraft:player"
+    )
+      return;
+    useCases.hit.execute({
+      vehicleId: ev.hitEntity.id,
+      tick: system.currentTick,
+    });
   });
 }

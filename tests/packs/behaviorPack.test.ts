@@ -4,7 +4,8 @@ import { describe, expect, it } from "vitest";
 import { SEAT_POSITIONS } from "../../src/domain/vehicle/seats";
 
 const read = (p: string) => JSON.parse(readFileSync(p, "utf8"));
-const c = read("packs/mycar_bp/entities/suv.json")["minecraft:entity"].components;
+const c = read("packs/mycar_bp/entities/suv.json")["minecraft:entity"]
+  .components;
 
 describe("packs/mycar_bp", () => {
   it("当たり判定は幅 1.8・高さ 1.6 (ADR 0009)", () => {
@@ -23,7 +24,10 @@ describe("packs/mycar_bp", () => {
   });
 
   it("車はダメージを受けない (ADR 0006)", () => {
-    expect(c["minecraft:damage_sensor"].triggers).toEqual({ cause: "all", deals_damage: "no" });
+    expect(c["minecraft:damage_sensor"].triggers).toEqual({
+      cause: "all",
+      deals_damage: "no",
+    });
   });
 
   it("1 段の段差はエンジンに任せる (ADR 0004)", () => {
@@ -31,7 +35,13 @@ describe("packs/mycar_bp", () => {
   });
 
   it("アイテムとレシピがある (ADR 0008)", () => {
-    expect(read("packs/mycar_bp/items/suv_item.json")["minecraft:item"].description.identifier).toBe("mycar:suv_item");
-    expect(read("packs/mycar_bp/recipes/suv_item.json")["minecraft:recipe_shaped"].result.item).toBe("mycar:suv_item");
+    expect(
+      read("packs/mycar_bp/items/suv_item.json")["minecraft:item"].description
+        .identifier,
+    ).toBe("mycar:suv_item");
+    expect(
+      read("packs/mycar_bp/recipes/suv_item.json")["minecraft:recipe_shaped"]
+        .result.item,
+    ).toBe("mycar:suv_item");
   });
 });
