@@ -13,6 +13,8 @@ describe("SPEC", () => {
   });
 
   it("衝突判定の奥行きは 1 tick の最大移動距離より長い (すり抜けない)", () => {
-    expect(SPEC.bodyFront + SPEC.targetHalfWidth).toBeGreaterThan(SPEC.maxSpeed);
+    expect(SPEC.bodyFront + SPEC.targetHalfWidth).toBeGreaterThan(
+      SPEC.maxSpeed,
+    );
   });
 });

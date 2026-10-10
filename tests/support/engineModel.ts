@@ -3,10 +3,20 @@ import type { Vec2 } from "../../src/domain/shared/vec";
 
 export const HALF_WIDTH = 0.9;
 
-export interface Engine { mu: number; wallX?: number }
-export interface Body { pos: Vec2; vel: Vec2 }
+export interface Engine {
+  mu: number;
+  wallX?: number;
+}
+export interface Body {
+  pos: Vec2;
+  vel: Vec2;
+}
 
-export function engineStep(b: Body, impulse: Vec2, e: Engine): { body: Body; touching: boolean } {
+export function engineStep(
+  b: Body,
+  impulse: Vec2,
+  e: Engine,
+): { body: Body; touching: boolean } {
   let vx = b.vel.x + impulse.x;
   const vz = b.vel.z + impulse.z;
   let px = b.pos.x + vx;
@@ -17,5 +27,8 @@ export function engineStep(b: Body, impulse: Vec2, e: Engine): { body: Body; tou
     vx = 0;
     touching = true;
   }
-  return { body: { pos: { x: px, z: pz }, vel: { x: vx * e.mu, z: vz * e.mu } }, touching };
+  return {
+    body: { pos: { x: px, z: pz }, vel: { x: vx * e.mu, z: vz * e.mu } },
+    touching,
+  };
 }
