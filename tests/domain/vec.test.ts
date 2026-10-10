@@ -14,19 +14,19 @@ import {
 const yaw = fc.double({ min: -720, max: 720, noNaN: true });
 
 describe("vec", () => {
-  it("yaw 0 は +z (南)、yaw -90 は +x (東) を向く", () => {
+  it("yaw 0 points toward +z (south), and yaw -90 points toward +x (east)", () => {
     expect(forward(0).x).toBeCloseTo(0);
     expect(forward(0).z).toBeCloseTo(1);
     expect(forward(-90).x).toBeCloseTo(1);
     expect(forward(-90).z).toBeCloseTo(0);
   });
 
-  it("南を向いたとき、右は西 (-x)、左は東 (+x)", () => {
+  it("when facing south, right is west (-x) and left is east (+x)", () => {
     expect(rightOf(forward(0)).x).toBeCloseTo(-1);
     expect(leftOf(forward(0)).x).toBeCloseTo(1);
   });
 
-  it("forward は単位ベクトルで、rightOf と直交する", () => {
+  it("forward is a unit vector perpendicular to rightOf", () => {
     fc.assert(
       fc.property(yaw, (y) => {
         const f = forward(y);
@@ -36,7 +36,7 @@ describe("vec", () => {
     );
   });
 
-  it("clampLength は上限を超えず、向きを変えない", () => {
+  it("clampLength stays within the upper limit and preserves direction", () => {
     const v = fc.record({
       x: fc.double({ min: -5, max: 5, noNaN: true }),
       z: fc.double({ min: -5, max: 5, noNaN: true }),
@@ -54,7 +54,7 @@ describe("vec", () => {
     );
   });
 
-  it("normalizeYaw は (-180, 180] に収め、同じ向きを表す", () => {
+  it("normalizeYaw keeps yaw within (-180, 180] and preserves direction", () => {
     fc.assert(
       fc.property(fc.double({ min: -1e5, max: 1e5, noNaN: true }), (y) => {
         const n = normalizeYaw(y);
