@@ -1,4 +1,5 @@
 # server/compose.yaml (ADR 0011)
+name: mycar-dev
 services:
   bds:
     image: itzg/minecraft-bedrock-server
