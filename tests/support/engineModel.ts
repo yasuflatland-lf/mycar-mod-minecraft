@@ -1,4 +1,3 @@
-// tests/support/engineModel.ts
 import type { Vec2 } from "../../src/domain/shared/vec";
 
 export const HALF_WIDTH = 0.9;
