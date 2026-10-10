@@ -10,6 +10,9 @@ const CFG = {
   turnRate: 6.0, // deg/tick at full lock
   grip: 0.3, // 速度ベクトルを向きへ寄せる割合 (1 = 滑らない)
   handbrakeGrip: 0.04,
+  airFriction: 0.91, // 空中の水平方向の減衰率
+  stepVelocity: 0.75, // 2 段の段差に飛び乗るときの上向き速度
+  stepTicks: 10, // 飛び乗ってから空中でも制御する tick 数
   ramMinSpeed: 0.15, // これ未満の速度ではぶつかってもダメージなし
   ramCooldown: 10, // 同じ相手に連続でダメージを与えない tick 数
 };
@@ -91,19 +94,23 @@ function stepScriptCar(car) {
       }
     }
   }
-  const friction = st.friction ?? 0.55;
+  const friction = car.isOnGround ? st.friction ?? 0.55 : CFG.airFriction;
 
   // 2 段の段差はエンジンの自動段差越えでは越えられないので、前方を先読みして手前で飛び乗る
   if (input.y > 0.05 && st.speed >= 0 && car.isOnGround && tryStepUp(car, f, st.speed)) {
     st.speed = Math.max(st.speed, 0.15);
+    st.stepTicks = CFG.stepTicks;
   }
+  const stepping = (st.stepTicks ?? 0) > 0;
+  if (stepping) st.stepTicks--;
 
   // 速度を前後成分と横成分に分け、横成分だけを grip で減衰させる (横滑りの表現)
   const vLatX = v.x - f.x * vLong;
   const vLatZ = v.z - f.z * vLong;
   const grip = input.handbrake ? CFG.handbrakeGrip : CFG.grip;
-  const control = car.isOnGround ? 1 : 0.2;
-  const keepLat = 1 - grip;
+  // 段差を越えている間は空中でも制御し、横方向の速度を打ち消して段差の外へ押し出されないようにする
+  const control = car.isOnGround || stepping ? 1 : 0.2;
+  const keepLat = stepping ? 0 : 1 - grip;
   // 摩擦で減る分を見越して上乗せする
   const nx = (f.x * st.speed + vLatX * keepLat) / friction;
   const nz = (f.z * st.speed + vLatZ * keepLat) / friction;
@@ -146,13 +153,13 @@ function tryStepUp(car, f, speed) {
   };
   if (solid(0, 0, 2.5)) return false; // 頭上がふさがっている
   const front = 0.7; // 車の前端
-  const lookahead = Math.max(0.3, speed * 4); // 4 tick 分先まで見る
+  const lookahead = speed * 4 + 0.3; // 上がりきるまでの約 4 tick 分 + 余裕
   for (let d = front + 0.1; d <= front + lookahead + 0.01; d += 0.2) {
     for (const side of [0, -0.6, 0.6]) {
       if (!solid(d, side, 0.5)) continue; // この線上にはまだ段差がない
       if (!solid(d, side, 1.5)) continue; // 1 段 (エンジンに任せる)
       if (solid(d, side, 2.5) || solid(d, side, 3.5)) return false; // 3 段以上 = 壁
-      car.applyImpulse({ x: f.x * 0.1, y: 0.62, z: f.z * 0.1 });
+      car.applyImpulse({ x: 0, y: CFG.stepVelocity, z: 0 });
       LOG(`step-up at (${p.x.toFixed(1)},${p.y.toFixed(1)},${p.z.toFixed(1)}) gap=${(d - front).toFixed(2)} side=${side} speed=${speed.toFixed(3)}`);
       return true;
     }
@@ -396,6 +403,9 @@ async function autotest() {
     if (car6.location.x > 97 && car6.location.x < 100.5) minSpeedNearStep = Math.min(minSpeedNearStep, hlen(car6.getVelocity()));
     if (car6.location.x > 102) break;
   }
+  const f6 = fwd(-60);
+  const off6 = (car6.location.x - 80.5) * f6.z - (car6.location.z - 10.5) * f6.x;
+  LOG(`T6 sideOffset=${off6.toFixed(2)}`);
   LOG(`T6 step2 diagonal: x=${car6.location.x.toFixed(2)} maxY=${maxY6.toFixed(2)} (base ${gy + 1}) climbed2=${maxY6 >= gy + 2.9} minSpeedNearStep=${minSpeedNearStep.toFixed(3)}`);
   car6.remove();
   virtualInput.clear();
