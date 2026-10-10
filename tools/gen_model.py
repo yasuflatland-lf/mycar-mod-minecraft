@@ -3,7 +3,8 @@
 Coordinates are in pixels (16 px = 1 block). The definitions below use "forward +z, left +x",
 and are rotated 180° around the Y axis just before writing, because in Bedrock the front of an
 entity is on the -z side of the model.
-Bone names follow the convention: root / body / wheel_fl / wheel_fr / wheel_rl / wheel_rr / seat_0..3.
+Bone names follow the convention (ADR 0009): root / body / wheel_fl / wheel_fr / wheel_rl / wheel_rr /
+door_fr / door_rr / door_fl / door_rl / seat_0..3.
 """
 import json
 import math
@@ -136,11 +137,11 @@ FRONT = 25  # z of the hood's front face
 
 def round_lamp(cx, cy, r, ring, lens, z0, z1):
     """Make a round-looking lamp from a rim of small blocks on a circle plus a cross-shaped lens."""
-    cubes = [
-        box(cx + r * math.cos(math.radians(a)) - 0.5, cy + r * math.sin(math.radians(a)) - 0.5, z0,
-            cx + r * math.cos(math.radians(a)) + 0.5, cy + r * math.sin(math.radians(a)) + 0.5, z1, ring)
-        for a in range(0, 360, 30)
-    ]
+    cubes = []
+    for a in range(0, 360, 30):
+        x = cx + r * math.cos(math.radians(a))
+        y = cy + r * math.sin(math.radians(a))
+        cubes.append(box(x - 0.5, y - 0.5, z0, x + 0.5, y + 0.5, z1, ring))
     k = r * 0.75
     cubes += [
         box(cx - k, cy - k * 0.55, z0, cx + k, cy + k * 0.55, z1 + 0.05, lens),
@@ -173,7 +174,7 @@ for side in (+1, -1):
 
 # Fog lamps (lower left and right of the bumper)
 for side in (+1, -1):
-    body += [box(11.0 * side - 1, 4, 28, 11.0 * side + 1, 6, 28.2, "light")]
+    body.append(box(11.0 * side - 1, 4, 28, 11.0 * side + 1, 6, 28.2, "light"))
 
 # Gauges (behind the steering wheel, on the driver's side of the dashboard). Two round dials + red needles
 body += [
@@ -295,20 +296,16 @@ def png(path, w, h, pixel):
     path.write_bytes(data)
 
 
-def pixel_for(body_color):
-    def f(x, y):
-        i = x // 4
-        if y >= 4 or i >= len(NAMES):
-            return (0, 0, 0)
-        name = NAMES[i]
-        return body_color if name == "body" else PALETTE[name]
-
-    return f
+def swatch(x, y):
+    i = x // 4
+    if y >= 4 or i >= len(NAMES):
+        return (0, 0, 0)
+    return PALETTE[NAMES[i]]
 
 
 (RP / "textures/entity").mkdir(parents=True, exist_ok=True)
 (RP / "textures/items").mkdir(parents=True, exist_ok=True)
-png(RP / "textures/entity/suv.png", 64, 16, pixel_for(PALETTE["body"]))
+png(RP / "textures/entity/suv.png", 64, 16, swatch)
 
 
 def icon(x, y):
