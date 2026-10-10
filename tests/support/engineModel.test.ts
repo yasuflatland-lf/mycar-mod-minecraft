@@ -1,9 +1,8 @@
-// tests/support/engineModel.test.ts
 import { describe, expect, it } from "vitest";
 import { engineStep, HALF_WIDTH } from "./engineModel";
 
 describe("engineModel", () => {
-  it("impulse を足して移動し、摩擦率を掛ける", () => {
+  it("adds the impulse, moves, and applies the friction factor", () => {
     const r = engineStep(
       { pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 } },
       { x: 0, z: 1 },
@@ -14,7 +13,7 @@ describe("engineModel", () => {
     expect(r.touching).toBe(false);
   });
 
-  it("壁は +x 向きの成分だけを 0 にし、車体を壁の手前に止める", () => {
+  it("a wall zeroes only the +x component and stops the vehicle body in front of the wall", () => {
     const r = engineStep(
       { pos: { x: 9, z: 0 }, vel: { x: 0, z: 0 } },
       { x: 1, z: 0.3 },

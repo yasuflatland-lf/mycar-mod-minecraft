@@ -1,4 +1,3 @@
-// tests/application/driveVehicles.test.ts
 import { describe, expect, it } from "vitest";
 import { DriveVehicles } from "../../src/application/driveVehicles";
 import { Vehicle } from "../../src/domain/vehicle/vehicle";
@@ -10,7 +9,7 @@ const logger = () => {
 };
 
 describe("DriveVehicles", () => {
-  it("読み込まれている車ごとに集約を作り、動きを反映する", () => {
+  it("creates an aggregate for each loaded vehicle and applies its motion", () => {
     const world = new FakeWorld();
     const repo = new InMemoryRepo();
     world.snapshots = [snapshot("a", { yaw: 30 }), snapshot("b")];
@@ -19,7 +18,7 @@ describe("DriveVehicles", () => {
     expect(world.calls).toContain("motion:a:30");
   });
 
-  it("リポジトリが空のまま動いている車 (再読み込み後) でも例外にならず、速度 0 から作り直す", () => {
+  it("does not throw for a moving vehicle missing from the repository (after a reload) and rebuilds it from zero speed", () => {
     const world = new FakeWorld();
     const repo = new InMemoryRepo();
     world.snapshots = [snapshot("a", { velocity: { x: 0, z: 0.5 } })];
@@ -29,7 +28,7 @@ describe("DriveVehicles", () => {
     expect(repo.get("a")!.speed).toBeLessThanOrEqual(0.0225);
   });
 
-  it("読み込まれなくなった車の集約を捨てる", () => {
+  it("discards the aggregates of vehicles that are no longer loaded", () => {
     const world = new FakeWorld();
     const repo = new InMemoryRepo();
     repo.save(Vehicle.create("gone", 0));
@@ -38,7 +37,7 @@ describe("DriveVehicles", () => {
     expect(repo.ids()).toEqual(["a"]);
   });
 
-  it("1 台で例外が起きても、ほかの車は動かし、ログに残す", () => {
+  it("keeps moving the other vehicles and logs the error when one vehicle throws", () => {
     const world = new FakeWorld();
     const log = logger();
     world.snapshots = [snapshot("bad"), snapshot("good")];
@@ -48,7 +47,7 @@ describe("DriveVehicles", () => {
     expect(log.lines.some((l) => l.includes("bad"))).toBe(true);
   });
 
-  it("運転席が空いたら、そのドアを鳴らす", () => {
+  it("plays that seat's door sound when the driver's seat becomes empty", () => {
     const world = new FakeWorld();
     const repo = new InMemoryRepo();
     const uc = new DriveVehicles(world, repo, logger());

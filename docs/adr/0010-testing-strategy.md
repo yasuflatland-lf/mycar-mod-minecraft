@@ -1,27 +1,27 @@
-# 0010. テストの方針
+# 0010. Testing strategy
 
-- 状態: 承認
-- 日付: 2026-10-10
+- Status: Accepted
+- Date: 2026-10-10
 
-## 状況
+## Context
 
-スパイクでは、加速・段差・壁・衝突を測る自動計測を作ったが、値をログに出すだけで合否を判定せず、BDS を手で動かす必要があった。壁沿いの暴走や最高速度の超過のような不具合は、実機で走らせて初めて見つかった。
+The spike built automated measurements for acceleration, steps, walls, and collisions, but they only logged values without judging pass or fail, and BDS had to be run by hand. Bugs such as running away along walls or exceeding the max speed were found only by driving in game.
 
-## 決定
+## Decision
 
-- 計算だけの処理（入力の変換、走行の計算、段差の判定、衝突の判定、運転者の決定）は、ゲームの API に依存しないモジュールに分ける
-- これらには、例を一つずつ書くテストを最小限にし、性質ベーステスト（fast-check、vitest）を使う。走行の計算は、エンジンを「地上では速度に摩擦率を掛ける」「壁は当たった軸の速度を 0 にする」という簡単なモデルで代用し、ランダムな入力列で数百 tick 回す
-- ゲームとの結合は、テスト専用の Behavior Pack に書いたゲーム内テストで確かめる。テストは `scriptevent` で起動し、ワールドに試験場を作って車を走らせ、各テストの合否と最後の集計をログに出す。Node のスクリプトが Docker の BDS にコマンドを送ってログを読み、終了コードで合否を返す
-- GameTest フレームワーク（`@minecraft/server-gametest`）は使わない。ベータ版しかなく（0001 に反する）、テスト用の構造物ファイル（`.mcstructure`）を別に用意する必要があるためである
-- 乗員がダメージを受けないこと（0006）は、座席にプレイヤーしか乗れずテストの中で乗員を用意できないので、手動テストで確かめる
-- 体感（運転者カメラの滑らかさ、見た目）は、PC とスマホの実機で手動で確かめる。カメラの滑らかさは 5 段階で評価し、3 以上を合格とする
-- ゲーム内テストが車に与える入力は、`scriptevent` のイベント `mycar:test_input` で本体のパックに渡す。本体のパックは、送り主の種類（`ScriptEventSource`）が Server のとき、つまりエンティティやコマンドブロックを介さずサーバーのコンソールなどから送られたときだけ受け付け、値を検証してから使う
+- Put pure computation (input conversion, driving computation, step detection, collision detection, choosing the driver) in modules that do not depend on the game API
+- Keep example-based tests for these to a minimum and use property-based tests (fast-check, vitest). For the driving computation, stand in for the engine with a simple model ("on the ground, multiply velocity by a friction factor"; "a wall zeroes velocity on the axis it hits") and run random input sequences for hundreds of ticks
+- Verify integration with the game through in-game tests written in a test-only Behavior Pack. Tests are started with `scriptevent`; they build a test track in the world, drive vehicles on it, and log each test's result and a final summary. A Node script sends commands to the BDS in Docker, reads the log, and reports pass or fail through its exit code
+- Pass test input from the test pack to the main pack through the script event `mycar:test_input`. The message is `<vehicleId>,<moveX>,<moveY>,<jump>` (`jump` is `0` or `1`), or `<vehicleId>,clear` to remove the input. The main pack accepts the event only when its `sourceType` is `Server`, rejects values that are not finite, and clamps `moveX` and `moveY` to [-1, 1]. It keeps the latest input per vehicle in memory and drops entries for vehicles that are no longer loaded
+- Do not use the GameTest framework (`@minecraft/server-gametest`). It exists only in beta (against 0001) and needs separate structure files (`.mcstructure`) for tests
+- Verify that occupants take no damage (0006) manually, because only players can sit in seats and a test cannot provide occupants
+- Verify feel (smoothness of the driver camera, visuals) manually on real PC and mobile devices. Rate camera smoothness on a five-point scale; 3 or above passes
 
-## 結果
+## Consequences
 
-- 一つの性質が多数の例を代表するので、例のテストの数を減らせる。性質が破れたときは最小の反例まで縮めて報告されるので、原因を追いやすい
-- エンジンのモデルは実際のエンジンを単純化したものなので、性質ベーステストが通っても実機で不具合が出ることはある。その差はゲーム内テストで拾う
-- `dimension.spawnEntity` で出したモブは、プレイヤーから離れていると 1 tick で削除される（スパイクで確認）。ゲーム内テストでは `summon` コマンドで出す。`fill` は 1 回 32,768 ブロックまでなので、試験場の整地は分割する
-- 動的プロパティは、書き込んだパックごとに別々に保存され、ほかのパックからは読めない（BDS で確認）。テスト用のパックが車に書いた入力を本体のパックが読めないので、テスト入力の受け渡しには使えない
-- タグとエンティティのプロパティも候補にしたが、採らなかった。どちらも値がワールドに保存されて残り、テストが途中で止まると車が入力を持ったままになる。また、値を書いたのがテストなのか、プレイヤーのコマンドなのかを区別できない。エンティティのプロパティは、車の定義ファイルにテスト用の項目を足す必要があり、本番の定義が変わる
-- 本番のパックにもテスト入力の受け口が残る。受け付けるのは送り主が Server のイベントだけで、値は形式・数値・範囲を検証し、不正なものは捨てる。これにより、モブやプレイヤーを送り主にしたイベントでは車が動かず、不正な値が走行の計算に入らない
+- One property stands in for many examples, so fewer example tests are needed. When a property fails, it is shrunk to a minimal counterexample, which makes the cause easier to trace
+- The engine model is a simplification of the real engine, so bugs can still appear in game even when property-based tests pass. In-game tests catch that gap
+- Mobs spawned with `dimension.spawnEntity` are removed within one tick when they are far from players (confirmed in the spike). In-game tests spawn them with the `summon` command instead. `fill` is limited to 32,768 blocks per call, so clearing the test track is split into several calls
+- Dynamic properties are stored per pack, so the main pack cannot read a value that the test pack writes (confirmed on BDS in both directions). This is why test input travels as a script event
+- Entity tags and entity properties were also rejected. Tags persist in the world, so a test that fails halfway leaves an empty vehicle driving even after a restart, and the main pack cannot tell who added a tag. Entity properties would add test-only fields to the production entity definition, and a written value becomes visible only on the next tick
+- The receiver for `mycar:test_input` stays in the production pack. Checking `sourceType` and validating the values limit what it accepts, but an operator could still drive an empty vehicle by running a script that sends the event

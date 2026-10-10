@@ -1,4 +1,3 @@
-// tests/domain/vehicle.test.ts
 import { describe, expect, it } from "vitest";
 import { forward, leftOf, type Vec2 } from "../../src/domain/shared/vec";
 import type { RawInput } from "../../src/domain/vehicle/driveInput";
@@ -13,6 +12,7 @@ import { engineStep } from "../support/engineModel";
 
 const FORWARD: RawInput = { moveX: 0, moveY: 1, jump: false };
 const IDLE: RawInput = { moveX: 0, moveY: 0, jump: false };
+const GROUND_FRICTION = 0.688;
 
 function seatOffset(yaw: number, seat: number): Vec2 {
   const f = forward(yaw);
@@ -21,7 +21,7 @@ function seatOffset(yaw: number, seat: number): Vec2 {
   return { x: l.x * s.x + f.x * s.z, z: l.z * s.x + f.z * s.z };
 }
 
-/** 車 1 台と、エンジンの簡易モデルによる世界。 */
+/** A world with one vehicle, driven by the simplified engine model. */
 class Sim {
   pos: Vec2 = { x: 0, z: 0 };
   vel: Vec2 = { x: 0, z: 0 };
@@ -53,7 +53,7 @@ class Sim {
       const r = engineStep(
         { pos: this.pos, vel: this.vel },
         { x: out.impulse.x, z: out.impulse.z },
-        { mu: 0.688 },
+        { mu: GROUND_FRICTION },
       );
       this.pos = r.body.pos;
       this.vel = r.body.vel;
@@ -68,22 +68,22 @@ class Sim {
   }
 }
 
-describe("Vehicle (集約)", () => {
-  it("運転席の人がアクセルを踏むと前に進む", () => {
+describe("Vehicle (aggregate)", () => {
+  it("moves forward when the rider in the driver's seat presses the accelerator", () => {
     const sim = new Sim();
     sim.riders = [{ id: "d", seat: 0, yaw: 0, raw: FORWARD }];
     sim.run(Vehicle.create("car", 0), 40);
     expect(sim.pos.z).toBeGreaterThan(5);
   });
 
-  it("助手席の人だけでは運転できない", () => {
+  it("cannot be driven by a passenger alone", () => {
     const sim = new Sim();
     sim.riders = [{ id: "p", seat: 1, yaw: 0, raw: FORWARD }];
     sim.run(Vehicle.create("car", 0), 40);
     expect(Math.hypot(sim.pos.x, sim.pos.z)).toBeLessThan(0.01);
   });
 
-  it("停車中に乗り込むと、車の向きを運転者の視線に合わせる", () => {
+  it("aligns the vehicle's heading with the driver's view when boarding while stopped", () => {
     const sim = new Sim();
     sim.riders = [{ id: "d", seat: 0, yaw: 120, raw: IDLE }];
     const v = Vehicle.create("car", 0);
@@ -91,7 +91,7 @@ describe("Vehicle (集約)", () => {
     expect(v.yaw).toBeCloseTo(120);
   });
 
-  it("運転者が消える (切断など) と、運転席のドアのイベントを 1 回出し、車は惰性で止まる", () => {
+  it("when the driver disappears (e.g. disconnects), emits the driver's door event once and the vehicle coasts to a stop", () => {
     const sim = new Sim();
     const v = Vehicle.create("car", 0);
     sim.riders = [{ id: "d", seat: 0, yaw: 0, raw: FORWARD }];
@@ -102,14 +102,14 @@ describe("Vehicle (集約)", () => {
     expect(Math.hypot(sim.vel.x, sim.vel.z)).toBeLessThan(0.01);
   });
 
-  it("運転者がいなければ、テスト用の入力で動く", () => {
+  it("moves on the test input when there is no driver", () => {
     const sim = new Sim();
     sim.testInput = FORWARD;
     sim.run(Vehicle.create("car", 0), 40);
     expect(sim.pos.z).toBeGreaterThan(5);
   });
 
-  it("前方の相手に当たる。同じ相手には 10 tick 以内に続けて当たらない", () => {
+  it("rams a target ahead, and does not hit the same target again within 10 ticks", () => {
     const sim = new Sim();
     sim.riders = [{ id: "d", seat: 0, yaw: 0, raw: FORWARD }];
     sim.targets = [
@@ -120,7 +120,7 @@ describe("Vehicle (集約)", () => {
     expect(sim.hits.length).toBeLessThanOrEqual(4);
   });
 
-  it("乗員のいない車は 3 回殴ると壊れ、乗員がいれば壊れない", () => {
+  it("an empty vehicle breaks after 3 hits, but not while occupied", () => {
     const empty = Vehicle.create("a", 0);
     new Sim().run(empty, 1);
     expect(

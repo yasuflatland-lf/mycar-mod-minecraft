@@ -1,19 +1,19 @@
-# 0005. スマホのジョイスティックのアクセル量を補正する
+# 0005. Compensate the throttle from the mobile joystick
 
-- 状態: 承認
-- 日付: 2026-10-10
+- Status: Accepted
+- Date: 2026-10-10
 
-## 状況
+## Context
 
-スマホでは、乗車中の移動入力をアナログ値で取れる。ただし、アクセルとハンドルを 1 本のジョイスティックで操作するので、ハンドルを大きく切るとアクセルの値が下がる。スパイクでは、左右 0.90 のとき前後 0.48 だった。このままでは、曲がりながら全開にできない。
+On mobile, movement input while riding is available as analog values. However, throttle and steering share a single joystick, so steering hard lowers the throttle value. In the spike, a left/right value of 0.90 came with a forward/back value of 0.48. As is, players cannot turn at full throttle.
 
-## 決定
+## Decision
 
-前後の値が 0.1 を超えたら、`min(1, 前後 ÷ 0.5)` をアクセル量にする。前に半分以上倒していれば全開になる。後ろ向きも同じ式で、ブレーキとバックに使う。左右の値はハンドル量にそのまま渡す。
+When the forward/back value exceeds 0.1, use `min(1, forward / 0.5)` as the throttle. Pushing the stick at least halfway forward gives full throttle. The same formula applies backward, for braking and reversing. The left/right value is passed through to steering unchanged.
 
-PC のキーボードでは前後の値が 0 か ±1 なので、この補正をかけても結果は変わらない。端末の種類で処理を分けない。
+On a PC keyboard the forward/back value is either 0 or ±1, so the compensation does not change the result. Do not branch on device type.
 
-## 結果
+## Consequences
 
-- スマホでも曲がりながら全開にできる
-- 前後 0.1〜0.5 の範囲でアクセル量を細かく調整できる幅は狭くなる
+- Mobile players can turn at full throttle
+- Fine throttle control is squeezed into the narrow forward/back band 0.1–0.5

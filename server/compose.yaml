@@ -1,4 +1,4 @@
-# server/compose.yaml (ADR 0011)
+# Dev Bedrock Dedicated Server (ADR 0011)
 name: mycar-dev
 services:
   bds:

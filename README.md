@@ -1,29 +1,47 @@
-# mycar-mod-minecraft
+# 🚗 mycar-mod-minecraft
 
-MrCrayfish's Vehicle Mod に近い遊び方を、Minecraft Bedrock Edition の Add-on（Behavior Pack + Resource Pack + Script API）で実現するプロジェクトです。
+A vehicle add-on for Minecraft Bedrock Edition, inspired by [MrCrayfish's Vehicle Mod](https://www.curseforge.com/minecraft/mc-mods/mrcrayfishs-vehicle-mod). It is built as a Behavior Pack + Resource Pack driven by the stable Script API (`@minecraft/server` 2.x), with no experimental toggles required.
 
-想定する遊び方: 自宅 LAN の Bedrock Dedicated Server で、PC（キーボード）とスマホ（タッチ）から一緒に遊ぶ。
+The target setup is a Bedrock Dedicated Server on a home LAN, with players joining from PC (keyboard) and mobile (touch).
 
-## 状態
+## Status
 
-走行コア（1 台の SUV に乗って運転できる）を実装中。設計の判断は `docs/adr/`、手動テストの手順は `docs/manual-test.md` にある。
+Work in progress. The first milestone is the **driving core**:
 
-## 開発
+- Getting in and out, with a driver seat and passenger seats
+- Arcade-style acceleration, inertia, and steering
+- Climbing steps up to two blocks high
+- Spinning wheels and body tilt
+- Ram damage to mobs, while keeping occupants safe
+- Placing a vehicle from an item and breaking it back into one
 
-```sh
-mise install && pnpm install
-pnpm test            # 単体テスト・性質ベーステスト・層の依存の検査
-pnpm run build       # TypeScript を Behavior Pack にまとめる
-pnpm run model       # 車のモデルとテクスチャを生成する
-pnpm run server:up   # 開発用の BDS を Docker で起動する
-pnpm run test:game   # ゲーム内テスト
-```
+The manual test checklist is in [`docs/manual-test.md`](docs/manual-test.md).
 
-## 開発環境
+## Design
 
-Node と pnpm のバージョンは `mise.toml` で固定しています。[mise](https://mise.jdx.dev/) を入れてから、次を実行します。
+Design decisions are recorded as ADRs in [`docs/adr`](docs/adr/README.md). Highlights:
+
+- Movement is script-driven: the script sets the vehicle's velocity every tick ([0002](docs/adr/0002-script-driven-vehicle-movement.md))
+- Touch joystick input is scaled so pushing it halfway forward gives full throttle, matching keyboard players ([0005](docs/adr/0005-touch-throttle-compensation.md))
+- Code is split into domain, application, and infrastructure layers so the driving logic does not depend on `@minecraft/server` ([0012](docs/adr/0012-ddd-layered-architecture.md))
+
+## Development
+
+Node and pnpm versions are pinned in `mise.toml`. Install [mise](https://mise.jdx.dev/), then run:
 
 ```sh
 mise install
 pnpm install
+pnpm lint            # format and lint check with Biome
+pnpm test            # unit tests, property-based tests, and the layer dependency check
+pnpm run build       # bundle the TypeScript into the Behavior Pack
+pnpm run model       # generate the vehicle model and texture
+pnpm run server:up   # start the dev BDS in Docker
+pnpm run test:game   # in-game tests
 ```
+
+CI runs the Biome check, type checking, tests, and the build on every pull request.
+
+## License
+
+[MIT](LICENSE)

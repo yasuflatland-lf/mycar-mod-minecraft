@@ -1,5 +1,4 @@
-// src/infrastructure/bootstrap.ts
-// 組み立て: リポジトリ・ポートの実装・ユースケースをつなぐ。
+// Composition root: wires the repository, port implementations, and use cases together.
 import { DriveVehicles } from "../application/driveVehicles";
 import { HitVehicle } from "../application/hitVehicle";
 import { PlaceVehicle } from "../application/placeVehicle";

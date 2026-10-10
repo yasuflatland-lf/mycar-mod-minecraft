@@ -1,4 +1,3 @@
-// tests/application/placeVehicle.test.ts
 import { describe, expect, it } from "vitest";
 import { PlaceVehicle } from "../../src/application/placeVehicle";
 import { FakeWorld, InMemoryRepo } from "./fakes";
@@ -12,7 +11,7 @@ const cmd = {
 };
 
 describe("PlaceVehicle (ADR 0008)", () => {
-  it("ブロックの上に車を出し、集約を保存し、アイテムを 1 つ減らす", () => {
+  it("places a vehicle on the block, saves the aggregate, and consumes one item", () => {
     const world = new FakeWorld();
     const repo = new InMemoryRepo();
     expect(new PlaceVehicle(world, repo).execute(cmd)).toBe(true);
@@ -23,7 +22,7 @@ describe("PlaceVehicle (ADR 0008)", () => {
     expect(repo.get("v1")!.yaw).toBeCloseTo(45);
   });
 
-  it("クリエイティブではアイテムを減らさない", () => {
+  it("does not consume the item in creative mode", () => {
     const world = new FakeWorld();
     new PlaceVehicle(world, new InMemoryRepo()).execute({
       ...cmd,
@@ -32,7 +31,7 @@ describe("PlaceVehicle (ADR 0008)", () => {
     expect(world.calls.some((c) => c.startsWith("consume"))).toBe(false);
   });
 
-  it("天井が低いなど空間がなければ、車を出さずアイテムも減らさない", () => {
+  it("does not place the vehicle or consume the item when there is no room, such as under a low ceiling", () => {
     const world = new FakeWorld();
     world.air = (at) => !(at.y === 66 && at.x === 10 && at.z === -3);
     expect(new PlaceVehicle(world, new InMemoryRepo()).execute(cmd)).toBe(

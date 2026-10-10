@@ -1,22 +1,22 @@
-# 0011. 開発用サーバーは Docker の BDS で raknet を使う
+# 0011. Run the development server as BDS in Docker with raknet
 
-- 状態: 承認
-- 日付: 2026-10-10
+- Status: Accepted
+- Date: 2026-10-10
 
-## 状況
+## Context
 
-開発中は、Add-on を入れた BDS を手元で動かし、LAN の PC とスマホから接続して確かめる。BDS は Linux 版を Docker（`itzg/minecraft-bedrock-server`）で動かす。
+During development we run BDS with the add-on installed locally and connect from a PC and a phone on the LAN to check it. BDS runs as the Linux build in Docker (`itzg/minecraft-bedrock-server`).
 
-BDS の初期値 `transport=nethernet` では待ち受けポートが毎回ランダムに決まり、Docker のポート転送（19132/udp）が届かなかった。Mac 自身からの接続にも応答しなかった。
+With BDS's default `transport=nethernet`, the listening port was chosen at random on every start, so Docker's port forwarding (19132/udp) did not reach it. It did not respond to connections from the Mac itself either.
 
-## 決定
+## Decision
 
-- 開発用サーバーは Docker の BDS で動かし、`TRANSPORT: raknet` を指定して 19132 番で待ち受ける
-- Behavior Pack と Resource Pack はリポジトリのディレクトリをコンテナにマウントする。スクリプトだけの変更は `/reload` で反映し、エンティティ定義と Resource Pack の変更はサーバーを再起動する
-- Resource Pack を変えたら、マニフェストのバージョンを上げる。上げないと、端末に保存された古いパックが使われる
-- ワールドのデータ（`server/data/`）は git の管理外にする
+- Run the development server as BDS in Docker, with `TRANSPORT: raknet` so that it listens on port 19132
+- Mount the repository's Behavior Pack and Resource Pack directories into the container. Apply script-only changes with `/reload`; restart the server for changes to entity definitions or the Resource Pack
+- When the Resource Pack changes, bump its manifest version. Otherwise devices keep using the old pack they cached
+- Keep world data (`server/data/`) out of git
 
-## 結果
+## Consequences
 
-- PC とスマホから、Mac の LAN の IP アドレスとポート 19132 で接続できる
-- Docker のネットワークのアドレスプールが使い切られている環境では、`network_mode: bridge` を指定する必要があった
+- PCs and phones can connect using the Mac's LAN IP address and port 19132
+- In an environment where Docker's network address pools were exhausted, `network_mode: bridge` had to be set

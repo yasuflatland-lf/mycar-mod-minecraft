@@ -1,31 +1,31 @@
-# 0012. ドメイン・アプリケーション・インフラストラクチャの 3 層に分ける
+# 0012. Split the code into domain, application, and infrastructure layers
 
-- 状態: 承認
-- 日付: 2026-10-10
+- Status: Accepted
+- Date: 2026-10-10
 
-## 状況
+## Context
 
-走行コアのスクリプトには、性質の違う処理が混ざる。走行の計算や段差・衝突の判定のように、ゲームなしで決まる規則がある。毎 tick 全車を動かす、アイテムで車を出す、殴られたら壊すといった手順がある。そして、`@minecraft/server` を呼ぶ処理がある。スパイクではこれらが 1 つのファイルにあり、規則だけをテストすることができなかった。
+The driving core's scripts mix processing of different kinds. There are rules that are decided without the game, such as the driving computation and step and collision detection. There are procedures, such as moving every vehicle every tick, placing a vehicle from an item, and breaking it when punched. And there is code that calls `@minecraft/server`. In the spike all of this lived in one file, and the rules could not be tested on their own.
 
-DDD のレイヤードアーキテクチャには、プレゼンテーション層を独立させる 4 層の切り方もある。このアドオンの「画面」はゲームそのもので、イベントの購読（`system.runInterval`、`world.afterEvents`）も、ポートの実装も、どちらも `@minecraft/server` の呼び出しである。分けても依存先が同じなので、層を 1 つ増やす利点がない。
+DDD's layered architecture also has a four-layer variant with a separate presentation layer. This add-on's "screen" is the game itself, and both subscribing to events (`system.runInterval`, `world.afterEvents`) and implementing ports are calls into `@minecraft/server`. Splitting them would leave both depending on the same thing, so an extra layer brings no benefit.
 
-## 決定
+## Decision
 
-`src/` を次の 3 層に分ける。依存の向きは「インフラストラクチャ → アプリケーション → ドメイン」の一方向だけにする。
+Split `src/` into the following three layers. Dependencies point one way only: infrastructure → application → domain.
 
-| 層 | 置き場所 | 中身 | 依存してよいもの |
+| Layer | Location | Contents | May depend on |
 |---|---|---|---|
-| ドメイン | `src/domain/` | 集約 `Vehicle`、値オブジェクト（`Vec2`、`DriveInput` など）、ドメインサービス（走行の計算、段差の判定、衝突の判定、置ける空間の判定）、ドメインイベント、リポジトリのインターフェース、設定値 | ドメインの中だけ |
-| アプリケーション | `src/application/` | ユースケース（`DriveVehicles`、`PlaceVehicle`、`HitVehicle`）と、ゲーム側に求めるポートのインターフェース | ドメイン |
-| インフラストラクチャ | `src/infrastructure/` | ポートとリポジトリの実装、イベントの購読、組み立て（`bootstrap`） | アプリケーション、ドメイン、`@minecraft/server` |
+| Domain | `src/domain/` | The `Vehicle` aggregate, value objects (`Vec2`, `DriveInput`, and so on), domain services (driving computation, step detection, collision detection, placement-space detection), domain events, repository interfaces, tuning values | Only the domain itself |
+| Application | `src/application/` | Use cases (`DriveVehicles`, `PlaceVehicle`, `HitVehicle`) and the interfaces of the ports it requires from the game | Domain |
+| Infrastructure | `src/infrastructure/` | Implementations of ports and repositories, event subscriptions, wiring (`bootstrap`) | Application, domain, `@minecraft/server` |
 
-- `@minecraft/server` を import してよいのはインフラストラクチャだけにする
-- エントリポイント `src/main.ts` は `bootstrap()` を呼ぶだけにする
-- 依存の向きは、テスト（`tests/architecture.test.ts`）で import 文を調べて検査する
-- ゲーム内テストのパック（`src/test-pack/`）は、本体と別のスクリプト環境で動くテスト用の道具なので、この 3 層の外に置く
+- Only the infrastructure layer may import `@minecraft/server`
+- The entry point `src/main.ts` only calls `bootstrap()`
+- The direction of dependencies is checked by a test (`tests/architecture.test.ts`) that inspects import statements
+- The in-game test pack (`src/test-pack/`) is a testing tool that runs in a script environment separate from the main pack, so it sits outside these three layers
 
-## 結果
+## Consequences
 
-- ドメインとアプリケーションは、ゲームなしで単体テストと性質ベーステスト（0010）ができる。アプリケーションのテストでは、ポートを偽の実装に差し替える
-- 車の状態（速度、向き、座席、殴られた回数）は集約 `Vehicle` が持ち、メモリ上のリポジトリに置く。永続化はしない（スクリプトの再読み込みで作り直す）
-- 層をまたぐ受け渡しが増えるので、ファイルの数はスパイクより多くなる
+- The domain and application layers can be unit-tested and property-tested without the game (0010). Application tests replace ports with fake implementations
+- Vehicle state (velocity, heading, seats, punch count) is held by the `Vehicle` aggregate and kept in an in-memory repository. It is not persisted (it is rebuilt when scripts reload)
+- Handing data across layers adds code, so there are more files than in the spike
