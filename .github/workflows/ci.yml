@@ -24,6 +24,9 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # 書式と lint を検査する（ソースがなくても設定ファイルを検査できる）
+      - run: pnpm exec biome ci
+
       # main にはまだソースがないので、tsconfig.json がある時だけ検査する
       - id: src
         run: echo "present=$([ -f tsconfig.json ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
