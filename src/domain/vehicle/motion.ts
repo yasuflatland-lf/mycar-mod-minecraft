@@ -14,13 +14,15 @@ export interface MotionState {
   speed: number; // Internal forward/reverse speed (blocks/tick; negative means reverse)
   yaw: number;
   friction?: number; // Ground friction estimate; undefined until estimated
-  expected?: Vec2; // Horizontal velocity given by the script in the previous tick
+  // Velocity the script aimed for in the previous tick. Kept only when that
+  // tick was on the ground: in the air the engine applies airFriction and only
+  // airControl of the impulse, so the ratio would not measure ground friction.
+  expected?: Vec2;
   stepTicks: number; // Remaining ticks of control in the air after jumping up a step
-  blocked: boolean; // Whether a wall collision was detected this tick
 }
 
 export function initialMotion(yaw: number): MotionState {
-  return { speed: 0, yaw: normalizeYaw(yaw), stepTicks: 0, blocked: false };
+  return { speed: 0, yaw: normalizeYaw(yaw), stepTicks: 0 };
 }
 
 export interface Observation {
@@ -33,13 +35,14 @@ export interface MotionResult {
   forward: Vec2;
   impulse: Vec2;
   jumped: boolean;
+  blocked: boolean; // Whether a wall collision was detected this tick
 }
 
 export function updateSpeed(speed: number, throttle: number): number {
   let s = speed;
   if (throttle > 0) s += (s < 0 ? SPEC.brake : SPEC.accel) * throttle;
   else if (throttle < 0)
-    s += (s > 0 ? SPEC.brake : SPEC.accel * 0.5) * throttle;
+    s += (s > 0 ? SPEC.brake : SPEC.reverseAccel) * throttle;
   else s -= Math.sign(s) * Math.min(Math.abs(s), SPEC.drag);
   return clamp(s, -SPEC.maxReverse, SPEC.maxSpeed);
 }
@@ -66,15 +69,15 @@ export function stepMotion(
 
   // Distinguish friction from wall collisions by how much of the previous
   // tick's given velocity remains (ADR 0003).
-  st.blocked = false;
+  let blocked = false;
   if (st.expected && obs.onGround) {
     const e = st.expected;
     const limit = (st.friction ?? SPEC.defaultFriction) * SPEC.blockedRatio;
     // The engine zeroes velocity per axis at walls, so check x and z separately.
     const axisBlocked = (ve: number, ee: number) =>
       Math.abs(ee) > SPEC.blockedAxisMin && ve / ee < limit;
-    st.blocked = axisBlocked(v.x, e.x) || axisBlocked(v.z, e.z);
-    if (st.blocked) {
+    blocked = axisBlocked(v.x, e.x) || axisBlocked(v.z, e.z);
+    if (blocked) {
       // While colliding, freeze the friction estimate and lower the internal
       // speed to the actual forward speed, clamped at the reverse limit.
       if (Math.abs(vLong) < Math.abs(st.speed))
@@ -124,12 +127,13 @@ export function stepMotion(
   // Pre-divide by friction so the velocity left after the engine applies
   // friction this tick is the target.
   const given = { x: target.x / friction, z: target.z / friction };
-  st.expected = given;
+  st.expected = obs.onGround ? given : undefined;
   const control = obs.onGround || stepping ? 1 : SPEC.airControl;
   return {
     state: st,
     forward: f,
     jumped,
+    blocked,
     impulse: { x: (given.x - v.x) * control, z: (given.z - v.z) * control },
   };
 }
