@@ -1,4 +1,3 @@
-// tests/domain/stepUp.test.ts
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { SPEC } from "../../src/domain/vehicle/spec";
@@ -14,7 +13,10 @@ interface Lane {
   ceiling?: number;
 }
 
-/** Terrain where each of the 3 rays is blocked up to `height` from `start` onward. Heights at or above `ceiling` are also blocked. */
+/**
+ * Terrain where each of the 3 rays is blocked up to `height` from `start`
+ * onward. Heights at or above `ceiling` are also blocked.
+ */
 function terrain(lanes: (Lane | undefined)[], overhead = false): SolidAt {
   return (ahead, side, dy) => {
     if (ahead === 0 && side === 0) return overhead && dy >= 2;
@@ -25,12 +27,13 @@ function terrain(lanes: (Lane | undefined)[], overhead = false): SolidAt {
   };
 }
 
+const scanStart = SPEC.hitboxFront + 0.1;
 const speed = fc.double({ min: 0, max: SPEC.maxSpeed, noNaN: true });
 const lookahead = (s: number) =>
   s * SPEC.stepLookaheadTicks + SPEC.stepLookaheadMargin;
 const startIn = (s: number) =>
   fc.double({
-    min: SPEC.hitboxFront + 0.1,
+    min: scanStart,
     max: SPEC.hitboxFront + lookahead(s) - 0.2,
     noNaN: true,
   });
@@ -79,10 +82,7 @@ describe("shouldStepUp (ADR 0004)", () => {
           const lanes: (Lane | undefined)[] = [undefined, undefined, undefined];
           lanes[a] = { start: stepStart, height: 2 };
           lanes[b] = {
-            start:
-              SPEC.hitboxFront +
-              0.1 +
-              (stepStart - SPEC.hitboxFront - 0.1) * frac,
+            start: scanStart + (stepStart - scanStart) * frac,
             height: wallH,
           };
           expect(shouldStepUp(terrain(lanes), s)).toBe(false);

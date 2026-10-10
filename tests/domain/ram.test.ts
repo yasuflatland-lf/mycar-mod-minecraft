@@ -1,7 +1,6 @@
-// tests/domain/ram.test.ts
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { forward, rightOf } from "../../src/domain/shared/vec";
+import { dot, forward, rightOf } from "../../src/domain/shared/vec";
 import {
   type RamTarget,
   ramDamage,
@@ -61,18 +60,10 @@ describe("selectHits (ADR 0006)", () => {
         inside,
         fc.double({ min: -1.4, max: 1.4, noNaN: true }),
         (y, s, ahead, side) => {
-          const hits = selectHits(
-            forward(y),
-            s,
-            [at(y, ahead, side)],
-            new Map(),
-            0,
-          );
-          expect(hits).toHaveLength(1);
           const f = forward(y);
-          expect(hits[0]!.push.x * f.x + hits[0]!.push.z * f.z).toBeGreaterThan(
-            0,
-          );
+          const hits = selectHits(f, s, [at(y, ahead, side)], new Map(), 0);
+          expect(hits).toHaveLength(1);
+          expect(dot(hits[0]!.push, f)).toBeGreaterThan(0);
         },
       ),
     );
