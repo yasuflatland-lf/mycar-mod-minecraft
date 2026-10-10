@@ -1,4 +1,3 @@
-// src/application/driveVehicles.ts
 // Use case: every tick, move all loaded vehicles.
 import { Vehicle } from "../domain/vehicle/vehicle";
 import type { VehicleRepository } from "../domain/vehicle/vehicleRepository";
@@ -18,7 +17,8 @@ export class DriveVehicles {
       try {
         let vehicle = this.repo.get(snap.id);
         if (!vehicle) {
-          vehicle = Vehicle.create(snap.id, snap.yaw); // After a reload, rebuild with zero speed and the heading taken from the entity
+          // After a reload, rebuild with zero speed and the heading taken from the entity.
+          vehicle = Vehicle.create(snap.id, snap.yaw);
           this.repo.save(vehicle);
         }
         const out = vehicle.tick({
@@ -32,10 +32,14 @@ export class DriveVehicles {
         });
         this.world.applyMotion(snap.id, out.impulse, out.yaw);
         for (const hit of out.hits) this.world.damage(hit, out.driverId);
-        for (const e of out.events)
-          if (e.type === "SeatVacated") this.world.playDoor(snap.id, e.door);
+        for (const event of out.events) {
+          if (event.type === "SeatVacated") {
+            this.world.playDoor(snap.id, event.door);
+          }
+        }
       } catch (e) {
-        this.log.warn(`[mycar] ${snap.id}: ${e}`); // A failure in one vehicle must not stop the others
+        // A failure in one vehicle must not stop the others.
+        this.log.warn(`[mycar] ${snap.id}: ${e}`);
       }
     }
     for (const id of this.repo.ids()) if (!seen.has(id)) this.repo.remove(id);

@@ -1,4 +1,3 @@
-// src/application/hitVehicle.ts
 // Use case: a player hit a vehicle (ADR 0008).
 import type { VehicleRepository } from "../domain/vehicle/vehicleRepository";
 import type { BreakWorld } from "./ports";

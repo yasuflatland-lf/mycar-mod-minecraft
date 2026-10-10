@@ -1,4 +1,3 @@
-// tests/application/fakes.ts
 import type {
   BreakWorld,
   DriveWorld,

@@ -1,4 +1,3 @@
-// tests/application/driveVehicles.test.ts
 import { describe, expect, it } from "vitest";
 import { DriveVehicles } from "../../src/application/driveVehicles";
 import { Vehicle } from "../../src/domain/vehicle/vehicle";

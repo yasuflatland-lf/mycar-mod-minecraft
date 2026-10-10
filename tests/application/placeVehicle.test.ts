@@ -1,4 +1,3 @@
-// tests/application/placeVehicle.test.ts
 import { describe, expect, it } from "vitest";
 import { PlaceVehicle } from "../../src/application/placeVehicle";
 import { FakeWorld, InMemoryRepo } from "./fakes";
