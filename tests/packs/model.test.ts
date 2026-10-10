@@ -1,11 +1,12 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { DOOR_BY_SEAT } from "../../src/domain/vehicle/seats";
+import { DOOR_BY_SEAT, SEAT_POSITIONS } from "../../src/domain/vehicle/seats";
 
 type Vec3 = [number, number, number];
 
 interface Bone {
   name: string;
+  pivot?: Vec3;
   cubes?: { origin: Vec3 }[];
   locators?: Record<string, Vec3>;
 }
@@ -20,6 +21,12 @@ const bones = new Map<string, Bone>(
 const anims = JSON.parse(
   readFileSync("packs/mycar_rp/animations/suv.animation.json", "utf8"),
 ).animations;
+
+function pivot(name: string): Vec3 {
+  const p = bones.get(name)?.pivot;
+  if (!p) throw new Error(`${name} has no pivot`);
+  return p;
+}
 
 describe("SUV model (ADR 0009)", () => {
   it("has the geometry identifier", () => {
@@ -44,9 +51,30 @@ describe("SUV model (ADR 0009)", () => {
     }
   });
 
-  it("faces -z (the hood and grille boxes are on the -z side)", () => {
-    const zs = bones.get("body")?.cubes?.map((c) => c.origin[2]) ?? [];
-    expect(Math.min(...zs)).toBeLessThan(-24);
+  // The body is nearly symmetric front to back, so its extent cannot tell the
+  // front from the rear; the named bones can.
+  it("faces -z: front wheels, front doors and front seats sit at lower z than the rear ones", () => {
+    for (const side of ["l", "r"]) {
+      expect(pivot(`wheel_f${side}`)[2]).toBeLessThan(
+        pivot(`wheel_r${side}`)[2],
+      );
+      expect(pivot(`door_f${side}`)[2]).toBeLessThan(pivot(`door_r${side}`)[2]);
+    }
+    expect(pivot("seat_0")[2]).toBeLessThan(pivot("seat_2")[2]);
+    expect(pivot("seat_1")[2]).toBeLessThan(pivot("seat_3")[2]);
+  });
+
+  // SEAT_POSITIONS uses x = left, and so does the model once it faces -z.
+  it("puts each seat, its door and the same-side wheels on the side SEAT_POSITIONS names", () => {
+    for (const [i, seat] of SEAT_POSITIONS.entries()) {
+      const side = Math.sign(seat.x);
+      const door = DOOR_BY_SEAT[i] ?? "";
+      const letter = door.at(-1);
+      expect(Math.sign(pivot(`seat_${i}`)[0]), `seat_${i}`).toBe(side);
+      expect(Math.sign(pivot(door)[0]), door).toBe(side);
+      for (const w of [`wheel_f${letter}`, `wheel_r${letter}`])
+        expect(Math.sign(pivot(w)[0]), w).toBe(side);
+    }
   });
 
   it("has the exhaust locator on body", () => {
