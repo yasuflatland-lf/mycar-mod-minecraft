@@ -10,14 +10,21 @@ describe("HitVehicle (ADR 0008)", () => {
     const repo = new InMemoryRepo();
     repo.save(Vehicle.create("a", 0));
     const uc = new HitVehicle(world, repo);
-    expect([1, 2, 3].map((tick) => uc.execute({ vehicleId: "a", tick }))).toEqual([false, false, true]);
+    expect(
+      [1, 2, 3].map((tick) => uc.execute({ vehicleId: "a", tick })),
+    ).toEqual([false, false, true]);
     expect(world.calls).toEqual(["drop:a", "remove:a"]);
     expect(repo.get("a")).toBeUndefined();
   });
 
   it("リポジトリにない車は何もしない", () => {
     const world = new FakeWorld();
-    expect(new HitVehicle(world, new InMemoryRepo()).execute({ vehicleId: "x", tick: 0 })).toBe(false);
+    expect(
+      new HitVehicle(world, new InMemoryRepo()).execute({
+        vehicleId: "x",
+        tick: 0,
+      }),
+    ).toBe(false);
     expect(world.calls).toEqual([]);
   });
 });

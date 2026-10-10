@@ -3,7 +3,10 @@
 import type { VehicleRepository } from "../domain/vehicle/vehicleRepository";
 import type { BreakWorld } from "./ports";
 
-export interface HitVehicleCommand { vehicleId: string; tick: number }
+export interface HitVehicleCommand {
+  vehicleId: string;
+  tick: number;
+}
 
 export class HitVehicle {
   constructor(
@@ -14,7 +17,9 @@ export class HitVehicle {
   execute(cmd: HitVehicleCommand): boolean {
     const vehicle = this.repo.get(cmd.vehicleId);
     if (!vehicle) return false;
-    const broken = vehicle.receiveHit(cmd.tick).some((e) => e.type === "VehicleBroken");
+    const broken = vehicle
+      .receiveHit(cmd.tick)
+      .some((e) => e.type === "VehicleBroken");
     if (!broken) return false;
     this.world.dropVehicleItem(cmd.vehicleId);
     this.world.removeVehicle(cmd.vehicleId);

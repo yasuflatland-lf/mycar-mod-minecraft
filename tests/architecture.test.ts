@@ -14,10 +14,15 @@ function tsFiles(dir: string): string[] {
 }
 
 const importsOf = (file: string): string[] =>
-  [...readFileSync(file, "utf8").matchAll(/from\s+["']([^"']+)["']/g)].map((m) => m[1]!);
+  [...readFileSync(file, "utf8").matchAll(/from\s+["']([^"']+)["']/g)].map(
+    (m) => m[1]!,
+  );
 
 const RULES = [
-  { layer: "src/domain", forbidden: ["/application", "/infrastructure", "@minecraft/"] },
+  {
+    layer: "src/domain",
+    forbidden: ["/application", "/infrastructure", "@minecraft/"],
+  },
   { layer: "src/application", forbidden: ["/infrastructure", "@minecraft/"] },
 ];
 
@@ -26,7 +31,8 @@ describe("レイヤーの依存の向き (ADR 0012)", () => {
     it(`${layer} は ${forbidden.join(", ")} を import しない`, () => {
       for (const file of tsFiles(layer)) {
         for (const imp of importsOf(file)) {
-          for (const f of forbidden) expect(imp.includes(f), `${file} imports ${imp}`).toBe(false);
+          for (const f of forbidden)
+            expect(imp.includes(f), `${file} imports ${imp}`).toBe(false);
         }
       }
     });

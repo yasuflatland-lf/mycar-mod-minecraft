@@ -23,9 +23,18 @@ export class PlaceVehicle {
 
   execute(cmd: PlaceVehicleCommand): boolean {
     const b = cmd.blockLocation;
-    const isAir = (dx: number, dy: number, dz: number) => this.world.isAir(cmd.dimensionId, { x: b.x + dx, y: b.y + dy, z: b.z + dz });
+    const isAir = (dx: number, dy: number, dz: number) =>
+      this.world.isAir(cmd.dimensionId, {
+        x: b.x + dx,
+        y: b.y + dy,
+        z: b.z + dz,
+      });
     if (!canPlaceAt(isAir)) return false; // 車が入る空間がなければ出さず、アイテムも減らさない
-    const id = this.world.spawnVehicle(cmd.dimensionId, { x: b.x + 0.5, y: b.y + 1, z: b.z + 0.5 }, cmd.yaw);
+    const id = this.world.spawnVehicle(
+      cmd.dimensionId,
+      { x: b.x + 0.5, y: b.y + 1, z: b.z + 0.5 },
+      cmd.yaw,
+    );
     this.repo.save(Vehicle.create(id, cmd.yaw));
     if (!cmd.creative) this.world.consumeVehicleItem(cmd.playerId);
     return true;
