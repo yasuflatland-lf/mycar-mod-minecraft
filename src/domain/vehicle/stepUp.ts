@@ -5,7 +5,11 @@ import { SPEC } from "./spec";
 export type SolidAt = (ahead: number, side: number, dy: number) => boolean;
 
 /** 先読みする 3 本の線 (中心、右、左)。 */
-export const STEP_LANES: readonly number[] = [0, -SPEC.stepLaneOffset, SPEC.stepLaneOffset];
+export const STEP_LANES: readonly number[] = [
+  0,
+  -SPEC.stepLaneOffset,
+  SPEC.stepLaneOffset,
+];
 
 export function shouldStepUp(solid: SolidAt, speed: number): boolean {
   if (solid(0, 0, 2.5)) return false; // 頭上がふさがっている
