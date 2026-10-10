@@ -1,22 +1,22 @@
-# 0007. 座席と運転者の決め方
+# 0007. Seats and choosing the driver
 
-- 状態: 承認
-- 日付: 2026-10-10
+- Status: Accepted
+- Date: 2026-10-10
 
-## 状況
+## Context
 
-車は 4 席で、乗った順に運転席（右前）→ 助手席（左前）→ 運転席の後ろ → 助手席の後ろに座る。運転するのは運転席の人だけである。
+The vehicle has four seats, filled in boarding order: driver seat (front right) → front passenger seat (front left) → behind the driver → behind the front passenger. Only the person in the driver seat drives.
 
-スパイクでは、`getRiders()` が返す一覧の最初のプレイヤーを運転者にしていた。この一覧の順番が座席の順番と一致するかは確かめていない。運転者が降りて同乗者だけが残ったとき、Bedrock が同乗者を運転席へ移すかも分かっていない。
+In the spike, the first player in the list returned by `getRiders()` was the driver. We have not confirmed that the order of this list matches the seat order. We also do not know whether Bedrock moves a passenger into the driver seat when the driver gets out and only passengers remain.
 
-## 決定
+## Decision
 
-- 座席の位置はエンティティ定義の `minecraft:rideable` で決める（右前 `[-0.38, 0.1, 0.35]`、左前 `[0.38, 0.1, 0.35]`、右後ろ `[-0.38, 0.1, -0.8]`、左後ろ `[0.38, 0.1, -0.8]`）。運転席の番号は 0 で、`controlling_seat` も 0 にする
-- 運転者は、乗員の位置を車の向きに合わせた座標に直し、運転席の位置に最も近い乗員とする。一覧の順番には頼らない
-- 運転者が降りても、同乗者は自動では運転席へ移らない。運転したい人は降りて乗り直す。Bedrock が自動で移す場合は、実装の初めに確かめて、この ADR を見直す
-- 降車したら、その席のドアの開閉アニメーションと、ドアの開く音を 1 回ずつ再生する
+- Seat positions are defined by `minecraft:rideable` in the entity definition (front right `[-0.38, 0.1, 0.35]`, front left `[0.38, 0.1, 0.35]`, rear right `[-0.38, 0.1, -0.8]`, rear left `[0.38, 0.1, -0.8]`). The driver seat is index 0, and `controlling_seat` is also 0
+- The driver is the rider closest to the driver seat position, after converting each rider's position into coordinates relative to the vehicle's heading. Do not rely on the list order
+- When the driver gets out, passengers are not moved into the driver seat automatically. Anyone who wants to drive gets out and back in. At the start of implementation, confirm whether Bedrock moves them automatically; if it does, revisit this ADR
+- When someone gets out, play that seat's door open/close animation and the door-open sound once each
 
-## 結果
+## Consequences
 
-- `getRiders()` の順番がどうであっても、運転者を正しく決められる
-- 運転席が空なら誰も運転せず、車は惰性で止まる
+- The driver is chosen correctly regardless of the order `getRiders()` returns
+- If the driver seat is empty, nobody drives and the vehicle coasts to a stop
