@@ -1,6 +1,6 @@
 # Manual test
 
-Dev server: `pnpm run build && pnpm run server:up`. Connect to the Mac's LAN IP address on port 19132.
+Dev server: `pnpm build && pnpm server:up`. Connect to the Mac's LAN IP address on port 19132.
 To use commands, run `docker exec mycar-bds send-command op <player name>`.
 
 | # | Steps | Pass condition | PC | Mobile |

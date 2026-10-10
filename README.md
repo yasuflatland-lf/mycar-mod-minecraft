@@ -34,10 +34,10 @@ mise install
 pnpm install
 pnpm lint            # format and lint check with Biome
 pnpm test            # unit tests, property-based tests, and the layer dependency check
-pnpm run build       # bundle the TypeScript into the Behavior Pack
-pnpm run model       # generate the vehicle model and texture
-pnpm run server:up   # start the dev BDS in Docker
-pnpm run test:game   # in-game tests
+pnpm build           # bundle the TypeScript into the Behavior Pack
+pnpm model           # generate the vehicle model and texture
+pnpm server:up       # start the dev BDS in Docker
+pnpm test:game       # in-game tests
 ```
 
 CI runs the Biome check, type checking, tests, and the build on every pull request.
