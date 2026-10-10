@@ -1,10 +1,17 @@
 // In-game tests (ADR 0010). They run in a script environment separate from the
 // main Behavior Pack, so they drive the vehicle through script events.
 import { type Dimension, type Entity, system, world } from "@minecraft/server";
+import { forward } from "../domain/shared/vec";
+import { SPEC } from "../domain/vehicle/spec";
+import {
+  TEST_INPUT_EVENT as INPUT_EVENT,
+  VEHICLE_TYPE as VEHICLE,
+} from "../infrastructure/bedrock/identifiers";
+import { LOG_TAG, linePrefix, runIdFrom, TEST_EVENT } from "./protocol";
+import { hitTick, judgeRam, PUSH_WINDOW, type RamSample } from "./ramJudge";
 
-const VEHICLE = "mycar:suv";
-const INPUT_EVENT = "mycar:test_input";
-const MAX_SPEED = 0.9;
+// setupArena clears and floors this x/z rectangle and keeps it ticking.
+const ARENA = { minX: 0, maxX: 120, minZ: 0, maxZ: 40 } as const;
 
 interface Outcome {
   pass: boolean;
@@ -19,8 +26,8 @@ interface Horizontal {
   z: number;
 }
 
-function log(msg: string): void {
-  console.warn(`[MYCAR-TEST] ${msg}`);
+function log(runId: string, msg: string): void {
+  console.warn(`${linePrefix(runId)}${msg}`);
 }
 
 function wait(ticks: number): Promise<void> {
@@ -31,15 +38,20 @@ function hlen(v: Horizontal): number {
   return Math.hypot(v.x, v.z);
 }
 
-function fwd(yaw: number): Horizontal {
-  const rad = (yaw * Math.PI) / 180;
-  return { x: -Math.sin(rad), z: Math.cos(rad) };
-}
-
 function slipAngleDeg(v: Horizontal, yaw: number): number {
-  const f = fwd(yaw);
+  const f = forward(yaw);
   const cos = (v.x * f.x + v.z * f.z) / hlen(v);
   return (Math.acos(Math.min(1, Math.max(-1, cos))) * 180) / Math.PI;
+}
+
+function insideArena(p: Horizontal): boolean {
+  const m = SPEC.bodyHalfWidth;
+  return (
+    p.x >= ARENA.minX + m &&
+    p.x <= ARENA.maxX + 1 - m &&
+    p.z >= ARENA.minZ + m &&
+    p.z <= ARENA.maxZ + 1 - m
+  );
 }
 
 function drive(car: Entity, x: number, y: number, jump = false): void {
@@ -76,15 +88,23 @@ async function withCar<T>(
 
 async function setupArena(): Promise<Arena> {
   const dim = world.getDimension("overworld");
-  dim.runCommand("tickingarea add 0 -64 0 120 0 40 mycartest true");
+  const { minX, maxX, minZ, maxZ } = ARENA;
+  dim.runCommand(
+    `tickingarea add ${minX} -64 ${minZ} ${maxX} 0 ${maxZ} mycartest true`,
+  );
   await wait(60);
   const top = dim.getTopmostBlock({ x: 5, z: 20 });
   if (!top) throw new Error("arena chunk not loaded");
   const gy = top.location.y + 1;
   // fill is capped at 32,768 blocks per call, so the clear is split in two.
-  dim.runCommand(`fill 0 ${gy} 0 60 ${gy + 6} 40 air`);
-  dim.runCommand(`fill 61 ${gy} 0 120 ${gy + 6} 40 air`);
-  dim.runCommand(`fill 0 ${gy - 1} 0 120 ${gy - 1} 40 stone`);
+  const midX = (minX + maxX) / 2;
+  dim.runCommand(`fill ${minX} ${gy} ${minZ} ${midX} ${gy + 6} ${maxZ} air`);
+  dim.runCommand(
+    `fill ${midX + 1} ${gy} ${minZ} ${maxX} ${gy + 6} ${maxZ} air`,
+  );
+  dim.runCommand(
+    `fill ${minX} ${gy - 1} ${minZ} ${maxX} ${gy - 1} ${maxZ} stone`,
+  );
   dim.runCommand(`kill @e[type=${VEHICLE}]`);
   dim.runCommand("kill @e[type=cow]");
   await wait(5);
@@ -98,7 +118,8 @@ function accelAndStep1(a: Arena): Promise<Outcome> {
     let reach = -1;
     for (let t = 0; t < 200; t++) {
       await wait(1);
-      if (reach < 0 && hlen(car.getVelocity()) >= MAX_SPEED * 0.95) reach = t;
+      if (reach < 0 && hlen(car.getVelocity()) >= SPEC.maxSpeed * 0.95)
+        reach = t;
       if (car.location.x > 63) break;
     }
     const climbed = car.location.y >= a.gy + 0.9;
@@ -114,15 +135,20 @@ function accelAndStep1(a: Arena): Promise<Outcome> {
 async function turnAndHandbrake(a: Arena): Promise<Outcome> {
   function measureTurn(
     handbrake: boolean,
-  ): Promise<{ maxSlip: number; maxSpeed: number }> {
-    return withCar(a, 5.5, 10.5, -90, async (car) => {
+  ): Promise<{ maxSlip: number; maxSpeed: number; inside: boolean }> {
+    // A left turn heads toward -z, so start near the +z edge: the grip run
+    // drifts about 19 blocks sideways, and leaving the floor or the ticking
+    // area would change the slip.
+    return withCar(a, 5.5, 37.5, -90, async (car) => {
       drive(car, 0, 1);
       await wait(45);
       drive(car, 1, 1, handbrake);
       let maxSlip = 0;
       let maxSpeed = 0;
+      let inside = true;
       for (let t = 0; t < 20; t++) {
         await wait(1);
+        inside &&= insideArena(car.location);
         const v = car.getVelocity();
         const speed = hlen(v);
         maxSpeed = Math.max(maxSpeed, speed);
@@ -130,21 +156,25 @@ async function turnAndHandbrake(a: Arena): Promise<Outcome> {
           maxSlip = Math.max(maxSlip, slipAngleDeg(v, car.getRotation().y));
         }
       }
-      return { maxSlip, maxSpeed };
+      return { maxSlip, maxSpeed, inside };
     });
   }
   const grip = await measureTurn(false);
   const hb = await measureTurn(true);
   return {
-    pass: hb.maxSlip > grip.maxSlip && hb.maxSpeed <= MAX_SPEED * 1.02,
-    detail: `slip grip=${grip.maxSlip.toFixed(1)} hb=${hb.maxSlip.toFixed(1)} hbMaxSpeed=${hb.maxSpeed.toFixed(3)}`,
+    pass:
+      grip.inside &&
+      hb.inside &&
+      hb.maxSlip > grip.maxSlip &&
+      hb.maxSpeed <= SPEC.maxSpeed * 1.02,
+    detail: `inside=${grip.inside && hb.inside} slip grip=${grip.maxSlip.toFixed(1)} hb=${hb.maxSlip.toFixed(1)} hbMaxSpeed=${hb.maxSpeed.toFixed(3)}`,
   };
 }
 
 function ramCow(a: Arena): Promise<Outcome> {
   return withCar(a, 5.5, 30.5, -90, async (car) => {
     // Mobs from spawnEntity far from players despawn at once, so use summon.
-    a.dim.runCommand(`summon minecraft:cow 25 ${a.gy} 30`);
+    a.dim.runCommand(`summon minecraft:cow 25.5 ${a.gy} 30.5`);
     const cow = a.dim.getEntities({
       type: "minecraft:cow",
       location: { x: 25.5, y: a.gy, z: 30.5 },
@@ -152,19 +182,31 @@ function ramCow(a: Arena): Promise<Outcome> {
     })[0];
     if (!cow) return { pass: false, detail: "cow not found" };
     try {
-      const hp0 = cow.getComponent("minecraft:health")!.currentValue;
+      // A wandering cow can step out of the car's path. Resistance III takes
+      // 60% off the ram damage, so the first hit (up to 18) leaves a 10 HP cow
+      // alive and its knockback measurable.
+      cow.addEffect("slowness", 600, { amplifier: 255, showParticles: false });
+      cow.addEffect("resistance", 600, { amplifier: 2, showParticles: false });
+      const health = () => cow.getComponent("minecraft:health")?.currentValue;
+      const hp0 = health() ?? 0;
       const x0 = cow.location.x;
       drive(car, 0, 1);
-      await wait(60);
-      const hp1 = cow.isValid
-        ? cow.getComponent("minecraft:health")!.currentValue
-        : 0;
-      const pushed = cow.isValid ? cow.location.x - x0 : Number.NaN;
-      // A cow that died and despawned cannot show the push, so judge by damage alone.
-      return {
-        pass: hp1 < hp0 && (Number.isNaN(pushed) || pushed > 1),
-        detail: `hp ${hp0}->${hp1} pushed=${pushed.toFixed(2)}`,
-      };
+      const samples: RamSample[] = [];
+      for (let t = 0; t < 80; t++) {
+        await wait(1);
+        const valid = cow.isValid;
+        samples.push({
+          valid,
+          hp: valid ? (health() ?? 0) : 0,
+          x: valid ? cow.location.x : Number.NaN,
+        });
+        const hit = hitTick(hp0, samples);
+        // Removing the car on the hit tick leaves the knockback as the only
+        // thing moving the cow; a car still driving would shove it along too.
+        if (hit >= 0 && car.isValid) car.remove();
+        if (!valid || (hit >= 0 && samples.length > hit + PUSH_WINDOW)) break;
+      }
+      return judgeRam(hp0, x0, samples);
     } finally {
       if (cow.isValid) cow.remove();
     }
@@ -204,7 +246,7 @@ function step2(
   a.dim.runCommand(
     `fill ${stepX} ${a.gy} ${z - 6} ${stepX + 8} ${a.gy + 1} ${z + 6} stone`,
   );
-  const dir = fwd(yaw);
+  const dir = forward(yaw);
   const startX = stepX - 25 + 0.5;
   const startZ = z - 25 * (dir.z / dir.x) + 0.5;
   return withCar(a, startX, startZ, yaw, async (car) => {
@@ -226,7 +268,7 @@ function step2(
   });
 }
 
-async function runAll(): Promise<void> {
+async function runAll(runId: string): Promise<void> {
   const a = await setupArena();
   const tests: [string, () => Promise<Outcome>][] = [
     ["accel_and_step1", () => accelAndStep1(a)],
@@ -248,12 +290,25 @@ async function runAll(): Promise<void> {
     if (outcome.pass) passed++;
     lines.push(`${outcome.pass ? "PASS" : "FAIL"} ${name} ${outcome.detail}`);
   }
-  for (const line of lines) log(line);
-  log(`SUMMARY pass=${passed} fail=${tests.length - passed}`);
+  for (const line of lines) log(runId, line);
+  log(runId, `SUMMARY pass=${passed} fail=${tests.length - passed}`);
 }
 
+// Two runs would share the arena and kill each other's cars in setupArena.
+let activeRun: string | undefined;
+
 system.afterEvents.scriptEventReceive.subscribe((ev) => {
-  if (ev.id === "mycar:test")
-    runAll().catch((e) => log(`SUMMARY pass=0 fail=1 error=${e}`));
+  if (ev.id !== TEST_EVENT) return;
+  const runId = runIdFrom(ev.message);
+  if (activeRun !== undefined) {
+    log(runId, `SUMMARY pass=0 fail=1 error=run ${activeRun} in progress`);
+    return;
+  }
+  activeRun = runId;
+  runAll(runId)
+    .catch((e) => log(runId, `SUMMARY pass=0 fail=1 error=${e}`))
+    .finally(() => {
+      activeRun = undefined;
+    });
 });
-log("loaded");
+console.warn(`${LOG_TAG} loaded`);
