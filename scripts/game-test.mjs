@@ -12,8 +12,18 @@ import {
 const CONTAINER = "mycar-bds";
 const runId = randomBytes(4).toString("hex");
 const since = new Date().toISOString();
+// The image runs bedrock_server as the owner of /data, and send-command finds it
+// through /proc/<pid>/exe, which a root exec without CAP_SYS_PTRACE cannot read
+// for another UID. That is the case on Linux CI, where /data belongs to the runner.
+const serverUser = execFileSync(
+  "docker",
+  ["exec", CONTAINER, "stat", "-c", "%u:%g", "/data"],
+  { encoding: "utf8" },
+).trim();
 execFileSync("docker", [
   "exec",
+  "--user",
+  serverUser,
   CONTAINER,
   "send-command",
   `scriptevent ${TEST_EVENT} ${runId}`,
