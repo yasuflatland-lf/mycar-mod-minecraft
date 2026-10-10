@@ -8,7 +8,9 @@ describe("canPlaceAt (Review Focus)", () => {
   });
 
   it("天井が低い (2 段目がふさがっている) と置けない", () => {
-    expect(canPlaceAt((dx, dy, dz) => !(dy === 2 && dx === 0 && dz === 0))).toBe(false);
+    expect(
+      canPlaceAt((dx, dy, dz) => !(dy === 2 && dx === 0 && dz === 0)),
+    ).toBe(false);
   });
 
   it("壁ぎわ (隣の列がふさがっている) だと置けない", () => {

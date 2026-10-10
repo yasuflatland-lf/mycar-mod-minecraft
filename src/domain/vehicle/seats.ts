@@ -11,9 +11,17 @@ export const SEAT_POSITIONS: readonly Vec2[] = [
 ];
 
 /** 座席ごとのドアのボーン名 (ADR 0009)。 */
-export const DOOR_BY_SEAT: readonly string[] = ["door_fr", "door_fl", "door_rr", "door_rl"];
+export const DOOR_BY_SEAT: readonly string[] = [
+  "door_fr",
+  "door_fl",
+  "door_rr",
+  "door_rl",
+];
 
-export const toLocal = (offset: Vec2, f: Vec2): Vec2 => ({ x: dot(offset, leftOf(f)), z: dot(offset, f) });
+export const toLocal = (offset: Vec2, f: Vec2): Vec2 => ({
+  x: dot(offset, leftOf(f)),
+  z: dot(offset, f),
+});
 
 export function nearestSeat(local: Vec2): number {
   let best = 0;
@@ -28,12 +36,21 @@ export function nearestSeat(local: Vec2): number {
   return best;
 }
 
-export interface RiderPos { id: string; offset: Vec2 }
+export interface RiderPos {
+  id: string;
+  offset: Vec2;
+}
 
-export function occupiedSeats(riders: readonly RiderPos[], f: Vec2): Map<string, number> {
+export function occupiedSeats(
+  riders: readonly RiderPos[],
+  f: Vec2,
+): Map<string, number> {
   return new Map(riders.map((r) => [r.id, nearestSeat(toLocal(r.offset, f))]));
 }
 
-export function vacatedSeats(prev: ReadonlyMap<string, number>, now: ReadonlyMap<string, number>): number[] {
+export function vacatedSeats(
+  prev: ReadonlyMap<string, number>,
+  now: ReadonlyMap<string, number>,
+): number[] {
   return [...prev].filter(([id]) => !now.has(id)).map(([, seat]) => seat);
 }
