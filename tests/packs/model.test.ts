@@ -12,11 +12,11 @@ const anims = JSON.parse(
 ).animations;
 
 describe("SUV model (ADR 0009)", () => {
-  it("ジオメトリの識別子", () => {
+  it("has the geometry identifier", () => {
     expect(g.description.identifier).toBe("geometry.mycar.suv");
   });
 
-  it("規約のボーンがそろっている", () => {
+  it("has all the conventional bones", () => {
     for (const name of [
       "root",
       "body",
@@ -34,16 +34,16 @@ describe("SUV model (ADR 0009)", () => {
     }
   });
 
-  it("正面は -z (ボンネットとグリルの箱が -z 側にある)", () => {
+  it("faces -z (the hood and grille boxes are on the -z side)", () => {
     const zs = bones.get("body").cubes.map((c: any) => c.origin[2]);
     expect(Math.min(...zs)).toBeLessThan(-24);
   });
 
-  it("ロケーター exhaust が body にある", () => {
+  it("has the exhaust locator on body", () => {
     expect(bones.get("body").locators.exhaust).toHaveLength(3);
   });
 
-  it("ドアごとに開閉のアニメーションがある", () => {
+  it("has an open/close animation for each door", () => {
     for (const d of DOOR_BY_SEAT)
       expect(anims[`animation.mycar.suv.${d}`].bones[d]).toBeDefined();
   });
