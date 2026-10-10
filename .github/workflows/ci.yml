@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      # mise.toml の Node と pnpm を入れる
+      - uses: jdx/mise-action@v5
+
+      - run: pnpm install --frozen-lockfile
+
+      # main にはまだソースがないので、tsconfig.json がある時だけ検査する
+      - id: src
+        run: echo "present=$([ -f tsconfig.json ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      - if: steps.src.outputs.present == 'true'
+        run: pnpm run typecheck
+
+      - if: steps.src.outputs.present == 'true'
+        run: pnpm test
+
+      - if: steps.src.outputs.present == 'true'
+        run: pnpm run build
