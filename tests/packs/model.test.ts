@@ -2,10 +2,14 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { DOOR_BY_SEAT } from "../../src/domain/vehicle/seats";
 
-const geo = JSON.parse(readFileSync("packs/mycar_rp/models/entity/suv.geo.json", "utf8"));
+const geo = JSON.parse(
+  readFileSync("packs/mycar_rp/models/entity/suv.geo.json", "utf8"),
+);
 const g = geo["minecraft:geometry"][0];
 const bones = new Map<string, any>(g.bones.map((b: any) => [b.name, b]));
-const anims = JSON.parse(readFileSync("packs/mycar_rp/animations/suv.animation.json", "utf8")).animations;
+const anims = JSON.parse(
+  readFileSync("packs/mycar_rp/animations/suv.animation.json", "utf8"),
+).animations;
 
 describe("SUV model (ADR 0009)", () => {
   it("ジオメトリの識別子", () => {
@@ -13,7 +17,19 @@ describe("SUV model (ADR 0009)", () => {
   });
 
   it("規約のボーンがそろっている", () => {
-    for (const name of ["root", "body", "wheel_fl", "wheel_fr", "wheel_rl", "wheel_rr", ...DOOR_BY_SEAT, "seat_0", "seat_1", "seat_2", "seat_3"]) {
+    for (const name of [
+      "root",
+      "body",
+      "wheel_fl",
+      "wheel_fr",
+      "wheel_rl",
+      "wheel_rr",
+      ...DOOR_BY_SEAT,
+      "seat_0",
+      "seat_1",
+      "seat_2",
+      "seat_3",
+    ]) {
       expect(bones.has(name), name).toBe(true);
     }
   });
@@ -28,6 +44,7 @@ describe("SUV model (ADR 0009)", () => {
   });
 
   it("ドアごとに開閉のアニメーションがある", () => {
-    for (const d of DOOR_BY_SEAT) expect(anims[`animation.mycar.suv.${d}`].bones[d]).toBeDefined();
+    for (const d of DOOR_BY_SEAT)
+      expect(anims[`animation.mycar.suv.${d}`].bones[d]).toBeDefined();
   });
 });
