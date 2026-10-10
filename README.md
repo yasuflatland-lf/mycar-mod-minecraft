@@ -6,7 +6,18 @@ MrCrayfish's Vehicle Mod に近い遊び方を、Minecraft Bedrock Edition の A
 
 ## 状態
 
-検討中です。最初のサブプロジェクトは「走行コア」（乗車、アーケード寄りの加速・慣性・旋回、タイヤの回転と車体の傾き）です。
+走行コア（1 台の SUV に乗って運転できる）を実装中。設計の判断は `docs/adr/`、手動テストの手順は `docs/manual-test.md` にある。
+
+## 開発
+
+```sh
+mise install && pnpm install
+pnpm test            # 単体テスト・性質ベーステスト・層の依存の検査
+pnpm run build       # TypeScript を Behavior Pack にまとめる
+pnpm run model       # 車のモデルとテクスチャを生成する
+pnpm run server:up   # 開発用の BDS を Docker で起動する
+pnpm run test:game   # ゲーム内テスト
+```
 
 ## 開発環境
 
