@@ -39,7 +39,7 @@ export function updateSpeed(speed: number, throttle: number): number {
   let s = speed;
   if (throttle > 0) s += (s < 0 ? SPEC.brake : SPEC.accel) * throttle;
   else if (throttle < 0)
-    s += (s > 0 ? SPEC.brake : SPEC.accel * 0.5) * throttle;
+    s += (s > 0 ? SPEC.brake : SPEC.reverseAccel) * throttle;
   else s -= Math.sign(s) * Math.min(Math.abs(s), SPEC.drag);
   return clamp(s, -SPEC.maxReverse, SPEC.maxSpeed);
 }
