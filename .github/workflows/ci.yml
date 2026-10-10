@@ -19,15 +19,18 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # mise.toml の Node と pnpm を入れる
+      # Install Node and pnpm as pinned in mise.toml
       - uses: jdx/mise-action@v5
 
       - run: pnpm install --frozen-lockfile
 
-      # 書式と lint を検査する（ソースがなくても設定ファイルを検査できる）
+      # Format and lint check (config files are checked even before source code lands)
       - run: pnpm exec biome ci
 
-      # main にはまだソースがないので、tsconfig.json がある時だけ検査する
+      # Code, comments, and docs must be in English (AGENTS.md)
+      - run: pnpm run lint:lang
+
+      # main has no source code yet, so only run these once tsconfig.json exists
       - id: src
         run: echo "present=$([ -f tsconfig.json ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
 

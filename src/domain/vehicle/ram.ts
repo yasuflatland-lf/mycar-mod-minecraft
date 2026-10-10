@@ -1,5 +1,5 @@
 // src/domain/vehicle/ram.ts
-// 車の前方 (後退中は後方) の長方形にいる相手を選び、ダメージと押し出しを決める (ADR 0006)。
+// Select targets in a rectangle in front of the car (behind it when reversing) and decide the damage and push (ADR 0006).
 import type { Vec2, Vec3 } from "../shared/vec";
 import { SPEC } from "./spec";
 
@@ -31,7 +31,7 @@ export function selectHits(
   const halfWidth = SPEC.bodyHalfWidth + SPEC.targetHalfWidth;
   const hits: RamHit[] = [];
   for (const t of targets) {
-    if (t.protectedOccupant) continue; // 乗っている人は常に守る
+    if (t.protectedOccupant) continue; // Always protect occupants
     const ahead = (t.offset.x * f.x + t.offset.z * f.z) * dir;
     const side = Math.abs(t.offset.x * f.z - t.offset.z * f.x);
     if (ahead < 0 || ahead > reach || side > halfWidth) continue;
