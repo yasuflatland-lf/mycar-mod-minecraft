@@ -1,6 +1,12 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { dot, forward, length, type Vec2 } from "../../src/domain/shared/vec";
+import {
+  clampLength,
+  dot,
+  forward,
+  length,
+  type Vec2,
+} from "../../src/domain/shared/vec";
 import {
   type DriveInput,
   NEUTRAL_INPUT,
@@ -15,7 +21,6 @@ import {
 import { SPEC } from "../../src/domain/vehicle/spec";
 import { type Body, type Engine, engineStep } from "../support/engineModel";
 
-const noStep = () => false;
 const FULL_THROTTLE: DriveInput = { throttle: 1, steer: 0, handbrake: false };
 
 function repeat(input: DriveInput, ticks: number): DriveInput[] {
@@ -26,29 +31,47 @@ interface Frame {
   state: MotionState;
   body: Body;
   touching: boolean;
+  blocked: boolean;
+  jumped: boolean;
+  onGround: boolean;
 }
+
+/** Per-tick terrain: whether the vehicle is on the ground and whether a step lies ahead. */
+interface Terrain {
+  onGround: boolean;
+  step: boolean;
+}
+const FLAT: Terrain = { onGround: true, step: false };
 
 function simulate(
   inputs: DriveInput[],
   engine: Engine,
   yaw0 = 0,
-  start: Vec2 = { x: 0, z: 0 },
+  terrain: readonly Terrain[] = [],
 ): Frame[] {
   let state = initialMotion(yaw0);
-  let body: Body = { pos: start, vel: { x: 0, z: 0 } };
+  let body: Body = { pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 } };
   const frames: Frame[] = [];
-  for (const input of inputs) {
+  inputs.forEach((input, i) => {
+    const t = terrain[i] ?? FLAT;
     const r = stepMotion(
       state,
       input,
-      { velocity: body.vel, onGround: true },
-      noStep,
+      { velocity: body.vel, onGround: t.onGround },
+      () => t.step,
     );
     state = r.state;
-    const e = engineStep(body, r.impulse, engine);
+    const e = engineStep(body, r.impulse, engine, t.onGround);
     body = e.body;
-    frames.push({ state, body, touching: e.touching });
-  }
+    frames.push({
+      state,
+      body,
+      touching: e.touching,
+      blocked: r.blocked,
+      jumped: r.jumped,
+      onGround: t.onGround,
+    });
+  });
   return frames;
 }
 
@@ -65,6 +88,28 @@ const driveInput = fc.record({
 });
 const inputs = fc.array(driveInput, { minLength: 1, maxLength: 300 });
 const mu = fc.double({ min: 0.6, max: 0.75, noNaN: true });
+// Enough speed for the friction estimate to run, which random throttle rarely builds.
+const forwardInputs = inputs.map((ins) =>
+  ins.map((i) => ({ ...i, throttle: Math.abs(i.throttle) })),
+);
+// Runs of ground and air ticks, with an occasional step ahead.
+const terrain = fc
+  .array(
+    fc.record({
+      onGround: fc.boolean(),
+      step: fc.boolean(),
+      ticks: fc.integer({ min: 1, max: 30 }),
+    }),
+    { maxLength: 30 },
+  )
+  .map((runs) =>
+    runs.flatMap(({ onGround, step, ticks }) =>
+      Array.from({ length: ticks }, (_, i) => ({
+        onGround,
+        step: step && i === 0,
+      })),
+    ),
+  );
 
 describe("updateSpeed / steerYaw", () => {
   it("reaches 95% of max speed in about 40 ticks at full throttle", () => {
@@ -99,10 +144,10 @@ describe("updateSpeed / steerYaw", () => {
 });
 
 describe("stepMotion (properties, ADR 0002/0003)", () => {
-  it("horizontal velocity on the ground stays within max speed (up to 10% estimation error during the first 30 ticks)", () => {
+  it("horizontal velocity stays within max speed on the ground, in the air, and over steps (up to 10% estimation error during the first 30 ticks)", () => {
     fc.assert(
-      fc.property(inputs, mu, (ins, m) => {
-        simulate(ins, { mu: m }).forEach((fr, i) => {
+      fc.property(inputs, mu, terrain, (ins, m, ter) => {
+        simulate(ins, { mu: m }, 0, ter).forEach((fr, i) => {
           const limit = SPEC.maxSpeed * (i < 30 ? 1.1 : 1.02);
           expect(length(fr.body.vel)).toBeLessThanOrEqual(limit + 1e-9);
         });
@@ -127,11 +172,144 @@ describe("stepMotion (properties, ADR 0002/0003)", () => {
     );
   });
 
-  it("does not detect collisions on ground without walls", () => {
+  it("does not detect collisions without walls, including on landing", () => {
     fc.assert(
-      fc.property(inputs, mu, (ins, m) => {
-        for (const fr of simulate(ins, { mu: m }))
-          expect(fr.state.blocked).toBe(false);
+      fc.property(inputs, mu, terrain, (ins, m, ter) => {
+        for (const fr of simulate(ins, { mu: m }, 0, ter))
+          expect(fr.blocked).toBe(false);
+      }),
+    );
+  });
+
+  it("updates the friction estimate only when this tick and the previous one were on the ground", () => {
+    fc.assert(
+      fc.property(forwardInputs, mu, terrain, (ins, m, ter) => {
+        const frames = simulate(ins, { mu: m }, 0, ter);
+        frames.forEach((fr, i) => {
+          const prev = frames[i - 1];
+          if (prev && !(prev.onGround && fr.onGround))
+            expect(fr.state.friction).toBe(prev.state.friction);
+        });
+      }),
+    );
+  });
+
+  it("on the first tick after landing, neither updates the friction estimate nor detects a collision", () => {
+    const air = fc.array(driveInput, { minLength: 1, maxLength: 20 });
+    const warm = fc.integer({ min: 20, max: 80 });
+    fc.assert(
+      fc.property(warm, air, mu, (w, a, m) => {
+        const ins = [...repeat(FULL_THROTTLE, w), ...a, FULL_THROTTLE];
+        const ter = ins.map((_, i) => ({
+          onGround: i < w || i === ins.length - 1,
+          step: false,
+        }));
+        const frames = simulate(ins, { mu: m }, 0, ter);
+        const [before, landing] = frames.slice(-2);
+        expect(landing?.state.friction).toBe(before?.state.friction);
+        expect(landing?.blocked).toBe(false);
+      }),
+    );
+  });
+
+  it("in the air without a step jump, applies only airControl of the correction toward the target", () => {
+    const vel = fc.record({
+      x: fc.double({ min: -1, max: 1, noNaN: true }),
+      z: fc.double({ min: -1, max: 1, noNaN: true }),
+    });
+    const prev = fc.record({
+      speed: fc.double({
+        min: -SPEC.maxReverse,
+        max: SPEC.maxSpeed,
+        noNaN: true,
+      }),
+      yaw: fc.double({ min: -180, max: 180, noNaN: true }),
+      friction: fc.option(fc.double({ min: 0.5, max: 1, noNaN: true }), {
+        nil: undefined,
+      }),
+      expected: fc.option(vel, { nil: undefined }),
+      stepTicks: fc.constant(0),
+    });
+    fc.assert(
+      fc.property(prev, driveInput, vel, (p, input, v) => {
+        const r = stepMotion(
+          p,
+          input,
+          { velocity: v, onGround: false },
+          () => true,
+        );
+        expect(r.jumped).toBe(false);
+        expect(r.blocked).toBe(false);
+        expect(r.state.friction).toBe(p.friction);
+        const f = r.forward;
+        const vLong = dot(v, f);
+        const keepLat = 1 - (input.handbrake ? SPEC.handbrakeGrip : SPEC.grip);
+        const target = clampLength(
+          {
+            x: f.x * r.state.speed + (v.x - f.x * vLong) * keepLat,
+            z: f.z * r.state.speed + (v.z - f.z * vLong) * keepLat,
+          },
+          SPEC.maxSpeed,
+        );
+        expect(r.impulse.x).toBeCloseTo(
+          SPEC.airControl * (target.x / SPEC.airFriction - v.x),
+          9,
+        );
+        expect(r.impulse.z).toBeCloseTo(
+          SPEC.airControl * (target.z / SPEC.airFriction - v.z),
+          9,
+        );
+      }),
+    );
+  });
+
+  it("jumps up a step only on the ground with forward throttle and non-negative speed", () => {
+    const prev = fc.record({
+      speed: fc.double({
+        min: -SPEC.maxReverse,
+        max: SPEC.maxSpeed,
+        noNaN: true,
+      }),
+      yaw: fc.double({ min: -180, max: 180, noNaN: true }),
+      stepTicks: fc.constant(0),
+    });
+    fc.assert(
+      fc.property(prev, driveInput, fc.boolean(), (p, input, onGround) => {
+        const r = stepMotion(
+          p,
+          input,
+          { velocity: { x: 0, z: 0 }, onGround },
+          () => true,
+        );
+        const speed = updateSpeed(p.speed, input.throttle);
+        expect(r.jumped).toBe(onGround && input.throttle > 0 && speed >= 0);
+      }),
+    );
+  });
+
+  it("drops all sideways velocity while climbing a step", () => {
+    const climb = fc.array(driveInput, {
+      minLength: SPEC.stepTicks,
+      maxLength: SPEC.stepTicks,
+    });
+    fc.assert(
+      fc.property(forwardInputs, climb, mu, (warm, up, m) => {
+        const jump = { ...FULL_THROTTLE, steer: 0 };
+        const ter: Terrain[] = [
+          ...warm.map(() => FLAT),
+          { onGround: true, step: true },
+          ...up.slice(1).map(() => ({ onGround: false, step: false })),
+        ];
+        const frames = simulate(
+          [...warm, jump, ...up.slice(1)],
+          { mu: m },
+          0,
+          ter,
+        );
+        const climbing = frames.slice(warm.length);
+        expect(climbing[0]?.jumped).toBe(true);
+        for (const fr of climbing)
+          expect(lateral(fr.body.vel, fr.state.yaw)).toBeLessThan(1e-9);
       }),
     );
   });
@@ -169,7 +347,7 @@ describe("stepMotion (properties, ADR 0002/0003)", () => {
             before + 0.05,
           );
         }
-        expect(frames.slice(first + 2).some((f) => f.state.blocked)).toBe(true);
+        expect(frames.slice(first + 2).some((f) => f.blocked)).toBe(true);
       }),
     );
   });

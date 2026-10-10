@@ -2,9 +2,18 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import {
   EMPTY_COUNTER,
+  type HitCounter,
   registerHit,
 } from "../../src/domain/vehicle/hitCounter";
 import { SPEC } from "../../src/domain/vehicle/spec";
+
+const hits = fc.array(
+  fc.record({
+    gap: fc.integer({ min: 0, max: SPEC.hitResetTicks * 2 }),
+    hasRiders: fc.boolean(),
+  }),
+  { maxLength: 60 },
+);
 
 describe("registerHit (ADR 0008)", () => {
   it("breaks after 3 hits in quick succession", () => {
@@ -17,23 +26,43 @@ describe("registerHit (ADR 0008)", () => {
     expect(results).toEqual([false, false, true]);
   });
 
-  it("never breaks while there are occupants, no matter how many hits", () => {
+  it("ignores ridden hits and breaks exactly on the 3rd unridden hit within the reset window", () => {
     fc.assert(
-      fc.property(
-        fc.array(fc.integer({ min: 0, max: 1000 }), { maxLength: 50 }),
-        (ticks) => {
-          let c = EMPTY_COUNTER;
-          for (const t of [...ticks].sort((a, b) => a - b)) {
-            const r = registerHit(c, t, true);
+      fc.property(hits, (events) => {
+        let c: HitCounter = EMPTY_COUNTER;
+        let tick = 0;
+        let streak = 0;
+        let lastUnridden = Number.NEGATIVE_INFINITY;
+        for (const { gap, hasRiders } of events) {
+          tick += gap;
+          const r = registerHit(c, tick, hasRiders);
+          if (hasRiders) {
             expect(r.broken).toBe(false);
-            c = r.counter;
+            expect(r.counter).toEqual(c);
+          } else {
+            streak = tick - lastUnridden <= SPEC.hitResetTicks ? streak + 1 : 1;
+            lastUnridden = tick;
+            const shouldBreak = streak >= SPEC.hitsToBreak;
+            expect(r.broken).toBe(shouldBreak);
+            if (shouldBreak) {
+              streak = 0;
+              lastUnridden = Number.NEGATIVE_INFINITY;
+            }
           }
-        },
-      ),
+          c = r.counter;
+        }
+      }),
     );
   });
 
-  it("resets the count to 0 when not hit for more than 100 ticks", () => {
+  it("keeps the count when the gap is exactly the reset window", () => {
+    let c = registerHit(EMPTY_COUNTER, 0, false).counter;
+    c = registerHit(c, 10, false).counter;
+    const r = registerHit(c, 10 + SPEC.hitResetTicks, false);
+    expect(r.broken).toBe(true);
+  });
+
+  it("resets the count to 0 when not hit for more than the reset window", () => {
     let c = registerHit(EMPTY_COUNTER, 0, false).counter;
     c = registerHit(c, 10, false).counter;
     const r = registerHit(c, 10 + SPEC.hitResetTicks + 1, false);
