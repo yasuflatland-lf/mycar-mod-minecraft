@@ -1,4 +1,3 @@
-// tests/domain/vehicle.test.ts
 import { describe, expect, it } from "vitest";
 import { forward, leftOf, type Vec2 } from "../../src/domain/shared/vec";
 import type { RawInput } from "../../src/domain/vehicle/driveInput";
@@ -13,6 +12,7 @@ import { engineStep } from "../support/engineModel";
 
 const FORWARD: RawInput = { moveX: 0, moveY: 1, jump: false };
 const IDLE: RawInput = { moveX: 0, moveY: 0, jump: false };
+const GROUND_FRICTION = 0.688;
 
 function seatOffset(yaw: number, seat: number): Vec2 {
   const f = forward(yaw);
@@ -53,7 +53,7 @@ class Sim {
       const r = engineStep(
         { pos: this.pos, vel: this.vel },
         { x: out.impulse.x, z: out.impulse.z },
-        { mu: 0.688 },
+        { mu: GROUND_FRICTION },
       );
       this.pos = r.body.pos;
       this.vel = r.body.vel;

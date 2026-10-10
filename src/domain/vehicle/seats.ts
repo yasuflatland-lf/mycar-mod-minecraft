@@ -1,4 +1,3 @@
-// src/domain/vehicle/seats.ts
 // Seat assignment and dismount detection (ADR 0007). Seat positions must match minecraft:rideable in packs/mycar_bp/entities/suv.json.
 import { dot, leftOf, type Vec2 } from "../shared/vec";
 
@@ -18,21 +17,21 @@ export const DOOR_BY_SEAT: readonly string[] = [
   "door_rl",
 ];
 
-export const toLocal = (offset: Vec2, f: Vec2): Vec2 => ({
-  x: dot(offset, leftOf(f)),
-  z: dot(offset, f),
-});
+/** Converts a world-space offset into seat coordinates for a vehicle facing `f`. */
+export function toLocal(offset: Vec2, f: Vec2): Vec2 {
+  return { x: dot(offset, leftOf(f)), z: dot(offset, f) };
+}
 
 export function nearestSeat(local: Vec2): number {
   let best = 0;
-  let bestDist = Infinity;
-  SEAT_POSITIONS.forEach((s, i) => {
-    const d = Math.hypot(local.x - s.x, local.z - s.z);
-    if (d < bestDist) {
+  let bestDist = Number.POSITIVE_INFINITY;
+  for (const [i, seat] of SEAT_POSITIONS.entries()) {
+    const dist = Math.hypot(local.x - seat.x, local.z - seat.z);
+    if (dist < bestDist) {
       best = i;
-      bestDist = d;
+      bestDist = dist;
     }
-  });
+  }
   return best;
 }
 

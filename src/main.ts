@@ -1,4 +1,4 @@
-// src/main.ts (to be replaced in #12)
+// Placeholder until #12 replaces it.
 import { system } from "@minecraft/server";
 
 system.run(() => console.warn("[mycar] loaded"));
