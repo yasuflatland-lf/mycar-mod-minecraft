@@ -1,5 +1,5 @@
 // src/domain/vehicle/placement.ts
-// 車を置ける空間があるか (Review Focus)。当たり判定 (幅 1.8・高さ 1.6) が入る 3 × 2 × 3 ブロックを調べる。
+// Whether there is room to place the vehicle (Review Focus). Checks the 3 × 2 × 3 blocks that fit the collision box (width 1.8, height 1.6).
 export type IsAir = (dx: number, dy: number, dz: number) => boolean;
 
 export function canPlaceAt(isAir: IsAir): boolean {
