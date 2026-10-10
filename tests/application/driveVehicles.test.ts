@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DriveVehicles } from "../../src/application/driveVehicles";
+import type { RawInput } from "../../src/domain/vehicle/driveInput";
 import { Vehicle } from "../../src/domain/vehicle/vehicle";
 import { FakeWorld, InMemoryRepo, snapshot } from "./fakes";
 
@@ -8,7 +9,47 @@ const logger = () => {
   return { lines, warn: (m: string) => lines.push(m) };
 };
 
+const FULL_THROTTLE: RawInput = { moveX: 0, moveY: 1, jump: false };
+
+// Accelerates vehicle "a" (heading +z) toward a target 1 block ahead, feeding
+// back the velocity the engine would report, until the speed passes the ram
+// threshold, then returns the damage calls the world received.
+function ramAhead(over: Parameters<typeof snapshot>[1]): string[] {
+  const world = new FakeWorld();
+  const repo = new InMemoryRepo();
+  const uc = new DriveVehicles(world, repo, logger());
+  world.targets = [
+    { id: "cow", offset: { x: 0, y: 0, z: 1 }, protectedOccupant: false },
+  ];
+  for (let tick = 0; tick < 200; tick++) {
+    const speed = repo.get("a")?.speed ?? 0;
+    world.snapshots = [
+      snapshot("a", { ...over, velocity: { x: 0, z: speed } }),
+    ];
+    uc.execute(tick);
+  }
+  return world.calls.filter((c) => c.startsWith("damage:"));
+}
+
 describe("DriveVehicles", () => {
+  it("forwards ram hits to the world with the driver as the attacker", () => {
+    const driver = {
+      id: "d",
+      offset: { x: -0.38, z: 0.35 },
+      yaw: 0,
+      raw: FULL_THROTTLE,
+    };
+    const damage = ramAhead({ riders: [driver] });
+    expect(damage.length).toBeGreaterThan(0);
+    expect(damage.every((c) => c === "damage:cow:d")).toBe(true);
+  });
+
+  it("forwards ram hits without an attacker when test input drives the vehicle", () => {
+    const damage = ramAhead({ testInput: FULL_THROTTLE });
+    expect(damage.length).toBeGreaterThan(0);
+    expect(damage.every((c) => c === "damage:cow:-")).toBe(true);
+  });
+
   it("creates an aggregate for each loaded vehicle and applies its motion", () => {
     const world = new FakeWorld();
     const repo = new InMemoryRepo();
@@ -16,6 +57,21 @@ describe("DriveVehicles", () => {
     new DriveVehicles(world, repo, logger()).execute(0);
     expect(repo.ids().sort()).toEqual(["a", "b"]);
     expect(world.calls).toContain("motion:a:30");
+  });
+
+  it("keeps the entity's heading when it rebuilds a driven vehicle after a reload", () => {
+    const world = new FakeWorld();
+    const repo = new InMemoryRepo();
+    const driver = {
+      id: "d",
+      offset: { x: -0.38, z: 0.35 },
+      yaw: 75,
+      raw: { moveX: 0, moveY: 0, jump: false },
+    };
+    world.snapshots = [snapshot("a", { yaw: 10, riders: [driver] })];
+    new DriveVehicles(world, repo, logger()).execute(0);
+    expect(repo.get("a")!.yaw).toBeCloseTo(10);
+    expect(world.calls).toContain("motion:a:10");
   });
 
   it("does not throw for a moving vehicle missing from the repository (after a reload) and rebuilds it from zero speed", () => {
