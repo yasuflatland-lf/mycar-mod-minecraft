@@ -1,5 +1,5 @@
 // src/infrastructure/persistence/inMemoryVehicleRepository.ts
-// 集約はメモリにだけ置く。スクリプトの再読み込みで消え、DriveVehicles が作り直す (ADR 0012)。
+// Aggregates live only in memory. They are lost when the script reloads, and DriveVehicles rebuilds them (ADR 0012).
 import type { Vehicle } from "../../domain/vehicle/vehicle";
 import type { VehicleRepository } from "../../domain/vehicle/vehicleRepository";
 

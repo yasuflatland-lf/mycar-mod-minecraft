@@ -1,5 +1,5 @@
 // src/infrastructure/bedrock/subscriptions.ts
-// ゲームのイベントをユースケースにつなぐ。
+// Connects game events to the use cases.
 import {
   Direction,
   GameMode,

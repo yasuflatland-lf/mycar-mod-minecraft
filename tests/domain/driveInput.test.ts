@@ -9,7 +9,7 @@ import {
 const axis = fc.double({ min: -1, max: 1, noNaN: true });
 
 describe("toDriveInput (ADR 0005)", () => {
-  it("左右または前後が NaN や正負の Infinity ならニュートラル入力になる", () => {
+  it("yields neutral input when the left/right or forward/backward input is NaN or positive/negative Infinity", () => {
     fc.assert(
       fc.property(
         fc.constantFrom(Number.NaN, Infinity, -Infinity),

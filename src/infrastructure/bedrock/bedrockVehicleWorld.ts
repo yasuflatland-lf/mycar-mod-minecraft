@@ -1,5 +1,5 @@
 // src/infrastructure/bedrock/bedrockVehicleWorld.ts
-// @minecraft/server でポートを実装する (ADR 0012)。
+// Implements the ports with @minecraft/server (ADR 0012).
 import {
   ButtonState,
   type Entity,
@@ -27,7 +27,7 @@ const isPlayer = (e: Entity): e is Player => e.typeId === "minecraft:player";
 export class BedrockVehicleWorld
   implements DriveWorld, PlacementWorld, BreakWorld
 {
-  /** loadedVehicles() で集めたこの tick の車。ほかのメソッドは id からここを引く。 */
+  /** Vehicles collected by loadedVehicles() for this tick. The other methods look them up here by id. */
   private current = new Map<string, Entity>();
 
   constructor(private readonly testInputs: TestInputStore) {}
@@ -94,7 +94,7 @@ export class BedrockVehicleWorld
       });
       return b !== undefined && !b.isAir && !b.isLiquid;
     } catch {
-      return false; // 読み込まれていないチャンクや世界の外
+      return false; // Unloaded chunk or outside the world
     }
   }
 

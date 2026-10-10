@@ -9,7 +9,7 @@ const axis = fc
 const finite = fc.double({ noNaN: true, noDefaultInfinity: true });
 
 describe("parseTestInputMessage", () => {
-  it("有効な入力をメッセージにして解析すると元の値に戻る", () => {
+  it("formatting a valid input as a message and parsing it returns the original values", () => {
     fc.assert(
       fc.property(vehicleId, axis, axis, fc.boolean(), (id, x, y, jump) => {
         expect(
@@ -22,7 +22,7 @@ describe("parseTestInputMessage", () => {
     );
   });
 
-  it("clear は指定した車の入力解除を表す", () => {
+  it("clear means clearing the input of the given vehicle", () => {
     fc.assert(
       fc.property(vehicleId, (id) => {
         expect(parseTestInputMessage(`${id},clear`)).toEqual({
@@ -33,7 +33,7 @@ describe("parseTestInputMessage", () => {
     );
   });
 
-  it("有限の移動値は必ず -1 から 1 の範囲に収まる", () => {
+  it("finite move values always fall within -1 to 1", () => {
     fc.assert(
       fc.property(vehicleId, finite, finite, fc.boolean(), (id, x, y, jump) => {
         const parsed = parseTestInputMessage(
@@ -48,7 +48,7 @@ describe("parseTestInputMessage", () => {
     );
   });
 
-  it("どちらかの移動値が NaN や正負の Infinity なら拒否する", () => {
+  it("rejects the message when either move value is NaN or positive/negative Infinity", () => {
     fc.assert(
       fc.property(
         vehicleId,
@@ -66,7 +66,7 @@ describe("parseTestInputMessage", () => {
     );
   });
 
-  it("数値に変換できない移動値を拒否する", () => {
+  it("rejects move values that cannot be converted to numbers", () => {
     const nonNumeric = fc
       .string()
       .filter((value) => Number.isNaN(Number(value)));
@@ -82,7 +82,7 @@ describe("parseTestInputMessage", () => {
     );
   });
 
-  it("空文字や空白だけの移動値を拒否する", () => {
+  it("rejects empty or whitespace-only move values", () => {
     const blank = fc
       .array(fc.constantFrom(" ", "\t", "\n", "\r"))
       .map((chars) => chars.join(""));
@@ -94,7 +94,7 @@ describe("parseTestInputMessage", () => {
     );
   });
 
-  it("要素数が 2 と 4 以外のメッセージを拒否する", () => {
+  it("rejects messages whose field count is neither 2 nor 4", () => {
     const part = fc.string().filter((value) => !value.includes(","));
     fc.assert(
       fc.property(
@@ -108,7 +108,7 @@ describe("parseTestInputMessage", () => {
     );
   });
 
-  it("要素が 2 個でも clear 以外なら拒否する", () => {
+  it("rejects a two-field message unless it is clear", () => {
     const command = fc
       .string()
       .filter((value) => value !== "clear" && !value.includes(","));
@@ -119,7 +119,7 @@ describe("parseTestInputMessage", () => {
     );
   });
 
-  it("ジャンプが 0 と 1 以外なら拒否する", () => {
+  it("rejects a jump value other than 0 or 1", () => {
     const invalidJump = fc
       .string()
       .filter((value) => value !== "0" && value !== "1");
@@ -132,7 +132,7 @@ describe("parseTestInputMessage", () => {
     );
   });
 
-  it("車の id が空なら入力も解除も拒否する", () => {
+  it("rejects both input and clear when the vehicle id is empty", () => {
     fc.assert(
       fc.property(axis, axis, fc.boolean(), (x, y, jump) => {
         expect(

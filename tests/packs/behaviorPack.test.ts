@@ -8,11 +8,11 @@ const c = read("packs/mycar_bp/entities/suv.json")["minecraft:entity"]
   .components;
 
 describe("packs/mycar_bp", () => {
-  it("当たり判定は幅 1.8・高さ 1.6 (ADR 0009)", () => {
+  it("has a collision box 1.8 wide and 1.6 high (ADR 0009)", () => {
     expect(c["minecraft:collision_box"]).toEqual({ width: 1.8, height: 1.6 });
   });
 
-  it("座席の位置と順番が SEAT_POSITIONS と一致し、運転席は 0 (ADR 0007)", () => {
+  it("seat positions and order match SEAT_POSITIONS, with the driver's seat at 0 (ADR 0007)", () => {
     const seats = c["minecraft:rideable"].seats;
     expect(c["minecraft:rideable"].controlling_seat).toBe(0);
     expect(seats).toHaveLength(4);
@@ -23,18 +23,18 @@ describe("packs/mycar_bp", () => {
     expect(seats[0].lock_rider_rotation).toBe(90);
   });
 
-  it("車はダメージを受けない (ADR 0006)", () => {
+  it("the vehicle takes no damage (ADR 0006)", () => {
     expect(c["minecraft:damage_sensor"].triggers).toEqual({
       cause: "all",
       deals_damage: "no",
     });
   });
 
-  it("1 段の段差はエンジンに任せる (ADR 0004)", () => {
+  it("leaves one-block steps to the engine (ADR 0004)", () => {
     expect(c["minecraft:variable_max_auto_step"].base_value).toBe(1.0625);
   });
 
-  it("アイテムとレシピがある (ADR 0008)", () => {
+  it("has an item and a recipe (ADR 0008)", () => {
     expect(
       read("packs/mycar_bp/items/suv_item.json")["minecraft:item"].description
         .identifier,
@@ -45,7 +45,7 @@ describe("packs/mycar_bp", () => {
     ).toBe("mycar:suv_item");
   });
 
-  it("レシピは最初から解放されている (unlock がないと BDS がレシピを読み込まない)", () => {
+  it("the recipe is unlocked from the start (BDS does not load the recipe without unlock)", () => {
     expect(
       read("packs/mycar_bp/recipes/suv_item.json")["minecraft:recipe_shaped"]
         .unlock,
