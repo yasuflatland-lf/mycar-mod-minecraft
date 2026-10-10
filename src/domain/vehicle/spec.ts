@@ -1,4 +1,3 @@
-// src/domain/vehicle/spec.ts
 // Vehicle tuning values. See docs/adr/0002-0008 for the rationale.
 export const SPEC = {
   // Driving (ADR 0002)
