@@ -1,22 +1,22 @@
-# 0003. 地面摩擦を推定して補正し、壁との衝突は軸ごとに判定する
+# 0003. Estimate and compensate for ground friction, and detect wall collisions per axis
 
-- 状態: 承認
-- 日付: 2026-10-10
+- Status: Accepted
+- Date: 2026-10-10
 
-## 状況
+## Context
 
-0002 の方式でスクリプトが与えた速度は、エンジンの地面摩擦で 1 tick ごとに約 0.69 倍になる。スパイクで補正しなかったときは、指令の 40% の速度しか出なかった。
+With the approach in 0002, the engine's ground friction scales the velocity the script gives by about 0.69 every tick. In the spike, without compensation the vehicle reached only 40% of the commanded speed.
 
-前 tick に与えた速度と今の速度の比から減衰率を推定して上乗せすると、指令どおりに走った。ところが壁に当たると、前に進めないことによる減速を「摩擦が強くなった」と取り違え、上乗せが過大になった。その結果、残った横方向の速度が tick ごとに増え、車が壁沿いに全速力で滑った。
+Estimating the decay rate from the ratio of the current velocity to the velocity given in the previous tick, and adding the difference back, made the vehicle drive at the commanded speed. But when it hit a wall, the slowdown caused by being unable to move forward was mistaken for "friction got stronger", and the compensation became excessive. The leftover sideways velocity then grew every tick, and the vehicle slid along the wall at full speed.
 
-## 決定
+## Decision
 
-- 減衰率は、前 tick に与えた速度のうち、与えた方向に残った割合から推定する。推定値は 0.5〜1 に収め、指数移動平均（新しい値の重み 0.2）で更新する
-- 壁はエンジンが軸ごとに速度を 0 にするので、x・z の軸ごとに「与えた速度のうち残った割合が、推定値の半分未満か」で衝突を判定する。与えた速度がその軸で 0.03 以下なら、その軸は判定しない
-- 衝突中は減衰率の推定を止め、内部の速度を実際の前方速度まで落とす。落とした後も、後退の上限（-0.2）で頭打ちにする。実際の前方速度が後ろ向きだと、内部の速度が後退の上限を下回りうるためである
+- Estimate the decay rate from the fraction of the previous tick's velocity that remains in the direction it was given. Clamp the estimate to 0.5–1 and update it with an exponential moving average (weight 0.2 on the new value)
+- The engine zeroes velocity per axis when it hits a wall, so detect collisions separately on the x and z axes: an axis is colliding if the fraction of the given velocity that remains on it is less than half the estimate. Skip an axis when the velocity given on it is 0.03 or less
+- While colliding, stop updating the decay estimate and lower the internal speed to the actual forward speed. After lowering it, still clamp it at the reverse limit (-0.2), because a backward actual forward speed could push the internal speed below the reverse limit
 
-## 結果
+## Consequences
 
-- 壁に当たると止まり、壁沿いの速度は当たる直前の壁沿いの成分程度に収まる（スパイクの自動計測で最大 0.32〜0.46）
-- 坂道やモブを押しているときのように、壁ではないが減速が大きい場面で、衝突と誤判定する可能性がある。その場合は内部の速度が落ちるだけで、暴走はしない
-- 減衰率の推定が実際より低いままだと、横方向の速度が減らずに増えうる。この性質は性質ベーステストで調べる（0010）
+- The vehicle stops when it hits a wall, and its speed along the wall stays around the along-wall component it had just before impact (a maximum of 0.32–0.46 in the spike's automated measurements)
+- Situations that are not walls but slow the vehicle a lot, such as slopes or pushing mobs, may be misdetected as collisions. In that case the internal speed just drops; the vehicle does not run away
+- If the decay estimate stays lower than the real value, sideways velocity may grow instead of shrink. This property is checked with property-based tests (0010)

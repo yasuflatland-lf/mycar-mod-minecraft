@@ -1,5 +1,5 @@
 // tests/architecture.test.ts
-// レイヤーの依存の向き (ADR 0012): インフラストラクチャ → アプリケーション → ドメイン の一方向だけ
+// Layer dependencies (ADR 0012): infrastructure -> application -> domain only
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -26,9 +26,9 @@ const RULES = [
   { layer: "src/application", forbidden: ["/infrastructure", "@minecraft/"] },
 ];
 
-describe("レイヤーの依存の向き (ADR 0012)", () => {
+describe("Layer dependency direction (ADR 0012)", () => {
   for (const { layer, forbidden } of RULES) {
-    it(`${layer} は ${forbidden.join(", ")} を import しない`, () => {
+    it(`${layer} does not import ${forbidden.join(", ")}`, () => {
       for (const file of tsFiles(layer)) {
         for (const imp of importsOf(file)) {
           for (const f of forbidden)
