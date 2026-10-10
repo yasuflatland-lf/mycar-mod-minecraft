@@ -1,6 +1,6 @@
 """Generate the model and textures for the MyCar SUV.
 
-Coordinates are in pixels (16 px = 1 block). The definitions below use "forward +z, left +x",
+Coordinates are in pixels (16 px = 1 block). The definitions below use "forward +z, right +x",
 and are rotated 180° around the Y axis just before writing, because in Bedrock the front of an
 entity is on the -z side of the model.
 Bone names follow the convention (ADR 0009): root / body / wheel_fl / wheel_fr / wheel_rl / wheel_rr /
@@ -125,8 +125,8 @@ steering = [
 ]
 steering += [
     small(cx, cy, 1.4, 1.4, "trim", 9.1, 9.9),  # hub
-    small(cx - 1.2, cy, 1.2, 0.5, "rim"),  # spoke (right)
-    small(cx + 1.2, cy, 1.2, 0.5, "rim"),  # spoke (left)
+    small(cx - 1.2, cy, 1.2, 0.5, "rim"),  # spoke (left)
+    small(cx + 1.2, cy, 1.2, 0.5, "rim"),  # spoke (right)
     small(cx, cy - 1.2, 0.5, 1.2, "rim"),  # spoke (bottom)
     small(cx, cy, 0.8, 0.8, "trim", 9.9, 11.0),  # column
 ]
@@ -215,7 +215,7 @@ def door(name):
 
 
 def wheel(name, x_out, z_center):
-    # x_out: sign pointing outward (+1 = left, -1 = right)
+    # x_out: sign pointing outward (+1 = right, -1 = left)
     x0, x1 = (12, 16) if x_out > 0 else (-16, -12)
     hub_x0, hub_x1 = (16, 16.5) if x_out > 0 else (-16.5, -16)
     return {
@@ -246,10 +246,10 @@ geo = {
                 {"name": "root", "pivot": [0, 0, 0]},
                 {"name": "body", "parent": "root", "pivot": [0, 7, 0], "cubes": body,
                  "locators": {"exhaust": [9, 4.5, -28.6]}},
-                wheel("wheel_fl", +1, 17),
-                wheel("wheel_fr", -1, 17),
-                wheel("wheel_rl", +1, -16),
-                wheel("wheel_rr", -1, -16),
+                wheel("wheel_fl", -1, 17),
+                wheel("wheel_fr", +1, 17),
+                wheel("wheel_rl", -1, -16),
+                wheel("wheel_rr", +1, -16),
                 *[door(n) for n in DOORS],
                 {"name": "seat_0", "parent": "body", "pivot": [6, 10, 2]},
                 {"name": "seat_1", "parent": "body", "pivot": [-6, 10, 2]},
