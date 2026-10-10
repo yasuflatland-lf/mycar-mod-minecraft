@@ -1,6 +1,7 @@
 # Manual test
 
 Dev server: `pnpm build && pnpm server:up`. Connect to the Mac's LAN IP address on port 19132.
+To try NetherNet instead (0014), restart it with `pnpm server:down && BDS_TRANSPORT=nethernet pnpm server:up`, then connect to the same address and port. Set `BDS_LAN_IP=<address>` if the script finds more than one LAN address.
 To use commands, run `docker exec mycar-bds send-command op <player name>`.
 
 | # | Steps | Pass condition | PC | Mobile |

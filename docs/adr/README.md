@@ -17,6 +17,7 @@ This directory records design decisions and the reasons behind them. The format 
 | [0011](0011-dev-server-docker-raknet.md) | Run the development server as BDS in Docker with raknet | Accepted |
 | [0012](0012-ddd-layered-architecture.md) | Split the code into domain, application, and infrastructure layers | Accepted |
 | [0013](0013-dependency-updates-with-renovate.md) | Keep dependencies up to date with Renovate | Accepted |
+| [0014](0014-opt-in-nethernet-dev-server.md) | Offer NetherNet on the dev server as an opt-in transport | Accepted |
 
 The measurements and in-game tests behind these decisions are in [the driving-core spike findings](../spike-driving-core.md).
 

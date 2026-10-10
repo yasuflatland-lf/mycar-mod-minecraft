@@ -63,7 +63,7 @@ Design decisions live in [docs/adr](docs/adr/README.md). Read the ADRs that rela
 
 - Bump the Resource Pack manifest version whenever the Resource Pack changes. Otherwise devices keep using their cached copy (0011).
 - Script-only changes reload with `/reload`. Entity definition and Resource Pack changes need a server restart (0011).
-- The dev BDS must use `TRANSPORT: raknet` on port 19132. The default `nethernet` transport picks a random port that Docker cannot forward (0011).
+- The dev BDS uses `TRANSPORT: raknet` on port 19132 by default. The default `nethernet` transport picks a random UDP port that Docker cannot forward (0011). `BDS_TRANSPORT=nethernet pnpm server:up` pins that port to a published range and advertises the Mac's LAN IP instead (0014). Ignore the "NetherNet is the only supported transport type" banner under raknet.
 - Mobs spawned with `dimension.spawnEntity` far from players disappear within a tick, so tests use `summon`. `fill` is capped at 32,768 blocks per call (0010).
 
 ## Git and pull requests
