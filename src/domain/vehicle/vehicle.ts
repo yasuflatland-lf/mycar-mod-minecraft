@@ -28,7 +28,7 @@ export interface TickContext {
   testInput?: RawInput;
   velocity: Vec2;
   onGround: boolean;
-  /** Whether the position relative to the vehicle is blocked. */
+  /** Whether the block at entity location + offset (world axes, y from the feet) is solid; air and liquids are not. */
   solidAt(offset: Vec3): boolean;
   /** Nearby targets. Called only when the speed exceeds the ram threshold. */
   targets(): readonly RamTarget[];
@@ -73,6 +73,23 @@ export class Vehicle {
 
   static create(id: string, yaw: number): Vehicle {
     return new Vehicle(id, yaw);
+  }
+
+  /**
+   * Rebuilds a vehicle whose aggregate was lost (e.g. after `/reload`) while
+   * riders may already be seated. Seeding the seats and the driver keeps the
+   * first tick from treating the current driver as newly mounted, which would
+   * snap the heading to the driver's view.
+   */
+  static rebuild(
+    id: string,
+    yaw: number,
+    riders: readonly RiderView[],
+  ): Vehicle {
+    const v = new Vehicle(id, yaw);
+    v.seats = occupiedSeats(riders, forward(yaw));
+    v.driverId = riders.find((r) => v.seats.get(r.id) === 0)?.id;
+    return v;
   }
 
   get speed(): number {

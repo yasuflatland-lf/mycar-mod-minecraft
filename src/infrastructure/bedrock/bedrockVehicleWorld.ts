@@ -16,6 +16,7 @@ import type {
 } from "../../application/ports";
 import type { Vec3 } from "../../domain/shared/vec";
 import type { RamHit, RamTarget } from "../../domain/vehicle/ram";
+import { RAM_QUERY_RADIUS } from "../../domain/vehicle/ramQuery";
 import type { RiderView } from "../../domain/vehicle/vehicle";
 import type { TestInputStore } from "../testInput/testInputStore";
 import { ITEM_TYPE, PLAYER_TYPE, VEHICLE_TYPE } from "./identifiers";
@@ -103,7 +104,7 @@ export class BedrockVehicleWorld
     return car.dimension
       .getEntities({
         location: car.location,
-        maxDistance: 3,
+        maxDistance: RAM_QUERY_RADIUS,
         excludeFamilies: ["inanimate"],
         excludeTypes: ["minecraft:item", "minecraft:xp_orb"],
       })

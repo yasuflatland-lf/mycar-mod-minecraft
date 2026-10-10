@@ -1,3 +1,4 @@
+import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { forward, leftOf, type Vec2 } from "../../src/domain/shared/vec";
 import type { RawInput } from "../../src/domain/vehicle/driveInput";
@@ -134,5 +135,39 @@ describe("Vehicle (aggregate)", () => {
     const occupied = Vehicle.create("b", 0);
     sim.run(occupied, 1);
     expect([1, 2, 3, 4].flatMap((t) => occupied.receiveHit(t))).toEqual([]);
+  });
+
+  it("a rebuilt vehicle keeps its heading and emits no seat events on its first tick with riders already seated", () => {
+    fc.assert(
+      fc.property(
+        fc.double({ min: -180, max: 180, noNaN: true }),
+        fc.double({ min: -180, max: 180, noNaN: true }),
+        fc.subarray([1, 2, 3]),
+        (yaw, viewYaw, passengerSeats) => {
+          const sim = new Sim();
+          sim.yaw = yaw;
+          sim.riders = [
+            { id: "d", seat: 0, yaw: viewYaw, raw: IDLE },
+            ...passengerSeats.map((seat) => ({
+              id: `p${seat}`,
+              seat,
+              yaw: viewYaw,
+              raw: IDLE,
+            })),
+          ];
+          const riders: RiderView[] = sim.riders.map((r) => ({
+            id: r.id,
+            offset: seatOffset(yaw, r.seat),
+            yaw: r.yaw,
+            raw: r.raw,
+          }));
+          const v = Vehicle.rebuild("car", yaw, riders);
+          sim.run(v, 1);
+          const turned = ((((v.yaw - yaw) % 360) + 540) % 360) - 180;
+          expect(turned).toBeCloseTo(0);
+          expect(sim.events).toEqual([]);
+        },
+      ),
+    );
   });
 });

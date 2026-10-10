@@ -1,13 +1,22 @@
 import { execFileSync } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import { setTimeout as sleep } from "node:timers/promises";
+import {
+  LOG_TAG,
+  linesOfRun,
+  summaryOfRun,
+  summaryPassed,
+  TEST_EVENT,
+} from "../src/test-pack/protocol.ts";
 
 const CONTAINER = "mycar-bds";
+const runId = randomBytes(4).toString("hex");
 const since = new Date().toISOString();
 execFileSync("docker", [
   "exec",
   CONTAINER,
   "send-command",
-  "scriptevent mycar:test",
+  `scriptevent ${TEST_EVENT} ${runId}`,
 ]);
 const deadline = Date.now() + 5 * 60_000;
 let summary;
@@ -18,13 +27,14 @@ while (Date.now() < deadline) {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
   });
-  lines = logs.split("\n").filter((l) => l.includes("[MYCAR-TEST]"));
-  summary = lines.find((l) => l.includes("SUMMARY"));
+  const all = logs.split("\n");
+  lines = linesOfRun(all, runId);
+  summary = summaryOfRun(all, runId);
   if (summary) break;
 }
-for (const l of lines) console.log(l.slice(l.indexOf("[MYCAR-TEST]")));
+for (const l of lines) console.log(l.slice(l.indexOf(LOG_TAG)));
 if (!summary) {
-  console.error("timed out waiting for [MYCAR-TEST] SUMMARY");
+  console.error(`timed out waiting for ${LOG_TAG} ${runId} SUMMARY`);
   process.exit(1);
 }
-process.exit(/fail=0\b/.test(summary) ? 0 : 1);
+process.exit(summaryPassed(summary) ? 0 : 1);
