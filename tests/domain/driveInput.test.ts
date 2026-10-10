@@ -1,10 +1,31 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { toDriveInput } from "../../src/domain/vehicle/driveInput";
+import {
+  NEUTRAL_INPUT,
+  toDriveInput,
+} from "../../src/domain/vehicle/driveInput";
 
 const axis = fc.double({ min: -1, max: 1, noNaN: true });
 
 describe("toDriveInput (ADR 0005)", () => {
+  it("yields neutral input when the left/right or forward/backward input is NaN or positive/negative Infinity", () => {
+    fc.assert(
+      fc.property(
+        fc.constantFrom(Number.NaN, Infinity, -Infinity),
+        fc.double(),
+        fc.boolean(),
+        (invalid, other, jump) => {
+          expect(toDriveInput({ moveX: invalid, moveY: other, jump })).toEqual(
+            NEUTRAL_INPUT,
+          );
+          expect(toDriveInput({ moveX: other, moveY: invalid, jump })).toEqual(
+            NEUTRAL_INPUT,
+          );
+        },
+      ),
+    );
+  });
+
   it("throttle is 0 when the absolute forward/backward input is at most 0.1", () => {
     fc.assert(
       fc.property(
