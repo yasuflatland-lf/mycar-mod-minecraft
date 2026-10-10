@@ -23,7 +23,9 @@ describe("DriveVehicles", () => {
     const world = new FakeWorld();
     const repo = new InMemoryRepo();
     world.snapshots = [snapshot("a", { velocity: { x: 0, z: 0.5 } })];
-    expect(() => new DriveVehicles(world, repo, logger()).execute(0)).not.toThrow();
+    expect(() =>
+      new DriveVehicles(world, repo, logger()).execute(0),
+    ).not.toThrow();
     expect(repo.get("a")!.speed).toBeLessThanOrEqual(0.0225);
   });
 
@@ -50,7 +52,12 @@ describe("DriveVehicles", () => {
     const world = new FakeWorld();
     const repo = new InMemoryRepo();
     const uc = new DriveVehicles(world, repo, logger());
-    const driver = { id: "d", offset: { x: -0.38, z: 0.35 }, yaw: 0, raw: { moveX: 0, moveY: 0, jump: false } };
+    const driver = {
+      id: "d",
+      offset: { x: -0.38, z: 0.35 },
+      yaw: 0,
+      raw: { moveX: 0, moveY: 0, jump: false },
+    };
     world.snapshots = [snapshot("a", { riders: [driver] })];
     uc.execute(0);
     world.snapshots = [snapshot("a")];
