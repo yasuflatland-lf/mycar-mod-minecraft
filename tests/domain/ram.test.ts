@@ -2,6 +2,7 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { dot, forward, rightOf } from "../../src/domain/shared/vec";
 import {
+  type RamHit,
   type RamTarget,
   ramDamage,
   selectHits,
@@ -14,6 +15,22 @@ const fastSpeed = fc.double({
   max: SPEC.maxSpeed,
   noNaN: true,
 });
+const fastReverse = fc.double({
+  min: -SPEC.maxReverse,
+  max: -SPEC.ramMinSpeed - 0.001,
+  noNaN: true,
+});
+
+function onlyHit(hits: readonly RamHit[]): RamHit {
+  expect(hits).toHaveLength(1);
+  const [hit] = hits;
+  if (hit === undefined) throw new Error("expected one hit");
+  return hit;
+}
+
+function expectedPushMagnitude(speed: number): number {
+  return SPEC.ramPushBase + Math.abs(speed) * SPEC.ramPushPerSpeed;
+}
 
 function at(
   yawDeg: number,
@@ -49,21 +66,74 @@ describe("ramDamage (ADR 0006)", () => {
 
 describe("selectHits (ADR 0006)", () => {
   const reach = SPEC.bodyFront + SPEC.targetHalfWidth;
+  const halfWidth = SPEC.bodyHalfWidth + SPEC.targetHalfWidth;
+  // A target exactly on the boundary can fall outside the area due to rounding in forward and rightOf, so generate only points slightly inside both ends
+  const insideAhead = fc.double({ min: 1e-6, max: reach - 1e-6, noNaN: true });
+  const insideSide = fc.double({
+    min: -halfWidth + 1e-6,
+    max: halfWidth - 1e-6,
+    noNaN: true,
+  });
 
   it("hits targets in the detection area ahead and pushes them in the direction of travel", () => {
-    // A target exactly on the boundary can fall outside the area due to rounding in forward and rightOf, so generate only points slightly inside both ends
-    const inside = fc.double({ min: 1e-6, max: reach - 1e-6, noNaN: true });
     fc.assert(
       fc.property(
         yaw,
         fastSpeed,
-        inside,
-        fc.double({ min: -1.4, max: 1.4, noNaN: true }),
-        (y, s, ahead, side) => {
+        insideAhead,
+        insideSide,
+        fc.double({
+          min: SPEC.ramMinDy + 1e-6,
+          max: SPEC.ramMaxDy - 1e-6,
+          noNaN: true,
+        }),
+        (y, s, ahead, side, dy) => {
           const f = forward(y);
-          const hits = selectHits(f, s, [at(y, ahead, side)], new Map(), 0);
-          expect(hits).toHaveLength(1);
-          expect(dot(hits[0]!.push, f)).toBeGreaterThan(0);
+          const hits = selectHits(f, s, [at(y, ahead, side, dy)], new Map(), 0);
+          const { push, pushUp } = onlyHit(hits);
+          expect(dot(push, f)).toBeGreaterThan(0);
+          expect(Math.hypot(push.x, push.z)).toBeCloseTo(
+            expectedPushMagnitude(s),
+            9,
+          );
+          expect(pushUp).toBe(SPEC.ramPushUp);
+        },
+      ),
+    );
+  });
+
+  it("does not hit targets beside the detection area", () => {
+    const beside = fc
+      .tuple(
+        fc.double({ min: halfWidth + 0.01, max: 3, noNaN: true }),
+        fc.boolean(),
+      )
+      .map(([d, left]) => (left ? -d : d));
+    fc.assert(
+      fc.property(yaw, fastSpeed, insideAhead, beside, (y, s, ahead, side) => {
+        expect(
+          selectHits(forward(y), s, [at(y, ahead, side)], new Map(), 0),
+        ).toHaveLength(0);
+      }),
+    );
+  });
+
+  it("does not hit targets above or below the detection area", () => {
+    const offLevel = fc.oneof(
+      fc.double({ min: -3, max: SPEC.ramMinDy - 0.01, noNaN: true }),
+      fc.double({ min: SPEC.ramMaxDy + 0.01, max: 3, noNaN: true }),
+    );
+    fc.assert(
+      fc.property(
+        yaw,
+        fastSpeed,
+        insideAhead,
+        insideSide,
+        offLevel,
+        (y, s, ahead, side, dy) => {
+          expect(
+            selectHits(forward(y), s, [at(y, ahead, side, dy)], new Map(), 0),
+          ).toHaveLength(0);
         },
       ),
     );
@@ -83,10 +153,26 @@ describe("selectHits (ADR 0006)", () => {
     );
   });
 
-  it("hits targets behind when reversing", () => {
-    expect(
-      selectHits(forward(0), -0.2, [at(0, -1, 0)], new Map(), 0),
-    ).toHaveLength(1);
+  it("hits targets behind when reversing and pushes them away from the car", () => {
+    fc.assert(
+      fc.property(
+        yaw,
+        fastReverse,
+        insideAhead,
+        insideSide,
+        (y, s, behind, side) => {
+          const f = forward(y);
+          const hits = selectHits(f, s, [at(y, -behind, side)], new Map(), 0);
+          const { push, pushUp } = onlyHit(hits);
+          expect(dot(push, f)).toBeLessThan(0);
+          expect(Math.hypot(push.x, push.z)).toBeCloseTo(
+            expectedPushMagnitude(s),
+            9,
+          );
+          expect(pushUp).toBe(SPEC.ramPushUp);
+        },
+      ),
+    );
   });
 
   it("does not hit protected occupants (regardless of which car they occupy)", () => {

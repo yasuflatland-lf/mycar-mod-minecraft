@@ -4,6 +4,7 @@ export const SPEC = {
   maxSpeed: 0.9, // blocks/tick
   maxReverse: 0.2,
   accel: 0.0225,
+  reverseAccel: 0.01125,
   brake: 0.04,
   drag: 0.02,
   turnRate: 6, // degrees/tick at full steering input
