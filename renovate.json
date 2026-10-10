@@ -1,0 +1,29 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "minimumReleaseAge": "3 days",
+  "internalChecksFilter": "strict",
+  "packageRules": [
+    {
+      "description": "Merge minor and patch updates automatically once CI passes (ADR 0013)",
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "automerge": true
+    },
+    {
+      "description": "Major updates wait for a human to review and merge (ADR 0013)",
+      "matchUpdateTypes": ["major"],
+      "automerge": false
+    },
+    {
+      "description": "Keep pnpm in mise.toml and packageManager on the same version",
+      "matchPackageNames": ["pnpm"],
+      "groupName": "pnpm"
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "description": "Security fixes skip the release-age wait so they can land right away (ADR 0013)",
+    "minimumReleaseAge": null,
+    "labels": ["security"]
+  },
+  "osvVulnerabilityAlerts": true
+}
