@@ -1,0 +1,40 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      # Install Node and pnpm as pinned in mise.toml
+      - uses: jdx/mise-action@v5
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm run typecheck
+
+      - run: pnpm test
+
+      - run: pnpm run build
+
+      # The tag must match the Behavior Pack version so the file name and the
+      # version players see in-game agree (tag v0.1.0 -> manifest [0, 1, 0])
+      - run: pnpm run package
+        env:
+          EXPECTED_VERSION: ${{ github.ref_name }}
+
+      - run: gh release create "$GITHUB_REF_NAME" dist/*.mcaddon --verify-tag --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}
