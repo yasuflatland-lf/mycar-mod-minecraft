@@ -1,6 +1,9 @@
 import type { Vec2 } from "../../src/domain/shared/vec";
 
 export const HALF_WIDTH = 0.9;
+// Per-tick horizontal air drag. Kept apart from SPEC.airFriction so that a
+// wrong assumption in the script shows up as a failing property.
+export const AIR_DRAG = 0.91;
 
 export interface Engine {
   mu: number;
@@ -15,6 +18,7 @@ export function engineStep(
   b: Body,
   impulse: Vec2,
   e: Engine,
+  onGround = true,
 ): { body: Body; touching: boolean } {
   let vx = b.vel.x + impulse.x;
   const vz = b.vel.z + impulse.z;
@@ -26,8 +30,9 @@ export function engineStep(
     vx = 0;
     touching = true;
   }
+  const drag = onGround ? e.mu : AIR_DRAG;
   return {
-    body: { pos: { x: px, z: pz }, vel: { x: vx * e.mu, z: vz * e.mu } },
+    body: { pos: { x: px, z: pz }, vel: { x: vx * drag, z: vz * drag } },
     touching,
   };
 }
