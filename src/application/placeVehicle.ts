@@ -1,5 +1,5 @@
 // src/application/placeVehicle.ts
-// ユースケース: 車のアイテムをブロックの上面に使って車を出す (ADR 0008)。
+// Use case: place a vehicle by using the vehicle item on the top face of a block (ADR 0008).
 import type { Vec3 } from "../domain/shared/vec";
 import { canPlaceAt } from "../domain/vehicle/placement";
 import { Vehicle } from "../domain/vehicle/vehicle";
@@ -9,7 +9,7 @@ import type { PlacementWorld } from "./ports";
 export interface PlaceVehicleCommand {
   playerId: string;
   dimensionId: string;
-  /** アイテムを使ったブロックの位置 (整数座標)。車はこの 1 つ上に出る。 */
+  /** Position of the block the item was used on (integer coordinates). The vehicle appears one block above it. */
   blockLocation: Vec3;
   yaw: number;
   creative: boolean;
@@ -29,7 +29,7 @@ export class PlaceVehicle {
         y: b.y + dy,
         z: b.z + dz,
       });
-    if (!canPlaceAt(isAir)) return false; // 車が入る空間がなければ出さず、アイテムも減らさない
+    if (!canPlaceAt(isAir)) return false; // If there is no room for the vehicle, do not place it and do not consume the item
     const id = this.world.spawnVehicle(
       cmd.dimensionId,
       { x: b.x + 0.5, y: b.y + 1, z: b.z + 0.5 },

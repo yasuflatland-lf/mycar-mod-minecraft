@@ -14,7 +14,7 @@ interface Lane {
   ceiling?: number;
 }
 
-/** 3 本の線それぞれに、start から先が height の高さでふさがった地形。ceiling 以上の高さもふさがる。 */
+/** Terrain where each of the 3 rays is blocked up to `height` from `start` onward. Heights at or above `ceiling` are also blocked. */
 function terrain(lanes: (Lane | undefined)[], overhead = false): SolidAt {
   return (ahead, side, dy) => {
     if (ahead === 0 && side === 0) return overhead && dy >= 2;
@@ -37,7 +37,7 @@ const startIn = (s: number) =>
 const laneIndex = fc.integer({ min: 0, max: 2 });
 
 describe("shouldStepUp (ADR 0004)", () => {
-  it("先読みの範囲にある高さ 2 の段差には跳ぶ (どの線でも)", () => {
+  it("jumps for a step of height 2 within look-ahead range (on any ray)", () => {
     fc.assert(
       fc.property(
         speed.chain((s) => fc.tuple(fc.constant(s), startIn(s))),
@@ -51,7 +51,7 @@ describe("shouldStepUp (ADR 0004)", () => {
     );
   });
 
-  it("高さ 3 以上の障害物しかなければ跳ばない", () => {
+  it("does not jump when all obstacles have a height of 3 or more", () => {
     const lane = fc.option(
       fc.record({
         start: fc.double({ min: 1, max: 5, noNaN: true }),
@@ -66,7 +66,7 @@ describe("shouldStepUp (ADR 0004)", () => {
     );
   });
 
-  it("高さ 2 の段差より手前か同じ距離に、別の線で高さ 3 以上があれば跳ばない", () => {
+  it("does not jump if another ray has an obstacle of height 3 or more closer than or at the same distance as a step of height 2", () => {
     fc.assert(
       fc.property(
         speed.chain((s) => fc.tuple(fc.constant(s), startIn(s))),
@@ -91,7 +91,7 @@ describe("shouldStepUp (ADR 0004)", () => {
     );
   });
 
-  it("高さ 2 の段差の上に車が入る空間 (1.6) がなければ跳ばない", () => {
+  it("does not jump if there is no room (1.6) for the vehicle above a step of height 2", () => {
     fc.assert(
       fc.property(
         speed.chain((s) => fc.tuple(fc.constant(s), startIn(s))),
@@ -105,7 +105,7 @@ describe("shouldStepUp (ADR 0004)", () => {
     );
   });
 
-  it("頭上がふさがっていれば跳ばない", () => {
+  it("does not jump if blocked overhead", () => {
     expect(
       shouldStepUp(
         terrain([{ start: SPEC.hitboxFront + 0.2, height: 2 }], true),
@@ -114,7 +114,7 @@ describe("shouldStepUp (ADR 0004)", () => {
     ).toBe(false);
   });
 
-  it("高さ 1 の段差だけならエンジンに任せて跳ばない", () => {
+  it("does not jump when only height-1 steps are present, leaving them to the engine", () => {
     expect(
       shouldStepUp(
         terrain([{ start: SPEC.hitboxFront + 0.2, height: 1 }]),
@@ -123,7 +123,7 @@ describe("shouldStepUp (ADR 0004)", () => {
     ).toBe(false);
   });
 
-  it("先読みの範囲より遠い段差にはまだ跳ばない", () => {
+  it("does not jump yet for a step beyond look-ahead range", () => {
     expect(
       shouldStepUp(
         terrain([

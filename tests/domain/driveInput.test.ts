@@ -27,7 +27,7 @@ describe("toDriveInput (ADR 0005)", () => {
     );
   });
 
-  it("前後の絶対値が 0.1 以下ならアクセル量は 0", () => {
+  it("throttle is 0 when the absolute forward/backward input is at most 0.1", () => {
     fc.assert(
       fc.property(
         fc.double({ min: -0.1, max: 0.1, noNaN: true }),
@@ -41,7 +41,7 @@ describe("toDriveInput (ADR 0005)", () => {
     );
   });
 
-  it("前後の絶対値が 0.5 以上なら全開 (符号は入力どおり)", () => {
+  it("throttle is full when the absolute forward/backward input is at least 0.5 (preserving the input sign)", () => {
     fc.assert(
       fc.property(
         fc.double({ min: 0.5, max: 1, noNaN: true }),
@@ -56,7 +56,7 @@ describe("toDriveInput (ADR 0005)", () => {
     );
   });
 
-  it("アクセル量は前後の値について単調非減少", () => {
+  it("throttle is monotonically nondecreasing with forward/backward input", () => {
     fc.assert(
       fc.property(axis, axis, (a, b) => {
         const [lo, hi] = a <= b ? [a, b] : [b, a];
@@ -69,7 +69,7 @@ describe("toDriveInput (ADR 0005)", () => {
     );
   });
 
-  it("スマホで大きく切っても、前に半分以上倒していれば全開 (スパイクの実測値)", () => {
+  it("throttle is full even with sharp steering on mobile when pushed at least halfway forward (measurements from the spike)", () => {
     expect(
       toDriveInput({ moveX: 0.9, moveY: 0.48, jump: false }).throttle,
     ).toBeCloseTo(0.96);
@@ -78,7 +78,7 @@ describe("toDriveInput (ADR 0005)", () => {
     ).toBe(1);
   });
 
-  it("左右の値はそのままハンドル量、ジャンプはハンドブレーキ", () => {
+  it("left/right input maps directly to steering, and jump maps to the handbrake", () => {
     fc.assert(
       fc.property(axis, fc.boolean(), (x, jump) => {
         const d = toDriveInput({ moveX: x, moveY: 0, jump });
