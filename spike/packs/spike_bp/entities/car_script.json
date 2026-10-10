@@ -33,8 +33,8 @@
         "value": 0.0
       },
       "minecraft:variable_max_auto_step": {
-        "base_value": 1.0625,
-        "jump_prevented_value": 1.0625
+        "base_value": 2.0625,
+        "jump_prevented_value": 2.0625
       },
       "minecraft:rideable": {
         "seat_count": 2,

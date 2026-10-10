@@ -7,7 +7,7 @@ const CFG = {
   accel: 0.015,
   brake: 0.04,
   drag: 0.008,
-  turnRate: 4.0, // deg/tick at full lock
+  turnRate: 6.0, // deg/tick at full lock
   grip: 0.3, // 速度ベクトルを向きへ寄せる割合 (1 = 滑らない)
   handbrakeGrip: 0.04,
   ramMinSpeed: 0.15, // これ未満の速度ではぶつかってもダメージなし
@@ -68,17 +68,37 @@ function stepScriptCar(car) {
   const steerFactor = Math.min(1, Math.abs(st.speed) / 0.15) * Math.sign(st.speed);
   st.yaw -= input.x * CFG.turnRate * steerFactor;
 
-  // エンジンの地面摩擦による減衰率を前 tick の結果から推定する
+  // 前 tick に与えた速度 (st.expected) のうち、どれだけ残ったかで摩擦と衝突を見分ける
   const v = car.getVelocity();
-  if (st.expected !== undefined && st.expected > 0.05 && car.isOnGround) {
-    const ratio = Math.max(0.3, Math.min(1, hlen(v) / st.expected));
-    st.friction = st.friction === undefined ? ratio : st.friction * 0.8 + ratio * 0.2;
+  const f = fwd(st.yaw);
+  const vLong = v.x * f.x + v.z * f.z;
+  st.blocked = false;
+  if (st.expected && car.isOnGround) {
+    const e = st.expected;
+    const limit = (st.friction ?? 0.55) * 0.5;
+    // 壁はエンジンが軸ごとに速度を 0 にするので、x・z の軸ごとに「与えた速度がほぼ消えたか」を見る
+    const axisBlocked = (ve, ee) => Math.abs(ee) > 0.03 && ve / ee < limit;
+    st.blocked = axisBlocked(v.x, e.x) || axisBlocked(v.z, e.z);
+    if (st.blocked) {
+      // 摩擦では説明できない減速 = 壁などに当たった。摩擦の推定は更新せず、内部速度を実際の前方速度まで落とす
+      if (Math.abs(vLong) < Math.abs(st.speed)) st.speed = vLong;
+    } else {
+      const eLen = Math.hypot(e.x, e.z);
+      if (eLen > 0.05) {
+        const ratio = (v.x * e.x + v.z * e.z) / (eLen * eLen); // 与えた方向に残った割合
+        const r = Math.max(0.5, Math.min(1, ratio));
+        st.friction = st.friction === undefined ? r : st.friction * 0.8 + r * 0.2;
+      }
+    }
   }
   const friction = st.friction ?? 0.55;
 
+  // 2 段の段差はエンジンの自動段差越えでは越えられないので、前方を先読みして手前で飛び乗る
+  if (input.y > 0.05 && st.speed >= 0 && car.isOnGround && tryStepUp(car, f, st.speed)) {
+    st.speed = Math.max(st.speed, 0.15);
+  }
+
   // 速度を前後成分と横成分に分け、横成分だけを grip で減衰させる (横滑りの表現)
-  const f = fwd(st.yaw);
-  const vLong = v.x * f.x + v.z * f.z;
   const vLatX = v.x - f.x * vLong;
   const vLatZ = v.z - f.z * vLong;
   const grip = input.handbrake ? CFG.handbrakeGrip : CFG.grip;
@@ -88,7 +108,7 @@ function stepScriptCar(car) {
   const nx = (f.x * st.speed + vLatX * keepLat) / friction;
   const nz = (f.z * st.speed + vLatZ * keepLat) / friction;
   car.applyImpulse({ x: (nx - v.x) * control, y: 0, z: (nz - v.z) * control });
-  st.expected = Math.hypot(nx, nz);
+  st.expected = { x: nx, z: nz };
   car.setRotation({ x: 0, y: st.yaw });
   if (Math.abs(st.speed) > CFG.ramMinSpeed) ram(car, f, st.speed, riders, driver);
 
@@ -107,6 +127,37 @@ function stepScriptCar(car) {
     );
   }
   return { st, v };
+}
+
+// 前方を先読みし、「2 段の段差 + その上に車が入る空間」が近づいたら上向きの速度を与える。
+// 斜めに近づくと車の角が先に当たるので、中心線と左右の端の 3 本で見る。
+// 1 段はエンジンに任せ、3 段以上は壁として扱う
+function tryStepUp(car, f, speed) {
+  const dim = car.dimension;
+  const p = car.location;
+  const right = { x: -f.z, z: f.x };
+  const solid = (ahead, side, dy) => {
+    const b = dim.getBlock({
+      x: p.x + f.x * ahead + right.x * side,
+      y: p.y + dy,
+      z: p.z + f.z * ahead + right.z * side,
+    });
+    return b !== undefined && !b.isAir && !b.isLiquid;
+  };
+  if (solid(0, 0, 2.5)) return false; // 頭上がふさがっている
+  const front = 0.7; // 車の前端
+  const lookahead = Math.max(0.3, speed * 4); // 4 tick 分先まで見る
+  for (let d = front + 0.1; d <= front + lookahead + 0.01; d += 0.2) {
+    for (const side of [0, -0.6, 0.6]) {
+      if (!solid(d, side, 0.5)) continue; // この線上にはまだ段差がない
+      if (!solid(d, side, 1.5)) continue; // 1 段 (エンジンに任せる)
+      if (solid(d, side, 2.5) || solid(d, side, 3.5)) return false; // 3 段以上 = 壁
+      car.applyImpulse({ x: f.x * 0.1, y: 0.62, z: f.z * 0.1 });
+      LOG(`step-up at (${p.x.toFixed(1)},${p.y.toFixed(1)},${p.z.toFixed(1)}) gap=${(d - front).toFixed(2)} side=${side} speed=${speed.toFixed(3)}`);
+      return true;
+    }
+  }
+  return false;
 }
 
 /** @type {Map<string, number>} target id -> 最後にダメージを与えた tick */
@@ -217,7 +268,9 @@ async function autotest() {
     return;
   }
   const gy = top.location.y + 1;
-  dim.runCommand(`fill 0 ${gy} 0 120 ${gy + 6} 40 air`);
+  // fill は 1 回 32768 ブロックまでなので分割する
+  dim.runCommand(`fill 0 ${gy} 0 60 ${gy + 6} 40 air`);
+  dim.runCommand(`fill 61 ${gy} 0 120 ${gy + 6} 40 air`);
   dim.runCommand(`fill 0 ${gy - 1} 0 120 ${gy - 1} 40 stone`);
   dim.runCommand(`fill 60 ${gy} 0 120 ${gy} 40 stone`); // x=60 から 1 段高い
   dim.runCommand(`kill @e[type=${SCRIPT_CAR}]`);
@@ -291,6 +344,60 @@ async function autotest() {
   LOG(`T3 ram: cowHp ${hp0} -> ${hp1} pushedX=${pushed.toFixed(2)} cowAlive=${cow.isValid}`);
   car3.remove();
   if (cow.isValid) cow.remove();
+
+  // テスト 4: 高さ 4 の壁に斜め 20° で全速力で突っ込み、横に飛ばないかを見る
+  dim.runCommand(`fill 45 ${gy} 20 45 ${gy + 3} 40 stone`);
+  const car4 = dim.spawnEntity(SCRIPT_CAR, { x: 20.5, y: gy, z: 24.5 });
+  cars.set(car4.id, { speed: 0, yaw: -70 });
+  car4.setRotation({ x: 0, y: -70 });
+  virtualInput.set(car4.id, { x: 0, y: 1, handbrake: false });
+  let maxLatAfterHit = 0;
+  let hitTick = -1;
+  let blockedCount = 0;
+  for (let t = 0; t < 120; t++) {
+    await wait(1);
+    const st4 = cars.get(car4.id);
+    if (st4.blocked) blockedCount++;
+    if (hitTick < 0 && car4.location.x > 43.5) hitTick = t;
+    if (hitTick >= 0) {
+      const v4 = car4.getVelocity();
+      maxLatAfterHit = Math.max(maxLatAfterHit, Math.abs(v4.z));
+    }
+  }
+  LOG(`T4 wall: hitTick=${hitTick} x=${car4.location.x.toFixed(2)} maxSideSpeedAfterHit=${maxLatAfterHit.toFixed(3)} blockedTicks=${blockedCount} speedState=${cars.get(car4.id).speed.toFixed(3)} friction=${cars.get(car4.id).friction?.toFixed(3)}`);
+  car4.remove();
+
+  // テスト 5: 高さ 2 の段差を越えられるか
+  dim.runCommand(`fill 30 ${gy} 3 40 ${gy + 1} 8 stone`);
+  const car5 = dim.spawnEntity(SCRIPT_CAR, { x: 5.5, y: gy, z: 5.5 });
+  cars.set(car5.id, { speed: 0, yaw: -90 });
+  car5.setRotation({ x: 0, y: -90 });
+  virtualInput.set(car5.id, { x: 0, y: 1, handbrake: false });
+  let maxY = gy;
+  for (let t = 0; t < 100; t++) {
+    await wait(1);
+    maxY = Math.max(maxY, car5.location.y);
+    if (car5.location.x > 33) break;
+  }
+  LOG(`T5 step2: x=${car5.location.x.toFixed(2)} maxY=${maxY.toFixed(2)} (ground ${gy}) climbed2=${maxY >= gy + 1.9}`);
+  car5.remove();
+
+  // テスト 6: 2 段の段差に斜め 30° で近づく (車の角が先に当たるケース)
+  dim.runCommand(`fill 100 ${gy + 1} 0 100 ${gy + 2} 40 stone`);
+  const car6 = dim.spawnEntity(SCRIPT_CAR, { x: 80.5, y: gy + 1, z: 10.5 }); // x>=60 は 1 段高い
+  cars.set(car6.id, { speed: 0, yaw: -60 });
+  car6.setRotation({ x: 0, y: -60 });
+  virtualInput.set(car6.id, { x: 0, y: 1, handbrake: false });
+  let maxY6 = car6.location.y;
+  let minSpeedNearStep = 1;
+  for (let t = 0; t < 120; t++) {
+    await wait(1);
+    maxY6 = Math.max(maxY6, car6.location.y);
+    if (car6.location.x > 97 && car6.location.x < 100.5) minSpeedNearStep = Math.min(minSpeedNearStep, hlen(car6.getVelocity()));
+    if (car6.location.x > 102) break;
+  }
+  LOG(`T6 step2 diagonal: x=${car6.location.x.toFixed(2)} maxY=${maxY6.toFixed(2)} (base ${gy + 1}) climbed2=${maxY6 >= gy + 2.9} minSpeedNearStep=${minSpeedNearStep.toFixed(3)}`);
+  car6.remove();
   virtualInput.clear();
   LOG("autotest done");
 }
