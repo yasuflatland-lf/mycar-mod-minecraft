@@ -3,12 +3,28 @@
 import type { Vec2, Vec3 } from "../shared/vec";
 import { SPEC } from "./spec";
 
-export interface RamTarget { id: string; offset: Vec3; protectedOccupant: boolean }
-export interface RamHit { id: string; damage: number; push: Vec2; pushUp: number }
+export interface RamTarget {
+  id: string;
+  offset: Vec3;
+  protectedOccupant: boolean;
+}
+export interface RamHit {
+  id: string;
+  damage: number;
+  push: Vec2;
+  pushUp: number;
+}
 
-export const ramDamage = (speed: number): number => Math.max(1, Math.round(Math.abs(speed) * SPEC.ramDamagePerSpeed));
+export const ramDamage = (speed: number): number =>
+  Math.max(1, Math.round(Math.abs(speed) * SPEC.ramDamagePerSpeed));
 
-export function selectHits(f: Vec2, speed: number, targets: readonly RamTarget[], lastHit: ReadonlyMap<string, number>, tick: number): RamHit[] {
+export function selectHits(
+  f: Vec2,
+  speed: number,
+  targets: readonly RamTarget[],
+  lastHit: ReadonlyMap<string, number>,
+  tick: number,
+): RamHit[] {
   if (Math.abs(speed) <= SPEC.ramMinSpeed) return [];
   const dir = Math.sign(speed);
   const reach = SPEC.bodyFront + SPEC.targetHalfWidth;
@@ -23,7 +39,12 @@ export function selectHits(f: Vec2, speed: number, targets: readonly RamTarget[]
     const last = lastHit.get(t.id);
     if (last !== undefined && tick - last < SPEC.ramCooldown) continue;
     const push = SPEC.ramPushBase + Math.abs(speed) * SPEC.ramPushPerSpeed;
-    hits.push({ id: t.id, damage: ramDamage(speed), push: { x: f.x * dir * push, z: f.z * dir * push }, pushUp: SPEC.ramPushUp });
+    hits.push({
+      id: t.id,
+      damage: ramDamage(speed),
+      push: { x: f.x * dir * push, z: f.z * dir * push },
+      pushUp: SPEC.ramPushUp,
+    });
   }
   return hits;
 }
