@@ -1,0 +1,15 @@
+// src/domain/vehicle/driveInput.ts
+import { clamp } from "../shared/vec";
+import { SPEC } from "./spec";
+
+export interface RawInput { moveX: number; moveY: number; jump: boolean }
+export interface DriveInput { throttle: number; steer: number; handbrake: boolean }
+
+export const NEUTRAL_INPUT: DriveInput = { throttle: 0, steer: 0, handbrake: false };
+
+/** 移動ベクトルとジャンプを、アクセル量・ハンドル量・ハンドブレーキに変換する (ADR 0005)。 */
+export function toDriveInput(raw: RawInput): DriveInput {
+  const y = raw.moveY;
+  const throttle = Math.abs(y) <= SPEC.throttleDeadzone ? 0 : Math.sign(y) * Math.min(1, Math.abs(y) / SPEC.throttleFullAt);
+  return { throttle, steer: clamp(raw.moveX, -1, 1), handbrake: raw.jump };
+}
