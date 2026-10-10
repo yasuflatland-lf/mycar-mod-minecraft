@@ -1,24 +1,24 @@
-# 0008. 車の出し入れ
+# 0008. Placing and picking up vehicles
 
-- 状態: 承認
-- 日付: 2026-10-10
+- Status: Accepted
+- Date: 2026-10-10
 
-## 状況
+## Context
 
-サバイバルで車を手に入れて、しまえるようにしたい。車は無敵（0006）なので、普通の攻撃では壊せない。回収の操作として、「スニーク + 素手で使う」「スニーク + 殴る」「何回か殴ると壊れる」を比べ、トロッコやボートと同じく殴って回収する方式を選んだ。
+In survival, players should be able to obtain a vehicle and put it away. The vehicle is invulnerable (0006), so ordinary attacks cannot break it. For picking it up we compared "sneak + use with an empty hand", "sneak + punch", and "breaks after a few punches", and chose punching to pick it up, the same as minecarts and boats.
 
-壊したときに乗員がいた場合の扱いと、乗員が自分の車を殴った場合の扱いは、要件で決まっていなかった。
+The requirements did not say what happens when the vehicle is broken with occupants inside, or when an occupant punches their own vehicle.
 
-## 決定
+## Decision
 
-- 車のアイテムはクラフトで作る。地面に使うと、アイテムを 1 つ消費して車を 1 台出す
-- プレイヤーが車を 3 回殴ると、車を消して車のアイテムを 1 つ落とす。回数は設定値にする
-- 殴られたことは `world.afterEvents.entityHitEntity` で検出する。車の `damage_sensor` はすべてのダメージを無効にしたままにする
-- 乗員がいる間は、殴られても回数に数えない（壊れない）。したがって、乗員が自分の車を殴っても壊れない
-- しばらく殴られなければ回数を 0 に戻す（100 tick）
+- The vehicle item is crafted. Using it on the ground consumes one item and places one vehicle
+- When a player punches a vehicle three times, remove the vehicle and drop one vehicle item. The count is a tuning value
+- Detect punches with `world.afterEvents.entityHitEntity`. Keep the vehicle's `damage_sensor` cancelling all damage
+- While the vehicle has occupants, punches are not counted (it does not break). So an occupant punching their own vehicle does not break it
+- Reset the count to 0 if the vehicle is not punched for a while (100 ticks)
 
-## 結果
+## Consequences
 
-- 戦闘中に誤って壊す可能性はある。乗員がいる車は壊れないので、運転中に壊れることはない
-- クラフトの材料は実装計画で決める。サブプロジェクト 3 で、このレシピを Workstation のレシピに置き換える
-- `entityHitEntity` が、ダメージを無効にした車への攻撃でも発火するかは、実装の初めに確かめる
+- A vehicle can still be broken by accident during combat. A vehicle with occupants does not break, so it never breaks while being driven
+- The crafting ingredients are decided in the implementation plan. Sub-project 3 replaces this recipe with a Workstation recipe
+- Whether `entityHitEntity` fires for attacks on a vehicle whose damage is cancelled is to be confirmed at the start of implementation
