@@ -1,4 +1,3 @@
-// src/infrastructure/persistence/inMemoryVehicleRepository.ts
 // Aggregates live only in memory. They are lost when the script reloads, and DriveVehicles rebuilds them (ADR 0012).
 import type { Vehicle } from "../../domain/vehicle/vehicle";
 import type { VehicleRepository } from "../../domain/vehicle/vehicleRepository";

@@ -1,4 +1,3 @@
-// src/infrastructure/bedrock/bedrockVehicleWorld.ts
 // Implements the ports with @minecraft/server (ADR 0012).
 import {
   ButtonState,
@@ -19,10 +18,10 @@ import type { Vec3 } from "../../domain/shared/vec";
 import type { RamHit, RamTarget } from "../../domain/vehicle/ram";
 import type { RiderView } from "../../domain/vehicle/vehicle";
 import type { TestInputStore } from "../testInput/testInputStore";
-import { ITEM_TYPE, VEHICLE_TYPE } from "./identifiers";
+import { ITEM_TYPE, PLAYER_TYPE, VEHICLE_TYPE } from "./identifiers";
 
 const DIMENSIONS = ["overworld", "nether", "the_end"] as const;
-const isPlayer = (e: Entity): e is Player => e.typeId === "minecraft:player";
+const isPlayer = (e: Entity): e is Player => e.typeId === PLAYER_TYPE;
 
 export class BedrockVehicleWorld
   implements DriveWorld, PlacementWorld, BreakWorld
@@ -83,14 +82,14 @@ export class BedrockVehicleWorld
       });
   }
 
-  solidAt(vehicleId: string, o: Vec3): boolean {
+  solidAt(vehicleId: string, offset: Vec3): boolean {
     const car = this.entity(vehicleId);
     if (!car) return false;
     try {
       const b = car.dimension.getBlock({
-        x: car.location.x + o.x,
-        y: car.location.y + o.y,
-        z: car.location.z + o.z,
+        x: car.location.x + offset.x,
+        y: car.location.y + offset.y,
+        z: car.location.z + offset.z,
       });
       return b !== undefined && !b.isAir && !b.isLiquid;
     } catch {

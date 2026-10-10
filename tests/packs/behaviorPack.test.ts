@@ -1,4 +1,3 @@
-// tests/packs/behaviorPack.test.ts
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { SEAT_POSITIONS } from "../../src/domain/vehicle/seats";
@@ -6,6 +5,9 @@ import { SEAT_POSITIONS } from "../../src/domain/vehicle/seats";
 const read = (p: string) => JSON.parse(readFileSync(p, "utf8"));
 const c = read("packs/mycar_bp/entities/suv.json")["minecraft:entity"]
   .components;
+const recipe = read("packs/mycar_bp/recipes/suv_item.json")[
+  "minecraft:recipe_shaped"
+];
 
 describe("packs/mycar_bp", () => {
   it("has a collision box 1.8 wide and 1.6 high (ADR 0009)", () => {
@@ -39,16 +41,10 @@ describe("packs/mycar_bp", () => {
       read("packs/mycar_bp/items/suv_item.json")["minecraft:item"].description
         .identifier,
     ).toBe("mycar:suv_item");
-    expect(
-      read("packs/mycar_bp/recipes/suv_item.json")["minecraft:recipe_shaped"]
-        .result.item,
-    ).toBe("mycar:suv_item");
+    expect(recipe.result.item).toBe("mycar:suv_item");
   });
 
   it("the recipe is unlocked from the start (BDS does not load the recipe without unlock)", () => {
-    expect(
-      read("packs/mycar_bp/recipes/suv_item.json")["minecraft:recipe_shaped"]
-        .unlock,
-    ).toEqual({ context: "AlwaysUnlocked" });
+    expect(recipe.unlock).toEqual({ context: "AlwaysUnlocked" });
   });
 });

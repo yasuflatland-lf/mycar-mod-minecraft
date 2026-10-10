@@ -1,4 +1,3 @@
-// tests/infrastructure/inMemoryVehicleRepository.test.ts
 import { describe, expect, it } from "vitest";
 import { Vehicle } from "../../src/domain/vehicle/vehicle";
 import { InMemoryVehicleRepository } from "../../src/infrastructure/persistence/inMemoryVehicleRepository";

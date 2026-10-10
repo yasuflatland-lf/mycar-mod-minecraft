@@ -1,4 +1,3 @@
-// src/infrastructure/bootstrap.ts
 // Composition root: wires the repository, port implementations, and use cases together.
 import { DriveVehicles } from "../application/driveVehicles";
 import { HitVehicle } from "../application/hitVehicle";
