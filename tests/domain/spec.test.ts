@@ -1,4 +1,3 @@
-// tests/domain/spec.test.ts
 import { describe, expect, it } from "vitest";
 import { SPEC } from "../../src/domain/vehicle/spec";
 
