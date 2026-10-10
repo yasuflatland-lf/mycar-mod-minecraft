@@ -32,7 +32,9 @@ describe("selectHits (ADR 0006)", () => {
   const reach = SPEC.bodyFront + SPEC.targetHalfWidth;
 
   it("前方の判定範囲にいる相手には当たり、進行方向へ押し出す", () => {
-    fc.assert(fc.property(yaw, fastSpeed, fc.double({ min: 0, max: reach, noNaN: true }), fc.double({ min: -1.4, max: 1.4, noNaN: true }), (y, s, ahead, side) => {
+    // 境界ちょうどの相手は forward と rightOf の丸め誤差で範囲の外になりうるので、両端から少し内側だけを生成する
+    const inside = fc.double({ min: 1e-6, max: reach - 1e-6, noNaN: true });
+    fc.assert(fc.property(yaw, fastSpeed, inside, fc.double({ min: -1.4, max: 1.4, noNaN: true }), (y, s, ahead, side) => {
       const hits = selectHits(forward(y), s, [at(y, ahead, side)], new Map(), 0);
       expect(hits).toHaveLength(1);
       const f = forward(y);
