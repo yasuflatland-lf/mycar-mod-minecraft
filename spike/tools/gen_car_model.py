@@ -5,6 +5,7 @@ Y 軸まわりに 180° 回す。Bedrock ではエンティティの正面がモ
 ボーン名は規約どおり: root / body / wheel_fl / wheel_fr / wheel_rl / wheel_rr / seat_0..3。
 """
 import json
+import math
 import struct
 import sys
 import zlib
@@ -24,6 +25,7 @@ PALETTE = {
     "tail": (170, 30, 30),
     "glass": (40, 52, 60),
     "gauge": (225, 225, 215),
+    "amber": (235, 150, 30),
 }
 NAMES = list(PALETTE)
 
@@ -45,14 +47,6 @@ body = [
     box(-13, 7, 13, 13, 17, 25, "body"),
     # フロントバンパー
     box(-15, 3, 25, 15, 7, 28, "trim"),
-    # グリル (縦スロット 6 本 + 枠)
-    box(-8, 8, 25, 8, 9, 26, "body"),
-    box(-8, 15, 25, 8, 16, 26, "body"),
-    *[box(-8 + i * 3, 9, 25, -7 + i * 3, 15, 26, "body") for i in range(6)],
-    box(-7, 9, 25.5, 8, 15, 26, "grille"),
-    # 丸目ヘッドライト (近似)
-    box(-12, 10, 25, -9, 14, 26, "light"),
-    box(9, 10, 25, 12, 14, 26, "light"),
     # ダッシュボード
     box(-12, 13, 10, 12, 17, 13, "trim"),
     # フロントガラスの下枠と A ピラー
@@ -84,6 +78,9 @@ body = [
     box(-13, 27, -26, 13, 29, -25, "body"),
     box(12, 9, -26.2, 13, 13, -25.8, "tail"),
     box(-13, 9, -26.2, -12, 13, -25.8, "tail"),
+    # マフラー (右後ろ = +x 側、バンパーの下から後ろへ突き出す)
+    box(8, 3.5, -28, 10, 5.5, -22, "trim"),
+    box(7.75, 3.25, -28.5, 10.25, 5.75, -28, "rim"),
     # 背面のスペアタイヤ
     box(-5, 9, -29, 5, 19, -26, "tire"),
     box(-2, 12, -29.3, 2, 16, -29, "rim"),
@@ -104,8 +101,11 @@ body = [
     box(-11, 10, -18, 11, 19, -17, "seat"),
 ]
 
-# ハンドル (+x 側。ゲーム内では右ハンドルとして表示される)。運転者側へ 20° 傾けた輪で、車内の暗さに埋もれないよう明るい灰色にする
-WHEEL_PIVOT = [6, 18.5, 9.5]
+# ハンドル (+x 側。ゲーム内では右ハンドルとして表示される)。小さなブロックを円周上に並べて丸く見せ、
+# 運転者側へ 20° 傾ける。車内の暗さに埋もれないよう明るい灰色にする
+WHEEL_CENTER = (6.0, 16.5)  # (x, y)
+WHEEL_PIVOT = [WHEEL_CENTER[0], WHEEL_CENTER[1], 9.5]
+WHEEL_RADIUS = 2.4
 
 
 def tilted(cube):
@@ -114,15 +114,67 @@ def tilted(cube):
     return cube
 
 
+def small(cx, cy, w, h, color, z0=9.0, z1=9.8):
+    return tilted(box(cx - w / 2, cy - h / 2, z0, cx + w / 2, cy + h / 2, z1, color))
+
+
+cx, cy = WHEEL_CENTER
 steering = [
-    tilted(box(2.5, 21, 9, 9.5, 22, 10, "rim")),  # 上
-    tilted(box(2.5, 15, 9, 9.5, 16, 10, "rim")),  # 下
-    tilted(box(2.5, 16, 9, 3.5, 21, 10, "rim")),  # 右
-    tilted(box(8.5, 16, 9, 9.5, 21, 10, "rim")),  # 左
-    tilted(box(5, 17.5, 9.2, 7, 19.5, 10.2, "trim")),  # 中心
-    tilted(box(5.5, 18, 10.2, 6.5, 19, 11, "trim")),  # コラム
+    small(cx + WHEEL_RADIUS * math.cos(math.radians(a)), cy + WHEEL_RADIUS * math.sin(math.radians(a)), 1.0, 1.0, "rim")
+    for a in range(0, 360, 30)
+]
+steering += [
+    small(cx, cy, 1.4, 1.4, "trim", 9.1, 9.9),  # 中心
+    small(cx - 1.2, cy, 1.2, 0.5, "rim"),  # スポーク (右)
+    small(cx + 1.2, cy, 1.2, 0.5, "rim"),  # スポーク (左)
+    small(cx, cy - 1.2, 0.5, 1.2, "rim"),  # スポーク (下)
+    small(cx, cy, 0.8, 0.8, "trim", 9.9, 11.0),  # コラム
 ]
 body += steering
+
+FRONT = 25  # ボンネット前面の z
+
+
+def round_lamp(cx, cy, r, ring, lens, z0, z1):
+    """小さなブロックを円周上に並べた縁 + 十字形のレンズで、丸いランプに見せる。"""
+    cubes = [
+        box(cx + r * math.cos(math.radians(a)) - 0.5, cy + r * math.sin(math.radians(a)) - 0.5, z0,
+            cx + r * math.cos(math.radians(a)) + 0.5, cy + r * math.sin(math.radians(a)) + 0.5, z1, ring)
+        for a in range(0, 360, 30)
+    ]
+    k = r * 0.75
+    cubes += [
+        box(cx - k, cy - k * 0.55, z0, cx + k, cy + k * 0.55, z1 + 0.05, lens),
+        box(cx - k * 0.55, cy - k, z0, cx + k * 0.55, cy + k, z1 + 0.05, lens),
+    ]
+    return cubes
+
+
+# 丸目ヘッドライト (左右)
+for side in (+1, -1):
+    body += round_lamp(10.3 * side, 12.3, 2.3, "trim", "light", FRONT, FRONT + 0.6)
+
+# 縦スロットのグリル: 黒い背板の上に車体色の桟を並べ、すき間を黒いスロットに見せる
+SLOTS, SLOT_W, BAR_W = 8, 1.1, 0.6
+grille_w = SLOTS * SLOT_W + (SLOTS + 1) * BAR_W
+gx0 = -grille_w / 2
+body += [
+    box(gx0, 8.5, FRONT, -gx0, 16.5, FRONT + 0.2, "grille"),  # 背板
+    box(gx0 - 0.5, 16.5, FRONT, -gx0 + 0.5, 17, FRONT + 0.6, "body"),  # 上枠
+    box(gx0 - 0.5, 8, FRONT, -gx0 + 0.5, 8.5, FRONT + 0.6, "body"),  # 下枠
+]
+for i in range(SLOTS + 1):
+    x = gx0 + i * (SLOT_W + BAR_W)
+    body.append(box(x, 8.5, FRONT + 0.2, x + BAR_W, 16.5, FRONT + 0.6, "body"))
+
+# ウィンカー (前のフェンダーの角、オレンジ)
+for side in (+1, -1):
+    x0, x1 = sorted((13.5 * side, 15.5 * side))
+    body.append(box(x0, 12.2, 24, x1, 13.8, 24.3, "amber"))
+
+# フォグランプ (バンパーの左右下)
+for side in (+1, -1):
+    body += [box(11.0 * side - 1, 4, 28, 11.0 * side + 1, 6, 28.2, "light")]
 
 # メーター (ハンドルの奥、ダッシュボードの運転者側の面)。丸目 2 つ + 赤い針
 body += [
@@ -172,7 +224,8 @@ geo = {
             },
             "bones": [
                 {"name": "root", "pivot": [0, 0, 0]},
-                {"name": "body", "parent": "root", "pivot": [0, 7, 0], "cubes": body},
+                {"name": "body", "parent": "root", "pivot": [0, 7, 0], "cubes": body,
+                 "locators": {"exhaust": [9, 4.5, -28.6]}},
                 wheel("wheel_fl", +1, 17),
                 wheel("wheel_fr", -1, 17),
                 wheel("wheel_rl", +1, -16),
@@ -192,6 +245,8 @@ def turn_around(bones):
     for bone in bones:
         if "pivot" in bone:
             bone["pivot"] = [-bone["pivot"][0], bone["pivot"][1], -bone["pivot"][2]]
+        for name, (lx, ly, lz) in bone.get("locators", {}).items():
+            bone["locators"][name] = [-lx, ly, -lz]
         for cube in bone.get("cubes", []):
             (x, y, z), (w, h, d) = cube["origin"], cube["size"]
             cube["origin"] = [-(x + w), y, -(z + d)]
