@@ -1,4 +1,4 @@
-// src/main.ts (#12 で置き換える)
-import { system } from "@minecraft/server";
+// src/main.ts
+import { bootstrap } from "./infrastructure/bootstrap";
 
-system.run(() => console.warn("[mycar] loaded"));
+bootstrap();
