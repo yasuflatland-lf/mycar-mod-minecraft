@@ -4,32 +4,78 @@
     "animation.mycar.suv.wheels": {
       "loop": true,
       "bones": {
-        "wheel_fl": { "rotation": ["-query.modified_distance_moved * 152.8", 0, 0] },
-        "wheel_fr": { "rotation": ["-query.modified_distance_moved * 152.8", 0, 0] },
-        "wheel_rl": { "rotation": ["-query.modified_distance_moved * 152.8", 0, 0] },
-        "wheel_rr": { "rotation": ["-query.modified_distance_moved * 152.8", 0, 0] }
+        "wheel_fl": {
+          "rotation": ["-query.modified_distance_moved * 152.8", 0, 0]
+        },
+        "wheel_fr": {
+          "rotation": ["-query.modified_distance_moved * 152.8", 0, 0]
+        },
+        "wheel_rl": {
+          "rotation": ["-query.modified_distance_moved * 152.8", 0, 0]
+        },
+        "wheel_rr": {
+          "rotation": ["-query.modified_distance_moved * 152.8", 0, 0]
+        }
       }
     },
     "animation.mycar.suv.exhaust": {
       "loop": true,
       "animation_length": 0.2,
-      "particle_effects": { "0.0": { "effect": "exhaust", "locator": "exhaust" } }
+      "particle_effects": {
+        "0.0": { "effect": "exhaust", "locator": "exhaust" }
+      }
     },
     "animation.mycar.suv.door_fr": {
       "animation_length": 1.2,
-      "bones": { "door_fr": { "rotation": { "0.0": [0, 0, 0], "0.3": [0, 70, 0], "0.8": [0, 70, 0], "1.2": [0, 0, 0] } } }
+      "bones": {
+        "door_fr": {
+          "rotation": {
+            "0.0": [0, 0, 0],
+            "0.3": [0, 70, 0],
+            "0.8": [0, 70, 0],
+            "1.2": [0, 0, 0]
+          }
+        }
+      }
     },
     "animation.mycar.suv.door_rr": {
       "animation_length": 1.2,
-      "bones": { "door_rr": { "rotation": { "0.0": [0, 0, 0], "0.3": [0, 70, 0], "0.8": [0, 70, 0], "1.2": [0, 0, 0] } } }
+      "bones": {
+        "door_rr": {
+          "rotation": {
+            "0.0": [0, 0, 0],
+            "0.3": [0, 70, 0],
+            "0.8": [0, 70, 0],
+            "1.2": [0, 0, 0]
+          }
+        }
+      }
     },
     "animation.mycar.suv.door_fl": {
       "animation_length": 1.2,
-      "bones": { "door_fl": { "rotation": { "0.0": [0, 0, 0], "0.3": [0, -70, 0], "0.8": [0, -70, 0], "1.2": [0, 0, 0] } } }
+      "bones": {
+        "door_fl": {
+          "rotation": {
+            "0.0": [0, 0, 0],
+            "0.3": [0, -70, 0],
+            "0.8": [0, -70, 0],
+            "1.2": [0, 0, 0]
+          }
+        }
+      }
     },
     "animation.mycar.suv.door_rl": {
       "animation_length": 1.2,
-      "bones": { "door_rl": { "rotation": { "0.0": [0, 0, 0], "0.3": [0, -70, 0], "0.8": [0, -70, 0], "1.2": [0, 0, 0] } } }
+      "bones": {
+        "door_rl": {
+          "rotation": {
+            "0.0": [0, 0, 0],
+            "0.3": [0, -70, 0],
+            "0.8": [0, -70, 0],
+            "1.2": [0, 0, 0]
+          }
+        }
+      }
     }
   }
 }
