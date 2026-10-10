@@ -1,5 +1,5 @@
 // src/domain/vehicle/vehicle.ts
-// 集約: 1 台の車。走行の状態・運転者・座席・衝突の再ダメージの記録・殴られた回数を持つ。
+// Aggregate: one vehicle. Holds the motion state, the driver, the seats, the record of repeat ram damage, and the hit count.
 import { forward, rightOf, type Vec2, type Vec3 } from "../shared/vec";
 import { NEUTRAL_INPUT, type RawInput, toDriveInput } from "./driveInput";
 import type { VehicleEvent } from "./events";
@@ -25,13 +25,13 @@ export interface RiderView {
 export interface TickContext {
   tick: number;
   riders: readonly RiderView[];
-  /** 運転者がいないときだけ使う入力 (ゲーム内テスト用)。 */
+  /** Input used only when there is no driver (for in-game tests). */
   testInput?: RawInput;
   velocity: Vec2;
   onGround: boolean;
-  /** 車の位置からの相対位置がふさがっているか。 */
+  /** Whether the position relative to the vehicle is blocked. */
   solidAt(offset: Vec3): boolean;
-  /** 周りの相手。速度が衝突の下限を超えたときだけ呼ばれる。 */
+  /** Nearby targets. Called only when the speed exceeds the ram threshold. */
   targets(): readonly RamTarget[];
 }
 
@@ -81,7 +81,7 @@ export class Vehicle {
     );
     this.seats = seats;
 
-    // 運転者 = 運転席 (座席 0) にいる人 (ADR 0007)
+    // Driver = the rider in the driver's seat (seat 0) (ADR 0007)
     const driver = ctx.riders.find((r) => seats.get(r.id) === 0);
     if (
       driver &&
@@ -141,7 +141,7 @@ export class Vehicle {
     };
   }
 
-  /** プレイヤーに殴られた。壊れたら VehicleBroken を返す (ADR 0008)。 */
+  /** Hit by a player. Returns VehicleBroken when the vehicle breaks (ADR 0008). */
   receiveHit(tick: number): VehicleEvent[] {
     const r = registerHit(this.hitCounter, tick, this.seats.size > 0);
     this.hitCounter = r.counter;
