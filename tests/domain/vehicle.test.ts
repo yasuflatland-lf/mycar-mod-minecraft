@@ -1,9 +1,17 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { forward, leftOf, type Vec2 } from "../../src/domain/shared/vec";
+import {
+  dot,
+  forward,
+  leftOf,
+  normalizeYaw,
+  type Vec2,
+  type Vec3,
+} from "../../src/domain/shared/vec";
 import type { RawInput } from "../../src/domain/vehicle/driveInput";
 import type { RamTarget } from "../../src/domain/vehicle/ram";
 import { SEAT_POSITIONS } from "../../src/domain/vehicle/seats";
+import { SPEC } from "../../src/domain/vehicle/spec";
 import {
   type RiderView,
   type TickContext,
@@ -22,6 +30,32 @@ function seatOffset(yaw: number, seat: number): Vec2 {
   return { x: l.x * s.x + f.x * s.z, z: l.z * s.x + f.z * s.z };
 }
 
+/** Signed difference a - b wrapped into [-180, 180). */
+function yawDiff(a: number, b: number): number {
+  return ((((a - b) % 360) + 540) % 360) - 180;
+}
+
+/**
+ * A step `height` blocks tall, 3 deep and 3 wide, centered on the line along
+ * `yaw` from the origin and starting `distance` blocks ahead. `p` is in world
+ * space, y from the feet of the vehicle. The narrow width makes a probe that
+ * maps vehicle axes to the wrong world axes miss the step.
+ */
+function stepAhead(yaw: number, distance: number, height: number) {
+  const f = forward(yaw);
+  return (p: Vec3) => {
+    const ahead = dot({ x: p.x, z: p.z }, f);
+    const side = dot({ x: p.x, z: p.z }, leftOf(f));
+    return (
+      ahead >= distance &&
+      ahead < distance + 3 &&
+      Math.abs(side) <= 1.5 &&
+      p.y >= 0 &&
+      p.y < height
+    );
+  };
+}
+
 /** A world with one vehicle, driven by the simplified engine model. */
 class Sim {
   pos: Vec2 = { x: 0, z: 0 };
@@ -32,6 +66,9 @@ class Sim {
   targets: RamTarget[] = [];
   hits: string[] = [];
   events: string[] = [];
+  impulseY: number[] = [];
+  /** Whether the world point is solid (world axes, y from the vehicle's feet). */
+  solid: (p: Vec3) => boolean = () => false;
 
   run(v: Vehicle, ticks: number, from = 0) {
     for (let t = from; t < from + ticks; t++) {
@@ -47,7 +84,8 @@ class Sim {
         testInput: this.testInput,
         velocity: this.vel,
         onGround: true,
-        solidAt: () => false,
+        solidAt: (o) =>
+          this.solid({ x: this.pos.x + o.x, y: o.y, z: this.pos.z + o.z }),
         targets: () => this.targets,
       };
       const out = v.tick(ctx);
@@ -59,6 +97,7 @@ class Sim {
       this.pos = r.body.pos;
       this.vel = r.body.vel;
       this.yaw = out.yaw;
+      this.impulseY.push(out.impulse.y);
       this.hits.push(...out.hits.map((h) => h.id));
       this.events.push(
         ...out.events.map((e) =>
@@ -90,6 +129,73 @@ describe("Vehicle (aggregate)", () => {
     const v = Vehicle.create("car", 0);
     sim.run(v, 1);
     expect(v.yaw).toBeCloseTo(120);
+  });
+
+  it("keeps the heading when a seated driver looks around while stopped", () => {
+    fc.assert(
+      fc.property(
+        fc.double({ min: -180, max: 180, noNaN: true }),
+        fc.array(fc.double({ min: -180, max: 180, noNaN: true }), {
+          minLength: 1,
+          maxLength: 5,
+        }),
+        (boardYaw, laterYaws) => {
+          const sim = new Sim();
+          const v = Vehicle.create("car", 0);
+          sim.riders = [{ id: "d", seat: 0, yaw: boardYaw, raw: IDLE }];
+          sim.run(v, 1);
+          laterYaws.forEach((yaw, i) => {
+            sim.riders = [{ id: "d", seat: 0, yaw, raw: IDLE }];
+            sim.run(v, 1, i + 1);
+          });
+          expect(yawDiff(v.yaw, boardYaw)).toBeCloseTo(0);
+        },
+      ),
+    );
+  });
+
+  it("does not snap a moving vehicle's heading to a new driver's view", () => {
+    fc.assert(
+      fc.property(
+        fc.double({ min: 10, max: 350, noNaN: true }),
+        (viewOffset) => {
+          const sim = new Sim();
+          const v = Vehicle.create("car", 0);
+          sim.riders = [{ id: "d", seat: 0, yaw: 0, raw: FORWARD }];
+          sim.run(v, 20);
+          expect(Math.abs(v.speed)).toBeGreaterThan(SPEC.mountAlignSpeed);
+          sim.riders = [
+            { id: "e", seat: 0, yaw: normalizeYaw(viewOffset), raw: FORWARD },
+          ];
+          sim.run(v, 1, 20);
+          expect(yawDiff(v.yaw, 0)).toBeCloseTo(0);
+        },
+      ),
+    );
+  });
+
+  it("jumps up a two-block step ahead in any heading, but never at a three-block wall", () => {
+    fc.assert(
+      fc.property(fc.double({ min: -180, max: 180, noNaN: true }), (yaw) => {
+        const stepDistance = 8;
+        const drive = (height: number) => {
+          const sim = new Sim();
+          sim.yaw = yaw;
+          sim.solid = stepAhead(yaw, stepDistance, height);
+          sim.riders = [{ id: "d", seat: 0, yaw, raw: FORWARD }];
+          // From standstill the look-ahead first reaches the step on tick 19,
+          // and the car is still short of it, so a probe can only find the
+          // step by looking ahead, not by standing inside it.
+          sim.run(Vehicle.create("car", yaw), 19);
+          expect(dot(sim.pos, forward(yaw))).toBeLessThan(
+            stepDistance - SPEC.hitboxFront,
+          );
+          return sim.impulseY;
+        };
+        expect(drive(2)).toContain(SPEC.stepVelocity);
+        expect(drive(3).every((y) => y === 0)).toBe(true);
+      }),
+    );
   });
 
   it("when the driver disappears (e.g. disconnects), emits the driver's door event once and the vehicle coasts to a stop", () => {
