@@ -33,7 +33,7 @@ function at(
 }
 
 describe("ramDamage (ADR 0006)", () => {
-  it("速度について単調非減少で、ram が起きる速度では 1 以上", () => {
+  it("is monotonically nondecreasing with speed and at least 1 at speeds where ram occurs", () => {
     fc.assert(
       fc.property(fastSpeed, fastSpeed, (a, b) => {
         const [lo, hi] = a <= b ? [a, b] : [b, a];
@@ -43,7 +43,7 @@ describe("ramDamage (ADR 0006)", () => {
     );
   });
 
-  it("最高速度で 18", () => {
+  it("is 18 at maximum speed", () => {
     expect(ramDamage(SPEC.maxSpeed)).toBe(18);
   });
 });
@@ -51,8 +51,8 @@ describe("ramDamage (ADR 0006)", () => {
 describe("selectHits (ADR 0006)", () => {
   const reach = SPEC.bodyFront + SPEC.targetHalfWidth;
 
-  it("前方の判定範囲にいる相手には当たり、進行方向へ押し出す", () => {
-    // 境界ちょうどの相手は forward と rightOf の丸め誤差で範囲の外になりうるので、両端から少し内側だけを生成する
+  it("hits targets in the detection area ahead and pushes them in the direction of travel", () => {
+    // A target exactly on the boundary can fall outside the area due to rounding in forward and rightOf, so generate only points slightly inside both ends
     const inside = fc.double({ min: 1e-6, max: reach - 1e-6, noNaN: true });
     fc.assert(
       fc.property(
@@ -78,7 +78,7 @@ describe("selectHits (ADR 0006)", () => {
     );
   });
 
-  it("後ろや判定範囲の外の相手には当たらない", () => {
+  it("does not hit targets behind or outside the detection area", () => {
     const outside = fc.oneof(
       fc.double({ min: -3, max: -0.01, noNaN: true }),
       fc.double({ min: reach + 0.01, max: 3, noNaN: true }),
@@ -92,13 +92,13 @@ describe("selectHits (ADR 0006)", () => {
     );
   });
 
-  it("後退中は後ろの相手に当たる", () => {
+  it("hits targets behind when reversing", () => {
     expect(
       selectHits(forward(0), -0.2, [at(0, -1, 0)], new Map(), 0),
     ).toHaveLength(1);
   });
 
-  it("守られた乗員 (どの車の乗員でも) には当てない", () => {
+  it("does not hit protected occupants (regardless of which car they occupy)", () => {
     fc.assert(
       fc.property(
         yaw,
@@ -113,7 +113,7 @@ describe("selectHits (ADR 0006)", () => {
     );
   });
 
-  it("同じ相手には 10 tick 以内に続けて当てない", () => {
+  it("does not hit the same target again within 10 ticks", () => {
     fc.assert(
       fc.property(fc.integer({ min: 0, max: SPEC.ramCooldown - 1 }), (dt) => {
         expect(
@@ -138,7 +138,7 @@ describe("selectHits (ADR 0006)", () => {
     ).toHaveLength(1);
   });
 
-  it("速度 0.15 以下では当てない", () => {
+  it("does not hit at speeds of 0.15 or below", () => {
     expect(
       selectHits(forward(0), SPEC.ramMinSpeed, [at(0, 1, 0)], new Map(), 0),
     ).toHaveLength(0);

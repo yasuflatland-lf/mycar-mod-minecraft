@@ -9,7 +9,7 @@ export interface Vec3 {
   readonly z: number;
 }
 
-/** Minecraft の yaw (度) の向き。yaw 0 = +z (南)、yaw -90 = +x (東)。 */
+/** The direction a Minecraft yaw (in degrees) faces. yaw 0 = +z (south), yaw -90 = +x (east). */
 export function forward(yawDeg: number): Vec2 {
   const r = (yawDeg * Math.PI) / 180;
   return { x: -Math.sin(r), z: Math.cos(r) };

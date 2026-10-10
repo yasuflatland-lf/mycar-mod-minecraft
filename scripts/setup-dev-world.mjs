@@ -1,4 +1,4 @@
-// scripts/setup-dev-world.mjs: 開発用ワールドに 3 つのパックを登録する (マニフェストのバージョンを読む)
+// scripts/setup-dev-world.mjs: register the three packs in the dev world, reading each version from its manifest
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 const read = (p) => JSON.parse(readFileSync(p, "utf8")).header;

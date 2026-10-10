@@ -7,6 +7,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "biome check",
     "lint:fix": "biome check --write",
+    "lint:lang": "node scripts/check-language.mjs",
     "test": "vitest run",
     "model": "python3 -I tools/gen_model.py packs/mycar_rp",
     "server:up": "node scripts/setup-dev-world.mjs && docker compose -f server/compose.yaml up -d",
