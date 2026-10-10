@@ -34,3 +34,7 @@ pnpm lint      # format and lint check with Biome
 ```
 
 CI runs the Biome check on every pull request, plus type checking, tests, and the build once source code lands.
+
+## License
+
+[MIT](LICENSE)
