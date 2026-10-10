@@ -19,24 +19,20 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # main にはまだ package.json がないので、ある時だけ検査する
-      - id: pkg
-        run: echo "present=$([ -f package.json ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+      # mise.toml の Node と pnpm を入れる
+      - uses: jdx/mise-action@v5
 
-      - if: steps.pkg.outputs.present == 'true'
-        uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: npm
+      - run: pnpm install --frozen-lockfile
 
-      - if: steps.pkg.outputs.present == 'true'
-        run: npm ci
+      # main にはまだソースがないので、tsconfig.json がある時だけ検査する
+      - id: src
+        run: echo "present=$([ -f tsconfig.json ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
 
-      - if: steps.pkg.outputs.present == 'true'
-        run: npm run typecheck
+      - if: steps.src.outputs.present == 'true'
+        run: pnpm run typecheck
 
-      - if: steps.pkg.outputs.present == 'true'
-        run: npm test
+      - if: steps.src.outputs.present == 'true'
+        run: pnpm test
 
-      - if: steps.pkg.outputs.present == 'true'
-        run: npm run build
+      - if: steps.src.outputs.present == 'true'
+        run: pnpm run build

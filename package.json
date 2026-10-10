@@ -1,0 +1,23 @@
+{
+  "name": "mycar-mod-minecraft",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "model": "python3 -I tools/gen_model.py packs/mycar_rp",
+    "server:up": "node scripts/setup-dev-world.mjs && docker compose -f server/compose.yaml up -d",
+    "server:down": "docker compose -f server/compose.yaml down",
+    "test:game": "node scripts/game-test.mjs"
+  },
+  "devDependencies": {
+    "@minecraft/server": "2.0.0",
+    "@types/node": "24.19.2",
+    "esbuild": "0.28.2",
+    "fast-check": "4.10.2",
+    "typescript": "7.0.2",
+    "vitest": "5.0.3"
+  },
+  "packageManager": "pnpm@12.10.1"
+}
