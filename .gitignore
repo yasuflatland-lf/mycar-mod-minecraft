@@ -1,0 +1,4 @@
+node_modules/
+dist/
+.DS_Store
+spike/server/data/
