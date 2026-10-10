@@ -1,17 +1,49 @@
 // src/infrastructure/bedrock/subscriptions.ts
 // ゲームのイベントをユースケースにつなぐ。
-import { Direction, GameMode, system, world } from "@minecraft/server";
+import {
+  Direction,
+  GameMode,
+  ScriptEventSource,
+  system,
+  world,
+} from "@minecraft/server";
 import type { DriveVehicles } from "../../application/driveVehicles";
 import type { HitVehicle } from "../../application/hitVehicle";
 import type { PlaceVehicle } from "../../application/placeVehicle";
-import { ITEM_TYPE, VEHICLE_TYPE } from "./identifiers";
+import { parseTestInputMessage } from "../testInput/testInputMessage";
+import type { TestInputStore } from "../testInput/testInputStore";
+import { ITEM_TYPE, TEST_INPUT_EVENT, VEHICLE_TYPE } from "./identifiers";
 
-export function registerSubscriptions(useCases: {
-  drive: DriveVehicles;
-  place: PlaceVehicle;
-  hit: HitVehicle;
-}): void {
+export function registerSubscriptions(
+  useCases: {
+    drive: DriveVehicles;
+    place: PlaceVehicle;
+    hit: HitVehicle;
+  },
+  testInputs: TestInputStore,
+): void {
   system.runInterval(() => useCases.drive.execute(system.currentTick), 1);
+
+  system.afterEvents.scriptEventReceive.subscribe(
+    (ev) => {
+      if (
+        ev.id !== TEST_INPUT_EVENT ||
+        ev.sourceType !== ScriptEventSource.Server
+      )
+        return;
+      const parsed = parseTestInputMessage(ev.message);
+      if (!parsed) {
+        console.warn(`[mycar] ignored test input: ${ev.message}`);
+        return;
+      }
+      if (parsed.input !== undefined) {
+        testInputs.set(parsed.vehicleId, parsed.input);
+      } else {
+        testInputs.clear(parsed.vehicleId);
+      }
+    },
+    { namespaces: ["mycar"] },
+  );
 
   world.afterEvents.playerInteractWithBlock.subscribe((ev) => {
     if (

@@ -16,25 +16,21 @@ import type {
   VehicleSnapshot,
 } from "../../application/ports";
 import type { Vec3 } from "../../domain/shared/vec";
-import type { RawInput } from "../../domain/vehicle/driveInput";
 import type { RamHit, RamTarget } from "../../domain/vehicle/ram";
 import type { RiderView } from "../../domain/vehicle/vehicle";
-import { ITEM_TYPE, TEST_INPUT_PROPERTY, VEHICLE_TYPE } from "./identifiers";
+import type { TestInputStore } from "../testInput/testInputStore";
+import { ITEM_TYPE, VEHICLE_TYPE } from "./identifiers";
 
 const DIMENSIONS = ["overworld", "nether", "the_end"] as const;
 const isPlayer = (e: Entity): e is Player => e.typeId === "minecraft:player";
-
-function parseTestInput(v: unknown): RawInput | undefined {
-  if (typeof v !== "string") return undefined;
-  const [x, y, jump] = v.split(",");
-  return { moveX: Number(x), moveY: Number(y), jump: jump === "1" };
-}
 
 export class BedrockVehicleWorld
   implements DriveWorld, PlacementWorld, BreakWorld
 {
   /** loadedVehicles() で集めたこの tick の車。ほかのメソッドは id からここを引く。 */
   private current = new Map<string, Entity>();
+
+  constructor(private readonly testInputs: TestInputStore) {}
 
   private entity(id: string): Entity | undefined {
     const e = this.current.get(id) ?? world.getEntity(id);
@@ -56,12 +52,11 @@ export class BedrockVehicleWorld
           velocity: { x: v.x, z: v.z },
           onGround: car.isOnGround,
           riders: this.riders(car),
-          testInput: parseTestInput(
-            car.getDynamicProperty(TEST_INPUT_PROPERTY),
-          ),
+          testInput: this.testInputs.get(car.id),
         });
       }
     }
+    this.testInputs.retain(new Set(this.current.keys()));
     return snapshots;
   }
 
