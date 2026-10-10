@@ -20,6 +20,9 @@ export const NEUTRAL_INPUT: DriveInput = {
 
 /** Converts the movement vector and jump input to throttle, steering, and handbrake (ADR 0005). */
 export function toDriveInput(raw: RawInput): DriveInput {
+  if (!Number.isFinite(raw.moveX) || !Number.isFinite(raw.moveY)) {
+    return NEUTRAL_INPUT;
+  }
   const magnitude = Math.abs(raw.moveY);
   const throttle =
     magnitude <= SPEC.throttleDeadzone

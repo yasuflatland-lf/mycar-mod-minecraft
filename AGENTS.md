@@ -6,7 +6,7 @@ Guidance for coding agents (Codex, Claude Code, and others) working in this repo
 
 A vehicle add-on for Minecraft Bedrock Edition: a Behavior Pack and a Resource Pack driven by the stable Script API (`@minecraft/server` 2.x), written in TypeScript and bundled with esbuild. It targets a Bedrock Dedicated Server (BDS) on a home LAN, played from PC (keyboard) and mobile (touch).
 
-`main` currently holds tooling, CI, and the design docs only. The driving-core source arrives through the stacked `feat/driving-core-NN-*` branches. Several `package.json` scripts (`build`, `typecheck`, `test`, `model`, `server:*`) point at files that exist only on those branches, and `test:game` has no script on any branch yet, so check that a file exists before relying on a script that uses it. Those branches predate the pnpm, Biome, and English-only setup on `main`; when you bring one onto `main`, move it to pnpm and translate its comments, test names, and docs so that CI passes.
+The source lives in `src/` (domain, application, infrastructure, and the in-game test pack in `src/test-pack/`), with unit tests in `tests/`. `pnpm build` bundles it into `packs/mycar_bp` and `packs/mycar_test_bp`. The in-game tests (`pnpm test:game`) run against the dev BDS in Docker, so they need `pnpm server:up` first.
 
 ## Commands
 
@@ -17,13 +17,18 @@ pnpm install --frozen-lockfile
 pnpm lint          # Biome format + lint check (CI runs `biome ci`)
 pnpm lint:fix      # apply Biome fixes
 pnpm lint:lang     # fail on Japanese/CJK text in tracked and unignored files
-pnpm typecheck     # once tsconfig.json exists
-pnpm test          # vitest + fast-check, once source exists
+pnpm typecheck     # tsc --noEmit
+pnpm test          # vitest + fast-check
 pnpm test:coverage # same, with a coverage report in coverage/ (CI uploads it to Codecov)
-pnpm build         # esbuild bundle into the Behavior Pack
+pnpm build         # esbuild bundle into the Behavior Pack and the test pack
+pnpm package       # zip the packs into dist/mycar-<version>.mcaddon (after build)
+pnpm model         # regenerate the Resource Pack model (Python 3)
+pnpm server:up     # register the packs and start the dev BDS (Docker)
+pnpm server:down   # stop the dev BDS
+pnpm test:game     # run the in-game tests on the running dev BDS
 ```
 
-Before you say a change is done, run `pnpm lint` and `pnpm lint:lang`, plus `pnpm typecheck` and `pnpm test` when source code is present. CI runs the same checks on every pull request ([unit-test.yml](.github/workflows/unit-test.yml), which also uploads coverage to Codecov) and runs the in-game tests against a BDS container once `scripts/game-test.mjs` exists ([integration-test.yml](.github/workflows/integration-test.yml)).
+Before you say a change is done, run `pnpm lint`, `pnpm lint:lang`, `pnpm typecheck`, and `pnpm test`. When you change `src/infrastructure`, `src/test-pack`, or the packs, also run `pnpm build`, restart the dev BDS, and run `pnpm test:game` if Docker is available. CI runs the lint, typecheck, test, build, and package checks on every pull request ([unit-test.yml](.github/workflows/unit-test.yml), which also uploads coverage to Codecov) and runs the in-game tests against a BDS container ([integration-test.yml](.github/workflows/integration-test.yml)).
 
 ## Language and comments
 

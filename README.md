@@ -20,6 +20,8 @@ Work in progress. The first milestone is the **driving core**:
 - Ram damage to mobs, while keeping occupants safe
 - Placing a vehicle from an item and breaking it back into one
 
+The manual test checklist is in [`docs/manual-test.md`](docs/manual-test.md).
+
 ## Design
 
 Design decisions are recorded as ADRs in [`docs/adr`](docs/adr/README.md). Highlights:
@@ -35,10 +37,25 @@ Node and pnpm versions are pinned in `mise.toml`. Install [mise](https://mise.jd
 ```sh
 mise install
 pnpm install
-pnpm lint      # format and lint check with Biome
+pnpm lint            # format and lint check with Biome
+pnpm test            # unit tests, property-based tests, and the layer dependency check
+pnpm build           # bundle the TypeScript into the Behavior Pack
+pnpm package         # zip the packs into dist/mycar-<version>.mcaddon (run after build)
+pnpm model           # generate the vehicle model and texture
+pnpm server:up       # start the dev BDS in Docker
+pnpm test:game       # in-game tests
 ```
 
-CI runs the Biome check on every pull request, plus type checking, tests, and the build once source code lands.
+CI runs the Biome check, type checking, tests, the build, and packaging on every pull request.
+
+## Releasing
+
+Bump the Behavior Pack version in `packs/mycar_bp/manifest.json`, merge it to `main`, then either:
+
+- open **Actions → Release → Run workflow** on `main`, which tags the commit as `v<version>` (for example `v0.1.0` for `[0, 1, 0]`), or
+- push a matching tag yourself: `git tag v0.1.0 && git push origin v0.1.0`.
+
+The release workflow runs the checks, builds `mycar-<version>.mcaddon`, and attaches it to a new GitHub Release. Opening the file on a device imports both packs into Minecraft.
 
 ## License
 
