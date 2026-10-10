@@ -17,8 +17,10 @@ export class DriveVehicles {
       try {
         let vehicle = this.repo.get(snap.id);
         if (!vehicle) {
-          // After a reload, rebuild with zero speed and the heading taken from the entity.
-          vehicle = Vehicle.create(snap.id, snap.yaw);
+          // The aggregate is lost after a reload: rebuild it with zero speed,
+          // the entity's heading, and the riders already seated, so the
+          // current driver is not treated as newly mounted.
+          vehicle = Vehicle.rebuild(snap.id, snap.yaw, snap.riders);
           this.repo.save(vehicle);
         }
         const out = vehicle.tick({

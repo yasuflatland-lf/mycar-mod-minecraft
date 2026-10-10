@@ -66,3 +66,10 @@ describe("Layer dependency direction (ADR 0012)", () => {
     });
   }
 });
+
+describe("Entry point (ADR 0012)", () => {
+  it("src/main.ts imports only ./infrastructure/bootstrap", () => {
+    const source = readFileSync(join(REPO_ROOT, "src/main.ts"), "utf8");
+    expect(importsOf(source)).toEqual(["./infrastructure/bootstrap"]);
+  });
+});
