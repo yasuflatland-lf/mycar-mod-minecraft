@@ -1,5 +1,5 @@
 // src/domain/vehicle/motion.ts
-// 1 tick 分の走行の計算 (ADR 0002, 0003)。
+// Compute vehicle movement for 1 tick (ADR 0002, 0003).
 import {
   clamp,
   clampLength,
@@ -12,12 +12,12 @@ import type { DriveInput } from "./driveInput";
 import { SPEC } from "./spec";
 
 export interface MotionState {
-  speed: number; // 前後方向の内部速度 (ブロック/tick、負は後退)
+  speed: number; // Internal forward/reverse speed (blocks/tick; negative means reverse)
   yaw: number;
-  friction?: number; // 地面摩擦の推定値。未推定なら undefined
-  expected?: Vec2; // 前 tick にスクリプトが与えた水平速度
-  stepTicks: number; // 段差で跳んでから空中でも制御する残り tick
-  blocked: boolean; // この tick に壁に当たっていると判定したか
+  friction?: number; // Ground friction estimate; undefined until estimated
+  expected?: Vec2; // Horizontal velocity given by the script in the previous tick
+  stepTicks: number; // Remaining ticks of control in the air after jumping up a step
+  blocked: boolean; // Whether a wall collision was detected this tick
 }
 
 export const initialMotion = (yaw: number): MotionState => ({
@@ -48,7 +48,7 @@ export function updateSpeed(speed: number, throttle: number): number {
   return clamp(s, -SPEC.maxReverse, SPEC.maxSpeed);
 }
 
-/** 低速では曲がりにくく、後退時は逆に曲がる。左入力 (steer > 0) で yaw が減る。 */
+/** Steering is weaker at low speed and reversed when backing up. Left input (steer > 0) decreases yaw. */
 export function steerYaw(yaw: number, speed: number, steer: number): number {
   const factor =
     Math.min(1, Math.abs(speed) / SPEC.steerFullSpeed) * Math.sign(speed);
@@ -68,17 +68,17 @@ export function stepMotion(
   const v = obs.velocity;
   const vLong = dot(v, f);
 
-  // 前 tick に与えた速度のうち、どれだけ残ったかで摩擦と壁を見分ける (ADR 0003)
+  // Distinguish friction from wall collisions by how much of the previous tick's given velocity remains (ADR 0003)
   st.blocked = false;
   if (st.expected && obs.onGround) {
     const e = st.expected;
     const limit = (st.friction ?? SPEC.defaultFriction) * SPEC.blockedRatio;
-    // 壁はエンジンが軸ごとに速度を 0 にするので、x・z の軸ごとに見る
+    // The engine zeroes velocity per axis at walls, so check the x and z axes separately
     const axisBlocked = (ve: number, ee: number) =>
       Math.abs(ee) > SPEC.blockedAxisMin && ve / ee < limit;
     st.blocked = axisBlocked(v.x, e.x) || axisBlocked(v.z, e.z);
     if (st.blocked) {
-      // 衝突中は摩擦の推定を止め、内部の速度を実際の前方速度まで落とす。後退の上限で頭打ちにする
+      // While colliding, stop updating the friction estimate and lower the internal speed to the actual forward speed. Clamp it at the reverse limit
       if (Math.abs(vLong) < Math.abs(st.speed))
         st.speed = clamp(vLong, -SPEC.maxReverse, SPEC.maxSpeed);
     } else {
@@ -96,7 +96,7 @@ export function stepMotion(
     ? (st.friction ?? SPEC.defaultFriction)
     : SPEC.airFriction;
 
-  // 2 段の段差 (ADR 0004)
+  // Two-block steps (ADR 0004)
   let jumped = false;
   if (
     input.throttle > 0 &&
@@ -111,7 +111,7 @@ export function stepMotion(
   const stepping = st.stepTicks > 0;
   if (stepping) st.stepTicks--;
 
-  // 前後成分は内部の速度に、横成分は grip の割合だけ打ち消す。合成した速さは最高速度で頭打ち (ADR 0002)
+  // Set the forward/reverse component to the internal speed and cancel a fraction of the sideways component equal to grip. Cap the combined speed at the max speed (ADR 0002)
   const lat = { x: v.x - f.x * vLong, z: v.z - f.z * vLong };
   const grip = input.handbrake ? SPEC.handbrakeGrip : SPEC.grip;
   const keepLat = stepping ? 0 : 1 - grip;
@@ -122,7 +122,7 @@ export function stepMotion(
     },
     SPEC.maxSpeed,
   );
-  // 摩擦で減る分を見越して上乗せする
+  // Add compensation for the expected loss to friction
   const n = { x: target.x / friction, z: target.z / friction };
   st.expected = n;
   const control = obs.onGround || stepping ? 1 : SPEC.airControl;
