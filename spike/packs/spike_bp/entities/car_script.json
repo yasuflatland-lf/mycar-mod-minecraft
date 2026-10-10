@@ -14,8 +14,8 @@
         ]
       },
       "minecraft:collision_box": {
-        "width": 1.4,
-        "height": 1.0
+        "width": 1.8,
+        "height": 1.6
       },
       "minecraft:health": {
         "value": 20,
@@ -37,7 +37,7 @@
         "jump_prevented_value": 2.0625
       },
       "minecraft:rideable": {
-        "seat_count": 2,
+        "seat_count": 4,
         "controlling_seat": 0,
         "crouching_skip_interact": true,
         "family_types": [
@@ -47,17 +47,31 @@
         "seats": [
           {
             "position": [
-              0.0,
-              0.35,
-              0.1
+              -0.38,
+              0.1,
+              0.35
             ],
             "lock_rider_rotation": 90
           },
           {
             "position": [
-              0.0,
-              0.35,
-              -0.7
+              0.38,
+              0.1,
+              0.35
+            ]
+          },
+          {
+            "position": [
+              -0.38,
+              0.1,
+              -0.8
+            ]
+          },
+          {
+            "position": [
+              0.38,
+              0.1,
+              -0.8
             ]
           }
         ]

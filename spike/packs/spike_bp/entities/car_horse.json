@@ -7,26 +7,75 @@
       "is_summonable": true
     },
     "components": {
-      "minecraft:type_family": { "family": ["spike_car", "inanimate"] },
-      "minecraft:collision_box": { "width": 1.4, "height": 1.0 },
-      "minecraft:health": { "value": 20, "max": 20 },
+      "minecraft:type_family": {
+        "family": [
+          "spike_car",
+          "inanimate"
+        ]
+      },
+      "minecraft:collision_box": {
+        "width": 1.8,
+        "height": 1.6
+      },
+      "minecraft:health": {
+        "value": 20,
+        "max": 20
+      },
       "minecraft:physics": {},
-      "minecraft:pushable": { "is_pushable": false, "is_pushable_by_piston": true },
-      "minecraft:knockback_resistance": { "value": 1.0 },
-      "minecraft:movement": { "value": 0.35 },
+      "minecraft:pushable": {
+        "is_pushable": false,
+        "is_pushable_by_piston": true
+      },
+      "minecraft:knockback_resistance": {
+        "value": 1.0
+      },
+      "minecraft:movement": {
+        "value": 0.35
+      },
       "minecraft:movement.basic": {},
       "minecraft:jump.static": {},
       "minecraft:input_ground_controlled": {},
-      "minecraft:variable_max_auto_step": { "base_value": 1.0625, "jump_prevented_value": 1.0625 },
+      "minecraft:variable_max_auto_step": {
+        "base_value": 1.0625,
+        "jump_prevented_value": 1.0625
+      },
       "minecraft:rideable": {
-        "seat_count": 2,
+        "seat_count": 4,
         "controlling_seat": 0,
         "crouching_skip_interact": true,
-        "family_types": ["player"],
+        "family_types": [
+          "player"
+        ],
         "interact_text": "Drive",
         "seats": [
-          { "position": [0.0, 0.35, 0.1] },
-          { "position": [0.0, 0.35, -0.7] }
+          {
+            "position": [
+              -0.38,
+              0.1,
+              0.35
+            ]
+          },
+          {
+            "position": [
+              0.38,
+              0.1,
+              0.35
+            ]
+          },
+          {
+            "position": [
+              -0.38,
+              0.1,
+              -0.8
+            ]
+          },
+          {
+            "position": [
+              0.38,
+              0.1,
+              -0.8
+            ]
+          }
         ]
       }
     }

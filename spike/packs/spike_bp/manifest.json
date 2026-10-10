@@ -4,15 +4,51 @@
     "name": "Vehicle Spike BP",
     "description": "THROWAWAY spike: driving-core feasibility",
     "uuid": "ff7212b4-5227-4277-8f32-88d9a16662ed",
-    "version": [0, 0, 1],
-    "min_engine_version": [1, 21, 80]
+    "version": [
+      0,
+      0,
+      1
+    ],
+    "min_engine_version": [
+      1,
+      21,
+      80
+    ]
   },
   "modules": [
-    { "type": "data", "uuid": "f84a6691-5509-4438-97a0-757c78e31447", "version": [0, 0, 1] },
-    { "type": "script", "language": "javascript", "uuid": "c9755a5c-3c11-40ce-a08f-46debe0b6ef6", "version": [0, 0, 1], "entry": "scripts/main.js" }
+    {
+      "type": "data",
+      "uuid": "f84a6691-5509-4438-97a0-757c78e31447",
+      "version": [
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "type": "script",
+      "language": "javascript",
+      "uuid": "c9755a5c-3c11-40ce-a08f-46debe0b6ef6",
+      "version": [
+        0,
+        0,
+        1
+      ],
+      "entry": "scripts/main.js"
+    }
   ],
   "dependencies": [
-    { "module_name": "@minecraft/server", "version": "2.0.0" },
-    { "uuid": "b363e1e0-3b4d-4972-90aa-603eb4a4b877", "version": [0, 0, 1] }
+    {
+      "module_name": "@minecraft/server",
+      "version": "2.0.0"
+    },
+    {
+      "uuid": "b363e1e0-3b4d-4972-90aa-603eb4a4b877",
+      "version": [
+        0,
+        0,
+        6
+      ]
+    }
   ]
 }

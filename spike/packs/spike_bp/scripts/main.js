@@ -13,6 +13,10 @@ const CFG = {
   airFriction: 0.91, // 空中の水平方向の減衰率
   stepVelocity: 0.75, // 2 段の段差に飛び乗るときの上向き速度
   stepTicks: 10, // 飛び乗ってから空中でも制御する tick 数
+  hitboxFront: 0.9, // 当たり判定 (幅 1.8 の正方形) の前端
+  bodyFront: 1.65, // 見た目の車体の前端 (モデルは長さ約 3.3)
+  bodyHalfWidth: 1.0, // 見た目の車体の半幅 (タイヤ込み)
+  targetHalfWidth: 0.45, // 相手の体の半分の幅の目安
   ramMinSpeed: 0.15, // これ未満の速度ではぶつかってもダメージなし
   ramCooldown: 10, // 同じ相手に連続でダメージを与えない tick 数
 };
@@ -152,10 +156,10 @@ function tryStepUp(car, f, speed) {
     return b !== undefined && !b.isAir && !b.isLiquid;
   };
   if (solid(0, 0, 2.5)) return false; // 頭上がふさがっている
-  const front = 0.7; // 車の前端
+  const front = CFG.hitboxFront; // 当たり判定の前端 (ブロックに当たるのはここ)
   const lookahead = speed * 4 + 0.3; // 上がりきるまでの約 4 tick 分 + 余裕
   for (let d = front + 0.1; d <= front + lookahead + 0.01; d += 0.2) {
-    for (const side of [0, -0.6, 0.6]) {
+    for (const side of [0, -0.8, 0.8]) {
       if (!solid(d, side, 0.5)) continue; // この線上にはまだ段差がない
       if (!solid(d, side, 1.5)) continue; // 1 段 (エンジンに任せる)
       if (solid(d, side, 2.5) || solid(d, side, 3.5)) return false; // 3 段以上 = 壁
@@ -187,8 +191,9 @@ function ram(car, f, speed, riders, driver) {
     const ahead = (dx * f.x + dz * f.z) * dir; // 進行方向への距離
     const side = Math.abs(dx * f.z - dz * f.x); // 横方向の距離
     const dy = e.location.y - car.location.y;
-    // 1 tick に最大 0.6 進むので、前方の判定は車の半分 (0.7) + 1 tick 分 + 余裕
-    if (ahead < 0 || ahead > 1.6 || side > 1.1 || dy < -0.5 || dy > 1.5) continue;
+    // 見た目の車体の前端に相手の体が触れたら当たり。1 tick に最大 0.6 進むが、判定の奥行きの方が長いのですり抜けない
+    if (ahead < 0 || ahead > CFG.bodyFront + CFG.targetHalfWidth) continue;
+    if (side > CFG.bodyHalfWidth + CFG.targetHalfWidth || dy < -0.5 || dy > 1.8) continue;
     const t = lastHit.get(e.id);
     if (t !== undefined && system.currentTick - t < CFG.ramCooldown) continue;
     lastHit.set(e.id, system.currentTick);

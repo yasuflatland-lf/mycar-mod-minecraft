@@ -4,10 +4,10 @@
     "animation.spike_car.wheels": {
       "loop": true,
       "bones": {
-        "wheel_fl": { "rotation": ["query.modified_distance_moved * 163.7", 0, 0] },
-        "wheel_fr": { "rotation": ["query.modified_distance_moved * 163.7", 0, 0] },
-        "wheel_rl": { "rotation": ["query.modified_distance_moved * 163.7", 0, 0] },
-        "wheel_rr": { "rotation": ["query.modified_distance_moved * 163.7", 0, 0] }
+        "wheel_fl": { "rotation": ["-query.modified_distance_moved * 152.8", 0, 0] },
+        "wheel_fr": { "rotation": ["-query.modified_distance_moved * 152.8", 0, 0] },
+        "wheel_rl": { "rotation": ["-query.modified_distance_moved * 152.8", 0, 0] },
+        "wheel_rr": { "rotation": ["-query.modified_distance_moved * 152.8", 0, 0] }
       }
     }
   }
