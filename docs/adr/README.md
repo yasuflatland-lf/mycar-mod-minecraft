@@ -17,7 +17,7 @@ This directory records design decisions and the reasons behind them. The format 
 | [0011](0011-dev-server-docker-raknet.md) | Run the development server as BDS in Docker with raknet | Accepted |
 | [0012](0012-ddd-layered-architecture.md) | Split the code into domain, application, and infrastructure layers | Accepted |
 
-The measurements and in-game tests behind these decisions are in `spike/README.md` in the spike (PR #1).
+The measurements and in-game tests behind these decisions are in [the driving-core spike findings](../spike-driving-core.md).
 
 ## Writing a new ADR
 
