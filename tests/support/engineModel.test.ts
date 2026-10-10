@@ -1,4 +1,3 @@
-// tests/support/engineModel.test.ts
 import { describe, expect, it } from "vitest";
 import { engineStep, HALF_WIDTH } from "./engineModel";
 
