@@ -44,4 +44,11 @@ describe("packs/mycar_bp", () => {
         .result.item,
     ).toBe("mycar:suv_item");
   });
+
+  it("レシピは最初から解放されている (unlock がないと BDS がレシピを読み込まない)", () => {
+    expect(
+      read("packs/mycar_bp/recipes/suv_item.json")["minecraft:recipe_shaped"]
+        .unlock,
+    ).toEqual({ context: "AlwaysUnlocked" });
+  });
 });
