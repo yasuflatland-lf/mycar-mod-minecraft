@@ -1,5 +1,5 @@
 // THROWAWAY spike code. 走行コアの実現性検証用。本実装には流用しない。
-import { world, system, InputButton, ButtonState } from "@minecraft/server";
+import { world, system, InputButton, ButtonState, EntityDamageCause } from "@minecraft/server";
 
 const CFG = {
   maxSpeed: 0.6, // blocks/tick (= 12 blocks/s)
@@ -10,6 +10,8 @@ const CFG = {
   turnRate: 4.0, // deg/tick at full lock
   grip: 0.3, // 速度ベクトルを向きへ寄せる割合 (1 = 滑らない)
   handbrakeGrip: 0.04,
+  ramMinSpeed: 0.15, // これ未満の速度ではぶつかってもダメージなし
+  ramCooldown: 10, // 同じ相手に連続でダメージを与えない tick 数
 };
 
 const SCRIPT_CAR = "spike:car_script";
@@ -45,6 +47,12 @@ function stepScriptCar(car) {
   const riders = car.getComponent("minecraft:rideable")?.getRiders() ?? [];
   const driver = riders.find((r) => r.typeId === "minecraft:player");
   const input = readInput(car, driver);
+
+  // 停車中に運転者が乗り込んだら、車の向きを運転者の視線に合わせる
+  if (driver && st.driverId !== driver.id && Math.abs(st.speed) < 0.01) {
+    st.yaw = driver.getRotation().y;
+  }
+  st.driverId = driver?.id;
 
   // 速度 (スカラー) の更新
   if (input.y > 0.05) {
@@ -82,7 +90,15 @@ function stepScriptCar(car) {
   car.applyImpulse({ x: (nx - v.x) * control, y: 0, z: (nz - v.z) * control });
   st.expected = Math.hypot(nx, nz);
   car.setRotation({ x: 0, y: st.yaw });
+  if (Math.abs(st.speed) > CFG.ramMinSpeed) ram(car, f, st.speed, riders, driver);
 
+  if (driver && system.currentTick % 20 === 0) {
+    const heading = hlen(v) > 0.02 ? (Math.atan2(-v.x, v.z) * 180) / Math.PI : NaN;
+    LOG(
+      `drive in=(${input.x.toFixed(2)},${input.y.toFixed(2)}) carYaw=${st.yaw.toFixed(0)} ` +
+        `driverYaw=${driver.getRotation().y.toFixed(0)} velHeading=${heading.toFixed(0)} speed=${st.speed.toFixed(3)}`
+    );
+  }
   if (driver && system.currentTick % 2 === 0) {
     const slip = slipAngle(v, f);
     driver.onScreenDisplay.setActionBar(
@@ -91,6 +107,39 @@ function stepScriptCar(car) {
     );
   }
   return { st, v };
+}
+
+/** @type {Map<string, number>} target id -> 最後にダメージを与えた tick */
+const lastHit = new Map();
+
+// 車の進行方向の前方 (車幅 + 余裕の長方形) にいる相手へ、速度に応じたダメージとノックバックを与える
+function ram(car, f, speed, riders, driver) {
+  const dir = Math.sign(speed);
+  const riderIds = new Set(riders.map((r) => r.id));
+  const nearby = car.dimension.getEntities({
+    location: car.location,
+    maxDistance: 3,
+    excludeFamilies: ["inanimate"],
+    excludeTypes: ["minecraft:item", "minecraft:xp_orb"],
+  });
+  for (const e of nearby) {
+    if (e.id === car.id || riderIds.has(e.id)) continue;
+    const dx = e.location.x - car.location.x;
+    const dz = e.location.z - car.location.z;
+    const ahead = (dx * f.x + dz * f.z) * dir; // 進行方向への距離
+    const side = Math.abs(dx * f.z - dz * f.x); // 横方向の距離
+    const dy = e.location.y - car.location.y;
+    // 1 tick に最大 0.6 進むので、前方の判定は車の半分 (0.7) + 1 tick 分 + 余裕
+    if (ahead < 0 || ahead > 1.6 || side > 1.1 || dy < -0.5 || dy > 1.5) continue;
+    const t = lastHit.get(e.id);
+    if (t !== undefined && system.currentTick - t < CFG.ramCooldown) continue;
+    lastHit.set(e.id, system.currentTick);
+    const damage = Math.max(1, Math.round(Math.abs(speed) * 20)); // 最高速度 0.6 で 12 (ハート 6 個)
+    const hurt = e.applyDamage(damage, { cause: EntityDamageCause.entityAttack, damagingEntity: driver });
+    const push = 0.5 + Math.abs(speed) * 2.5;
+    e.applyKnockback({ x: f.x * dir * push, z: f.z * dir * push }, 0.35);
+    LOG(`ram ${e.typeId} damage=${damage} applied=${hurt} speed=${speed.toFixed(3)} ahead=${ahead.toFixed(2)} side=${side.toFixed(2)}`);
+  }
 }
 
 function slipAngle(v, f) {
@@ -135,6 +184,15 @@ system.runInterval(() => {
     if (!world.getEntity(id)) cars.delete(id);
   }
 }, 1);
+
+// 乗車中の運転者・同乗者や車が何かのダメージを受けていないかを記録する
+world.afterEvents.entityHurt.subscribe((ev) => {
+  const e = ev.hurtEntity;
+  const ridingOn = e.getComponent("minecraft:riding")?.entityRidingOn;
+  if (e.typeId === SCRIPT_CAR || ridingOn?.typeId === SCRIPT_CAR) {
+    LOG(`self-hurt ${e.typeId} cause=${ev.damageSource.cause} amount=${ev.damage}`);
+  }
+});
 
 // 乗車時に入力が取れているかをログに残す
 world.afterEvents.playerInteractWithEntity.subscribe((ev) => {
@@ -212,6 +270,27 @@ async function autotest() {
     LOG(`T2 turn(${label}): maxSlip=${maxSlip.toFixed(1)}deg speed=${hlen(car2.getVelocity()).toFixed(3)}`);
   }
   car2.remove();
+
+  // テスト 3: 前方の牛に突っ込み、ダメージとノックバックを確認する
+  const car3 = dim.spawnEntity(SCRIPT_CAR, { x: 5.5, y: gy, z: 30.5 });
+  cars.set(car3.id, { speed: 0, yaw: -90 });
+  car3.setRotation({ x: 0, y: -90 });
+  // spawnEntity で出したモブはプレイヤーから離れていると 1 tick で削除されるため、summon で出す
+  dim.runCommand(`summon minecraft:cow 25 ${gy} 31`); // 中心線から 0.8 ずらす
+  const cow = dim.getEntities({ type: "minecraft:cow", location: { x: 25.5, y: gy, z: 31.5 }, maxDistance: 2 })[0];
+  const hp0 = cow.getComponent("minecraft:health").currentValue;
+  const cowX0 = cow.location.x;
+  virtualInput.set(car3.id, { x: 0, y: 1, handbrake: false });
+  for (let t = 0; t < 60; t += 10) {
+    await wait(10);
+    const c = cow.isValid ? `cow x=${cow.location.x.toFixed(1)} hp=${cow.getComponent("minecraft:health").currentValue}` : "cow invalid";
+    LOG(`T3 t=${t + 10} car x=${car3.location.x.toFixed(1)} speed=${cars.get(car3.id).speed.toFixed(3)} ${c}`);
+  }
+  const hp1 = cow.isValid ? cow.getComponent("minecraft:health").currentValue : 0;
+  const pushed = cow.isValid ? cow.location.x - cowX0 : NaN;
+  LOG(`T3 ram: cowHp ${hp0} -> ${hp1} pushedX=${pushed.toFixed(2)} cowAlive=${cow.isValid}`);
+  car3.remove();
+  if (cow.isValid) cow.remove();
   virtualInput.clear();
   LOG("autotest done");
 }
