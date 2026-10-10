@@ -32,7 +32,8 @@ export class DriveVehicles {
         });
         this.world.applyMotion(snap.id, out.impulse, out.yaw);
         for (const hit of out.hits) this.world.damage(hit, out.driverId);
-        for (const e of out.events) if (e.type === "SeatVacated") this.world.playDoor(snap.id, e.door);
+        for (const e of out.events)
+          if (e.type === "SeatVacated") this.world.playDoor(snap.id, e.door);
       } catch (e) {
         this.log.warn(`[mycar] ${snap.id}: ${e}`); // 1 台の失敗で他の車を止めない
       }
