@@ -1,0 +1,13 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Vehicle Spike RP",
+    "description": "THROWAWAY spike: driving-core feasibility",
+    "uuid": "b363e1e0-3b4d-4972-90aa-603eb4a4b877",
+    "version": [0, 0, 1],
+    "min_engine_version": [1, 21, 80]
+  },
+  "modules": [
+    { "type": "resources", "uuid": "d7d9a852-4c69-4468-8f06-d78119071497", "version": [0, 0, 1] }
+  ]
+}

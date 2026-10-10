@@ -1,0 +1,15 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "spike:car_script",
+      "materials": { "default": "entity_alphatest" },
+      "textures": { "default": "textures/entity/spike_car_script" },
+      "geometry": { "default": "geometry.spike_car" },
+      "animations": { "wheels": "animation.spike_car.wheels" },
+      "scripts": { "animate": ["wheels"] },
+      "render_controllers": ["controller.render.default"],
+      "spawn_egg": { "base_color": "#d43a3a", "overlay_color": "#202020" }
+    }
+  }
+}
