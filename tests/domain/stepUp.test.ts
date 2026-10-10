@@ -91,15 +91,33 @@ describe("shouldStepUp (ADR 0004)", () => {
     );
   });
 
-  it("does not jump if there is no room (1.6) for the vehicle above a step of height 2", () => {
+  // Terrain is made of whole blocks, so a ceiling starts at an integer height.
+  const stepTop = 2;
+  const firstFreeCeiling = Math.ceil(stepTop + SPEC.carHeight);
+
+  it("does not jump if there is no room (SPEC.carHeight) for the vehicle above a step of height 2", () => {
     fc.assert(
       fc.property(
         speed.chain((s) => fc.tuple(fc.constant(s), startIn(s))),
-        fc.double({ min: 2, max: 3.5, noNaN: true }),
+        fc.integer({ min: stepTop, max: firstFreeCeiling - 1 }),
         ([s, start], ceiling) => {
           expect(
             shouldStepUp(terrain([{ start, height: 2, ceiling }]), s),
           ).toBe(false);
+        },
+      ),
+    );
+  });
+
+  it("jumps onto a step of height 2 when the ceiling leaves room for SPEC.carHeight", () => {
+    fc.assert(
+      fc.property(
+        speed.chain((s) => fc.tuple(fc.constant(s), startIn(s))),
+        fc.integer({ min: firstFreeCeiling, max: firstFreeCeiling + 3 }),
+        ([s, start], ceiling) => {
+          expect(
+            shouldStepUp(terrain([{ start, height: 2, ceiling }]), s),
+          ).toBe(true);
         },
       ),
     );
