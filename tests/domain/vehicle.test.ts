@@ -4,7 +4,11 @@ import { forward, leftOf, type Vec2 } from "../../src/domain/shared/vec";
 import type { RawInput } from "../../src/domain/vehicle/driveInput";
 import type { RamTarget } from "../../src/domain/vehicle/ram";
 import { SEAT_POSITIONS } from "../../src/domain/vehicle/seats";
-import { type RiderView, type TickContext, Vehicle } from "../../src/domain/vehicle/vehicle";
+import {
+  type RiderView,
+  type TickContext,
+  Vehicle,
+} from "../../src/domain/vehicle/vehicle";
 import { engineStep } from "../support/engineModel";
 
 const FORWARD: RawInput = { moveX: 0, moveY: 1, jump: false };
@@ -30,7 +34,12 @@ class Sim {
 
   run(v: Vehicle, ticks: number, from = 0) {
     for (let t = from; t < from + ticks; t++) {
-      const riders: RiderView[] = this.riders.map((r) => ({ id: r.id, offset: seatOffset(this.yaw, r.seat), yaw: r.yaw, raw: r.raw }));
+      const riders: RiderView[] = this.riders.map((r) => ({
+        id: r.id,
+        offset: seatOffset(this.yaw, r.seat),
+        yaw: r.yaw,
+        raw: r.raw,
+      }));
       const ctx: TickContext = {
         tick: t,
         riders,
@@ -41,12 +50,20 @@ class Sim {
         targets: () => this.targets,
       };
       const out = v.tick(ctx);
-      const r = engineStep({ pos: this.pos, vel: this.vel }, { x: out.impulse.x, z: out.impulse.z }, { mu: 0.688 });
+      const r = engineStep(
+        { pos: this.pos, vel: this.vel },
+        { x: out.impulse.x, z: out.impulse.z },
+        { mu: 0.688 },
+      );
       this.pos = r.body.pos;
       this.vel = r.body.vel;
       this.yaw = out.yaw;
       this.hits.push(...out.hits.map((h) => h.id));
-      this.events.push(...out.events.map((e) => (e.type === "SeatVacated" ? `vacated:${e.seat}:${e.door}` : e.type)));
+      this.events.push(
+        ...out.events.map((e) =>
+          e.type === "SeatVacated" ? `vacated:${e.seat}:${e.door}` : e.type,
+        ),
+      );
     }
   }
 }
@@ -95,7 +112,9 @@ describe("Vehicle (集約)", () => {
   it("前方の相手に当たる。同じ相手には 10 tick 以内に続けて当たらない", () => {
     const sim = new Sim();
     sim.riders = [{ id: "d", seat: 0, yaw: 0, raw: FORWARD }];
-    sim.targets = [{ id: "cow", offset: { x: 0, y: 0, z: 1.5 }, protectedOccupant: false }];
+    sim.targets = [
+      { id: "cow", offset: { x: 0, y: 0, z: 1.5 }, protectedOccupant: false },
+    ];
     sim.run(Vehicle.create("car", 0), 40);
     expect(sim.hits.length).toBeGreaterThan(0);
     expect(sim.hits.length).toBeLessThanOrEqual(4);
@@ -104,7 +123,11 @@ describe("Vehicle (集約)", () => {
   it("乗員のいない車は 3 回殴ると壊れ、乗員がいれば壊れない", () => {
     const empty = Vehicle.create("a", 0);
     new Sim().run(empty, 1);
-    expect([empty.receiveHit(1), empty.receiveHit(2), empty.receiveHit(3)].map((e) => e.length)).toEqual([0, 0, 1]);
+    expect(
+      [empty.receiveHit(1), empty.receiveHit(2), empty.receiveHit(3)].map(
+        (e) => e.length,
+      ),
+    ).toEqual([0, 0, 1]);
 
     const sim = new Sim();
     sim.riders = [{ id: "d", seat: 0, yaw: 0, raw: IDLE }];
