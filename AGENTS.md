@@ -55,7 +55,7 @@ Design decisions live in [docs/adr](docs/adr/README.md). Read the ADRs that rela
 - **Three layers with one-way dependencies (0012):** `src/infrastructure` → `src/application` → `src/domain`. Only `src/infrastructure` may import `@minecraft/server`. `src/main.ts` only calls `bootstrap()`. `tests/architecture.test.ts` checks the import graph. `src/test-pack/` sits outside the layers.
 - **Movement is script-driven (0002).** The script sets velocity every tick. Tuning values live in one place in the domain; do not scatter magic numbers.
 - **Testing (0010).** Pure logic gets property-based tests (fast-check + vitest) with only a few example tests. Integration with the game is covered by in-game tests started with `scriptevent`, not by GameTest.
-- **Model conventions (0009).** The front of an entity is the model's -z side. Bone names (`root`, `body`, `wheel_*`, `door_*`, `seat_0`–`seat_3`) are a fixed contract between the model and the scripts. Give the grille eight slots (a seven-slot grille is a Jeep trademark), with no logo or vehicle name.
+- **Model conventions (0009).** The front of an entity is the model's -z side. Bone names (`root`, `body`, `headlights`, `wheel_*`, `door_*`, `seat_0`–`seat_3`) are a fixed contract between the model and the scripts. Give the grille eight slots (a seven-slot grille is a Jeep trademark), with no logo or vehicle name.
 
 ## Changing a decision
 

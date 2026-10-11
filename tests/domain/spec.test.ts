@@ -17,7 +17,7 @@ describe("SPEC", () => {
     );
   });
 
-  it("flight values match ADR 0020", () => {
+  it("flight values match ADR 0021", () => {
     expect(SPEC.doubleTapTicks).toBe(8);
     expect(SPEC.takeoffTicks).toBe(20);
     expect(SPEC.takeoffTicks * SPEC.takeoffClimb).toBeCloseTo(1.5);

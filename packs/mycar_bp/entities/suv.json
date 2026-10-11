@@ -4,7 +4,14 @@
     "description": {
       "identifier": "mycar:suv",
       "is_spawnable": false,
-      "is_summonable": true
+      "is_summonable": true,
+      "properties": {
+        "mycar:headlights": {
+          "type": "bool",
+          "default": false,
+          "client_sync": true
+        }
+      }
     },
     "component_groups": {
       "mycar:paint_khaki": { "minecraft:variant": { "value": 0 } },
