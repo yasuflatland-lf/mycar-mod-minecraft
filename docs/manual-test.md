@@ -15,7 +15,7 @@ To use commands, run `docker exec mycar-bds send-command op <player name>`.
 | 7 | Hit a pig | The pig takes damage and is pushed aside | | |
 | 8 | Get out | The door of the seat you sat in swings outward and a door-open sound plays | | |
 | 9 | Exhaust while riding | Smoke comes out of the tip of the rear-right muffler | | |
-| 10 | Ride with two players, then the driver gets out | The passenger does not move to the driver's seat | | |
+| 10 | Ride with two players, then the driver gets out | Within a moment the passenger moves to the driver's seat and can drive (ADR 0019) | | |
 | 11 | Hit an empty vehicle 3 times / hit an occupied vehicle | It breaks and drops the item / it does not break | | |
 | 12 | The moving vehicle as seen by a passenger | 3 or higher on a 5-point scale | | |
 | 13 | Appearance (SUV shape, khaki, interior and exterior) | As intended | | |
