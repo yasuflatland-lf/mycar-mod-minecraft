@@ -19,3 +19,4 @@ To use commands, run `docker exec mycar-bds send-command op <player name>`.
 | 11 | Hit an empty vehicle 3 times / hit an occupied vehicle | It breaks and drops the item / it does not break | | |
 | 12 | The moving vehicle as seen by a passenger | 3 or higher on a 5-point scale | | |
 | 13 | Appearance (SUV shape, khaki, interior and exterior) | As intended | | |
+| 14 | Stop, then hold the stick straight right (mobile) / hold only D (PC) | The vehicle moves slowly forward and turns right; it does not back up | | |
