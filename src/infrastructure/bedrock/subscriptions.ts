@@ -58,20 +58,28 @@ export function registerSubscriptions(
     { namespaces: ["mycar"] },
   );
 
-  world.afterEvents.playerInteractWithBlock.subscribe((ev) => {
+  // The after-event only fires when the interaction did something, and an item
+  // with no use behavior does nothing on a block, so a tap never reaches it
+  // (BDS 1.26.52, mobile; ADR 0024). Before-events cannot change the world, so the
+  // placement runs on the next tick. Cancelling keeps the tap from also opening
+  // or toggling the block underneath.
+  world.beforeEvents.playerInteractWithBlock.subscribe((ev) => {
     if (
       !ev.isFirstEvent ||
       ev.itemStack?.typeId !== ITEM_TYPE ||
       ev.blockFace !== Direction.Up
     )
       return;
-    useCases.place.execute({
+    ev.cancel = true;
+    const cmd = {
       playerId: ev.player.id,
       dimensionId: ev.block.dimension.id,
       blockLocation: ev.block.location,
       yaw: ev.player.getRotation().y,
       creative: ev.player.getGameMode() === GameMode.Creative,
-    });
+      slot: ev.player.selectedSlotIndex,
+    };
+    system.run(() => useCases.place.execute(cmd));
   });
 
   // initialSpawn is true on every join, not only the first one, so a player

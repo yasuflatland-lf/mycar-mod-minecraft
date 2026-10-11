@@ -49,6 +49,8 @@ export class FakeWorld
   /** The cells each vehicle was last told to light. */
   readonly shone = new Map<string, readonly Cell[]>();
   air = (_at: Vec3) => true;
+  /** Whether the slot a vehicle item was used from still holds one. */
+  itemInSlot = true;
   failOn: string | undefined;
   readonly calls: string[] = [];
   private nextId = 1;
@@ -93,8 +95,10 @@ export class FakeWorld
     this.calls.push(`spawn:${dim}:${at.x},${at.y},${at.z}:${yaw}`);
     return id;
   }
-  consumeVehicleItem(playerId: string) {
-    this.calls.push(`consume:${playerId}`);
+  consumeVehicleItem(playerId: string, slot: number) {
+    if (!this.itemInSlot) return false;
+    this.calls.push(`consume:${playerId}:${slot}`);
+    return true;
   }
   receivedStarter(playerId: string) {
     return this.starters.get(playerId);

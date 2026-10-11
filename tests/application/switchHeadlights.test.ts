@@ -50,6 +50,14 @@ describe("SwitchHeadlights (ADR 0020)", () => {
     expect(world.calls).toEqual(["headlights:a:true"]);
   });
 
+  it("a held touch that repeats the use switches only once", () => {
+    const { world, uc } = setup();
+    for (const tick of [0, 4, 8, 13, 17, 21]) {
+      uc.execute({ playerId: "d", vehicleId: "a", tick });
+    }
+    expect(world.calls).toEqual(["headlights:a:true"]);
+  });
+
   it("does nothing for a vehicle that is not loaded or no longer exists", () => {
     const { world, uc } = setup();
     expect(uc.execute({ playerId: "d", vehicleId: "b", tick: 0 })).toBe(false);

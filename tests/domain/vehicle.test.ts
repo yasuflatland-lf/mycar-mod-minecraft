@@ -304,7 +304,7 @@ describe("Vehicle headlight switch (ADR 0020)", () => {
     expect(Vehicle.create("v", 0).flipHeadlightSwitch("d", 0)).toBe(false);
   });
 
-  it("flips at most once per cooldown, however often the driver uses it", () => {
+  it("flips only on a use that follows a cooldown of idle switch", () => {
     fc.assert(
       fc.property(
         fc
@@ -312,13 +312,13 @@ describe("Vehicle headlight switch (ADR 0020)", () => {
           .map((t) => t.sort((a, b) => a - b)),
         (ticks) => {
           const v = Vehicle.rebuild("v", 0, [driver]);
-          const flipped = ticks.filter((t) => v.flipHeadlightSwitch("d", t));
-          if (ticks.length > 0) expect(flipped[0]).toBe(ticks[0]);
-          for (const [prev, next] of flipped.slice(1).entries()) {
-            expect(
-              next - defined(flipped[prev], "previous flip"),
-            ).toBeGreaterThanOrEqual(SPEC.headlightSwitchCooldown);
-          }
+          ticks.forEach((t, i) => {
+            const idle =
+              i === 0 ||
+              t - defined(ticks[i - 1], "previous use") >=
+                SPEC.headlightSwitchCooldown;
+            expect(v.flipHeadlightSwitch("d", t)).toBe(idle);
+          });
         },
       ),
     );

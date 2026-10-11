@@ -12,6 +12,8 @@ export interface PlaceVehicleCommand {
   blockLocation: Vec3;
   yaw: number;
   creative: boolean;
+  /** Hotbar slot that held the item when it was used; the player may switch slots before the placement runs. */
+  slot: number;
 }
 
 export class PlaceVehicle {
@@ -30,13 +32,16 @@ export class PlaceVehicle {
       });
     // Returning before the spawn also leaves the item unconsumed.
     if (!canPlaceAt(isAir)) return false;
+    // Taking the item first means a player who moved or dropped it in the
+    // meantime gets no vehicle, instead of a vehicle and the item (ADR 0024).
+    if (!cmd.creative && !this.world.consumeVehicleItem(cmd.playerId, cmd.slot))
+      return false;
     const id = this.world.spawnVehicle(
       cmd.dimensionId,
       { x: block.x + 0.5, y: block.y + 1, z: block.z + 0.5 },
       cmd.yaw,
     );
     this.repo.save(Vehicle.create(id, cmd.yaw));
-    if (!cmd.creative) this.world.consumeVehicleItem(cmd.playerId);
     return true;
   }
 }

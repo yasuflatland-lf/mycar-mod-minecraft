@@ -8,6 +8,10 @@
     "components": {
       "minecraft:icon": "mycar_headlight_switch",
       "minecraft:max_stack_size": 1,
+      "minecraft:use_modifiers": {
+        "use_duration": 0.1,
+        "movement_modifier": 1.0
+      },
       "minecraft:display_name": { "value": "item.mycar:headlight_switch.name" }
     }
   }
