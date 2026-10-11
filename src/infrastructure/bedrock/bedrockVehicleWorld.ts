@@ -114,6 +114,7 @@ export class BedrockVehicleWorld
           block !== undefined &&
           (block.typeId === "minecraft:water" ||
             block.typeId === "minecraft:flowing_water" ||
+            block.typeId === "minecraft:bubble_column" ||
             block.isWaterlogged)
         );
       } catch {
