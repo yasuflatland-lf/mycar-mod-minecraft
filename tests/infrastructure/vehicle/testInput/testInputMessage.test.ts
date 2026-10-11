@@ -142,4 +142,39 @@ describe("parseTestInputMessage", () => {
       }),
     );
   });
+
+  it("rejects a clear followed by more fields", () => {
+    const part = fc.string().filter((value) => !value.includes(","));
+    fc.assert(
+      fc.property(
+        vehicleId,
+        fc.array(part, { minLength: 1, maxLength: 3 }),
+        (id, rest) => {
+          expect(
+            parseTestInputMessage(`${id},clear,${rest.join(",")}`),
+          ).toBeUndefined();
+        },
+      ),
+    );
+  });
+
+  it("rejects a valid input followed by more fields", () => {
+    const part = fc.string().filter((value) => !value.includes(","));
+    fc.assert(
+      fc.property(
+        vehicleId,
+        axis,
+        axis,
+        fc.boolean(),
+        fc.array(part, { minLength: 1, maxLength: 3 }),
+        (id, x, y, jump, rest) => {
+          expect(
+            parseTestInputMessage(
+              `${id},${x},${y},${jump ? "1" : "0"},${rest.join(",")}`,
+            ),
+          ).toBeUndefined();
+        },
+      ),
+    );
+  });
 });
