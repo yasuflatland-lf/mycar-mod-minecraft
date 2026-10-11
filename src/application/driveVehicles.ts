@@ -18,7 +18,7 @@ export class DriveVehicles {
 
   execute(tick: number): void {
     const seen = new Set<string>();
-    // Riders of any form but car use third person (ADR 0028 + 0038).
+    // Riders of any form but car use third person (ADR 0028 + 0039).
     const offRoad = new Set<string>();
     for (const snap of this.world.loadedVehicles()) {
       seen.add(snap.id);
@@ -28,7 +28,7 @@ export class DriveVehicles {
           // The aggregate is lost after a reload: rebuild it with zero speed,
           // the entity's heading, the riders already seated (so the current
           // driver is not treated as newly mounted), and the vehicle form
-          // stored on the entity (ADR 0021, 0038).
+          // stored on the entity (ADR 0021, 0039).
           vehicle = Vehicle.rebuild(snap.id, snap.yaw, snap.riders, snap.form);
           this.repo.save(vehicle);
         }
