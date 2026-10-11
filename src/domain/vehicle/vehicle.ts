@@ -56,7 +56,7 @@ export interface TickOutcome {
   hits: RamHit[];
   driverId?: string;
   events: VehicleEvent[];
-  /** The new flight mode, only on the tick it changes (ADR 0020). */
+  /** The new flight mode, only on the tick it changes (ADR 0021). */
   flight?: FlightMode;
 }
 
@@ -75,7 +75,7 @@ function stepProbe(ctx: TickContext): StepProbe {
   };
 }
 
-/** Takeoff ignores the controls, and there is no handbrake in the air (ADR 0020). */
+/** Takeoff ignores the controls, and there is no handbrake in the air (ADR 0021). */
 function driveInputFor(
   raw: RawInput | undefined,
   mode: FlightMode,
@@ -112,7 +112,7 @@ export class Vehicle {
    * riders may already be seated. Seeding the seats and the driver keeps the
    * first tick from treating the current driver as newly mounted, which would
    * snap the heading to the driver's view. The flight mode comes from the
-   * entity, so a vehicle in the air keeps flying (ADR 0020).
+   * entity, so a vehicle in the air keeps flying (ADR 0021).
    */
   static rebuild(
     id: string,
