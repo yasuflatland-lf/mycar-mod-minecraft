@@ -15,6 +15,9 @@ export function packFiles(dir: string): string[] {
         ) {
           return [];
         }
+        // Finder drops .DS_Store into folders it opens; .gitignore and the
+        // package zip already skip it.
+        if (entry.name === ".DS_Store") return [];
         const parts = [...folders, entry.name];
         if (entry.isDirectory()) return walk(parts);
         return entry.isFile() ? [parts.join("/")] : [];
