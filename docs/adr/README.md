@@ -14,9 +14,11 @@ This directory records design decisions and the reasons behind them. The format 
 | [0008](0008-vehicle-item-and-breaking.md) | Placing and picking up vehicles | Accepted |
 | [0009](0009-vehicle-model-conventions.md) | Vehicle model conventions, and accepting a square collision box | Accepted |
 | [0010](0010-testing-strategy.md) | Testing strategy | Accepted |
-| [0011](0011-dev-server-docker-raknet.md) | Run the development server as BDS in Docker with raknet | Accepted |
+| [0011](0011-dev-server-docker-raknet.md) | Run the development server as BDS in Docker with raknet | Superseded by 0015 |
 | [0012](0012-ddd-layered-architecture.md) | Split the code into domain, application, and infrastructure layers | Accepted |
 | [0013](0013-dependency-updates-with-renovate.md) | Keep dependencies up to date with Renovate | Accepted |
+| [0014](0014-opt-in-nethernet-dev-server.md) | Offer NetherNet on the dev server as an opt-in transport | Superseded by 0015 |
+| [0015](0015-dev-server-docker-nethernet.md) | Run the development server as BDS in Docker with NetherNet | Accepted |
 
 The measurements and in-game tests behind these decisions are in [the driving-core spike findings](../spike-driving-core.md).
 

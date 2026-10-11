@@ -1,6 +1,6 @@
 # 0011. Run the development server as BDS in Docker with raknet
 
-- Status: Accepted
+- Status: Superseded by 0015
 - Date: 2026-10-10
 
 ## Context

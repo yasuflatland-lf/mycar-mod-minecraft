@@ -13,7 +13,7 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage '--coverage.include=src/**' --coverage.reporter=text --coverage.reporter=lcov",
     "model": "python3 -I tools/gen_model.py packs/mycar_rp",
-    "server:up": "node scripts/setup-dev-world.mjs && docker compose -f server/compose.yaml up -d",
+    "server:up": "node scripts/server-up.mjs",
     "server:down": "docker compose -f server/compose.yaml down",
     "test:game": "node scripts/game-test.mjs"
   },

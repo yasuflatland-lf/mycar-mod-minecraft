@@ -63,9 +63,9 @@ Design decisions live in [docs/adr](docs/adr/README.md). Read the ADRs that rela
 
 ## Bedrock gotchas
 
-- Bump the Resource Pack manifest version whenever the Resource Pack changes. Otherwise devices keep using their cached copy (0011).
-- Script-only changes reload with `/reload`. Entity definition and Resource Pack changes need a server restart (0011).
-- The dev BDS must use `TRANSPORT: raknet` on port 19132. The default `nethernet` transport picks a random port that Docker cannot forward (0011).
+- Bump the Resource Pack manifest version whenever the Resource Pack changes. Otherwise devices keep using their cached copy (0015).
+- Script-only changes reload with `/reload`. Entity definition and Resource Pack changes need a server restart (0015).
+- Start the dev BDS with `pnpm server:up`, not `docker compose up`. It uses NetherNet: TCP 19132 for signaling, and UDP 19140-19155 advertised on the Mac's LAN IP (`BDS_LAN_IP`, detected when unset). Without that advertisement, clients behind Docker's bridge network cannot reach their UDP port. `BDS_TRANSPORT=raknet` falls back to raknet on UDP 19132; ignore its "NetherNet is the only supported transport type" banner (0015).
 - Mobs spawned with `dimension.spawnEntity` far from players disappear within a tick, so tests use `summon`. `fill` is capped at 32,768 blocks per call (0010).
 
 ## Git and pull requests

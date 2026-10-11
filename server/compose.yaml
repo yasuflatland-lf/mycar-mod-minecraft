@@ -1,4 +1,5 @@
-# Dev Bedrock Dedicated Server (ADR 0011)
+# Dev Bedrock Dedicated Server (ADR 0015). Start it with `pnpm server:up`,
+# which sets BDS_TRANSPORT and BDS_UDP_PORTS.
 name: mycar-dev
 services:
   bds:
@@ -12,11 +13,18 @@ services:
       GAMEMODE: "creative"
       ALLOW_CHEATS: "true"
       ALLOW_LIST: "false"
-      TRANSPORT: "raknet"
+      TRANSPORT: "${BDS_TRANSPORT:-nethernet}"
+      # NetherNet only: "<LAN IP>:19140-19155:19140-19155", so clients are told
+      # the Mac's address and a published port instead of the container's.
+      SERVER_UDP_PORTS: "${BDS_UDP_PORTS:-}"
       TEXTUREPACK_REQUIRED: "true"
       CONTENT_LOG_FILE_ENABLED: "true"
       CONTENT_LOG_CONSOLE_OUTPUT_ENABLED: "true"
     ports:
+      # nethernet: signaling, then one UDP port per client from the range
+      - "19132:19132/tcp"
+      - "19140-19155:19140-19155/udp"
+      # raknet fallback: gameplay
       - "19132:19132/udp"
     volumes:
       - ./data:/data
