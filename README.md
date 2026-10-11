@@ -3,6 +3,7 @@
 [![Unit Tests](https://github.com/yasuflatland-lf/mycar-mod-minecraft/actions/workflows/unit-test.yml/badge.svg?branch=main)](https://github.com/yasuflatland-lf/mycar-mod-minecraft/actions/workflows/unit-test.yml)
 [![Integration Test](https://github.com/yasuflatland-lf/mycar-mod-minecraft/actions/workflows/integration-test.yml/badge.svg?branch=main)](https://github.com/yasuflatland-lf/mycar-mod-minecraft/actions/workflows/integration-test.yml)
 [![codecov](https://codecov.io/gh/yasuflatland-lf/mycar-mod-minecraft/branch/main/graph/badge.svg)](https://codecov.io/gh/yasuflatland-lf/mycar-mod-minecraft)
+[![domain and application coverage](https://codecov.io/gh/yasuflatland-lf/mycar-mod-minecraft/branch/main/graph/badge.svg?component=core)](https://app.codecov.io/gh/yasuflatland-lf/mycar-mod-minecraft/components)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ![The SUV seen from its front-left corner](docs/images/suv-front-left.png)
