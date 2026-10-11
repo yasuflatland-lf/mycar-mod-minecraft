@@ -236,10 +236,16 @@ def collect(geo, texture, folds, turns, pose):
     """Return the vehicle's faces as (quad, rgb, bloom group or None)."""
     desc = geo["description"]
     lift = FLIGHT_LIFT if pose["hover"] else 0.0
+    if pose["lamps"]:
+        tint = NIGHT_TINT
+    elif pose["submarine"]:
+        tint = WATER_TINT
+    else:
+        tint = (1.0, 1.0, 1.0)
     polygons = []
     for bone in geo["bones"]:
         name = bone["name"]
-        # The render controller hides the glow (ADR 0022) and the rear glass (ADR 0026) on the ground
+        # The render controller hides the glow while the gear is down: on the ground and under water (ADR 0022)
         if name.startswith("glow_") and not pose["hover"]:
             continue
         # The render controller shows the rear glass in every form but car
@@ -251,23 +257,25 @@ def collect(geo, texture, folds, turns, pose):
         # The submarine bones are hidden outside the submarine form (ADR 0040)
         if (name == "windows_sealed" or name.startswith(("prop_", "sub_arm_"))) and not pose["submarine"]:
             continue
-        fold = folds.get(name) if pose["hover"] else None
-        turn = turns.get(name) if pose["submarine"] else None
+        # Each rotation sign below was pinned from the game on its own axis
+        motion = None
+        if pose["hover"] and name in folds:
+            # The fold's z rotation turns the other way from this rotate() (ADR 0022: hub side down)
+            angle, offset = folds[name]
+            motion = ((0, 0, -angle), offset)
+        elif pose["submarine"] and name in turns:
+            # The right-handed x and y turn that the rear-hub test in tests/packs/resourcePack.test.ts
+            # uses, whose direction was pinned from the game
+            (rx, ry, _), offset = turns[name]
+            motion = ((rx, ry, 0), offset)
         emissive = "lamp" if name == "headlights" and pose["lamps"] else "disc" if name.startswith("glow_") else None
         for cube in bone.get("cubes", []):
             for face, quad in cube_faces(cube):
-                if fold:
-                    # Animation rotations turn the other way from the model's own (ADR 0022: hub side down)
-                    angle, (dx, dy, dz) = fold
-                    quad = [rotate(p, bone["pivot"], (0, 0, -angle)) for p in quad]
-                    # Animation positions run the same way as the model's axes: the submarine's
-                    # rear wheels move out by a positive x on the +x side in game (ADR 0043)
-                    quad = [(x + dx, y + dy, z + dz) for x, y, z in quad]
-                if turn:
-                    # The same right-handed turn as the in-game check of the rear hubs in
-                    # tests/packs/resourcePack.test.ts, then the move along the model's axes
-                    (rx, ry, _), (dx, dy, dz) = turn
-                    quad = [rotate(p, bone["pivot"], (rx, ry, 0)) for p in quad]
+                if motion:
+                    rotation, (dx, dy, dz) = motion
+                    quad = [rotate(p, bone["pivot"], rotation) for p in quad]
+                    # Animation positions run along the model's axes: in game a positive x moves the +x
+                    # rear wheel out (ADR 0043)
                     quad = [(x + dx, y + dy, z + dz) for x, y, z in quad]
                 quad = mirror([(x, y + lift, z) for x, y, z in quad])
                 normal = cross(sub(quad[1], quad[0]), sub(quad[3], quad[0]))
@@ -278,14 +286,14 @@ def collect(geo, texture, folds, turns, pose):
                 else:
                     r, g, b, _ = face_color(texture, cube["uv"][face], desc["texture_width"], desc["texture_height"])
                     k = shade(normalize(normal))
-                    tint = NIGHT_TINT if pose["lamps"] else WATER_TINT if pose["submarine"] else (1.0, 1.0, 1.0)
                     rgb = (r * k * tint[0], g * k * tint[1], b * k * tint[2])
                 polygons.append((quad, rgb, emissive))
     return polygons
 
 
 def ground_layers(polygons, pose, ground_y):
-    """Translucent quads on the ground as (quad, alpha, rgb): the shadow, then light pools."""
+    """Translucent quads on the ground as (quad, alpha, rgb): the shadow, then the headlight beam, the
+    seabed, or the glow pools of the pose."""
     points = [p for quad, _, emissive in polygons if not emissive for p in quad]
     x_lo, x_hi = min(p[0] for p in points), max(p[0] for p in points)
     z_lo, z_hi = min(p[2] for p in points), max(p[2] for p in points)

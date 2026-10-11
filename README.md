@@ -68,7 +68,7 @@ Download `mycar-<version>.mcaddon` from the [latest release](https://github.com/
 | Handbrake (slide) | Space (jump) | Jump button |
 | Take off / land | Double-tap Space | Double-tap the jump button |
 | Climb / descend while flying | Hold Space / hold S | Hold the jump button / pull the stick back |
-| Dive | Drive into water deeper than the vehicle is tall | Drive into water deeper than the vehicle is tall |
+| Dive | Drive into water at least as deep as the vehicle is tall | Drive into water at least as deep as the vehicle is tall |
 | Rise / sink under water | Hold Space / hold S | Hold the jump button / pull the stick back |
 | Surface and fly | Hold Space until the body is out of the water | Hold the jump button until the body is out of the water |
 | Leave the water | Drive onto the shore | Drive onto the shore |
@@ -83,7 +83,7 @@ The vehicle seats 4. The first player to get in drives and the others ride as pa
 - **Terrain.** It climbs steps up to two blocks high without stopping, and the wheels spin as it rolls
 - **Ramming.** It damages and pushes away mobs it hits at speed. People inside never take damage, from crashes or from falls
 - **Flying.** A double-tap of jump folds the wheels flat under the body, lights them blue, and lifts the vehicle 1.5 blocks. In the air it keeps the same handling, banks into turns like an airplane, and holds its altitude; hold jump to climb and pull back to sink, while the view stays free to look around. Another double-tap lands it slowly, sinking onto the ground lands it at once, and an empty vehicle in the air sinks to the ground by itself
-- **Under water.** Driving into water deeper than the vehicle is tall turns it into a submarine: the windows seal blue, the rear wheels turn backward on gunmetal arms around spinning bronze propellers, and a sonar ping sounds while someone rides. It keeps the flying handling and banks into turns, holds its depth, and rises or sinks with jump and pull-back. Riders do not lose air. Hold jump until the whole body is out of the water to take off, or drive onto a shore to become a car again; an empty submarine floats up to the surface
+- **Under water.** Driving into water at least as deep as the vehicle is tall turns it into a submarine: the windows seal blue, the rear wheels turn backward on gunmetal arms around spinning bronze propellers, and a sonar ping sounds while someone rides. It keeps the flying handling and banks into turns, holds its depth, and rises or sinks with jump and pull-back. Riders do not lose air. Hold jump until the whole body is out of the water to take off, or drive onto a shore to become a car again; an empty submarine floats up to the surface
 - **Headlights.** At night they light the road up to 27 blocks ahead and follow the vehicle
 - **Paint.** A placed vehicle starts khaki. Each of the 16 dyes repaints it in that dye's color, except brown dye, which turns it back to khaki; each repaint uses one dye. Ink sacs, bone meal, cocoa beans, and lapis lazuli do not repaint. a broken vehicle drops a plain item, so the next one starts khaki again
 

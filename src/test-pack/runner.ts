@@ -116,6 +116,8 @@ async function setupArena(): Promise<Arena> {
   } catch {
     // Not in this world
   }
+  // An existing area of the same name keeps its old bounds; withPool reports
+  // the fill that then fails in the chunks left out.
   dim.runCommand(
     `tickingarea add ${minX} -64 ${minZ} ${maxX} 0 ${maxZ} mycar_arena true`,
   );
@@ -143,6 +145,9 @@ async function setupArena(): Promise<Arena> {
   dim.runCommand(`kill @e[type=${VEHICLE}]`);
   dim.runCommand("kill @e[type=cow]");
   dim.runCommand(`kill @e[type=${SEAT_PROBE}]`);
+  // The pool's water replaces the stone under passable_no_hop's carpets and
+  // torches, which then drop as items.
+  dim.runCommand("kill @e[type=item]");
   await wait(5);
   return { dim, gy };
 }
@@ -672,7 +677,13 @@ async function withPool<T>(
     a.dim.runCommand(
       `fill ${minX} ${bottom} ${z} ${maxX} ${a.gy - 1} ${z} stone`,
     );
-  fillPool("water");
+  // runCommand reports a fill into unloaded chunks as successCount 0 instead
+  // of throwing. Seen in game with a mycar_arena area kept from a smaller
+  // arena: every submarine test then failed with enteredAt=-1.
+  if (fillPool("water").successCount === 0)
+    throw new Error(
+      `the pool was not filled: check that "tickingarea list" shows mycar_arena covering x ${ARENA.minX}-${ARENA.maxX}, z ${ARENA.minZ}-${ARENA.maxZ}`,
+    );
   try {
     await wait(5);
     return await run();

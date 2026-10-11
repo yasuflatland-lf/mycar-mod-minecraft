@@ -14,7 +14,7 @@ const form = fc.constantFrom(...FORMS);
 const BANKING = ["hover", "submarine"] as const;
 const banking = fc.constantFrom(...BANKING);
 
-describe("stepBank (ADR 0026)", () => {
+describe("stepBank (ADR 0026, 0044)", () => {
   it("moves at most bankRate per tick and stays within maxBank", () => {
     fc.assert(
       fc.property(angle, form, yaw, turn, (prev, m, y, d) => {

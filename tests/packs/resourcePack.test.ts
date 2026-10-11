@@ -14,11 +14,10 @@ const render = read(`${RP}/render_controllers/suv.render_controllers.json`)
   .render_controllers["controller.render.mycar.suv"];
 const particle = read(`${RP}/particles/hover_glow.json`).particle_effect;
 const WHEELS = ["wheel_fl", "wheel_fr", "wheel_rl", "wheel_rr"];
+const geo = read(`${RP}/models/entity/suv.geo.json`)["minecraft:geometry"][0];
 const geoPivot = (name: string): number[] =>
   defined(
-    read(`${RP}/models/entity/suv.geo.json`)[
-      "minecraft:geometry"
-    ][0].bones.find((b: { name: string }) => b.name === name),
+    geo.bones.find((b: { name: string }) => b.name === name),
     name,
   ).pivot;
 
@@ -109,7 +108,7 @@ describe("Resource Pack flight visuals (ADR 0022)", () => {
 
   // The arms are not tied to a visibility rule for the same reason as the
   // props: each state pins them, so they grow and shrink with the wheels.
-  it("shows the wheel arms only while the wheels fold, hang or retract (ADR 0043)", () => {
+  it("shows the flight arms only while the wheels fold, hang or retract, and the submarine arms only with the props (ADR 0043)", () => {
     const arms = WHEELS.map((w) => w.replace("wheel_", "arm_"));
     const subArms = ["sub_arm_rl", "sub_arm_rr"];
     const scaleIn = (anim: string, b: string) =>
@@ -128,10 +127,12 @@ describe("Resource Pack flight visuals (ADR 0022)", () => {
         expect(scaleIn(anim, b), `${anim} ${b}`).toEqual([0, 0, 0]);
     }
     for (const b of subArms) {
-      for (const anim of ["dive", "submerged", "surface"])
+      for (const anim of ["dive", "submerged", "surface"]) {
+        expect(scaleIn(anim, b), `${anim} ${b}`).toBeDefined();
         expect(scaleIn(anim, b), `${anim} ${b}`).toEqual(
           scaleIn(anim, b.replace("sub_arm_", "prop_")),
         );
+      }
       for (const anim of [
         "wheels",
         "wheels_deploy",
@@ -178,7 +179,6 @@ describe("Resource Pack flight visuals (ADR 0022)", () => {
 });
 
 describe("Resource Pack banking (ADR 0026)", () => {
-  const geo = read(`${RP}/models/entity/suv.geo.json`)["minecraft:geometry"][0];
   const root = geo.bones.find((b: { name: string }) => b.name === "root");
 
   // A positive z rotation lowers the model's +x side, which is the vehicle's
@@ -357,7 +357,6 @@ describe("Resource Pack submarine visuals (ADR 0040)", () => {
     pivot: Vec3;
     cubes?: Cube[];
   }
-  const geo = read(`${RP}/models/entity/suv.geo.json`)["minecraft:geometry"][0];
   const bones = new Map<string, Bone>(geo.bones.map((b: Bone) => [b.name, b]));
   const bone = (name: string) => defined(bones.get(name), name);
   const dive = anims["animation.mycar.suv.dive"];

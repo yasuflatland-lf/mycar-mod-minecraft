@@ -3,9 +3,9 @@
 Coordinates are in pixels (16 px = 1 block). The definitions below use "forward +z, right +x",
 and are rotated 180° around the Y axis just before writing, because in Bedrock the front of an
 entity is on the -z side of the model.
-Bone names follow the convention (ADR 0009, 0022): root / body / wheel_fl / wheel_fr / wheel_rl / wheel_rr /
-glow_fl / glow_fr / glow_rl / glow_rr / rear_glass / windows_sealed / prop_rl / prop_rr /
-door_fr / door_rr / door_fl / door_rl / seat_0..3.
+Bone names follow the convention (ADR 0009, 0022, 0043): root / body / wheel_fl / wheel_fr / wheel_rl /
+wheel_rr / glow_fl / glow_fr / glow_rl / glow_rr / rear_glass / windows_sealed / prop_rl / prop_rr /
+arm_fl / arm_fr / arm_rl / arm_rr / sub_arm_rl / sub_arm_rr / door_fr / door_rr / door_fl / door_rl / seat_0..3.
 """
 import json
 import math
@@ -419,12 +419,16 @@ def round_tire(axis, center, radius, a0, a1, segments=16):
     return cubes
 
 
+# Distance of the wheel hubs from the center line
+HUB_X = 14
+
+
 def wheel(name, x_out, z_center):
     # x_out: sign pointing outward (+1 = right, -1 = left)
     x0, x1 = (12, 16) if x_out > 0 else (-16, -12)
     rim_x0, rim_x1 = (15.9, 16.2) if x_out > 0 else (-16.2, -15.9)
     hub_x0, hub_x1 = (16.2, 16.5) if x_out > 0 else (-16.5, -16.2)
-    center = (14 * x_out, 6, z_center)
+    center = (HUB_X * x_out, 6, z_center)
     return {
         "name": name,
         "parent": "root",
@@ -455,7 +459,7 @@ PROP_BLADE = ((0.9, 2.0, 0.55, 0), (1.9, 3.3, 1.05, 14), (3.2, 4.3, 0.8, 30))
 def prop(name, x_out, z_center):
     """A hub and four swept blades mounted on the outer face of the rear wheel's hub cap, in the wheel's
     plane and inside the tire's inner radius, so the tread ring frames the prop."""
-    center = (14 * x_out, 6, z_center)
+    center = (HUB_X * x_out, 6, z_center)
     _, cy, cz = center
     x0, x1 = (16.5, 17.1) if x_out > 0 else (-17.1, -16.5)
     blades = []
@@ -482,8 +486,12 @@ def prop(name, x_out, z_center):
 
 
 # The folded wheels hang out from the body on arms in flight, like a hovering DeLorean (ADR 0043): the
-# hover animation moves each wheel this far outward on top of lowering it 4 px.
+# hover animation moves each wheel this far outward on top of lowering it 4 px. suv.animation.json is
+# written by hand, so wheels_folded, wheels_deploy and wheels_retract must use the same value.
 FOLD_OUT = 6
+# How far the dive and submerged animations move each turned rear wheel out (ADR 0040), which the
+# submarine arms reach to. Equal to FOLD_OUT, but set by a different animation.
+SUB_OUT = 6
 ARM_THICK = 1.4
 
 
@@ -493,7 +501,7 @@ def arm(name, x_out, z_center):
     s = x_out
     ax, ay = 12, 9  # inside the wheel arch
     # The hub on top of the folded wheel, whose top face is at y 4: the last cube rests on it
-    hx, hy = 14 + FOLD_OUT, 4 + ARM_THICK / 2
+    hx, hy = HUB_X + FOLD_OUT, 4 + ARM_THICK / 2
     steps = 8
     cubes = []
     for i in range(steps):
@@ -508,10 +516,10 @@ def arm(name, x_out, z_center):
 
 def sub_arm(name, x_out, z_center):
     """A gunmetal arm from the body to the hub of a rear wheel turned for the submarine (ADR 0040), which
-    sits FOLD_OUT px out with its axle along z. The arm lies against the tire's front face, opposite the
+    sits SUB_OUT px out with its axle along z. The arm lies against the tire's front face, opposite the
     prop on the rear face. Before turn_around the front is +z. Hidden by scale outside the submarine."""
     s = x_out
-    hx = 14 + FOLD_OUT
+    hx = HUB_X + SUB_OUT
     xs = sorted((s * 11, s * (hx + 0.8)))
     face = z_center + 2  # the tire's front face
     return {
@@ -527,8 +535,8 @@ def sub_arm(name, x_out, z_center):
 
 def glow(name, x_out, z_center):
     # A disc under the folded wheel (ADR 0022, moved out with it by ADR 0043). The render controller hides
-    # it on the ground.
-    x = (14 + FOLD_OUT) * x_out
+    # it while the gear is down: on the ground and under water.
+    x = (HUB_X + FOLD_OUT) * x_out
     return {
         "name": name,
         "parent": "root",
