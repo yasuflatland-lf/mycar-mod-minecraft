@@ -96,7 +96,7 @@ describe("parseTestInputMessage", () => {
     );
   });
 
-  it("rejects messages whose field count is not 2, 4, or 5", () => {
+  it("rejects messages whose field count is not 2 or 4", () => {
     fc.assert(
       fc.property(
         fc

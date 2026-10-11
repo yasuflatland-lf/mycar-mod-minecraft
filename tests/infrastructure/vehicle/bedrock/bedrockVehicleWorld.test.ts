@@ -5,7 +5,6 @@ import { SPEC } from "../../../../src/domain/vehicle/spec";
 import { BedrockVehicleWorld } from "../../../../src/infrastructure/vehicle/bedrock/bedrockVehicleWorld";
 import {
   HEADLIGHTS_PROPERTY,
-  LIGHT_BLOCK,
   VEHICLE_TYPE,
 } from "../../../../src/infrastructure/vehicle/bedrock/identifiers";
 import { TestInputStore } from "../../../../src/infrastructure/vehicle/testInput/testInputStore";
@@ -126,7 +125,19 @@ describe("BedrockVehicleWorld submarine wiring (ADR 0040)", () => {
 });
 
 describe("BedrockVehicleWorld snapshots", () => {
-  const cow = { id: "cow", typeId: "minecraft:cow" };
+  const cow = {
+    id: "cow",
+    typeId: "minecraft:cow",
+    location: { x: 0, y: 64, z: 0 },
+    getVelocity: () => ({ x: 0, y: 0, z: 0 }),
+    getRotation: () => ({ y: 0 }),
+    getProperty: () => undefined,
+    getComponent: () => undefined,
+    inputInfo: {
+      getMovementVector: () => ({ x: 0, y: 0 }),
+      getButtonState: () => undefined,
+    },
+  };
 
   beforeEach(() => vi.resetAllMocks());
 
@@ -142,17 +153,17 @@ describe("BedrockVehicleWorld snapshots", () => {
 
   it("reports the headlights as the vehicle's headlights property says (ADR 0020)", () => {
     fc.assert(
-      fc.property(fc.boolean(), (on) => {
+      fc.property(fc.constantFrom(true, false, undefined, "true"), (value) => {
         const { car, world } = fixture();
         car.getProperty.mockImplementation((key) =>
-          key === HEADLIGHTS_PROPERTY ? on : undefined,
+          key === HEADLIGHTS_PROPERTY ? value : undefined,
         );
-        expect(world.loadedVehicles()[0]?.headlights).toBe(on);
+        expect(world.loadedVehicles()[0]?.headlights).toBe(value === true);
       }),
     );
   });
 
-  it("counts only players in the seats as riders (ADR 0007)", () => {
+  it("counts only players in the seats as riders (ADR 0019)", () => {
     const { car, world } = fixture();
     const player = {
       id: "player",
@@ -179,6 +190,7 @@ describe("BedrockVehicleWorld snapshots", () => {
     const input = { moveX: 0, moveY: 1, jump: false };
     inputs.set(car.id, input);
     expect(world.loadedVehicles()[0]?.testInput).toEqual(input);
+    expect(world.loadedVehicles()[0]?.testInput).toEqual(input);
     dimension.getEntities.mockReturnValue([]);
     world.loadedVehicles();
     dimension.getEntities.mockReturnValue([car]);
@@ -192,7 +204,8 @@ describe("BedrockVehicleWorld snapshots", () => {
     const cell = { x: 0, y: 65, z: 4 };
     world.loadedVehicles();
     world.shineHeadlights(car.id, [cell]);
-    expect(grid.typeAt(cell)).toBe(LIGHT_BLOCK);
+    world.loadedVehicles();
+    expect(grid.typeAt(cell)).toBe("minecraft:light_block_15");
     dimension.getEntities.mockReturnValue([]);
     world.loadedVehicles();
     expect(grid.typeAt(cell)).toBe("minecraft:air");
@@ -202,7 +215,7 @@ describe("BedrockVehicleWorld snapshots", () => {
 describe("BedrockVehicleWorld flight wiring", () => {
   beforeEach(() => vi.resetAllMocks());
 
-  it("keeps gravity on only in the car form (ADR 0021)", () => {
+  it("keeps gravity on only in the car form (ADR 0021, 0039)", () => {
     fc.assert(
       fc.property(fc.constantFrom(...FORMS), (form) => {
         const { car, world } = fixture();

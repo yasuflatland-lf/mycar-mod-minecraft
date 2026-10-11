@@ -36,7 +36,9 @@ describe("HeadlightBlocks (ADR 0020)", () => {
         const car = vehicleIn(grid);
         const lights = new HeadlightBlocks();
         lights.shine(car.id, car, wanted);
-        expect(wanted.map(grid.typeAt)).toEqual(wanted.map(() => LIGHT_BLOCK));
+        expect(wanted.map(grid.typeAt)).toEqual(
+          wanted.map(() => "minecraft:light_block_15"),
+        );
         lights.shine(car.id, car, []);
         expect(wanted.map(grid.typeAt)).toEqual(
           wanted.map(() => "minecraft:air"),

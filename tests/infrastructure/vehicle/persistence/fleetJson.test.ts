@@ -18,7 +18,7 @@ describe("parseFleetState (ADR 0038)", () => {
     expect(() => parseFleetState(raw)).toThrow(reason);
   });
 
-  it("rejects any JSON value that is not an object, naming that reason", () => {
+  it("rejects any JSON primitive or null, naming that reason", () => {
     fc.assert(
       fc.property(
         fc.oneof(fc.integer(), fc.boolean(), fc.string(), fc.constant(null)),
