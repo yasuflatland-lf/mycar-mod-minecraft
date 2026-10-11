@@ -31,6 +31,9 @@ jobs:
       # Code, comments, and docs must be in English (AGENTS.md)
       - run: pnpm run lint:lang
 
+      # The README preview must be re-rendered whenever the model or its texture changes
+      - run: pnpm run model:check
+
       # main has no source code yet, so only run these once tsconfig.json exists
       - id: src
         run: echo "present=$([ -f tsconfig.json ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
