@@ -1,5 +1,6 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+import { normalizeYaw } from "../../../src/domain/shared/vec";
 import { bankSink, stepBank } from "../../../src/domain/vehicle/bank";
 import { FORMS } from "../../../src/domain/vehicle/form";
 import { SPEC } from "../../../src/domain/vehicle/spec";
@@ -62,7 +63,12 @@ describe("stepBank (ADR 0026, 0044)", () => {
           const share = tenths / 10;
           let bank = 0;
           for (let t = 0; t < 30; t++)
-            bank = stepBank(bank, m, y, y + share * SPEC.turnRate);
+            bank = stepBank(
+              bank,
+              m,
+              y,
+              normalizeYaw(y + share * SPEC.turnRate),
+            );
           expect(bank).toBeCloseTo(share * SPEC.maxBank, 9);
         },
       ),
@@ -106,11 +112,11 @@ describe("bankSink (ADR 0026)", () => {
   });
 
   it("sinks bankSink at full bank either way and half of it at half bank", () => {
-    expect(bankSink("hover", SPEC.maxBank)).toBeCloseTo(SPEC.bankSink, 12); // 0.03
-    expect(bankSink("hover", -SPEC.maxBank)).toBeCloseTo(SPEC.bankSink, 12); // 0.03
+    expect(bankSink("hover", SPEC.maxBank)).toBeCloseTo(SPEC.bankSink, 12);
+    expect(bankSink("hover", -SPEC.maxBank)).toBeCloseTo(SPEC.bankSink, 12);
     expect(bankSink("hover", SPEC.maxBank / 2)).toBeCloseTo(
       SPEC.bankSink / 2,
       12,
-    ); // 0.015
+    );
   });
 });

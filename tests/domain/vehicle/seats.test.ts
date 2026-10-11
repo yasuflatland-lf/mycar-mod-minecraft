@@ -52,7 +52,7 @@ describe("seats (ADR 0019)", () => {
     );
   });
 
-  it("gives an occupant on the centerline the right-hand seat of the nearer row, the driver's side", () => {
+  it("breaks an exact tie on the centerline toward the lower seat index, the driver's side", () => {
     fc.assert(
       fc.property(fc.double({ min: -3, max: 3, noNaN: true }), (z) => {
         expect([0, 2]).toContain(nearestSeat({ x: 0, z }));

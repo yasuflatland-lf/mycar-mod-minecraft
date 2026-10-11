@@ -58,10 +58,10 @@ describe("headlightCells (ADR 0020)", () => {
     );
   });
 
-  it("lights one cell per reach, since the reaches are more than a block apart", () => {
+  it("lights one cell per reach, since the reaches are farther apart than a cell's diagonal", () => {
     fc.assert(
       fc.property(location, yaw, (at, y) => {
-        expect(headlightCells(at, y)).toHaveLength(SPEC.headlightReach.length); // 5
+        expect(headlightCells(at, y)).toHaveLength(SPEC.headlightReach.length);
       }),
     );
   });

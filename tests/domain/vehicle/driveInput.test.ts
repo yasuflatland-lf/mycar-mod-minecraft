@@ -100,16 +100,42 @@ describe("toDriveInput (ADR 0018)", () => {
     }
   });
 
-  it("creeps with the stick exactly 20 degrees from horizontal", () => {
+  it("creeps with the stick exactly 20 degrees above or below horizontal", () => {
     const slope = Math.tan((SPEC.sidewaysAngle * Math.PI) / 180);
     for (const x of [-1, 1]) {
-      expect(toDriveInput({ moveX: x, moveY: slope, jump: false })).toEqual({
-        throttle: 0,
-        steer: x,
-        handbrake: false,
-        creep: true,
-      });
+      for (const y of [-slope, slope]) {
+        expect(toDriveInput({ moveX: x, moveY: y, jump: false })).toEqual({
+          throttle: 0,
+          steer: x,
+          handbrake: false,
+          creep: true,
+        });
+      }
     }
+  });
+
+  it("drives or reverses instead of creeping with the stick more than 20 degrees from horizontal", () => {
+    const slope = Math.tan((SPEC.sidewaysAngle * Math.PI) / 180);
+    fc.assert(
+      fc.property(
+        fc.double({ min: 0.11, max: 1, noNaN: true }),
+        fc.double({ min: 0, max: 1, noNaN: true }),
+        fc.boolean(),
+        fc.boolean(),
+        (x, t, left, back) => {
+          const lowest = x * slope + 1e-6;
+          const y = lowest + t * (1 - lowest);
+          const d = toDriveInput({
+            moveX: left ? x : -x,
+            moveY: back ? -y : y,
+            jump: false,
+          });
+          expect(d.creep).toBe(false);
+          if (y > SPEC.throttleDeadzone)
+            expect(Math.sign(d.throttle)).toBe(back ? -1 : 1);
+        },
+      ),
+    );
   });
 
   it("does not creep without sideways input", () => {
