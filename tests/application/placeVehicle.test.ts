@@ -19,7 +19,7 @@ describe("PlaceVehicle (ADR 0008)", () => {
       "spawn:minecraft:overworld:10.5,65,-2.5:45",
       "consume:p",
     ]);
-    expect(repo.get("v1")!.yaw).toBeCloseTo(45);
+    expect(repo.get("v1")?.yaw).toBeCloseTo(45);
   });
 
   it("does not consume the item in creative mode", () => {

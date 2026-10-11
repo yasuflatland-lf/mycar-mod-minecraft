@@ -25,7 +25,7 @@ import {
   stepMotion,
 } from "./motion";
 import { type RamHit, type RamTarget, selectHits } from "./ram";
-import { DOOR_BY_SEAT, occupiedSeats, vacatedSeats } from "./seats";
+import { doorOf, occupiedSeats, vacatedSeats } from "./seats";
 import { SPEC } from "./spec";
 import { shouldStepUp } from "./stepUp";
 
@@ -189,7 +189,7 @@ export class Vehicle {
         type: "SeatVacated",
         vehicleId: this.id,
         seat,
-        door: DOOR_BY_SEAT[seat]!,
+        door: doorOf(seat),
       }),
     );
     this.seats = seats;
