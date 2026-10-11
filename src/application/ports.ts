@@ -26,6 +26,10 @@ export interface DriveWorld {
   targetsNear(vehicleId: string): RamTarget[];
   applyMotion(vehicleId: string, impulse: Vec3, yaw: number): void;
   setFlight(vehicleId: string, mode: FlightMode): void;
+  /** Switches a player's view to the third-person camera, or back to their own (ADR 0028). */
+  setThirdPerson(playerId: string, on: boolean): void;
+  /** Degrees; positive lowers the right side (ADR 0026). */
+  setBank(vehicleId: string, degrees: number): void;
   damage(hit: RamHit, attackerId: string | undefined): void;
   playDoor(vehicleId: string, door: string): void;
   /**

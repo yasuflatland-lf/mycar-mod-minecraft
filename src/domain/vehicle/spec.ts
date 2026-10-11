@@ -66,4 +66,8 @@ export const SPEC = {
   // reports the measured horizontal value.
   flightDrag: 0.91,
   flightVerticalDrag: 0.98,
+  // Banking in flight (ADR 0026)
+  maxBank: 30, // degrees at the full turn rate
+  bankRate: 3, // degrees/tick; 10 ticks from level to full bank
+  bankSink: 0.03, // blocks/tick of altitude lost at full bank
 } as const;

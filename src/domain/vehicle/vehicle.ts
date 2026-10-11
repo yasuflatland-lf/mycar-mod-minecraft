@@ -1,5 +1,6 @@
 // Aggregate for one vehicle: motion, driver, seats, ram cooldowns, and the hit count.
-import { forward, rightOf, type Vec2, type Vec3 } from "../shared/vec";
+import { clamp, forward, rightOf, type Vec2, type Vec3 } from "../shared/vec";
+import { bankSink, stepBank } from "./bank";
 import {
   type DriveInput,
   NEUTRAL_INPUT,
@@ -59,6 +60,8 @@ export interface TickOutcome {
   events: VehicleEvent[];
   /** The new flight mode, only on the tick it changes (ADR 0021). */
   flight?: FlightMode;
+  /** The new bank angle in degrees, only on the tick it changes and on the first tick (ADR 0026). */
+  bank?: number;
 }
 
 function stepProbe(ctx: TickContext): StepProbe {
@@ -89,6 +92,10 @@ function driveInputFor(
 export class Vehicle {
   private motion: MotionState;
   private flight: FlightState;
+  private bank = 0;
+  // Undefined until the first tick, so a rebuilt vehicle clears a bank the
+  // entity kept from before /reload.
+  private sentBank: number | undefined;
   private driverId: string | undefined;
   private seats = new Map<string, number>();
   private readonly lastHit = new Map<string, number>();
@@ -139,6 +146,11 @@ export class Vehicle {
     return this.flight.mode;
   }
 
+  /** Bank angle in degrees; positive lowers the right side (ADR 0026). */
+  get bankAngle(): number {
+    return this.bank;
+  }
+
   tick(ctx: TickContext): TickOutcome {
     const events = this.updateSeats(ctx.riders);
     const driver = this.updateDriver(ctx.riders);
@@ -153,24 +165,32 @@ export class Vehicle {
     });
     const mode = this.flight.mode;
     const input = driveInputFor(raw, mode);
-    let step: MotionResult;
+    const yawBefore = this.motion.yaw;
+    const step: MotionResult =
+      mode === "ground"
+        ? stepMotion(
+            this.motion,
+            input,
+            { velocity: ctx.velocity, onGround: ctx.onGround },
+            stepProbe(ctx),
+          )
+        : stepFlightMotion(this.motion, input, ctx.velocity);
+    this.motion = step.state;
+    this.bank = stepBank(this.bank, mode, yawBefore, this.motion.yaw);
     let impulseY: number;
     if (mode === "ground") {
-      step = stepMotion(
-        this.motion,
-        input,
-        { velocity: ctx.velocity, onGround: ctx.onGround },
-        stepProbe(ctx),
-      );
       impulseY = step.jumped ? SPEC.stepVelocity : 0;
     } else {
-      step = stepFlightMotion(this.motion, input, ctx.velocity);
-      impulseY = verticalImpulse(
-        flightVerticalSpeed(mode, raw?.pitch ?? 0, step.state.speed),
-        ctx.velocityY ?? 0,
+      const targetVy = clamp(
+        flightVerticalSpeed(mode, raw?.pitch ?? 0, step.state.speed) -
+          bankSink(mode, this.bank),
+        -SPEC.maxClimb,
+        SPEC.maxClimb,
       );
+      impulseY = verticalImpulse(targetVy, ctx.velocityY ?? 0);
     }
-    this.motion = step.state;
+    const bank = this.bank === this.sentBank ? undefined : this.bank;
+    this.sentBank = this.bank;
 
     return {
       impulse: { x: step.impulse.x, y: impulseY, z: step.impulse.z },
@@ -179,6 +199,7 @@ export class Vehicle {
       driverId: driver?.id,
       events,
       flight: mode === before ? undefined : mode,
+      bank,
     };
   }
 

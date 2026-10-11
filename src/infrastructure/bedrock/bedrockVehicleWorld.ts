@@ -27,6 +27,7 @@ import type { RiderView } from "../../domain/vehicle/vehicle";
 import type { TestInputStore } from "../testInput/testInputStore";
 import { HeadlightBlocks, isLightBlock } from "./headlightBlocks";
 import {
+  BANK_PROPERTY,
   FLIGHT_PROPERTY,
   HEADLIGHTS_PROPERTY,
   HOVER_EVENT,
@@ -37,6 +38,7 @@ import {
   PLAYER_TYPE,
   paintEvent,
   STARTER_RECEIVED_PROPERTY,
+  THIRD_PERSON_CAMERA,
   VEHICLE_TYPE,
 } from "./identifiers";
 
@@ -176,6 +178,17 @@ export class BedrockVehicleWorld
     // rebuilds the aggregate from it.
     car.triggerEvent(mode === "ground" ? LAND_EVENT : HOVER_EVENT);
     car.setProperty(FLIGHT_PROPERTY, mode);
+  }
+
+  setThirdPerson(playerId: string, on: boolean): void {
+    const camera = this.player(playerId)?.camera;
+    if (!camera) return;
+    if (on) camera.setCamera(THIRD_PERSON_CAMERA);
+    else camera.clear();
+  }
+
+  setBank(vehicleId: string, degrees: number): void {
+    this.entity(vehicleId)?.setProperty(BANK_PROPERTY, degrees);
   }
 
   damage(hit: RamHit, attackerId: string | undefined): void {

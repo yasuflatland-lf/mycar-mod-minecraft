@@ -7,6 +7,7 @@ import { PAINTS } from "../domain/vehicle/paint";
 import { nearestSeat, toLocal } from "../domain/vehicle/seats";
 import { SPEC } from "../domain/vehicle/spec";
 import {
+  BANK_PROPERTY,
   FLIGHT_PROPERTY,
   HEADLIGHTS_PROPERTY,
   TEST_INPUT_EVENT as INPUT_EVENT,
@@ -502,6 +503,25 @@ function flightClimbDescend(a: Arena): Promise<Outcome> {
   });
 }
 
+function flightBank(a: Arena): Promise<Outcome> {
+  return withAirborneCar(a, async (car) => {
+    const bank = () => Number(car.getProperty(BANK_PROPERTY));
+    // Turn right: the lane runs along the arena's low-z edge, and a car that
+    // leaves the ticking area stops updating.
+    drive(car, -1, 1);
+    await wait(20);
+    const turning = bank();
+    drive(car, 0, 1);
+    await wait(20);
+    const straight = bank();
+    return {
+      // Steering right lowers the right side, so the angle is positive (ADR 0026).
+      pass: turning >= SPEC.maxBank / 2 && straight === 0,
+      detail: `turning=${turning.toFixed(1)} straight=${straight.toFixed(1)}`,
+    };
+  });
+}
+
 function flightLand(a: Arena): Promise<Outcome> {
   return withAirborneCar(a, async (car) => {
     await doubleTap(car);
@@ -551,6 +571,7 @@ async function runAll(runId: string): Promise<void> {
     ["flight_takeoff", () => flightTakeoff(a)],
     ["flight_cruise", () => flightCruise(a)],
     ["flight_climb_descend", () => flightClimbDescend(a)],
+    ["flight_bank", () => flightBank(a)],
     ["flight_land", () => flightLand(a)],
     ["flight_driverless", () => flightDriverless(a)],
   ];

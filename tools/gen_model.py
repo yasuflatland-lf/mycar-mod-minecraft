@@ -4,7 +4,7 @@ Coordinates are in pixels (16 px = 1 block). The definitions below use "forward 
 and are rotated 180° around the Y axis just before writing, because in Bedrock the front of an
 entity is on the -z side of the model.
 Bone names follow the convention (ADR 0009, 0022): root / body / wheel_fl / wheel_fr / wheel_rl / wheel_rr /
-glow_fl / glow_fr / glow_rl / glow_rr / door_fr / door_rr / door_fl / door_rl / seat_0..3.
+glow_fl / glow_fr / glow_rl / glow_rr / rear_glass / door_fr / door_rr / door_fl / door_rl / seat_0..3.
 """
 import json
 import math
@@ -32,6 +32,8 @@ PALETTE = {
     "leather": (110, 68, 38),
     "spoke": (97, 97, 97),  # #616161
     "glow": (80, 170, 255),
+    # Opaque tinted glass: in flight it hides the riders, who stay upright while the body banks (ADR 0026)
+    "rear_glass": (38, 84, 160),
 }
 NAMES = list(PALETTE)
 # Swatch alpha, 255 unless listed. Alpha 0 marks the headlight lenses as emissive for the
@@ -362,10 +364,13 @@ geo = {
                 "visible_bounds_offset": [0, 1, 0],
             },
             "bones": [
-                {"name": "root", "pivot": [0, 0, 0]},
+                {"name": "root", "pivot": [0, 12, 0]},
                 {"name": "body", "parent": "root", "pivot": [0, 7, 0], "cubes": body,
                  "locators": {"exhaust": [9, 4.5, -28.6]}},
                 {"name": "headlights", "parent": "body", "pivot": [0, 7, 0], "cubes": headlights},
+                # Shown only in flight by the render controller (ADR 0026)
+                {"name": "rear_glass", "parent": "body", "pivot": [0, 7, 0],
+                 "cubes": [box(-12, 17, -26, 12, 27, -25, "rear_glass")]},
                 wheel("wheel_fl", -1, 17),
                 wheel("wheel_fr", +1, 17),
                 wheel("wheel_rl", -1, -16),

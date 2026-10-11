@@ -215,8 +215,8 @@ def collect(geo, texture, folds, pose):
     polygons = []
     for bone in geo["bones"]:
         name = bone["name"]
-        # The render controller hides the glow on the ground (ADR 0022)
-        if name.startswith("glow_") and not pose["flying"]:
+        # The render controller hides the glow (ADR 0022) and the rear glass (ADR 0026) on the ground
+        if (name.startswith("glow_") or name == "rear_glass") and not pose["flying"]:
             continue
         fold = folds.get(name) if pose["flying"] else None
         emissive = "lamp" if name == "headlights" and pose["lamps"] else "disc" if name.startswith("glow_") else None
