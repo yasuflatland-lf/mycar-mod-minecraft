@@ -1,0 +1,21 @@
+name: Cache Cleanup
+
+# Caches made on refs/pull/<n>/merge can only be restored by that PR, so once it
+# is closed they just take up the 10 GB repository quota until GitHub evicts
+# them after 7 days without use. Each mise cache is about 115 MB.
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  actions: write
+
+jobs:
+  delete:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: gh cache delete --all --ref "refs/pull/$PR_NUMBER/merge" --succeed-on-no-caches --repo "$GITHUB_REPOSITORY"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
