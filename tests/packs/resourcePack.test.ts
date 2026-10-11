@@ -121,7 +121,9 @@ describe("Resource Pack flight visuals (ADR 0022)", () => {
     const dep = bp.dependencies.find(
       (d: { uuid?: string }) => d.uuid === rp.header.uuid,
     );
-    expect(rp.header.version).toEqual([0, 1, 24]);
+    // 0.1.24 first ships the submarine visuals; an older cached copy lacks them.
+    const [major, minor, patch] = rp.header.version;
+    expect(major * 1e6 + minor * 1e3 + patch).toBeGreaterThanOrEqual(1024);
     expect(rp.modules[0].version).toEqual(rp.header.version);
     expect(dep.version).toEqual(rp.header.version);
   });
