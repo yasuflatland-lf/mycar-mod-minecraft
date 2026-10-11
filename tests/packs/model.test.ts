@@ -118,13 +118,34 @@ describe("SUV model (ADR 0009)", () => {
     }
   });
 
-  it("has a glow bone with a hover locator under each wheel (ADR 0022)", () => {
+  // The folded wheels hang 6 px out from their axles (ADR 0043), and the
+  // glow stays under them.
+  it("has a glow bone with a hover locator under each folded wheel (ADR 0022)", () => {
     for (const w of ["fl", "fr", "rl", "rr"]) {
       const wheel = pivot(`wheel_${w}`);
       const glow = pivot(`glow_${w}`);
-      expect(glow[0], `glow_${w} x`).toBe(wheel[0]);
+      expect(glow[0], `glow_${w} x`).toBe(wheel[0] + 6 * Math.sign(wheel[0]));
       expect(glow[2], `glow_${w} z`).toBe(wheel[2]);
       expect(bones.get(`glow_${w}`)?.locators?.[`hover_${w}`]).toHaveLength(3);
+    }
+  });
+
+  // Each arm runs from inside the wheel arch down and out to the hub on top
+  // of the folded wheel, which sits 6 px out and 4 px down (ADR 0043).
+  it("has an arm from the wheel arch to each folded wheel's hub (ADR 0043)", () => {
+    for (const w of ["fl", "fr", "rl", "rr"]) {
+      const wheel = pivot(`wheel_${w}`);
+      const out = Math.sign(wheel[0]);
+      const cubes = bones.get(`arm_${w}`)?.cubes ?? [];
+      expect(bones.get(`arm_${w}`)?.parent).toBe("root");
+      const xs = cubes.flatMap((c) => [c.origin[0], c.origin[0] + c.size[0]]);
+      const ys = cubes.flatMap((c) => [c.origin[1], c.origin[1] + c.size[1]]);
+      const hubX = (wheel[0] + 6 * out) * out;
+      expect(Math.min(...xs.map((x) => x * out))).toBeLessThan(13);
+      expect(Math.max(...xs.map((x) => x * out))).toBeGreaterThan(hubX);
+      // The folded tire spans y 0 to 4, so the arm rests on its top face.
+      expect(Math.min(...ys)).toBeCloseTo(4, 6);
+      for (const c of cubes) expect(c.rotation, `arm_${w}`).toBeUndefined();
     }
   });
 
@@ -242,14 +263,39 @@ describe("SUV model (ADR 0009)", () => {
       expect(prop?.pivot).toEqual(pivot(`wheel_${side}`));
     });
 
-    it("has a hub and three blades 120 degrees apart", () => {
-      const angles = (prop?.cubes ?? [])
-        .map((c) => c.rotation?.[0])
-        .filter((a): a is number => a !== undefined && a !== 0)
-        .map((a) => ((a % 360) + 360) % 360)
-        .sort((a, b) => a - b);
-      expect(angles).toEqual([120, 240]);
-      expect(prop?.cubes?.length).toBeGreaterThanOrEqual(4);
+    // A ship propeller (ADR 0042): four scimitar blades, each built from
+    // segments that turn further around the axle toward the tip, so the blade
+    // sweeps back. Blade segments sit wholly on one side of the axle before
+    // they are turned; the hub cubes are centered on it.
+    it("has four blades 90 degrees apart, each swept further toward the tip", () => {
+      const [, py] = pivot(`prop_${side}`);
+      const reach = (c: Cube) => c.origin[1] + c.size[1] - py;
+      const blades = (prop?.cubes ?? []).filter((c) => c.origin[1] > py);
+      // Sweeps stay under 45 degrees, so the nearest multiple of 90 is the
+      // blade a segment belongs to. Mirroring the model flips the sweep's
+      // sign, so only its size has to grow toward the tip.
+      const angle = (c: Cube) => c.rotation?.[0] ?? 0;
+      const quadrants = new Map<number, Cube[]>();
+      for (const c of blades) {
+        const q = ((Math.round(angle(c) / 90) % 4) + 4) % 4;
+        quadrants.set(q, [...(quadrants.get(q) ?? []), c]);
+      }
+      expect([...quadrants.keys()].sort()).toEqual([0, 1, 2, 3]);
+      const sweeps = [...quadrants.values()].map((segments) =>
+        segments
+          .sort((a, b) => reach(a) - reach(b))
+          .map((c) => angle(c) - Math.round(angle(c) / 90) * 90),
+      );
+      for (const s of sweeps) {
+        expect(s, JSON.stringify(s)).toEqual(sweeps[0]);
+        expect(s.length).toBeGreaterThanOrEqual(3);
+        for (let i = 1; i < s.length; i++) {
+          expect(Math.abs(s[i] ?? 0), JSON.stringify(s)).toBeGreaterThan(
+            Math.abs(s[i - 1] ?? 0),
+          );
+          expect(Math.sign(s[i] ?? 0) * Math.sign(s.at(-1) ?? 0)).toBe(1);
+        }
+      }
     });
 
     it("turns its blades only around the axle", () => {

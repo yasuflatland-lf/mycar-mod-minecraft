@@ -3,8 +3,9 @@
     python3 -I tools/render_preview.py <resource pack> <output dir>          write the images
     python3 -I tools/render_preview.py <resource pack> <output dir> --check  fail if any is stale
 
-Three poses share one camera and one scale, so they line up side by side in the README: on the
-ground, with the headlights on at night, and flying with the wheels folded (ADR 0027).
+Four poses share one camera and one scale, so they line up side by side in the README: on the
+ground, with the headlights on at night, flying with the wheels folded (ADR 0027), and under water
+as a submarine (ADR 0045).
 
 Only the standard library is used, like gen_model.py. The arithmetic avoids math.sin/cos (their
 last bit can differ between platforms' libm) so the same model renders to the same pixels on a Mac
@@ -63,10 +64,18 @@ BLOOM_RADIUS = 6
 BLOOM_PASSES = 3
 BLOOM = {"lamp": {"strength": 1.6, "through_body": False}, "disc": {"strength": 2.2, "through_body": True}}
 
+# Under water every surface takes a blue-green cast, over a seabed of the same color (ADR 0045).
+WATER_TINT = (0.55, 0.78, 0.92)
+SEABED_COLOR = (40, 120, 150)
+SEABED_LAYERS = 10
+SEABED_ALPHA = 0.06
+SEABED_MARGIN = 14.0
+
 POSES = {
-    "suv-front-left.png": {"lamps": False, "hover": False},
-    "suv-headlights.png": {"lamps": True, "hover": False},
-    "suv-flying.png": {"lamps": False, "hover": True},
+    "suv-front-left.png": {"lamps": False, "hover": False, "submarine": False},
+    "suv-headlights.png": {"lamps": True, "hover": False, "submarine": False},
+    "suv-flying.png": {"lamps": False, "hover": True, "submarine": False},
+    "suv-submarine.png": {"lamps": False, "hover": False, "submarine": True},
 }
 
 
@@ -184,6 +193,17 @@ def folded_wheels(animations):
     }
 
 
+def submerged_parts(animations):
+    """Bone name -> (rotation, position) of the turned rear wheels and props, read from the submerged
+    animation (ADR 0040). The props' spin is a Molang expression, so it is drawn at rest."""
+    bones = animations["animations"]["animation.mycar.suv.submerged"]["bones"]
+    return {
+        name: ([a if isinstance(a, (int, float)) else 0 for a in pose["rotation"]], pose["position"])
+        for name, pose in bones.items()
+        if "rotation" in pose
+    }
+
+
 def sub(a, b):
     return (a[0] - b[0], a[1] - b[1], a[2] - b[2])
 
@@ -212,7 +232,7 @@ def mirror(quad):
     return [(-x, y, z) for x, y, z in quad]
 
 
-def collect(geo, texture, folds, pose):
+def collect(geo, texture, folds, turns, pose):
     """Return the vehicle's faces as (quad, rgb, bloom group or None)."""
     desc = geo["description"]
     lift = FLIGHT_LIFT if pose["hover"] else 0.0
@@ -220,12 +240,19 @@ def collect(geo, texture, folds, pose):
     for bone in geo["bones"]:
         name = bone["name"]
         # The render controller hides the glow (ADR 0022) and the rear glass (ADR 0026) on the ground
-        if (name.startswith("glow_") or name == "rear_glass") and not pose["hover"]:
+        if name.startswith("glow_") and not pose["hover"]:
             continue
-        # The submarine bones are hidden outside the submarine form, which the previews do not show (ADR 0040)
-        if name == "windows_sealed" or name.startswith("prop_"):
+        # The render controller shows the rear glass in every form but car
+        if name == "rear_glass" and not (pose["hover"] or pose["submarine"]):
+            continue
+        # The wheel arms are scaled to zero outside flight (ADR 0043)
+        if name.startswith("arm_") and not pose["hover"]:
+            continue
+        # The submarine bones are hidden outside the submarine form (ADR 0040)
+        if (name == "windows_sealed" or name.startswith(("prop_", "sub_arm_"))) and not pose["submarine"]:
             continue
         fold = folds.get(name) if pose["hover"] else None
+        turn = turns.get(name) if pose["submarine"] else None
         emissive = "lamp" if name == "headlights" and pose["lamps"] else "disc" if name.startswith("glow_") else None
         for cube in bone.get("cubes", []):
             for face, quad in cube_faces(cube):
@@ -233,7 +260,15 @@ def collect(geo, texture, folds, pose):
                     # Animation rotations turn the other way from the model's own (ADR 0022: hub side down)
                     angle, (dx, dy, dz) = fold
                     quad = [rotate(p, bone["pivot"], (0, 0, -angle)) for p in quad]
-                    quad = [(x - dx, y + dy, z + dz) for x, y, z in quad]
+                    # Animation positions run the same way as the model's axes: the submarine's
+                    # rear wheels move out by a positive x on the +x side in game (ADR 0043)
+                    quad = [(x + dx, y + dy, z + dz) for x, y, z in quad]
+                if turn:
+                    # The same right-handed turn as the in-game check of the rear hubs in
+                    # tests/packs/resourcePack.test.ts, then the move along the model's axes
+                    (rx, ry, _), (dx, dy, dz) = turn
+                    quad = [rotate(p, bone["pivot"], (rx, ry, 0)) for p in quad]
+                    quad = [(x + dx, y + dy, z + dz) for x, y, z in quad]
                 quad = mirror([(x, y + lift, z) for x, y, z in quad])
                 normal = cross(sub(quad[1], quad[0]), sub(quad[3], quad[0]))
                 if dot(normal, normal) == 0:
@@ -243,7 +278,7 @@ def collect(geo, texture, folds, pose):
                 else:
                     r, g, b, _ = face_color(texture, cube["uv"][face], desc["texture_width"], desc["texture_height"])
                     k = shade(normalize(normal))
-                    tint = NIGHT_TINT if pose["lamps"] else (1.0, 1.0, 1.0)
+                    tint = NIGHT_TINT if pose["lamps"] else WATER_TINT if pose["submarine"] else (1.0, 1.0, 1.0)
                     rgb = (r * k * tint[0], g * k * tint[1], b * k * tint[2])
                 polygons.append((quad, rgb, emissive))
     return polygons
@@ -268,6 +303,12 @@ def ground_layers(polygons, pose, ground_y):
             spread = half + length * BEAM_SPREAD
             quad = [(-half, ground_y, z_lo), (-spread, ground_y, z_lo - length), (spread, ground_y, z_lo - length), (half, ground_y, z_lo)]
             layers.append((quad, BEAM_ALPHA, BEAM_COLOR))
+    if pose["submarine"]:
+        # A seabed of layered blue-green that fades out away from the vehicle
+        for layer in range(SEABED_LAYERS):
+            g = SEABED_MARGIN * (layer + 1) / SEABED_LAYERS
+            quad = [(x_lo - g, ground_y, z_lo - g), (x_hi + g, ground_y, z_lo - g), (x_hi + g, ground_y, z_hi + g), (x_lo - g, ground_y, z_hi + g)]
+            layers.append((quad, SEABED_ALPHA, SEABED_COLOR))
     if pose["hover"]:
         for quad, _, emissive in polygons:
             if emissive != "disc" or quad[0][1] != min(p[1] for p in quad):
@@ -440,9 +481,11 @@ def rasterize(polygons, layers, to_screen):
 def render(rp):
     geo = json.loads((rp / GEOMETRY).read_text())["minecraft:geometry"][0]
     texture = read_png(rp / TEXTURE)
-    folds = folded_wheels(json.loads((rp / ANIMATIONS).read_text()))
+    animations = json.loads((rp / ANIMATIONS).read_text())
+    folds = folded_wheels(animations)
+    turns = submerged_parts(animations)
 
-    scenes = {name: collect(geo, texture, folds, pose) for name, pose in POSES.items()}
+    scenes = {name: collect(geo, texture, folds, turns, pose) for name, pose in POSES.items()}
     ground_y = min(p[1] for quad, _, _ in scenes["suv-front-left.png"] for p in quad)
     layers = {name: ground_layers(scenes[name], pose, ground_y) for name, pose in POSES.items()}
 

@@ -36,7 +36,9 @@ PALETTE = {
     "glow": (80, 170, 255),
     # Opaque tinted glass: in flight it hides the riders, who stay upright while the body banks (ADR 0026)
     "rear_glass": (38, 84, 160),
-    "prop": (190, 160, 100),  # brass
+    "prop": (214, 170, 82),  # polished bronze
+    "prop_hub": (236, 196, 110),
+    "arm": (72, 76, 82),  # gunmetal
 }
 NAMES = list(PALETTE)
 # A power of two wide enough for a 4 px cell per swatch (16 swatches filled 64 px before "prop")
@@ -444,30 +446,89 @@ WINDOWS_SEALED = [
 ]
 
 
+# Segments of one prop blade: (inner radius, outer radius, half width, sweep in degrees). Each segment
+# turns further around the axle than the one inside it, so the blade curves back like a ship
+# propeller's scimitar blade (ADR 0042). The farthest corner stays inside the tire's inner radius (4.6).
+PROP_BLADE = ((0.9, 2.0, 0.55, 0), (1.9, 3.3, 1.05, 14), (3.2, 4.3, 0.8, 30))
+
+
 def prop(name, x_out, z_center):
-    """A hub and three blades mounted on the outer face of the rear wheel's hub cap, in the wheel's plane
-    and inside the tire's inner radius, so the tread ring frames the prop."""
+    """A hub and four swept blades mounted on the outer face of the rear wheel's hub cap, in the wheel's
+    plane and inside the tire's inner radius, so the tread ring frames the prop."""
     center = (14 * x_out, 6, z_center)
     _, cy, cz = center
     x0, x1 = (16.5, 17.1) if x_out > 0 else (-17.1, -16.5)
     blades = []
-    for angle in (0, 120, 240):
-        blade = box(x0 + 0.1, cy + 0.8, cz - 0.7, x1 - 0.1, cy + 4.2, cz + 0.7, "prop")
-        if angle:
-            blade["rotation"] = [angle, 0, 0]
-            blade["pivot"] = list(center)
-        blades.append(blade)
+    for base in (0, 90, 180, 270):
+        for r0, r1, half, sweep in PROP_BLADE:
+            blade = box(x0 + 0.1, cy + r0, cz - half, x1 - 0.1, cy + r1, cz + half, "prop")
+            if base + sweep:
+                blade["rotation"] = [base + sweep, 0, 0]
+                blade["pivot"] = list(center)
+            blades.append(blade)
+    # The hub stands a little proud of the blades, with a dark bore in its outer face.
+    hub0, hub1 = (x0, x1 + 0.2) if x_out > 0 else (x0 - 0.2, x1)
+    bore0, bore1 = (hub1, hub1 + 0.05) if x_out > 0 else (hub0 - 0.05, hub0)
     return {
         "name": name,
         "parent": "root",
         "pivot": list(center),
-        "cubes": [box(x0, cy - 1, cz - 1, x1, cy + 1, cz + 1, "prop"), *blades],
+        "cubes": [
+            *disc("x", center, 1.4, hub0, hub1, (0, 30, 60), "prop_hub"),
+            *disc("x", center, 0.6, bore0, bore1, (0, 45), "tire"),
+            *blades,
+        ],
+    }
+
+
+# The folded wheels hang out from the body on arms in flight, like a hovering DeLorean (ADR 0043): the
+# hover animation moves each wheel this far outward on top of lowering it 4 px.
+FOLD_OUT = 6
+ARM_THICK = 1.4
+
+
+def arm(name, x_out, z_center):
+    """A gunmetal arm from inside the wheel arch down and out to the hub of the folded wheel, built from
+    overlapping cubes along the diagonal so it needs no rotation. Hidden by scale outside flight."""
+    s = x_out
+    ax, ay = 12, 9  # inside the wheel arch
+    # The hub on top of the folded wheel, whose top face is at y 4: the last cube rests on it
+    hx, hy = 14 + FOLD_OUT, 4 + ARM_THICK / 2
+    steps = 8
+    cubes = []
+    for i in range(steps):
+        t = i / (steps - 1)
+        x, y = ax + t * (hx - ax), ay + t * (hy - ay)
+        cubes.append(box(s * x - 0.8, y - ARM_THICK / 2, z_center - 0.8,
+                         s * x + 0.8, y + ARM_THICK / 2, z_center + 0.8, "arm"))
+    # The hub pin the arm holds the wheel by
+    cubes.append(box(s * hx - 1.2, 4, z_center - 1.2, s * hx + 1.2, 4.6, z_center + 1.2, "arm"))
+    return {"name": name, "parent": "root", "pivot": [s * ax, ay, z_center], "cubes": cubes}
+
+
+def sub_arm(name, x_out, z_center):
+    """A gunmetal arm from the body to the hub of a rear wheel turned for the submarine (ADR 0040), which
+    sits FOLD_OUT px out with its axle along z. The arm lies against the tire's front face, opposite the
+    prop on the rear face. Before turn_around the front is +z. Hidden by scale outside the submarine."""
+    s = x_out
+    hx = 14 + FOLD_OUT
+    xs = sorted((s * 11, s * (hx + 0.8)))
+    face = z_center + 2  # the tire's front face
+    return {
+        "name": name,
+        "parent": "root",
+        "pivot": [s * 13, 6, z_center],
+        "cubes": [
+            box(xs[0], 5.3, face, xs[1], 6.7, face + 1.2, "arm"),
+            box(s * hx - 1.2, 4.8, face + 1.2, s * hx + 1.2, 7.2, face + 1.6, "arm"),
+        ],
     }
 
 
 def glow(name, x_out, z_center):
-    # A disc under the folded wheel (ADR 0022). The render controller hides it on the ground.
-    x = 14 * x_out
+    # A disc under the folded wheel (ADR 0022, moved out with it by ADR 0043). The render controller hides
+    # it on the ground.
+    x = (14 + FOLD_OUT) * x_out
     return {
         "name": name,
         "parent": "root",
@@ -522,6 +583,12 @@ geo = {
                 glow("glow_fr", +1, 17),
                 glow("glow_rl", -1, -16),
                 glow("glow_rr", +1, -16),
+                arm("arm_fl", -1, 17),
+                arm("arm_fr", +1, 17),
+                arm("arm_rl", -1, -16),
+                arm("arm_rr", +1, -16),
+                sub_arm("sub_arm_rl", -1, -16),
+                sub_arm("sub_arm_rr", +1, -16),
                 *[door(n) for n in DOORS],
                 {"name": "seat_0", "parent": "body", "pivot": [6, 10, 2]},
                 {"name": "seat_1", "parent": "body", "pivot": [-6, 10, 2]},

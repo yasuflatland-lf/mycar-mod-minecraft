@@ -25,12 +25,12 @@ This directory records design decisions and the reasons behind them. The format 
 | [0019](0019-passengers-move-up-to-the-driver-seat.md) | Passengers move up to the driver seat | Accepted |
 | [0020](0020-headlights.md) | Headlights that light up the road | Accepted |
 | [0021](0021-flight-mode.md) | Flight mode: toggle with a double tap, climb with the view pitch, and switch gravity with a component group | Superseded in part by 0032, 0034, and 0039 |
-| [0022](0022-fold-wheels-and-glow-in-flight.md) | Fold the wheels and light their undersides in flight | Superseded in part by 0033 |
+| [0022](0022-fold-wheels-and-glow-in-flight.md) | Fold the wheels and light their undersides in flight | Superseded in part by 0033 and 0043 |
 | [0023](0023-starter-vehicle-on-first-join.md) | Give each player a vehicle item on their first join | Accepted |
 | [0024](0024-item-use-on-mobile-and-longer-headlights.md) | Make the vehicle item and the headlight switch work on mobile, and light the road three times farther | Accepted |
 | [0025](0025-jump-on-touch-and-a-sticky-driver.md) | Keep a touch rider's Jump from dismounting them, and keep the driver while they ride | Accepted |
-| [0026](0026-bank-into-turns-in-flight.md) | Bank into turns in flight | Accepted |
-| [0027](0027-readme-previews-in-three-poses.md) | Render the README previews in three poses | Accepted |
+| [0026](0026-bank-into-turns-in-flight.md) | Bank into turns in flight | Superseded in part by 0044 |
+| [0027](0027-readme-previews-in-three-poses.md) | Render the README previews in three poses | Superseded in part by 0045 |
 | [0028](0028-third-person-camera-in-flight.md) | Switch riders to the third-person camera in flight | Accepted |
 | [0029](0029-raise-the-seats.md) | Raise the seats so riders' legs stay inside the body | Accepted |
 | [0030](0030-engine-and-hover-sounds.md) | Engine and hover sounds from client animations, stepped by speed | Accepted |
@@ -43,8 +43,12 @@ This directory records design decisions and the reasons behind them. The format 
 | [0037](0037-one-dye-per-repaint-within-a-tick.md) | Use one dye per repaint within a tick | Accepted |
 | [0038](0038-keep-at-most-ten-vehicles-in-a-world.md) | Keep at most ten vehicles in a world | Accepted |
 | [0039](0039-vehicle-forms.md) | Vehicle forms | Accepted |
-| [0040](0040-submarine.md) | Submarine form | Accepted |
+| [0040](0040-submarine.md) | Submarine form | Superseded in part by 0042, 0044, and 0045 |
 | [0041](0041-sonar-sound-under-water.md) | Sonar sound under water | Accepted |
+| [0042](0042-bronze-four-blade-propellers.md) | Bronze four-blade propellers | Accepted |
+| [0043](0043-wheel-arms.md) | Wheel arms in flight and under water | Accepted |
+| [0044](0044-bank-under-water.md) | Bank into turns under water | Accepted |
+| [0045](0045-submarine-preview.md) | Add a submarine pose to the README previews | Accepted |
 
 The measurements and in-game tests behind these decisions are in [the driving-core spike findings](../spike-driving-core.md).
 

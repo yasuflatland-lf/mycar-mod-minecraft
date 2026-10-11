@@ -328,7 +328,9 @@ describe("Vehicle as a submarine", () => {
     expect(sim.vy).toBeCloseTo(SPEC.maxClimb, 6);
   });
 
-  it("keeps its bank level, gear down, and horizontal speed bounded throughout random dive controls", () => {
+  // The submarine rolls into turns like the hover form (ADR 0044), within the
+  // same limit.
+  it("keeps its bank within maxBank, gear down, and horizontal speed bounded throughout random dive controls", () => {
     fc.assert(
       fc.property(
         fc.array(rawInput, { minLength: 1, maxLength: 200 }),
@@ -337,9 +339,13 @@ describe("Vehicle as a submarine", () => {
           sim.y = 500;
           for (const input of inputs) {
             const out = sim.step(input);
-            expect(sim.vehicle.bankAngle).toBe(0);
+            expect(Math.abs(sim.vehicle.bankAngle)).toBeLessThanOrEqual(
+              SPEC.maxBank + 1e-9,
+            );
             expect(sim.vehicle.wheelsDown).toBe(true);
-            expect(out.bank === undefined || out.bank === 0).toBe(true);
+            expect(out.bank ?? sim.vehicle.bankAngle).toBe(
+              sim.vehicle.bankAngle,
+            );
             expect(out.gearDown === undefined || out.gearDown).toBe(true);
             expect(length(sim.body.vel)).toBeLessThanOrEqual(
               SPEC.maxWaterSpeed + 1e-9,
