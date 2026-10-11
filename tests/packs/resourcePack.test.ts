@@ -194,10 +194,12 @@ describe("Resource Pack flight visuals (ADR 0022)", () => {
     const rp = read(`${RP}/manifest.json`);
     const bp = read("packs/yasu_ride_bp/manifest.json");
     expect(rp.header.pack_scope).toBe("world");
-    const dep = rp.dependencies?.find(
-      (d: { uuid?: string }) => d.uuid === bp.header.uuid,
+    const dep = defined(
+      rp.dependencies?.find(
+        (d: { uuid?: string }) => d.uuid === bp.header.uuid,
+      ),
+      "Resource Pack dependency on the Behavior Pack",
     );
-    expect(dep).toBeDefined();
     expect(dep.version).toEqual(bp.header.version);
   });
 });
