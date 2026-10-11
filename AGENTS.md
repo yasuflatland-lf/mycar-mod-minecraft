@@ -6,7 +6,7 @@ Guidance for coding agents (Codex, Claude Code, and others) working in this repo
 
 A vehicle add-on for Minecraft Bedrock Edition: a Behavior Pack and a Resource Pack driven by the stable Script API (`@minecraft/server` 2.x), written in TypeScript and bundled with esbuild. It targets a Bedrock Dedicated Server (BDS) on a home LAN, played from PC (keyboard) and mobile (touch).
 
-The source lives in `src/` (domain, application, infrastructure, and the in-game test pack in `src/test-pack/`), with unit tests in `tests/`. `pnpm build` bundles it into `packs/yasuflatland_ride_bp` and `packs/yasuflatland_ride_test_bp`. The in-game tests (`pnpm test:game`) run against the dev BDS in Docker, so they need `pnpm server:up` first.
+The source lives in `src/` (domain, application, infrastructure, and the in-game test pack in `src/test-pack/`), with unit tests in `tests/`. `pnpm build` bundles it into `packs/yasu_ride_bp` and `packs/yasu_ride_test_bp`. The in-game tests (`pnpm test:game`) run against the dev BDS in Docker, so they need `pnpm server:up` first.
 
 ## Commands
 
@@ -82,13 +82,13 @@ Design decisions live in [docs/adr](docs/adr/README.md). Read the ADRs that rela
 
 ## Naming and adding a new kind of content
 
-Ship all rides in Yasuflatland Ride: `yasuflatland-ride-minecraft`, with `yasuflatland_ride_bp` and `yasuflatland_ride_rp`; `yasuflatland_ride_test_bp` is for development only. The dev container is `yasuflatland-ride-bds` and its world is `yasuflatland-ride-dev`.
+Ship all rides in Yasuflatland Ride: `yasuflatland-ride-minecraft`, with `yasu_ride_bp` and `yasu_ride_rp`; `yasu_ride_test_bp` is for development only. The dev container is `yasuflatland-ride-bds` and its world is `yasuflatland-ride-dev`.
 
-House-building parts ship as a separate add-on with their own namespace. Do not change the `yasuflatland_ride` namespace after the first Yasuflatland Ride release (0047).
+House-building parts ship as a separate add-on with their own namespace. Do not change the `yasu_ride` namespace after the first Yasuflatland Ride release (0047).
 
-Use `yasuflatland_ride:<snake_case>` for IDs, properties, groups, and events; the test entity namespace is `yasuflatland_ride_test:`. Geometry names use `geometry.yasuflatland_ride.<name>`, animations use `animation.yasuflatland_ride.<entity>.<name>`, controllers use `controller.<kind>.yasuflatland_ride.<entity>[.<name>]`, and sounds use `yasuflatland_ride.<name>`. Lang keys follow IDs. Item texture shortnames use `yasuflatland_ride_<name>` and the atlas resource pack name is `yasuflatland_ride`. Keep engine-fixed manifest, lang, atlas, and sound definition files at their required paths (0047).
+Use `yasu_ride:<snake_case>` for IDs, properties, groups, and events; the test entity namespace is `yasu_ride_test:`. Geometry names use `geometry.yasu_ride.<name>`, animations use `animation.yasu_ride.<entity>.<name>`, controllers use `controller.<kind>.yasu_ride.<entity>[.<name>]`, and sounds use `yasu_ride.<name>`. Lang keys follow IDs. Item texture shortnames use `yasu_ride_<name>` and the atlas resource pack name is `yasu_ride`. Keep engine-fixed manifest, lang, atlas, and sound definition files at their required paths (0047).
 
 When adding a new kind of content, place its code by the feature boundaries rule above (0046), and:
 
 - Build identifiers with `id()` from `src/infrastructure/shared/identifiers.ts`.
-- Put pack files under `<type>/yasuflatland_ride/`, flat below the namespace folder; test entities go under `entities/yasuflatland_ride_test/`; `tests/packs/layout.test.ts` enforces this layout.
+- Put pack files under `<type>/yasu_ride/`, flat below the namespace folder; test entities go under `entities/yasu_ride_test/`. Use the short type suffixes from 0047 (`suv.se.json`, `suv.ce.json`, `suv.ac.json`, ...), and keep every path within 80 characters counting the pack folder (a console limit). `tests/packs/layout.test.ts` enforces this layout.

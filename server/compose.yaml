@@ -28,9 +28,9 @@ services:
       - "19132:19132/udp"
     volumes:
       - ./data:/data
-      - ../packs/yasuflatland_ride_bp:/data/behavior_packs/yasuflatland_ride_bp:ro
-      - ../packs/yasuflatland_ride_test_bp:/data/behavior_packs/yasuflatland_ride_test_bp:ro
-      - ../packs/yasuflatland_ride_rp:/data/resource_packs/yasuflatland_ride_rp:ro
+      - ../packs/yasu_ride_bp:/data/behavior_packs/yasu_ride_bp:ro
+      - ../packs/yasu_ride_test_bp:/data/behavior_packs/yasu_ride_test_bp:ro
+      - ../packs/yasu_ride_rp:/data/resource_packs/yasu_ride_rp:ro
     network_mode: bridge
     stdin_open: true
     tty: true

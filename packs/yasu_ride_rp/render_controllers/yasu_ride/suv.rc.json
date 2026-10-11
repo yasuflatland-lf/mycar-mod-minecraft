@@ -1,0 +1,48 @@
+{
+  "format_version": "1.8.0",
+  "render_controllers": {
+    "controller.render.yasu_ride.suv": {
+      "arrays": {
+        "textures": {
+          "Array.paints": [
+            "Texture.default",
+            "Texture.green",
+            "Texture.red",
+            "Texture.white",
+            "Texture.light_gray",
+            "Texture.gray",
+            "Texture.black",
+            "Texture.orange",
+            "Texture.yellow",
+            "Texture.lime",
+            "Texture.cyan",
+            "Texture.light_blue",
+            "Texture.blue",
+            "Texture.purple",
+            "Texture.magenta",
+            "Texture.pink"
+          ]
+        },
+        "materials": {
+          "Array.lamps": ["Material.lamp", "Material.lamp_lit"]
+        }
+      },
+      "geometry": "Geometry.default",
+      "materials": [
+        { "*": "Material.default" },
+        {
+          "headlights": "Array.lamps[query.property('yasu_ride:headlights') ? 1 : 0]"
+        }
+      ],
+      "textures": ["Array.paints[query.variant]"],
+      "part_visibility": [
+        { "*": true },
+        { "glow_*": "!query.property('yasu_ride:gear_down')" },
+        { "rear_glass": "query.property('yasu_ride:form') != 'car'" },
+        {
+          "windows_sealed": "query.property('yasu_ride:form') == 'submarine'"
+        }
+      ]
+    }
+  }
+}

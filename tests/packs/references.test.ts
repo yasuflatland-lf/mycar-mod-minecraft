@@ -16,8 +16,8 @@ import {
 import { type Json, jsonFiles } from "../support/packFiles";
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
-const RP = join(REPO_ROOT, "packs/yasuflatland_ride_rp");
-const BP = join(REPO_ROOT, "packs/yasuflatland_ride_bp");
+const RP = join(REPO_ROOT, "packs/yasu_ride_rp");
+const BP = join(REPO_ROOT, "packs/yasu_ride_bp");
 // Textures the game ships, so the pack has no PNG for them.
 const VANILLA_TEXTURES = new Set(["textures/particle/particles"]);
 const LOCALES = ["en_US", "ja_JP"];

@@ -12,7 +12,7 @@
 
 A vehicle add-on for Minecraft Bedrock Edition, inspired by [MrCrayfish's Vehicle Mod](https://www.curseforge.com/minecraft/mc-mods/mrcrayfishs-vehicle-mod). It is built as a Behavior Pack + Resource Pack driven by the stable Script API (`@minecraft/server` 2.x), with no experimental toggles required.
 
-This add-on holds only rides: the SUV now and boats later. House-building parts will ship as a separate add-on with their own namespace. The `yasuflatland_ride` namespace never changes once Yasuflatland Ride is first released ([ADR 0047](docs/adr/0047-rename-to-yasuflatland-ride.md)).
+This add-on holds only rides: the SUV now and boats later. House-building parts will ship as a separate add-on with their own namespace. The `yasu_ride` namespace never changes once Yasuflatland Ride is first released ([ADR 0047](docs/adr/0047-rename-to-yasuflatland-ride.md)).
 
 The target setup is a Bedrock Dedicated Server on a home LAN, with players joining from PC (keyboard) and mobile (touch).
 
@@ -124,7 +124,7 @@ After the stack merges, the owner will rename the GitHub repository to `yasuflat
 
 ## Releasing
 
-Bump the Behavior Pack version in `packs/yasuflatland_ride_bp/manifest.json` and write the release summary in `docs/releases/v<version>.md`, starting from [`docs/releases/TEMPLATE.md`](docs/releases/TEMPLATE.md). Describe what players can do now in plain words; the release workflow puts it above the PR list that GitHub generates, and fails if the file is missing. Merge both to `main`, then either:
+Bump the Behavior Pack version in `packs/yasu_ride_bp/manifest.json` and write the release summary in `docs/releases/v<version>.md`, starting from [`docs/releases/TEMPLATE.md`](docs/releases/TEMPLATE.md). Describe what players can do now in plain words; the release workflow puts it above the PR list that GitHub generates, and fails if the file is missing. Merge both to `main`, then either:
 
 - open **Actions → Release → Run workflow** on `main`, which tags the commit as `v<version>` (for example `v0.1.0` for `[0, 1, 0]`), or
 - push a matching tag yourself: `git tag v0.1.0 && git push origin v0.1.0`.
@@ -135,9 +135,9 @@ The release workflow runs the checks, builds `yasuflatland-ride-<version>.mcaddo
 
 Switch the headlights off before upgrading. Old vehicles and items disappear because their IDs are not migrated. Light blocks from a vehicle whose headlights are on remain in the world: the record of lit cells lives on the vanished entity.
 
-The fleet record starts empty, and every player receives the starter vehicle again on their next join. Get additional vehicles with `/give @s yasuflatland_ride:suv_item` or the recipe. Pack UUIDs stay the same, so worlds that already list the packs load the new versions.
+The fleet record starts empty, and every player receives the starter vehicle again on their next join. Get additional vehicles with `/give @s yasu_ride:suv_item` or the recipe. Pack UUIDs stay the same, so worlds that already list the packs load the new versions.
 
-On a dedicated server, delete the old MyCar pack folders from `behavior_packs` and `resource_packs` (the ones ending in `_bp` and `_rp` that predate `yasuflatland_ride_bp` and `yasuflatland_ride_rp`) before you copy in the new ones. The old and new folders share UUIDs, so keeping both leaves the server with two packs under one UUID.
+On a dedicated server, delete the old MyCar pack folders from `behavior_packs` and `resource_packs` (the ones ending in `_bp` and `_rp` that predate `yasu_ride_bp` and `yasu_ride_rp`) before you copy in the new ones. The old and new folders share UUIDs, so keeping both leaves the server with two packs under one UUID.
 
 ## License
 

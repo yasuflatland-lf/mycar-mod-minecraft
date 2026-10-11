@@ -6,18 +6,18 @@ import { type Json, jsonFileEntries, packFiles } from "../support/packFiles";
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const PACKS = [
   {
-    folder: "yasuflatland_ride_bp",
-    namespace: "yasuflatland_ride",
+    folder: "yasu_ride_bp",
+    namespace: "yasu_ride",
     resource: false,
   },
   {
-    folder: "yasuflatland_ride_rp",
-    namespace: "yasuflatland_ride",
+    folder: "yasu_ride_rp",
+    namespace: "yasu_ride",
     resource: true,
   },
   {
-    folder: "yasuflatland_ride_test_bp",
-    namespace: "yasuflatland_ride_test",
+    folder: "yasu_ride_test_bp",
+    namespace: "yasu_ride_test",
     resource: false,
   },
 ];
