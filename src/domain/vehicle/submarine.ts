@@ -17,10 +17,10 @@ export function submarineVerticalSpeed(input: DiveInput): number {
     return clamp(input.climb, -1, 1) * SPEC.maxClimb;
   if (input.rising) return SPEC.maxClimb;
   const depth = Number.isFinite(input.waterDepth) ? input.waterDepth : 0;
-  const buoy = clamp(
+  const buoyancy = clamp(
     (depth - SPEC.floatDraft) * SPEC.floatGain,
     -SPEC.surfaceRise,
     SPEC.surfaceRise,
   );
-  return input.controlled ? Math.min(0, buoy) : buoy;
+  return input.controlled ? Math.min(0, buoyancy) : buoyancy;
 }

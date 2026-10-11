@@ -147,6 +147,10 @@ describe("SUV model (ADR 0009)", () => {
     const bodyCubes = (bones.get("body")?.cubes ?? []).filter(
       (c) => !c.rotation,
     );
+    const span = (c: Cube, a: number): [number, number] => [
+      c.origin[a] ?? 0,
+      (c.origin[a] ?? 0) + (c.size[a] ?? 0),
+    ];
 
     it("is a child of body with the pivot of rear_glass", () => {
       expect(sealed?.parent).toBe("body");
@@ -161,11 +165,11 @@ describe("SUV model (ADR 0009)", () => {
       for (const p of plates) {
         expect(Math.min(...p.size)).toBeLessThanOrEqual(0.1);
         for (const c of bodyCubes) {
-          const overlaps = [0, 1, 2].every(
-            (a) =>
-              (p.origin[a] ?? 0) < (c.origin[a] ?? 0) + (c.size[a] ?? 0) &&
-              (c.origin[a] ?? 0) < (p.origin[a] ?? 0) + (p.size[a] ?? 0),
-          );
+          const overlaps = [0, 1, 2].every((a) => {
+            const [p0, p1] = span(p, a);
+            const [c0, c1] = span(c, a);
+            return p0 < c1 && c0 < p1;
+          });
           expect(overlaps, JSON.stringify(c)).toBe(false);
         }
       }
@@ -174,10 +178,6 @@ describe("SUV model (ADR 0009)", () => {
     // Each plate is flush with the outer face of a pillar it touches, so it
     // reads as glass set in the window frame.
     it("sits flush with the outside of the window frame", () => {
-      const span = (c: Cube, a: number): [number, number] => [
-        c.origin[a] ?? 0,
-        (c.origin[a] ?? 0) + (c.size[a] ?? 0),
-      ];
       for (const p of plates) {
         const thin = p.size.indexOf(Math.min(...p.size));
         const [p0, p1] = span(p, thin);

@@ -20,6 +20,7 @@ import {
 import { EMPTY_COUNTER, type HitCounter, registerHit } from "./hitCounter";
 import { nextGearDown } from "./landingGear";
 import {
+  AIR,
   initialMotion,
   type MotionResult,
   type MotionState,
@@ -221,7 +222,7 @@ export class Vehicle {
             this.motion,
             input,
             ctx.velocity,
-            form === "submarine" ? WATER : undefined,
+            form === "submarine" ? WATER : AIR,
           );
     this.motion = step.state;
     this.bank = stepBank(this.bank, form, yawBefore, this.motion.yaw);

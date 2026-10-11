@@ -1,7 +1,7 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { dot, forward, length, type Vec3 } from "../../src/domain/shared/vec";
-import type { RawInput } from "../../src/domain/vehicle/driveInput";
+import type { DriveInput, RawInput } from "../../src/domain/vehicle/driveInput";
 import { type Form, verticalImpulse } from "../../src/domain/vehicle/form";
 import {
   AIR,
@@ -11,7 +11,7 @@ import {
 } from "../../src/domain/vehicle/motion";
 import type { RamTarget } from "../../src/domain/vehicle/ram";
 import { SPEC } from "../../src/domain/vehicle/spec";
-import { Vehicle } from "../../src/domain/vehicle/vehicle";
+import { type TickOutcome, Vehicle } from "../../src/domain/vehicle/vehicle";
 import {
   type Body,
   engineStep,
@@ -23,13 +23,27 @@ import {
 
 const IDLE: RawInput = { moveX: 0, moveY: 0, jump: false };
 const FORWARD: RawInput = { ...IDLE, moveY: 1 };
+const FULL_THROTTLE: DriveInput = {
+  throttle: 1,
+  steer: 0,
+  handbrake: false,
+  creep: false,
+};
 const depth = fc.double({ min: SPEC.carHeight, max: 10, noNaN: true });
+const shallowDepth = fc
+  .double({ min: 0, max: SPEC.carHeight, noNaN: true })
+  .filter((d) => d < SPEC.carHeight);
 const yaw = fc.double({ min: -180, max: 180, noNaN: true });
 const rawInput = fc.record({
   moveX: fc.double({ min: -1, max: 1, noNaN: true }),
   moveY: fc.double({ min: -1, max: 1, noNaN: true }),
   jump: fc.boolean(),
 });
+
+function stepAhead(height: number): (offset: Vec3) => boolean {
+  return (offset) =>
+    offset.z >= SPEC.hitboxFront && offset.y >= 0 && offset.y < height;
+}
 
 class DiveSim {
   tick = 0;
@@ -49,7 +63,7 @@ class DiveSim {
     return Math.max(0, this.surface - this.y);
   }
 
-  step(input: RawInput | undefined) {
+  step(input: RawInput | undefined): TickOutcome {
     const out = this.vehicle.tick({
       tick: this.tick++,
       riders: [],
@@ -100,17 +114,12 @@ describe("Vehicle as a submarine", () => {
 
   it("keeps a car in water shallower than its roof", () => {
     fc.assert(
-      fc.property(
-        fc
-          .double({ min: 0, max: SPEC.carHeight, noNaN: true })
-          .filter((d) => d < SPEC.carHeight),
-        (d) => {
-          const sim = new DiveSim(d);
-          sim.run(IDLE, 100);
-          expect(sim.changes).toEqual([]);
-          expect(sim.vehicle.form).toBe("car");
-        },
-      ),
+      fc.property(shallowDepth, (d) => {
+        const sim = new DiveSim(d);
+        sim.run(IDLE, 100);
+        expect(sim.changes).toEqual([]);
+        expect(sim.vehicle.form).toBe("car");
+      }),
     );
   });
 
@@ -174,8 +183,7 @@ describe("Vehicle as a submarine", () => {
       fc.property(fc.constantFrom(1, 2), fc.boolean(), (height, ground) => {
         const sim = new DiveSim(100);
         sim.y = ground ? 0 : 50;
-        sim.obstacle = (offset) =>
-          offset.z >= SPEC.hitboxFront && offset.y >= 0 && offset.y < height;
+        sim.obstacle = stepAhead(height);
         sim.step(IDLE);
         expect(sim.vy).toBe(0);
         const rising = sim.step(FORWARD);
@@ -185,8 +193,7 @@ describe("Vehicle as a submarine", () => {
         sim.vy = 0;
         sim.step(FORWARD);
         expect(sim.vy).toBe(0);
-        sim.obstacle = (offset) =>
-          offset.z >= SPEC.hitboxFront && offset.y >= 0 && offset.y < height;
+        sim.obstacle = stepAhead(height);
         sim.y = 50;
         sim.step({ ...IDLE, moveY: -1 });
         expect(sim.vy).toBeCloseTo(-SPEC.maxClimb, 6);
@@ -213,8 +220,7 @@ describe("Vehicle as a submarine", () => {
 
   it("still rises while a shore step stops it, as a step jump does on the ground", () => {
     const sim = new DiveSim(100);
-    sim.obstacle = (offset) =>
-      offset.z >= SPEC.hitboxFront && offset.y >= 0 && offset.y < 1;
+    sim.obstacle = stepAhead(1);
     sim.run(FORWARD, 30);
     sim.y = 0;
     sim.vy = 0;
@@ -254,19 +260,14 @@ describe("Vehicle as a submarine", () => {
     expect(sim.vehicle.form).toBe("hover");
 
     fc.assert(
-      fc.property(
-        fc
-          .double({ min: 0, max: SPEC.carHeight, noNaN: true })
-          .filter((d) => d < SPEC.carHeight),
-        (d) => {
-          const beached = new DiveSim(
-            d,
-            Vehicle.rebuild("vehicle", 0, [], "submarine"),
-          );
-          beached.step(IDLE);
-          expect(beached.changes).toEqual(["car"]);
-        },
-      ),
+      fc.property(shallowDepth, (d) => {
+        const beached = new DiveSim(
+          d,
+          Vehicle.rebuild("vehicle", 0, [], "submarine"),
+        );
+        beached.step(IDLE);
+        expect(beached.changes).toEqual(["car"]);
+      }),
     );
   });
 
@@ -294,10 +295,9 @@ describe("Motion medium contract", () => {
     fc.assert(
       fc.property(yaw, (heading) => {
         const state = initialMotion(heading);
-        const input = { throttle: 1, steer: 0, handbrake: false, creep: false };
         const velocity = { x: 0, z: 0 };
-        expect(stepFlightMotion(state, input, velocity)).toEqual(
-          stepFlightMotion(state, input, velocity, AIR),
+        expect(stepFlightMotion(state, FULL_THROTTLE, velocity)).toEqual(
+          stepFlightMotion(state, FULL_THROTTLE, velocity, AIR),
         );
       }),
     );
@@ -315,15 +315,14 @@ describe("Motion medium contract", () => {
           speed: SPEC.maxWaterSpeed,
           airExpected: expected,
         };
-        const input = { throttle: 1, steer: 0, handbrake: false, creep: false };
-        expect(stepFlightMotion(state, input, velocity, WATER).blocked).toBe(
-          false,
-        );
-        expect(stepFlightMotion(state, input, velocity, AIR).blocked).toBe(
-          true,
-        );
         expect(
-          stepFlightMotion(state, input, { x: 0, z: 0 }, WATER).blocked,
+          stepFlightMotion(state, FULL_THROTTLE, velocity, WATER).blocked,
+        ).toBe(false);
+        expect(
+          stepFlightMotion(state, FULL_THROTTLE, velocity, AIR).blocked,
+        ).toBe(true);
+        expect(
+          stepFlightMotion(state, FULL_THROTTLE, { x: 0, z: 0 }, WATER).blocked,
         ).toBe(true);
       }),
     );
