@@ -14,6 +14,7 @@ export function nextGearDown(
 ): boolean {
   switch (form) {
     case "car":
+    case "submarine":
       return true;
     case "takeoff":
     case "hover":

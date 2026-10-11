@@ -10,6 +10,7 @@ describe("nextGearDown (ADR 0033)", () => {
     fc.assert(
       fc.property(fc.boolean(), fc.boolean(), (prev, near) => {
         expect(nextGearDown(prev, "car", () => near)).toBe(true);
+        expect(nextGearDown(prev, "submarine", () => near)).toBe(true);
         expect(nextGearDown(prev, "takeoff", () => near)).toBe(false);
         expect(nextGearDown(prev, "hover", () => near)).toBe(false);
       }),

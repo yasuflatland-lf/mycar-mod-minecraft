@@ -46,6 +46,8 @@ export interface TickContext {
   testInput?: RawInput;
   velocity: Vec2;
   onGround: boolean;
+  /** Blocks of water above the feet; absent or 0 out of water. */
+  waterDepth?: number;
   /** Vertical velocity from the engine (blocks/tick). Read whenever the vehicle form is not car, including the tick takeoff starts. */
   velocityY?: number;
   /** Whether the block at entity location + offset (world axes, y from the feet) is solid; air, liquids and blocks without a collision box (flowers, grass, carpets) are not (ADR 0035). */
@@ -200,6 +202,7 @@ export class Vehicle {
       jump: raw?.jump ?? false,
       controlled: raw !== undefined,
       onGround: ctx.onGround,
+      waterDepth: ctx.waterDepth ?? 0,
     });
     const form = this.formState.form;
     const input = driveInputFor(raw, form);

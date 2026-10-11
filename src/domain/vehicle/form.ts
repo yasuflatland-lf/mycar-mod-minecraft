@@ -4,7 +4,13 @@ import { clamp } from "../shared/vec";
 import { type RawInput, toDriveInput } from "./driveInput";
 import { SPEC } from "./spec";
 
-export const FORMS = ["car", "takeoff", "hover", "landing"] as const;
+export const FORMS = [
+  "car",
+  "takeoff",
+  "hover",
+  "landing",
+  "submarine",
+] as const;
 export type Form = (typeof FORMS)[number];
 
 export function isForm(value: unknown): value is Form {
@@ -26,18 +32,30 @@ export interface FormInput {
   /** Whether a driver or test input controls the vehicle. */
   controlled: boolean;
   onGround: boolean;
+  /** Water surface height above the feet in blocks; 0 out of water, capped at carHeight + 1 by infrastructure. */
+  waterDepth: number;
+}
+
+export function isSubmerged(waterDepth: number): boolean {
+  return waterDepth >= SPEC.carHeight;
+}
+
+export function isDry(waterDepth: number): boolean {
+  return !(waterDepth > 0);
 }
 
 export function initialForm(form: Form = "car"): FormState {
   return { form, formTicks: 0, jumpHeld: false, lastTap: undefined };
 }
 
-/** A double tap toggles only in car or hover form; takeoff and landing always run to the end. */
+/** A double tap toggles only in car or hover form; submarine uses held Jump to rise. */
 function acceptsToggle(form: Form): boolean {
   return form === "car" || form === "hover";
 }
 
 function nextForm(prev: FormState, input: FormInput, toggle: boolean): Form {
+  if (prev.form !== "submarine" && isSubmerged(input.waterDepth))
+    return "submarine";
   switch (prev.form) {
     case "car":
       return toggle && input.controlled ? "takeoff" : "car";
@@ -49,6 +67,11 @@ function nextForm(prev: FormState, input: FormInput, toggle: boolean): Form {
       return toggle || !input.controlled ? "landing" : "hover";
     case "landing":
       return input.onGround ? "car" : "landing";
+    case "submarine":
+      if (isDry(input.waterDepth) && input.controlled && input.jump)
+        return "hover";
+      if (input.onGround && !isSubmerged(input.waterDepth)) return "car";
+      return isDry(input.waterDepth) ? "car" : "submarine";
   }
 }
 
@@ -88,10 +111,12 @@ export function climbInput(raw: RawInput | undefined): number {
 /**
  * Target vertical velocity in blocks/tick. In hover form, the climb command
  * sets it independent of the forward speed (ADR 0032).
+ * The aggregate uses submarineVerticalSpeed for submarine form.
  */
 export function verticalSpeed(form: Form, climb: number): number {
   switch (form) {
     case "car":
+    case "submarine":
       return 0;
     case "takeoff":
       return SPEC.takeoffClimb;

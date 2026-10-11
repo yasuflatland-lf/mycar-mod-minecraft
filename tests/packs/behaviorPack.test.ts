@@ -62,7 +62,7 @@ describe("packs/mycar_bp", () => {
 
   it("switches gravity off with mycar:gravity_off and back on with mycar:gravity_on, and syncs the vehicle form to clients (ADR 0021)", () => {
     expect(FORM_PROPERTY).toBe("mycar:form");
-    expect(FORMS).toEqual(["car", "takeoff", "hover", "landing"]);
+    expect(FORMS).toEqual(["car", "takeoff", "hover", "landing", "submarine"]);
     expect(entity.description.properties[FORM_PROPERTY]).toEqual({
       type: "enum",
       values: ["car", "takeoff", "hover", "landing"],
