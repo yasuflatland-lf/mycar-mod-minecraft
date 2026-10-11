@@ -3,6 +3,7 @@ import {
   Direction,
   type Entity,
   GameMode,
+  Player,
   ScriptEventSource,
   system,
   world,
@@ -19,7 +20,6 @@ import {
   HEADLIGHT_SWITCH_TYPE,
   ITEM_TYPE,
   PAINT_BY_DYE,
-  PLAYER_TYPE,
   TEST_INPUT_EVENT,
   VEHICLE_TYPE,
 } from "./identifiers";
@@ -88,12 +88,25 @@ export function registerSubscriptions(
     if (ev.initialSpawn) useCases.starter.execute(ev.player.id);
   });
 
+  // Painting listens to hits, not interactions: on touch a short tap on an
+  // entity is an attack, and the interaction is left to getting in (ADR 0036).
   world.afterEvents.entityHitEntity.subscribe((ev) => {
-    if (
-      ev.hitEntity.typeId !== VEHICLE_TYPE ||
-      ev.damagingEntity.typeId !== PLAYER_TYPE
-    )
+    const player = ev.damagingEntity;
+    if (ev.hitEntity.typeId !== VEHICLE_TYPE || !(player instanceof Player))
       return;
+    const held = player
+      .getComponent("minecraft:inventory")
+      ?.container?.getItem(player.selectedSlotIndex);
+    const paint = PAINT_BY_DYE[held?.typeId ?? ""];
+    if (paint) {
+      useCases.paint.execute({
+        playerId: player.id,
+        vehicleId: ev.hitEntity.id,
+        paint,
+        creative: player.getGameMode() === GameMode.Creative,
+      });
+      return;
+    }
     useCases.hit.execute({
       vehicleId: ev.hitEntity.id,
       tick: system.currentTick,
@@ -129,19 +142,6 @@ export function registerSubscriptions(
       const playerId = ev.player.id;
       const vehicleId = ev.target.id;
       system.run(() => switchHeadlights(playerId, vehicleId));
-      return;
     }
-    const paint = PAINT_BY_DYE[ev.itemStack?.typeId ?? ""];
-    if (!paint) return;
-    // Cancelling keeps the player from getting in. Before-events cannot change
-    // the world, so the repaint runs on the next tick.
-    ev.cancel = true;
-    const cmd = {
-      playerId: ev.player.id,
-      vehicleId: ev.target.id,
-      paint,
-      creative: ev.player.getGameMode() === GameMode.Creative,
-    };
-    system.run(() => useCases.paint.execute(cmd));
   });
 }

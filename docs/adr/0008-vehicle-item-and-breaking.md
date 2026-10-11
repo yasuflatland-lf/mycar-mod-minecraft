@@ -1,6 +1,6 @@
 # 0008. Placing and picking up vehicles
 
-- Status: Accepted
+- Status: Superseded in part by 0036 (hits made while holding a dye)
 - Date: 2026-10-10
 
 ## Context

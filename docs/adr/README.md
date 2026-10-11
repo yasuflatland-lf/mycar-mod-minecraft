@@ -11,7 +11,7 @@ This directory records design decisions and the reasons behind them. The format 
 | [0005](0005-touch-throttle-compensation.md) | Compensate the throttle from the mobile joystick | Superseded by 0018 |
 | [0006](0006-ram-damage-and-occupant-protection.md) | Ram damage detection, and always protecting occupants | Accepted |
 | [0007](0007-seats-and-driver.md) | Seats and choosing the driver | Superseded by 0019 |
-| [0008](0008-vehicle-item-and-breaking.md) | Placing and picking up vehicles | Accepted |
+| [0008](0008-vehicle-item-and-breaking.md) | Placing and picking up vehicles | Superseded in part by 0036 |
 | [0009](0009-vehicle-model-conventions.md) | Vehicle model conventions, and accepting a square collision box | Accepted |
 | [0010](0010-testing-strategy.md) | Testing strategy | Accepted |
 | [0011](0011-dev-server-docker-raknet.md) | Run the development server as BDS in Docker with raknet | Superseded by 0015 |
@@ -34,11 +34,12 @@ This directory records design decisions and the reasons behind them. The format 
 | [0028](0028-third-person-camera-in-flight.md) | Switch riders to the third-person camera in flight | Accepted |
 | [0029](0029-raise-the-seats.md) | Raise the seats so riders' legs stay inside the body | Accepted |
 | [0030](0030-engine-and-hover-sounds.md) | Engine and hover sounds from client animations, stepped by speed | Accepted |
-| [0031](0031-repaint-with-all-sixteen-dyes.md) | Repaint vehicles with all sixteen dyes | Accepted |
+| [0031](0031-repaint-with-all-sixteen-dyes.md) | Repaint vehicles with all sixteen dyes | Superseded in part by 0036 |
 | [0032](0032-climb-with-jump-and-sink-with-the-stick.md) | Climb with held Jump and sink with the stick pulled back | Accepted |
 | [0033](0033-lower-the-wheels-before-touchdown.md) | Lower the wheels before touchdown | Accepted |
 | [0034](0034-touch-down-from-flight.md) | Return to the ground when a flying vehicle sinks onto it | Accepted |
 | [0035](0035-jump-one-block-steps-in-the-script.md) | Jump one-block steps in the script, and skip blocks without a collision box | Accepted |
+| [0036](0036-paint-by-hitting-with-a-dye.md) | Paint by hitting with a dye, and get in by interacting | Accepted |
 
 The measurements and in-game tests behind these decisions are in [the driving-core spike findings](../spike-driving-core.md).
 

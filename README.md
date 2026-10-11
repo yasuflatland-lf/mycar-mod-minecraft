@@ -53,7 +53,7 @@ Download `mycar-<version>.mcaddon` from the [latest release](https://github.com/
 
 - Every player gets one **SUV** item the first time they join the world
 - More can be crafted at a crafting table from 5 iron ingots, 1 iron block, and 2 coal blocks
-- Use the item on the top of a block to place the vehicle. Hit an empty vehicle 3 times to break it back into the item
+- Use the item on the top of a block to place the vehicle. Hit an empty vehicle 3 times, without a dye in hand, to break it back into the item
 - The **headlight switch** is crafted from a lever and glowstone dust
 
 ### Controls
@@ -68,7 +68,7 @@ Download `mycar-<version>.mcaddon` from the [latest release](https://github.com/
 | Take off / land | Double-tap Space | Double-tap the jump button |
 | Climb / descend while flying | Hold Space / hold S | Hold the jump button / pull the stick back |
 | Headlights on / off | Right-click with the switch in hand (driver only) | Tap with the switch in hand (driver only) |
-| Repaint | Right-click the vehicle with a dye | Tap the vehicle with a dye |
+| Repaint | Left-click the vehicle with a dye | Tap the vehicle with a dye |
 
 The vehicle seats 4. The first player to get in drives and the others ride as passengers. When the driver gets out, a passenger moves up to the driver's seat.
 

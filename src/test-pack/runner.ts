@@ -366,8 +366,8 @@ async function seatsAfterDriverLeaves(a: Arena): Promise<Outcome> {
   }
 }
 
-// Players cannot be simulated, so this drives the entity events that the dye
-// interaction triggers and reads back the variant the texture is chosen by.
+// Players cannot be simulated, so this drives the entity events that a hit
+// with a dye triggers and reads back the variant the texture is chosen by.
 function paintEvents(a: Arena): Promise<Outcome> {
   return withCar(a, 5.5, 35.5, 0, async (car) => {
     const variant = () => car.getComponent("minecraft:variant")?.value;
