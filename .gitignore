@@ -9,3 +9,5 @@ server/data/
 .claude/settings.local.json
 CLAUDE.local.md
 coverage/
+reports/
+.stryker-tmp/
