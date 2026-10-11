@@ -15,7 +15,10 @@ import zlib
 from pathlib import Path
 
 RP = Path(sys.argv[1])
-(RP / "models/entity/yasuflatland").mkdir(parents=True, exist_ok=True)
+MODELS = RP / "models/entity/yasuflatland"
+ENTITY_TEXTURES = RP / "textures/entity/yasuflatland"
+ITEM_TEXTURES = RP / "textures/items/yasuflatland"
+MODELS.mkdir(parents=True, exist_ok=True)
 
 # Color swatches. Each color fills a 4x4 cell, and each face's UV points at the cell's center 2x2
 PALETTE = {
@@ -627,7 +630,7 @@ def turn_around(bones):
 
 
 turn_around(geo["minecraft:geometry"][0]["bones"])
-(RP / "models/entity/yasuflatland/suv.geo.json").write_text(json.dumps(geo, indent=1))
+(MODELS / "suv.geo.json").write_text(json.dumps(geo, indent=1))
 
 
 def png(path, w, h, pixel):
@@ -657,11 +660,11 @@ def swatches(body_color):
     return swatch
 
 
-(RP / "textures/entity/yasuflatland").mkdir(parents=True, exist_ok=True)
-(RP / "textures/items/yasuflatland").mkdir(parents=True, exist_ok=True)
+ENTITY_TEXTURES.mkdir(parents=True, exist_ok=True)
+ITEM_TEXTURES.mkdir(parents=True, exist_ok=True)
 for paint, body_color in BODY_PAINTS.items():
     name = "suv" if paint == "khaki" else f"suv_{paint}"
-    png(RP / f"textures/entity/yasuflatland/{name}.png", TEXTURE_WIDTH, 16, swatches(body_color))
+    png(ENTITY_TEXTURES / f"{name}.png", TEXTURE_WIDTH, 16, swatches(body_color))
 
 
 def icon(x, y):
@@ -675,7 +678,7 @@ def icon(x, y):
     return (0, 0, 0)
 
 
-png(RP / "textures/items/yasuflatland/suv_item.png", 16, 16, icon)
+png(ITEM_TEXTURES / "suv_item.png", 16, 16, icon)
 
 
 def switch_icon(x, y):
@@ -687,5 +690,5 @@ def switch_icon(x, y):
     return (0, 0, 0, 0)
 
 
-png(RP / "textures/items/yasuflatland/headlight_switch.png", 16, 16, switch_icon)
+png(ITEM_TEXTURES / "headlight_switch.png", 16, 16, switch_icon)
 print("cubes:", sum(len(b.get("cubes", [])) for b in geo["minecraft:geometry"][0]["bones"]))
