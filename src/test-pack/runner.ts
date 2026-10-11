@@ -79,6 +79,10 @@ function drive(
   );
 }
 
+function clearInput(car: Entity): void {
+  system.sendScriptEvent(INPUT_EVENT, `${car.id},clear`);
+}
+
 function spawnCar(a: Arena, x: number, z: number, yaw: number): Entity {
   a.dim.runCommand(`summon ${VEHICLE} ${x} ${a.gy} ${z}`);
   const car = a.dim.getEntities({
@@ -102,7 +106,7 @@ async function withCar<T>(
   try {
     return await run(car);
   } finally {
-    system.sendScriptEvent(INPUT_EVENT, `${car.id},clear`);
+    clearInput(car);
     if (car.isValid) car.remove();
   }
 }
@@ -422,9 +426,16 @@ async function doubleTap(car: Entity): Promise<void> {
   }
 }
 
-async function takeOff(car: Entity): Promise<void> {
-  await doubleTap(car);
-  await wait(SPEC.takeoffTicks + 5);
+/** Runs `run` on a car that has taken off over the flight lane. */
+function withAirborneCar<T>(
+  a: Arena,
+  run: (car: Entity) => Promise<T>,
+): Promise<T> {
+  return withCar(a, FLIGHT_LANE.x, FLIGHT_LANE.z, -90, async (car) => {
+    await doubleTap(car);
+    await wait(SPEC.takeoffTicks + 5);
+    return run(car);
+  });
 }
 
 /** Ticks until the flight mode reads ground, or -1 after `limit` ticks. */
@@ -437,8 +448,7 @@ async function ticksUntilGround(car: Entity, limit: number): Promise<number> {
 }
 
 function flightTakeoff(a: Arena): Promise<Outcome> {
-  return withCar(a, FLIGHT_LANE.x, FLIGHT_LANE.z, -90, async (car) => {
-    await takeOff(car);
+  return withAirborneCar(a, async (car) => {
     const mode = flightMode(car);
     const rise = car.location.y - a.gy;
     return {
@@ -449,8 +459,7 @@ function flightTakeoff(a: Arena): Promise<Outcome> {
 }
 
 function flightCruise(a: Arena): Promise<Outcome> {
-  return withCar(a, FLIGHT_LANE.x, FLIGHT_LANE.z, -90, async (car) => {
-    await takeOff(car);
+  return withAirborneCar(a, async (car) => {
     drive(car, 0, 1);
     let minY = Number.POSITIVE_INFINITY;
     let maxY = Number.NEGATIVE_INFINITY;
@@ -463,22 +472,22 @@ function flightCruise(a: Arena): Promise<Outcome> {
       }
       if (t >= 50) speed = Math.max(speed, hlen(car.getVelocity()));
     }
+    const altRange = maxY - minY;
     // At steady state the speed is maxSpeed * engineDrag / SPEC.flightDrag,
     // so the ratio reveals the engine's drag with gravity off.
     const measuredDrag = (SPEC.flightDrag * speed) / SPEC.maxSpeed;
     return {
       pass:
-        maxY - minY <= 0.5 &&
+        altRange <= 0.5 &&
         speed >= SPEC.maxSpeed * 0.95 &&
         speed <= SPEC.maxSpeed * 1.05,
-      detail: `altRange=${(maxY - minY).toFixed(3)} speed=${speed.toFixed(3)} measuredDrag=${measuredDrag.toFixed(3)}`,
+      detail: `altRange=${altRange.toFixed(3)} speed=${speed.toFixed(3)} measuredDrag=${measuredDrag.toFixed(3)}`,
     };
   });
 }
 
 function flightClimbDescend(a: Arena): Promise<Outcome> {
-  return withCar(a, FLIGHT_LANE.x, FLIGHT_LANE.z, -90, async (car) => {
-    await takeOff(car);
+  return withAirborneCar(a, async (car) => {
     drive(car, 0, 1, false, -30);
     await wait(35);
     const top = car.location.y;
@@ -494,8 +503,7 @@ function flightClimbDescend(a: Arena): Promise<Outcome> {
 }
 
 function flightLand(a: Arena): Promise<Outcome> {
-  return withCar(a, FLIGHT_LANE.x, FLIGHT_LANE.z, -90, async (car) => {
-    await takeOff(car);
+  return withAirborneCar(a, async (car) => {
     await doubleTap(car);
     const afterTap = flightMode(car);
     const landedAt = await ticksUntilGround(car, 60);
@@ -516,9 +524,8 @@ function flightLand(a: Arena): Promise<Outcome> {
 }
 
 function flightDriverless(a: Arena): Promise<Outcome> {
-  return withCar(a, FLIGHT_LANE.x, FLIGHT_LANE.z, -90, async (car) => {
-    await takeOff(car);
-    system.sendScriptEvent(INPUT_EVENT, `${car.id},clear`);
+  return withAirborneCar(a, async (car) => {
+    clearInput(car);
     await wait(3);
     const afterClear = flightMode(car);
     const landedAt = await ticksUntilGround(car, 60);

@@ -73,9 +73,9 @@ export class BedrockVehicleWorld
           velocityY: v.y,
           onGround: car.isOnGround,
           riders: this.riders(car),
+          flight: isFlightMode(flight) ? flight : "ground",
           headlights: car.getProperty(HEADLIGHTS_PROPERTY) === true,
           testInput: this.testInputs.get(car.id),
-          flight: isFlightMode(flight) ? flight : "ground",
         });
       }
     }

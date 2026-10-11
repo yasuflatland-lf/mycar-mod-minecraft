@@ -34,9 +34,10 @@ PALETTE = {
     "glow": (80, 170, 255),
 }
 NAMES = list(PALETTE)
-# entity_emissive_alpha (ADR 0022) makes a texel glow when its alpha is low but not 0
-ALPHA = {"glow": 40}
-EMISSIVE = {"light"}
+# Swatch alpha, 255 unless listed. Alpha 0 marks the headlight lenses as emissive for the
+# entity_emissive material; the materials the lenses use while the headlights are off ignore alpha
+# (ADR 0020). entity_emissive_alpha makes a texel glow when its alpha is low but not 0 (ADR 0022).
+ALPHA = {"light": 0, "glow": 40}
 
 # Body color of each paint (ADR 0017). Khaki writes suv.png; the others write suv_<paint>.png.
 # The red stays darker than the "tail" swatch so the tail lights still show on a red body.
@@ -428,10 +429,6 @@ def swatches(body_color):
         if y >= 4 or i >= len(NAMES):
             return (0, 0, 0)
         name = NAMES[i]
-        # Alpha 0 marks the swatch as emissive for the entity_emissive material; the materials the
-        # lenses use while the headlights are off ignore alpha (ADR 0020)
-        if name in EMISSIVE:
-            return (*colors[name], 0)
         return (*colors[name], ALPHA.get(name, 255))
 
     return swatch

@@ -11,7 +11,7 @@ export function parseTestInputMessage(
     return { vehicleId, input: undefined };
   }
   if (parts.length !== 4 && parts.length !== 5) return undefined;
-  const [, x = "", y = "", jump, p] = parts;
+  const [, x = "", y = "", jump, pitchField] = parts;
   if (x.trim() === "" || y.trim() === "") return undefined;
   const moveX = Number(x);
   const moveY = Number(y);
@@ -22,8 +22,8 @@ export function parseTestInputMessage(
     moveY: clamp(moveY, -1, 1),
     jump: jump === "1",
   };
-  if (p === undefined) return { vehicleId, input };
-  const pitch = Number(p);
-  if (p.trim() === "" || !Number.isFinite(pitch)) return undefined;
+  if (pitchField === undefined) return { vehicleId, input };
+  const pitch = Number(pitchField);
+  if (pitchField.trim() === "" || !Number.isFinite(pitch)) return undefined;
   return { vehicleId, input: { ...input, pitch: clamp(pitch, -90, 90) } };
 }
