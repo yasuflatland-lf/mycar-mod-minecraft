@@ -169,32 +169,42 @@ describe("Vehicle as a submarine", () => {
     );
   });
 
-  it("rises for a clear one- or two-block step only while throttling above the minimum speed", () => {
+  it("rises for a clear one- or two-block step only while throttling forward", () => {
     fc.assert(
       fc.property(fc.constantFrom(1, 2), fc.boolean(), (height, ground) => {
         const sim = new DiveSim(100);
         sim.y = ground ? 0 : 50;
         sim.obstacle = (offset) =>
           offset.z >= SPEC.hitboxFront && offset.y >= 0 && offset.y < height;
-        const first = sim.step(FORWARD);
-        expect(first.impulse.y).toBe(0);
-        sim.run(FORWARD, 30);
-        expect(sim.vehicle.speed).toBeGreaterThanOrEqual(SPEC.stepMinSpeed);
-        sim.vy = 0;
+        sim.step(IDLE);
+        expect(sim.vy).toBe(0);
         const rising = sim.step(FORWARD);
         expect(sim.vy).toBeCloseTo(SPEC.maxClimb, 6);
         expect(rising.impulse.y).toBeGreaterThan(0);
         sim.obstacle = () => false;
+        sim.vy = 0;
         sim.step(FORWARD);
         expect(sim.vy).toBe(0);
         sim.obstacle = (offset) =>
           offset.z >= SPEC.hitboxFront && offset.y >= 0 && offset.y < height;
-        sim.step(IDLE);
-        expect(sim.vy).toBe(0);
+        sim.y = 50;
         sim.step({ ...IDLE, moveY: -1 });
         expect(sim.vy).toBeCloseTo(-SPEC.maxClimb, 6);
       }),
     );
+  });
+
+  it("still rises while a shore step stops it, as a step jump does on the ground", () => {
+    const sim = new DiveSim(100);
+    sim.obstacle = (offset) =>
+      offset.z >= SPEC.hitboxFront && offset.y >= 0 && offset.y < 1;
+    sim.run(FORWARD, 30);
+    sim.y = 0;
+    sim.vy = 0;
+    sim.body.vel = { x: 0, z: 0 };
+    sim.step(FORWARD);
+    expect(sim.vehicle.speed).toBeLessThan(SPEC.stepMinSpeed);
+    expect(sim.vy).toBeCloseTo(SPEC.maxClimb, 6);
   });
 
   it("keeps its bank level, gear down, and horizontal speed bounded throughout random dive controls", () => {

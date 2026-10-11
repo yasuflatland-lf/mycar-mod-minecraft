@@ -229,10 +229,17 @@ export class Vehicle {
     if (form === "car") {
       impulseY = step.jumpVelocity;
     } else if (form === "submarine") {
+      // Gated like a step jump in stepMotion (speed >= 0), which only raises
+      // speed to stepMinSpeed after deciding to jump. Pressed against a shore
+      // step the wall check drops speed to about 0, so gating on stepMinSpeed
+      // would leave the vehicle stuck under the step.
       const rising =
         input.throttle > 0 &&
-        step.state.speed >= SPEC.stepMinSpeed &&
-        stepProbe(ctx)(step.forward, step.state.speed) > 0;
+        step.state.speed >= 0 &&
+        stepProbe(ctx)(
+          step.forward,
+          Math.max(step.state.speed, SPEC.stepMinSpeed),
+        ) > 0;
       const targetVy = submarineVerticalSpeed({
         climb: climbInput(raw),
         controlled: raw !== undefined,
