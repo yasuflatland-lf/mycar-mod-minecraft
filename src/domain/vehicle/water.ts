@@ -2,7 +2,7 @@ import { SPEC } from "./spec";
 
 /**
  * Blocks of water above the feet, counting contiguous full cells upward from
- * the cell that holds the feet (ADR 0039).
+ * the cell that holds the feet (ADR 0040).
  */
 export function waterDepthFrom(
   feetY: number,
