@@ -126,11 +126,12 @@ describe("BedrockVehicleWorld submarine wiring (ADR 0040)", () => {
 });
 
 describe("BedrockVehicleWorld snapshots", () => {
+  const cow = { id: "cow", typeId: "minecraft:cow" };
+
   beforeEach(() => vi.resetAllMocks());
 
   it("snapshots only vehicles, not the other entities in the dimension", () => {
     const { dimension, car, world } = fixture();
-    const cow = { id: "cow", typeId: "minecraft:cow" };
     dimension.getEntities.mockImplementation((query: { type?: string }) =>
       [car, cow].filter(
         (e) => query?.type === undefined || e.typeId === query.type,
@@ -153,7 +154,6 @@ describe("BedrockVehicleWorld snapshots", () => {
 
   it("counts only players in the seats as riders (ADR 0007)", () => {
     const { car, world } = fixture();
-    const cow = { id: "cow", typeId: "minecraft:cow" };
     const player = {
       id: "player",
       typeId: "minecraft:player",
