@@ -89,4 +89,7 @@ export const SPEC = {
   gearDownHeight: 4, // blocks of air below the vehicle within which landing unfolds the wheels
   gearProbeOffset: 0.8, // blocks from the center to the probed corners, inside the 1.8-block hitbox
   bankSink: 0.03, // blocks/tick of altitude lost at full bank
+  // Vehicle limit (ADR 0038)
+  maxVehicles: 10, // per world, across all players and dimensions
+  maxEvicted: 64, // evicted vehicles remembered until their chunk loads; one dropped from the list joins again as the oldest when it loads
 } as const;
