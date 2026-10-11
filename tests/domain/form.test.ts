@@ -7,12 +7,15 @@ import {
   type FormInput,
   type FormState,
   initialForm,
+  isDry,
   isForm,
+  isSubmerged,
   stepForm,
   verticalImpulse,
   verticalSpeed,
 } from "../../src/domain/vehicle/form";
 import { SPEC } from "../../src/domain/vehicle/spec";
+import { shallowWaterDepth, waterDepth } from "../support/waterDepth";
 
 type Step = Omit<FormInput, "tick">;
 interface Frame {
@@ -27,6 +30,7 @@ const NEXT: Record<Form, readonly Form[]> = {
   takeoff: ["hover"],
   hover: ["landing", "car"],
   landing: ["car"],
+  submarine: ["hover", "car"],
 };
 
 function run(steps: readonly Step[], start = initialForm()): Frame[] {
@@ -45,6 +49,7 @@ function taps(at: number[], length: number, over: Partial<Step> = {}): Step[] {
     jump: at.includes(t),
     controlled: true,
     onGround: true,
+    waterDepth: 0,
     ...over,
   }));
 }
@@ -53,6 +58,7 @@ const step = fc.record({
   jump: fc.boolean(),
   controlled: fc.boolean(),
   onGround: fc.boolean(),
+  waterDepth: shallowWaterDepth,
 });
 const steps = fc.array(step, { maxLength: 300 });
 const form = fc.constantFrom(...FORMS);
@@ -171,10 +177,10 @@ describe("stepForm (ADR 0021)", () => {
   it("a single tap before a driverless landing does not pair with the next tap on the ground", () => {
     const frames = run(
       [
-        { jump: true, controlled: true, onGround: false },
-        { jump: false, controlled: false, onGround: false },
-        { jump: false, controlled: true, onGround: true },
-        { jump: true, controlled: true, onGround: true },
+        { jump: true, controlled: true, onGround: false, waterDepth: 0 },
+        { jump: false, controlled: false, onGround: false, waterDepth: 0 },
+        { jump: false, controlled: true, onGround: true, waterDepth: 0 },
+        { jump: true, controlled: true, onGround: true, waterDepth: 0 },
       ],
       initialForm("hover"),
     );
@@ -212,7 +218,7 @@ describe("stepForm (ADR 0021)", () => {
 });
 
 describe("isForm", () => {
-  it("accepts exactly the four forms", () => {
+  it("accepts exactly the declared forms", () => {
     for (const m of FORMS) expect(isForm(m)).toBe(true);
     fc.assert(
       fc.property(fc.anything(), (v) => {
@@ -314,6 +320,107 @@ describe("verticalImpulse", () => {
         expect(
           (vy + verticalImpulse(target, vy)) * SPEC.flightVerticalDrag,
         ).toBeCloseTo(target, 9);
+      }),
+    );
+  });
+});
+
+describe("submarine form transitions", () => {
+  const input = fc.record({
+    tick: fc.nat(),
+    jump: fc.boolean(),
+    controlled: fc.boolean(),
+    onGround: fc.boolean(),
+    waterDepth: fc.oneof(waterDepth, fc.double()),
+  });
+  const submarine = fc.record({
+    form: fc.constant<Form>("submarine"),
+    formTicks: fc.nat(),
+    jumpHeld: fc.boolean(),
+    lastTap: fc.option(fc.nat(), { nil: undefined }),
+  });
+
+  it("detects submerged and dry depths, including non-finite values", () => {
+    fc.assert(
+      fc.property(fc.oneof(waterDepth, fc.double()), (depth) => {
+        expect(isSubmerged(depth)).toBe(depth >= SPEC.carHeight);
+        expect(isDry(depth)).toBe(!(depth > 0));
+      }),
+    );
+    expect(isDry(Number.NaN)).toBe(true);
+    expect(isSubmerged(SPEC.carHeight)).toBe(true);
+    expect(isSubmerged(1)).toBe(false);
+  });
+
+  it("submergence wins over every other transition from every other form", () => {
+    fc.assert(
+      fc.property(
+        input,
+        fc.nat(),
+        fc.boolean(),
+        fc.option(fc.nat(), { nil: undefined }),
+        fc.double({ min: SPEC.carHeight, noNaN: true }),
+        (i, formTicks, jumpHeld, lastTap, waterDepth) => {
+          for (const form of FORMS.filter((f) => f !== "submarine")) {
+            expect(
+              stepForm(
+                { form, formTicks, jumpHeld, lastTap },
+                { ...i, waterDepth },
+              ).form,
+            ).toBe("submarine");
+          }
+        },
+      ),
+    );
+  });
+
+  it("breaches to hover exactly when dry, controlled, and Jump is held", () => {
+    fc.assert(
+      fc.property(submarine, input, (s, i) => {
+        expect(stepForm(s, i).form === "hover").toBe(
+          !(i.waterDepth > 0) && i.controlled && i.jump,
+        );
+      }),
+    );
+  });
+
+  it("returns to car on dry or shallow ground unless breaching to hover", () => {
+    fc.assert(
+      fc.property(submarine, input, (s, i) => {
+        const dry = !(i.waterDepth > 0);
+        const breach = dry && i.controlled && i.jump;
+        expect(stepForm(s, i).form === "car").toBe(
+          !breach && (dry || (i.onGround && !(i.waterDepth >= SPEC.carHeight))),
+        );
+      }),
+    );
+  });
+
+  it("ignores every sequence of Jump taps between dry and submerged", () => {
+    const wetStep = fc.record({
+      jump: fc.boolean(),
+      controlled: fc.boolean(),
+      onGround: fc.constant(false),
+      waterDepth: fc.double({
+        min: Number.MIN_VALUE,
+        max: SPEC.carHeight - Number.EPSILON,
+        noNaN: true,
+      }),
+    });
+    fc.assert(
+      fc.property(fc.array(wetStep, { maxLength: 300 }), (seq) => {
+        for (const frame of run(seq, initialForm("submarine"))) {
+          expect(frame.after.form).toBe("submarine");
+          expect(frame.after.lastTap).toBeUndefined();
+        }
+      }),
+    );
+  });
+
+  it("is 0 in submarine form", () => {
+    fc.assert(
+      fc.property(fc.double(), (climb) => {
+        expect(verticalSpeed("submarine", climb)).toBe(0);
       }),
     );
   });

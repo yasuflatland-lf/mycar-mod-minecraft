@@ -348,3 +348,46 @@ describe("Vehicle headlight switch (ADR 0020)", () => {
     );
   });
 });
+
+describe("Vehicle water depth context", () => {
+  it("passes submerged depth to the form transition and emits it only once", () => {
+    fc.assert(
+      fc.property(
+        fc.double({
+          min: SPEC.carHeight,
+          max: SPEC.carHeight + 1,
+          noNaN: true,
+        }),
+        (waterDepth) => {
+          const vehicle = Vehicle.create("car", 0);
+          const ctx: TickContext = {
+            tick: 0,
+            riders: [],
+            velocity: { x: 0, z: 0 },
+            onGround: true,
+            waterDepth,
+            solidAt: () => false,
+            targets: () => [],
+          };
+          expect(vehicle.tick(ctx).form).toBe("submarine");
+          expect(vehicle.form).toBe("submarine");
+          expect(vehicle.tick({ ...ctx, tick: 1 }).form).toBeUndefined();
+        },
+      ),
+    );
+  });
+
+  it("treats absent depth as dry", () => {
+    const vehicle = Vehicle.rebuild("car", 0, [], "submarine");
+    expect(
+      vehicle.tick({
+        tick: 0,
+        riders: [],
+        velocity: { x: 0, z: 0 },
+        onGround: false,
+        solidAt: () => false,
+        targets: () => [],
+      }).form,
+    ).toBe("car");
+  });
+});
