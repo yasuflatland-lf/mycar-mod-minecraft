@@ -4,6 +4,7 @@ import type {
   HeadlightWorld,
   PaintWorld,
   PlacementWorld,
+  StarterWorld,
   VehicleSnapshot,
 } from "../../src/application/ports";
 import type { Vec3 } from "../../src/domain/shared/vec";
@@ -30,12 +31,20 @@ export class InMemoryRepo implements VehicleRepository {
 }
 
 export class FakeWorld
-  implements DriveWorld, PlacementWorld, BreakWorld, PaintWorld, HeadlightWorld
+  implements
+    DriveWorld,
+    PlacementWorld,
+    StarterWorld,
+    BreakWorld,
+    PaintWorld,
+    HeadlightWorld
 {
   snapshots: VehicleSnapshot[] = [];
   targets: RamTarget[] = [];
   readonly paints = new Map<string, Paint>();
   readonly headlights = new Map<string, boolean>();
+  /** Players in the world, and whether each has received the starter item. */
+  readonly starters = new Map<string, boolean>();
   /** The cells each vehicle was last told to light. */
   readonly shone = new Map<string, readonly Cell[]>();
   air = (_at: Vec3) => true;
@@ -82,6 +91,16 @@ export class FakeWorld
   }
   consumeVehicleItem(playerId: string) {
     this.calls.push(`consume:${playerId}`);
+  }
+  receivedStarter(playerId: string) {
+    return this.starters.get(playerId);
+  }
+  giveVehicleItem(playerId: string) {
+    this.calls.push(`give:${playerId}`);
+  }
+  markStarterReceived(playerId: string) {
+    this.starters.set(playerId, true);
+    this.calls.push(`mark:${playerId}`);
   }
   dropVehicleItem(id: string) {
     this.calls.push(`drop:${id}`);

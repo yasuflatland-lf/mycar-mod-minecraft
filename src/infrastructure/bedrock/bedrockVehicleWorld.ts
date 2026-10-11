@@ -14,6 +14,7 @@ import type {
   HeadlightWorld,
   PaintWorld,
   PlacementWorld,
+  StarterWorld,
   VehicleSnapshot,
 } from "../../application/ports";
 import type { Vec3 } from "../../domain/shared/vec";
@@ -31,6 +32,7 @@ import {
   PAINT_VARIANT,
   PLAYER_TYPE,
   paintEvent,
+  STARTER_RECEIVED_PROPERTY,
   VEHICLE_TYPE,
 } from "./identifiers";
 
@@ -38,7 +40,13 @@ const DIMENSIONS = ["overworld", "nether", "the_end"] as const;
 const isPlayer = (e: Entity): e is Player => e.typeId === PLAYER_TYPE;
 
 export class BedrockVehicleWorld
-  implements DriveWorld, PlacementWorld, BreakWorld, PaintWorld, HeadlightWorld
+  implements
+    DriveWorld,
+    PlacementWorld,
+    StarterWorld,
+    BreakWorld,
+    PaintWorld,
+    HeadlightWorld
 {
   /** Vehicles collected by loadedVehicles() for this tick. The other methods look them up here by id. */
   private current = new Map<string, Entity>();
@@ -184,8 +192,8 @@ export class BedrockVehicleWorld
 
   /** Takes one item from the selected slot, but only if it still holds `typeId`. */
   private consumeHeld(playerId: string, typeId: string): void {
-    const player = world.getEntity(playerId);
-    if (!player || !isPlayer(player)) return;
+    const player = this.player(playerId);
+    if (!player) return;
     const inv = player.getComponent("minecraft:inventory")?.container;
     if (!inv) return;
     const slot = player.selectedSlotIndex;
@@ -197,6 +205,31 @@ export class BedrockVehicleWorld
     } else {
       inv.setItem(slot, undefined);
     }
+  }
+
+  private player(playerId: string): Player | undefined {
+    const player = world.getEntity(playerId);
+    return player && isPlayer(player) ? player : undefined;
+  }
+
+  receivedStarter(playerId: string): boolean | undefined {
+    const player = this.player(playerId);
+    if (!player) return undefined;
+    return player.getDynamicProperty(STARTER_RECEIVED_PROPERTY) === true;
+  }
+
+  giveVehicleItem(playerId: string): void {
+    const player = this.player(playerId);
+    if (!player) return;
+    const inv = player.getComponent("minecraft:inventory")?.container;
+    const leftover = inv
+      ? inv.addItem(new ItemStack(ITEM_TYPE, 1))
+      : new ItemStack(ITEM_TYPE, 1);
+    if (leftover) player.dimension.spawnItem(leftover, player.location);
+  }
+
+  markStarterReceived(playerId: string): void {
+    this.player(playerId)?.setDynamicProperty(STARTER_RECEIVED_PROPERTY, true);
   }
 
   dropVehicleItem(vehicleId: string): void {

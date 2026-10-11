@@ -22,6 +22,7 @@ Work in progress. The first milestone is the **driving core**:
 - Spinning wheels and body tilt
 - Ram damage to mobs, while keeping occupants safe
 - Placing a vehicle from an item and breaking it back into one
+- A free vehicle item for every player on their first join
 - Repainting a vehicle green or red by using a dye on it
 - Switching the headlights on and off with a switch item, which lights up the road ahead at night
 

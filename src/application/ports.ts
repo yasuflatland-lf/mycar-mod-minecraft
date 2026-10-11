@@ -37,6 +37,14 @@ export interface PlacementWorld {
   consumeVehicleItem(playerId: string): void;
 }
 
+export interface StarterWorld {
+  /** undefined when the player is no longer in the world. */
+  receivedStarter(playerId: string): boolean | undefined;
+  /** Puts one vehicle item in the inventory, or at the player's feet when it is full. */
+  giveVehicleItem(playerId: string): void;
+  markStarterReceived(playerId: string): void;
+}
+
 export interface BreakWorld {
   dropVehicleItem(vehicleId: string): void;
   removeVehicle(vehicleId: string): void;
