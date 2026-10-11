@@ -1,6 +1,7 @@
 // Capabilities the application layer requires from the game (ports). Implementations live in the infrastructure layer (ADR 0012).
 import type { Vec2, Vec3 } from "../domain/shared/vec";
 import type { RawInput } from "../domain/vehicle/driveInput";
+import type { Paint } from "../domain/vehicle/paint";
 import type { RamHit, RamTarget } from "../domain/vehicle/ram";
 import type { RiderView } from "../domain/vehicle/vehicle";
 
@@ -31,6 +32,13 @@ export interface PlacementWorld {
 export interface BreakWorld {
   dropVehicleItem(vehicleId: string): void;
   removeVehicle(vehicleId: string): void;
+}
+
+export interface PaintWorld {
+  /** undefined when the vehicle no longer exists. */
+  paintOf(vehicleId: string): Paint | undefined;
+  paint(vehicleId: string, paint: Paint): void;
+  consumeDye(playerId: string, paint: Paint): void;
 }
 
 export interface Logger {

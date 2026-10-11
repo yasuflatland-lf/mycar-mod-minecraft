@@ -1,4 +1,4 @@
-// Seat assignment and dismount detection (ADR 0007). Seat positions must match minecraft:rideable in packs/mycar_bp/entities/suv.json.
+// Seat assignment and dismount detection (ADR 0019). Seat positions must match minecraft:rideable in packs/mycar_bp/entities/suv.json.
 import { dot, leftOf, type Vec2 } from "../shared/vec";
 
 /** Coordinates aligned with the vehicle's facing (x = left, z = forward). 0 = driver's seat (front right), 1 = front passenger seat, 2 = behind the driver, 3 = behind the front passenger. */

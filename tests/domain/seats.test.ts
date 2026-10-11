@@ -19,7 +19,7 @@ function worldOffset(yawDeg: number, i: number): Vec2 {
   return { x: l.x * s.x + f.x * s.z, z: l.z * s.x + f.z * s.z };
 }
 
-describe("seats (ADR 0007)", () => {
+describe("seats (ADR 0019)", () => {
   it("seat 0 is front right (negative x = right, positive z = forward)", () => {
     expect(SEAT_POSITIONS[0]).toEqual({ x: -0.38, z: 0.35 });
   });

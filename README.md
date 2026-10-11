@@ -22,6 +22,7 @@ Work in progress. The first milestone is the **driving core**:
 - Spinning wheels and body tilt
 - Ram damage to mobs, while keeping occupants safe
 - Placing a vehicle from an item and breaking it back into one
+- Repainting a vehicle green or red by using a dye on it
 
 The manual test checklist is in [`docs/manual-test.md`](docs/manual-test.md).
 
@@ -30,7 +31,7 @@ The manual test checklist is in [`docs/manual-test.md`](docs/manual-test.md).
 Design decisions are recorded as ADRs in [`docs/adr`](docs/adr/README.md). Highlights:
 
 - Movement is script-driven: the script sets the vehicle's velocity every tick ([0002](docs/adr/0002-script-driven-vehicle-movement.md))
-- Touch joystick input is scaled so pushing it halfway forward gives full throttle, matching keyboard players ([0005](docs/adr/0005-touch-throttle-compensation.md))
+- Touch joystick input is scaled so pushing it halfway forward gives full throttle, matching keyboard players, and a stick held sideways turns the vehicle slowly forward instead of reversing ([0018](docs/adr/0018-sideways-stick-creeps-forward.md))
 - Code is split into domain, application, and infrastructure layers so the driving logic does not depend on `@minecraft/server` ([0012](docs/adr/0012-ddd-layered-architecture.md))
 
 ## Development

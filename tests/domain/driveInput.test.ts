@@ -7,7 +7,19 @@ import {
 
 const axis = fc.double({ min: -1, max: 1, noNaN: true });
 
-describe("toDriveInput (ADR 0005)", () => {
+// A stick within 20 degrees of horizontal, held past the deadzone.
+const sideways = fc
+  .record({
+    x: fc.double({ min: 0.11, max: 1, noNaN: true }),
+    slope: fc.double({ min: -0.36, max: 0.36, noNaN: true }),
+    left: fc.boolean(),
+  })
+  .map(({ x, slope, left }) => ({
+    moveX: left ? x : -x,
+    moveY: x * slope,
+  }));
+
+describe("toDriveInput (ADR 0018)", () => {
   it("yields neutral input when the left/right or forward/backward input is NaN or positive/negative Infinity", () => {
     fc.assert(
       fc.property(
@@ -35,6 +47,41 @@ describe("toDriveInput (ADR 0005)", () => {
           expect(
             toDriveInput({ moveX: x, moveY: y, jump: false }).throttle,
           ).toBe(0);
+        },
+      ),
+    );
+  });
+
+  it("a stick within 20 degrees of horizontal creeps forward instead of throttling or reversing", () => {
+    fc.assert(
+      fc.property(sideways, fc.boolean(), (stick, jump) => {
+        const d = toDriveInput({ ...stick, jump });
+        expect(d.throttle).toBe(0);
+        expect(d.creep).toBe(true);
+        expect(d.steer).toBe(stick.moveX);
+      }),
+    );
+  });
+
+  it("a stick pushed right on a phone, which reads slightly backward, creeps instead of reversing (measured in game)", () => {
+    const d = toDriveInput({ moveX: -0.99, moveY: -0.2, jump: false });
+    expect(d).toEqual({
+      throttle: 0,
+      steer: -0.99,
+      handbrake: false,
+      creep: true,
+    });
+  });
+
+  it("does not creep without sideways input", () => {
+    fc.assert(
+      fc.property(
+        fc.double({ min: -0.1, max: 0.1, noNaN: true }),
+        axis,
+        (x, y) => {
+          expect(toDriveInput({ moveX: x, moveY: y, jump: false }).creep).toBe(
+            false,
+          );
         },
       ),
     );

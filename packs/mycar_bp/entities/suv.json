@@ -6,7 +6,33 @@
       "is_spawnable": false,
       "is_summonable": true
     },
+    "component_groups": {
+      "mycar:paint_khaki": { "minecraft:variant": { "value": 0 } },
+      "mycar:paint_green": { "minecraft:variant": { "value": 1 } },
+      "mycar:paint_red": { "minecraft:variant": { "value": 2 } }
+    },
+    "events": {
+      "mycar:paint_khaki": {
+        "add": { "component_groups": ["mycar:paint_khaki"] },
+        "remove": {
+          "component_groups": ["mycar:paint_green", "mycar:paint_red"]
+        }
+      },
+      "mycar:paint_green": {
+        "add": { "component_groups": ["mycar:paint_green"] },
+        "remove": {
+          "component_groups": ["mycar:paint_khaki", "mycar:paint_red"]
+        }
+      },
+      "mycar:paint_red": {
+        "add": { "component_groups": ["mycar:paint_red"] },
+        "remove": {
+          "component_groups": ["mycar:paint_khaki", "mycar:paint_green"]
+        }
+      }
+    },
     "components": {
+      "minecraft:variant": { "value": 0 },
       "minecraft:type_family": { "family": ["mycar_vehicle", "inanimate"] },
       "minecraft:collision_box": { "width": 1.8, "height": 1.6 },
       "minecraft:health": { "value": 20, "max": 20 },
