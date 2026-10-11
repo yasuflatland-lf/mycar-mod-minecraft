@@ -54,7 +54,7 @@ CI runs the Biome check, the README preview check, type checking, tests, the bui
 
 ## Releasing
 
-Bump the Behavior Pack version in `packs/mycar_bp/manifest.json`, merge it to `main`, then either:
+Bump the Behavior Pack version in `packs/mycar_bp/manifest.json` and write the release summary in `docs/releases/v<version>.md`, starting from [`docs/releases/TEMPLATE.md`](docs/releases/TEMPLATE.md). Describe what players can do now in plain words; the release workflow puts it above the PR list that GitHub generates, and fails if the file is missing. Merge both to `main`, then either:
 
 - open **Actions → Release → Run workflow** on `main`, which tags the commit as `v<version>` (for example `v0.1.0` for `[0, 1, 0]`), or
 - push a matching tag yourself: `git tag v0.1.0 && git push origin v0.1.0`.

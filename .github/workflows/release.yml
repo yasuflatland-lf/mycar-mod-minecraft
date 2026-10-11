@@ -41,6 +41,20 @@ jobs:
           fi
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
+      # The generated notes only list PR titles, so each release needs a
+      # player-facing summary. Checked before the build so a missing one fails
+      # fast, and before a manual run creates the tag.
+      - run: |
+          notes="docs/releases/$TAG.md"
+          if [ ! -f "$notes" ]; then
+            echo "::error::$notes is missing; copy docs/releases/TEMPLATE.md and describe what changed for players"
+            exit 1
+          fi
+          mkdir -p dist
+          cp "$notes" dist/release-notes.md
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+
       # Install Node and pnpm as pinned in mise.toml. Pinned to a commit
       # because the tag would otherwise feed code into a release build.
       - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
@@ -62,7 +76,9 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: mcaddon
-          path: dist/*.mcaddon
+          path: |
+            dist/*.mcaddon
+            dist/release-notes.md
           if-no-files-found: error
 
   release:
@@ -78,7 +94,8 @@ jobs:
           path: dist
 
       # On a manual run the tag does not exist yet; --target creates it on the built commit.
-      - run: gh release create "$TAG" dist/*.mcaddon --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --generate-notes
+      # --notes-file goes above the generated PR list.
+      - run: gh release create "$TAG" dist/*.mcaddon --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --generate-notes --notes-file dist/release-notes.md
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ needs.build.outputs.tag }}
