@@ -15,7 +15,7 @@ Resource Pack files at the same path in two packs override each other, and item 
 
 Ship one Behavior Pack and one Resource Pack as **Yasuflatland Ride**, in the repository `yasuflatland-ride-minecraft`. Replace only the former name and namespace; preserve behavior, tuning, model bone names (0009), and every pack and module UUID. Existing worlds that list these UUIDs load the new pack versions. Do not migrate old entity or item IDs.
 
-Use `yasuflatland_ride` as the namespace, following `<author>_<product>`: the author prefix identifies the creator and `ride` identifies this add-on. The namespace never changes after this release. This rename is finalized before release, not a namespace change in an update to a released cooperative add-on.
+Use `yasuflatland_ride` as the namespace, following `<author>_<product>`: the author prefix identifies the creator and `ride` identifies this add-on. The namespace never changes after the first release under this name. This is a one-time break: the released `mycar` namespace (MyCar 0.5.0 and earlier) is dropped without migration (see Consequences), and the first release under the new name freezes `yasuflatland_ride`.
 
 | Old | New |
 |---|---|

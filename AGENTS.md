@@ -84,7 +84,7 @@ Design decisions live in [docs/adr](docs/adr/README.md). Read the ADRs that rela
 
 Ship all rides in Yasuflatland Ride: `yasuflatland-ride-minecraft`, with `yasuflatland_ride_bp` and `yasuflatland_ride_rp`; `yasuflatland_ride_test_bp` is for development only. The dev container is `yasuflatland-ride-bds` and its world is `yasuflatland-ride-dev`.
 
-House-building parts ship as a separate add-on with their own namespace. The namespace never changes after this release (0047).
+House-building parts ship as a separate add-on with their own namespace. Do not change the `yasuflatland_ride` namespace after the first Yasuflatland Ride release (0047).
 
 Use `yasuflatland_ride:<snake_case>` for IDs, properties, groups, and events; the test entity namespace is `yasuflatland_ride_test:`. Geometry names use `geometry.yasuflatland_ride.<name>`, animations use `animation.yasuflatland_ride.<entity>.<name>`, controllers use `controller.<kind>.yasuflatland_ride.<entity>[.<name>]`, and sounds use `yasuflatland_ride.<name>`. Lang keys follow IDs. Item texture shortnames use `yasuflatland_ride_<name>` and the atlas resource pack name is `yasuflatland_ride`. Keep engine-fixed manifest, lang, atlas, and sound definition files at their required paths (0047).
 
