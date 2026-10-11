@@ -104,6 +104,7 @@ export function registerSubscriptions(
         vehicleId: ev.hitEntity.id,
         paint,
         creative: player.getGameMode() === GameMode.Creative,
+        tick: system.currentTick,
       });
       return;
     }

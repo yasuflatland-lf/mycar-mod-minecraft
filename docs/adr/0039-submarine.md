@@ -1,12 +1,12 @@
-# 0038. Submarine form
+# 0039. Submarine form
 
 - Status: Accepted
 - Date: 2026-10-11
-- Extends: 0009 (bones), 0022 (transform animations), 0028 (camera), 0033 (gear), 0035 (steps), and 0037 (forms)
+- Extends: 0009 (bones), 0022 (transform animations), 0028 (camera), 0033 (gear), 0035 (steps), and 0038 (forms)
 
 ## Context
 
-The SUV should become a sealed submarine when its roof goes under water, with blue windows and rear wheels that become propeller guards. One form state machine (0037) keeps the vehicle from being both a hover car and a submarine. Script-driven motion can hold depth; engine buoyancy alone cannot. Shallow water should remain drivable as a car, and an unattended submarine should float without taking off.
+The SUV should become a sealed submarine when its roof goes under water, with blue windows and rear wheels that become propeller guards. One form state machine (0038) keeps the vehicle from being both a hover car and a submarine. Script-driven motion can hold depth; engine buoyancy alone cannot. Shallow water should remain drivable as a car, and an unattended submarine should float without taking off.
 
 ## Decision
 
@@ -29,7 +29,7 @@ The SUV should become a sealed submarine when its roof goes under water, with bl
 - Choose submarine vertical speed in this order: controlled nonzero climb input uses `command * SPEC.maxClimb` (0.3 blocks/tick); forward motion at the step minimum speed with a step ahead rises at `SPEC.maxClimb`; otherwise use `clamp((waterDepth - SPEC.floatDraft) * SPEC.floatGain, -SPEC.surfaceRise, SPEC.surfaceRise)`. `SPEC.floatGain` starts at 0.25 and `SPEC.surfaceRise` at 0.05 blocks/tick. Controlled vehicles discard positive buoyancy, so no input holds depth below the float line but sinks back to it from above. Uncontrolled vehicles rise or sink to the float line and stay there. The proportional correction avoids oscillation near the surface.
 - Rise at steps instead of jumping (0035), because submarine has no gravity. This lets it climb a shore of one-block steps, sink onto the shore, and become a car.
 - Use hover horizontal handling without reverse or handbrake. Keep ram damage (0006); bank only in hover. Keep gear down in submarine, including immediately on entry from hover (0033). Keep all tuning in `SPEC`: `maxWaterSpeed` starts at 0.5 blocks/tick; `waterDrag` and `waterVerticalDrag` start at 0.8. Measure drag and validate speed and float tuning in series 7/7.
-- Every player rider uses third person through the existing any-form-but-car rule (0028, 0037). Refresh `water_breathing` every `SPEC.waterBreathingInterval` (20 ticks, one second) for `SPEC.waterBreathingTicks` (60 ticks, three seconds), with particles hidden. Log each failed refresh independently and continue with the others. The effect lapses by itself after leaving or `/reload`.
+- Every player rider uses third person through the existing any-form-but-car rule (0028, 0038). Refresh `water_breathing` every `SPEC.waterBreathingInterval` (20 ticks, one second) for `SPEC.waterBreathingTicks` (60 ticks, three seconds), with particles hidden. Log each failed refresh independently and continue with the others. The effect lapses by itself after leaving or `/reload`.
 - Extend the bone contract (0009) with `windows_sealed`, a child of `body`, and `prop_rl` / `prop_rr` at the rear wheel axles. `windows_sealed` covers the side and front windows with the same blue as `rear_glass` and is visible only in submarine; the existing rear glass covers the rear window.
 - Turn the rear wheels 90 degrees around y over one second so their tires face backward as ring guards for ducted three-blade propellers, like a Schwimmwagen. Grow the propellers from scale zero to one; spin them with `query.modified_distance_moved` while submerged. Leave the front wheels unchanged and hide props in other forms.
 - Extend the form animation controller with `ground` → `dive` → `submarine` → `surface` → `ground`. Dive and surface take one second each. Gear transitions remain separate: hover to submarine runs `retract` → `ground` → `dive`; submarine to hover runs `surface` → `ground` → `deploy`. Never drive one bone with two transforms at once (0022). README previews omit the new bones. Visual implementation belongs to series 5/7 and 6/7.

@@ -1,4 +1,4 @@
-# 0037. Vehicle forms
+# 0038. Vehicle forms
 
 - Status: Accepted
 - Date: 2026-10-11
@@ -17,7 +17,7 @@ A submarine form is coming, and a submarine is not a flight mode. The vehicle is
 - `stepBank`, `bankSink`, and `nextGearDown` take `form: Form` and use the renamed values. `Vehicle.flightMode` becomes `Vehicle.form`; `Vehicle.rebuild` takes `form = "car"`. `TickOutcome.flight` and `VehicleSnapshot.flight` become `form`; `DriveWorld.setFlight` becomes `setForm(vehicleId, form)`.
 - Replace `FLIGHT_PROPERTY = "mycar:flight"` with `FORM_PROPERTY = "mycar:form"`. The client-synced enum has the four values above and defaults to `car`. Update all Resource Pack queries and rename `controller.animation.mycar.suv.flight` and its client animation key `flight` to `controller.animation.mycar.suv.form` and `form`.
 - Name gravity groups after their effect: `mycar:hovering` becomes `mycar:weightless`, and `mycar:grounded` becomes `mycar:weighted`. Rename the events `mycar:hover` / `mycar:land` to `mycar:gravity_off` / `mycar:gravity_on`, and their constants `HOVER_EVENT` / `LAND_EVENT` to `GRAVITY_OFF_EVENT` / `GRAVITY_ON_EVENT`. The `car` form has gravity; every other form does not. Keep the property and gravity event synchronized as in 0021.
-- The third-person rule of 0028 reads "any form but `car`". Rename the rider set `airborne` to `offRoad` (0028 + 0037).
+- The third-person rule of 0028 reads "any form but `car`". Rename the rider set `airborne` to `offRoad` (0028 + 0038).
 - Keep `climbInput`, `verticalImpulse`, `stepFlightMotion`, every `SPEC` name, animation controller state names (`ground`, `deploy`, `hover`, `retract`), in-game test names (`flight_*`), and other test file names unchanged. All transitions, timing, motion, and visual behavior stay the same.
 
 ## Consequences
