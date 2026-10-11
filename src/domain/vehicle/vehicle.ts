@@ -73,14 +73,14 @@ export interface TickOutcome {
   gearDown?: boolean;
 }
 
-function stepProbe(ctx: TickContext): StepProbe {
+function stepProbe(ctx: TickContext, drop = 0): StepProbe {
   return (f, speed) => {
     const r = rightOf(f);
     return stepHeight(
       (ahead, side, dy) =>
         ctx.solidAt({
           x: f.x * ahead + r.x * side,
-          y: dy,
+          y: dy - drop,
           z: f.z * ahead + r.z * side,
         }),
       speed,
@@ -237,7 +237,7 @@ export class Vehicle {
       const rising =
         input.throttle > 0 &&
         step.state.speed >= 0 &&
-        stepProbe(ctx)(
+        stepProbe(ctx, SPEC.submarineStepProbeDrop)(
           step.forward,
           Math.max(step.state.speed, SPEC.stepMinSpeed),
         ) > 0;
