@@ -250,7 +250,7 @@ describe("Resource Pack sounds (ADR 0030)", () => {
   });
 });
 
-describe("Resource Pack submarine visuals (ADR 0038)", () => {
+describe("Resource Pack submarine visuals (ADR 0039)", () => {
   it("registers the three submarine animations", () => {
     for (const name of ["dive", "submerged", "surface"]) {
       expect(client.animations[name]).toBe(`animation.mycar.suv.${name}`);
