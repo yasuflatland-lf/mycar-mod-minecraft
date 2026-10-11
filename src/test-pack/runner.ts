@@ -7,6 +7,7 @@ import { PAINTS } from "../domain/vehicle/paint";
 import { nearestSeat, toLocal } from "../domain/vehicle/seats";
 import { SPEC } from "../domain/vehicle/spec";
 import {
+  FLIGHT_PROPERTY,
   HEADLIGHTS_PROPERTY,
   TEST_INPUT_EVENT as INPUT_EVENT,
   LIGHT_BLOCK,
@@ -65,8 +66,17 @@ function insideArena(p: Horizontal): boolean {
   );
 }
 
-function drive(car: Entity, x: number, y: number, jump = false): void {
-  system.sendScriptEvent(INPUT_EVENT, `${car.id},${x},${y},${jump ? 1 : 0}`);
+function drive(
+  car: Entity,
+  x: number,
+  y: number,
+  jump = false,
+  pitch = 0,
+): void {
+  system.sendScriptEvent(
+    INPUT_EVENT,
+    `${car.id},${x},${y},${jump ? 1 : 0},${pitch}`,
+  );
 }
 
 function spawnCar(a: Arena, x: number, z: number, yaw: number): Entity {
@@ -116,6 +126,8 @@ async function setupArena(): Promise<Arena> {
   dim.runCommand(
     `fill ${minX} ${gy - 1} ${minZ} ${maxX} ${gy - 1} ${maxZ} stone`,
   );
+  // The flight tests climb up to about 8 blocks above the floor along z = 4.5.
+  dim.runCommand(`fill ${minX} ${gy + 7} 0 60 ${gy + 20} 12 air`);
   dim.runCommand(`kill @e[type=${VEHICLE}]`);
   dim.runCommand("kill @e[type=cow]");
   dim.runCommand(`kill @e[type=${SEAT_PROBE}]`);
@@ -394,6 +406,129 @@ function headlightsFollowAndClear(a: Arena): Promise<Outcome> {
   });
 }
 
+const FLIGHT_LANE = { x: 5.5, z: 4.5 } as const;
+
+function flightMode(car: Entity): string {
+  return String(car.getProperty(FLIGHT_PROPERTY));
+}
+
+/** Two Jump presses 4 ticks apart (ADR 0021). */
+async function doubleTap(car: Entity): Promise<void> {
+  for (let i = 0; i < 2; i++) {
+    drive(car, 0, 0, true);
+    await wait(2);
+    drive(car, 0, 0, false);
+    await wait(2);
+  }
+}
+
+async function takeOff(car: Entity): Promise<void> {
+  await doubleTap(car);
+  await wait(SPEC.takeoffTicks + 5);
+}
+
+/** Ticks until the flight mode reads ground, or -1 after `limit` ticks. */
+async function ticksUntilGround(car: Entity, limit: number): Promise<number> {
+  for (let t = 0; t < limit; t++) {
+    await wait(1);
+    if (flightMode(car) === "ground") return t;
+  }
+  return -1;
+}
+
+function flightTakeoff(a: Arena): Promise<Outcome> {
+  return withCar(a, FLIGHT_LANE.x, FLIGHT_LANE.z, -90, async (car) => {
+    await takeOff(car);
+    const mode = flightMode(car);
+    const rise = car.location.y - a.gy;
+    return {
+      pass: mode === "flying" && rise >= 1.2 && rise <= 1.8,
+      detail: `mode=${mode} rise=${rise.toFixed(2)}`,
+    };
+  });
+}
+
+function flightCruise(a: Arena): Promise<Outcome> {
+  return withCar(a, FLIGHT_LANE.x, FLIGHT_LANE.z, -90, async (car) => {
+    await takeOff(car);
+    drive(car, 0, 1);
+    let minY = Number.POSITIVE_INFINITY;
+    let maxY = Number.NEGATIVE_INFINITY;
+    let speed = 0;
+    for (let t = 0; t < 60; t++) {
+      await wait(1);
+      if (t >= 20) {
+        minY = Math.min(minY, car.location.y);
+        maxY = Math.max(maxY, car.location.y);
+      }
+      if (t >= 50) speed = Math.max(speed, hlen(car.getVelocity()));
+    }
+    // At steady state the speed is maxSpeed * engineDrag / SPEC.flightDrag,
+    // so the ratio reveals the engine's drag with gravity off.
+    const measuredDrag = (SPEC.flightDrag * speed) / SPEC.maxSpeed;
+    return {
+      pass:
+        maxY - minY <= 0.5 &&
+        speed >= SPEC.maxSpeed * 0.95 &&
+        speed <= SPEC.maxSpeed * 1.05,
+      detail: `altRange=${(maxY - minY).toFixed(3)} speed=${speed.toFixed(3)} measuredDrag=${measuredDrag.toFixed(3)}`,
+    };
+  });
+}
+
+function flightClimbDescend(a: Arena): Promise<Outcome> {
+  return withCar(a, FLIGHT_LANE.x, FLIGHT_LANE.z, -90, async (car) => {
+    await takeOff(car);
+    drive(car, 0, 1, false, -30);
+    await wait(35);
+    const top = car.location.y;
+    drive(car, 0, 1, false, 30);
+    await wait(10);
+    const climbed = top - a.gy;
+    const sank = top - car.location.y;
+    return {
+      pass: climbed >= 4 && sank >= 1.5,
+      detail: `climbed=${climbed.toFixed(2)} sank=${sank.toFixed(2)}`,
+    };
+  });
+}
+
+function flightLand(a: Arena): Promise<Outcome> {
+  return withCar(a, FLIGHT_LANE.x, FLIGHT_LANE.z, -90, async (car) => {
+    await takeOff(car);
+    await doubleTap(car);
+    const afterTap = flightMode(car);
+    const landedAt = await ticksUntilGround(car, 60);
+    const restY = car.location.y - a.gy;
+    // Gravity must be back on: a hop up has to come down again.
+    car.applyImpulse({ x: 0, y: 0.5, z: 0 });
+    await wait(40);
+    const afterHop = car.location.y - a.gy;
+    return {
+      pass:
+        afterTap === "landing" &&
+        landedAt >= 0 &&
+        Math.abs(restY) <= 0.1 &&
+        Math.abs(afterHop) <= 0.1,
+      detail: `afterTap=${afterTap} landedAt=${landedAt} restY=${restY.toFixed(2)} afterHop=${afterHop.toFixed(2)}`,
+    };
+  });
+}
+
+function flightDriverless(a: Arena): Promise<Outcome> {
+  return withCar(a, FLIGHT_LANE.x, FLIGHT_LANE.z, -90, async (car) => {
+    await takeOff(car);
+    system.sendScriptEvent(INPUT_EVENT, `${car.id},clear`);
+    await wait(3);
+    const afterClear = flightMode(car);
+    const landedAt = await ticksUntilGround(car, 60);
+    return {
+      pass: afterClear === "landing" && landedAt >= 0,
+      detail: `afterClear=${afterClear} landedAt=${landedAt}`,
+    };
+  });
+}
+
 async function runAll(runId: string): Promise<void> {
   const a = await setupArena();
   const tests: [string, () => Promise<Outcome>][] = [
@@ -406,6 +541,11 @@ async function runAll(runId: string): Promise<void> {
     ["seats_after_driver_leaves", () => seatsAfterDriverLeaves(a)],
     ["paint_events", () => paintEvents(a)],
     ["headlights_follow_and_clear", () => headlightsFollowAndClear(a)],
+    ["flight_takeoff", () => flightTakeoff(a)],
+    ["flight_cruise", () => flightCruise(a)],
+    ["flight_climb_descend", () => flightClimbDescend(a)],
+    ["flight_land", () => flightLand(a)],
+    ["flight_driverless", () => flightDriverless(a)],
   ];
   let passed = 0;
   const lines: string[] = [];
