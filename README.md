@@ -2,8 +2,8 @@
 
 [![Unit Tests](https://github.com/yasuflatland-lf/mycar-mod-minecraft/actions/workflows/unit-test.yml/badge.svg?branch=main)](https://github.com/yasuflatland-lf/mycar-mod-minecraft/actions/workflows/unit-test.yml)
 [![Integration Test](https://github.com/yasuflatland-lf/mycar-mod-minecraft/actions/workflows/integration-test.yml/badge.svg?branch=main)](https://github.com/yasuflatland-lf/mycar-mod-minecraft/actions/workflows/integration-test.yml)
-[![codecov](https://codecov.io/gh/yasuflatland-lf/mycar-mod-minecraft/branch/main/graph/badge.svg)](https://codecov.io/gh/yasuflatland-lf/mycar-mod-minecraft)
-[![domain and application coverage](https://codecov.io/gh/yasuflatland-lf/mycar-mod-minecraft/branch/main/graph/badge.svg?component=core)](https://app.codecov.io/gh/yasuflatland-lf/mycar-mod-minecraft/components)
+[![all code coverage](https://img.shields.io/codecov/c/github/yasuflatland-lf/mycar-mod-minecraft/main?label=all%20code&logo=codecov)](https://codecov.io/gh/yasuflatland-lf/mycar-mod-minecraft)
+[![domain and application coverage](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.codecov.io%2Fapi%2Fv2%2Fgithub%2Fyasuflatland-lf%2Frepos%2Fmycar-mod-minecraft%2Fcomponents%2F%3Fbranch%3Dmain&query=%24%5B0%5D.coverage&suffix=%25&label=domain%20and%20application&logo=codecov&color=brightgreen)](https://app.codecov.io/gh/yasuflatland-lf/mycar-mod-minecraft/components)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ![The SUV seen from its front-left corner](docs/images/suv-front-left.png)
