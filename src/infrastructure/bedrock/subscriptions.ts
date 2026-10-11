@@ -88,20 +88,8 @@ export function registerSubscriptions(
     if (ev.initialSpawn) useCases.starter.execute(ev.player.id);
   });
 
-  const paintCommand = (player: Player, vehicle: Entity, itemType = "") => {
-    const paint = PAINT_BY_DYE[itemType];
-    if (!paint) return undefined;
-    return {
-      playerId: player.id,
-      vehicleId: vehicle.id,
-      paint,
-      creative: player.getGameMode() === GameMode.Creative,
-    };
-  };
-
-  // On touch a short tap on an entity is an attack and only a long press
-  // interacts, so a tap with a dye arrives here and paints instead of counting
-  // toward breaking the vehicle (ADR 0036).
+  // Painting listens to hits, not interactions: on touch a short tap on an
+  // entity is an attack, and the interaction is left to getting in (ADR 0036).
   world.afterEvents.entityHitEntity.subscribe((ev) => {
     const player = ev.damagingEntity;
     if (ev.hitEntity.typeId !== VEHICLE_TYPE || !(player instanceof Player))
@@ -109,9 +97,14 @@ export function registerSubscriptions(
     const held = player
       .getComponent("minecraft:inventory")
       ?.container?.getItem(player.selectedSlotIndex);
-    const cmd = paintCommand(player, ev.hitEntity, held?.typeId);
-    if (cmd) {
-      useCases.paint.execute(cmd);
+    const paint = PAINT_BY_DYE[held?.typeId ?? ""];
+    if (paint) {
+      useCases.paint.execute({
+        playerId: player.id,
+        vehicleId: ev.hitEntity.id,
+        paint,
+        creative: player.getGameMode() === GameMode.Creative,
+      });
       return;
     }
     useCases.hit.execute({
@@ -149,13 +142,6 @@ export function registerSubscriptions(
       const playerId = ev.player.id;
       const vehicleId = ev.target.id;
       system.run(() => switchHeadlights(playerId, vehicleId));
-      return;
     }
-    const cmd = paintCommand(ev.player, ev.target, ev.itemStack?.typeId);
-    if (!cmd) return;
-    // Cancelling keeps the player from getting in. Before-events cannot change
-    // the world, so the repaint runs on the next tick.
-    ev.cancel = true;
-    system.run(() => useCases.paint.execute(cmd));
   });
 }
