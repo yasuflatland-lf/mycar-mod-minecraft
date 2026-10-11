@@ -153,6 +153,27 @@ function accelAndStep1(a: Arena): Promise<Outcome> {
   });
 }
 
+// Carpets and torches have no collision box, so the step look-ahead must not
+// jump for them (ADR 0034).
+function passableNoHop(a: Arena): Promise<Outcome> {
+  a.dim.runCommand(`fill 30 ${a.gy} 25 34 ${a.gy} 28 white_carpet`);
+  a.dim.runCommand(`fill 40 ${a.gy} 25 40 ${a.gy} 28 torch`);
+  return withCar(a, 5.5, 26.5, -90, async (car) => {
+    drive(car, 0, 1);
+    let maxRise = 0;
+    for (let t = 0; t < 120; t++) {
+      await wait(1);
+      maxRise = Math.max(maxRise, car.location.y - a.gy);
+      if (car.location.x > 45) break;
+    }
+    const passed = car.location.x > 45;
+    return {
+      pass: passed && maxRise < 0.2,
+      detail: `passed=${passed} maxRise=${maxRise.toFixed(2)}`,
+    };
+  });
+}
+
 async function turnAndHandbrake(a: Arena): Promise<Outcome> {
   function measureTurn(
     handbrake: boolean,
@@ -585,6 +606,7 @@ async function runAll(runId: string): Promise<void> {
   const a = await setupArena();
   const tests: [string, () => Promise<Outcome>][] = [
     ["accel_and_step1", () => accelAndStep1(a)],
+    ["passable_no_hop", () => passableNoHop(a)],
     ["turn_and_handbrake", () => turnAndHandbrake(a)],
     ["ram_cow", () => ramCow(a)],
     ["wall_diagonal", () => wallDiagonal(a)],

@@ -32,12 +32,14 @@ export interface Observation {
   velocity: Vec2;
   onGround: boolean;
 }
-export type StepProbe = (f: Vec2, speed: number) => boolean;
+/** Height of the step to jump onto now: 0 for none (ADR 0004, 0034). */
+export type StepProbe = (f: Vec2, speed: number) => 0 | 1 | 2;
 export interface MotionResult {
   state: MotionState;
   forward: Vec2;
   impulse: Vec2;
-  jumped: boolean;
+  /** Upward velocity to give for a step jump this tick, 0 when not jumping (ADR 0004, 0034). */
+  jumpVelocity: number;
   blocked: boolean; // Whether a wall collision was detected this tick
 }
 
@@ -124,15 +126,14 @@ export function stepMotion(
     ? (st.friction ?? SPEC.defaultFriction)
     : SPEC.airFriction;
 
-  // Two-block steps (ADR 0004)
-  let jumped = false;
-  if (
-    input.throttle > 0 &&
-    st.speed >= 0 &&
-    obs.onGround &&
-    probe(f, st.speed)
-  ) {
-    jumped = true;
+  // Steps (ADR 0004, 0034)
+  let jumpVelocity = 0;
+  const height =
+    input.throttle > 0 && st.speed >= 0 && obs.onGround
+      ? probe(f, st.speed)
+      : 0;
+  if (height > 0) {
+    jumpVelocity = height === 2 ? SPEC.stepVelocity : SPEC.oneStepVelocity;
     st.speed = Math.max(st.speed, SPEC.stepMinSpeed);
     st.stepTicks = SPEC.stepTicks;
   }
@@ -159,7 +160,7 @@ export function stepMotion(
   return {
     state: st,
     forward: f,
-    jumped,
+    jumpVelocity,
     blocked,
     impulse: { x: (given.x - v.x) * control, z: (given.z - v.z) * control },
   };
@@ -208,7 +209,7 @@ export function stepFlightMotion(
       stepTicks: 0,
     },
     forward: f,
-    jumped: false,
+    jumpVelocity: 0,
     blocked,
     impulse: { x: given.x - v.x, z: given.z - v.z },
   };

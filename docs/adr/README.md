@@ -7,7 +7,7 @@ This directory records design decisions and the reasons behind them. The format 
 | [0001](0001-bedrock-addon-with-stable-script-api.md) | Build a Bedrock add-on and use only the stable Script API | Accepted |
 | [0002](0002-script-driven-vehicle-movement.md) | Drive vehicles by setting their velocity from the script | Accepted |
 | [0003](0003-friction-compensation-and-axis-wall-detection.md) | Estimate and compensate for ground friction, and detect wall collisions per axis | Accepted |
-| [0004](0004-two-block-step-up-by-look-ahead.md) | Climb two-block steps by looking ahead in the script | Accepted |
+| [0004](0004-two-block-step-up-by-look-ahead.md) | Climb two-block steps by looking ahead in the script | Superseded in part by 0034 |
 | [0005](0005-touch-throttle-compensation.md) | Compensate the throttle from the mobile joystick | Superseded by 0018 |
 | [0006](0006-ram-damage-and-occupant-protection.md) | Ram damage detection, and always protecting occupants | Accepted |
 | [0007](0007-seats-and-driver.md) | Seats and choosing the driver | Superseded by 0019 |
@@ -37,6 +37,7 @@ This directory records design decisions and the reasons behind them. The format 
 | [0031](0031-climb-with-jump-and-sink-with-the-stick.md) | Climb with held Jump and sink with the stick pulled back | Accepted |
 | [0032](0032-lower-the-wheels-before-touchdown.md) | Lower the wheels before touchdown | Accepted |
 | [0033](0033-touch-down-from-flight.md) | Return to the ground when a flying vehicle sinks onto it | Accepted |
+| [0034](0034-jump-one-block-steps-in-the-script.md) | Jump one-block steps in the script, and skip blocks without a collision box | Accepted |
 
 The measurements and in-game tests behind these decisions are in [the driving-core spike findings](../spike-driving-core.md).
 

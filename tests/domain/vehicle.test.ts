@@ -175,7 +175,7 @@ describe("Vehicle (aggregate)", () => {
     );
   });
 
-  it("jumps up a two-block step ahead in any heading, but never at a three-block wall", () => {
+  it("jumps up a one- or two-block step ahead in any heading, but never at a three-block wall", () => {
     fc.assert(
       fc.property(fc.double({ min: -180, max: 180, noNaN: true }), (yaw) => {
         const stepDistance = 8;
@@ -194,6 +194,7 @@ describe("Vehicle (aggregate)", () => {
           return sim.impulseY;
         };
         expect(drive(2)).toContain(SPEC.stepVelocity);
+        expect(drive(1)).toContain(SPEC.oneStepVelocity);
         expect(drive(3).every((y) => y === 0)).toBe(true);
       }),
     );

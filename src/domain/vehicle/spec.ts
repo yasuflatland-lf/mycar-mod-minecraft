@@ -26,6 +26,7 @@ export const SPEC = {
   hitboxFront: 0.9,
   carHeight: 1.6,
   stepVelocity: 0.75,
+  oneStepVelocity: 0.45, // Peaks about 1.4 blocks up; 0.42, a player's jump, peaks at 1.25 (ADR 0034)
   stepTicks: 10,
   stepMinSpeed: 0.15,
   stepLookaheadTicks: 4,

@@ -38,7 +38,7 @@ interface Frame {
   body: Body;
   touching: boolean;
   blocked: boolean;
-  jumped: boolean;
+  jumpVelocity: number;
   onGround: boolean;
 }
 
@@ -64,7 +64,7 @@ function simulate(
       state,
       input,
       { velocity: body.vel, onGround: t.onGround },
-      () => t.step,
+      () => (t.step ? 2 : 0),
     );
     state = r.state;
     const e = engineStep(body, r.impulse, engine, t.onGround);
@@ -74,7 +74,7 @@ function simulate(
       body,
       touching: e.touching,
       blocked: r.blocked,
-      jumped: r.jumped,
+      jumpVelocity: r.jumpVelocity,
       onGround: t.onGround,
     });
   });
@@ -281,9 +281,9 @@ describe("stepMotion (properties, ADR 0002/0003)", () => {
           p,
           input,
           { velocity: v, onGround: false },
-          () => true,
+          () => 2,
         );
-        expect(r.jumped).toBe(false);
+        expect(r.jumpVelocity).toBe(0);
         expect(r.blocked).toBe(false);
         expect(r.state.friction).toBe(p.friction);
         const f = r.forward;
@@ -324,10 +324,12 @@ describe("stepMotion (properties, ADR 0002/0003)", () => {
           p,
           input,
           { velocity: { x: 0, z: 0 }, onGround },
-          () => true,
+          () => 2,
         );
         const speed = updateSpeed(p.speed, input.throttle, input.creep);
-        expect(r.jumped).toBe(onGround && input.throttle > 0 && speed >= 0);
+        expect(r.jumpVelocity > 0).toBe(
+          onGround && input.throttle > 0 && speed >= 0,
+        );
       }),
     );
   });
@@ -352,7 +354,7 @@ describe("stepMotion (properties, ADR 0002/0003)", () => {
           ter,
         );
         const climbing = frames.slice(warm.length);
-        expect(climbing[0]?.jumped).toBe(true);
+        expect(climbing[0]?.jumpVelocity).toBe(SPEC.stepVelocity);
         for (const fr of climbing)
           expect(lateral(fr.body.vel, fr.state.yaw)).toBeLessThan(1e-9);
       }),
@@ -417,10 +419,21 @@ describe("stepMotion (properties, ADR 0002/0003)", () => {
       initialMotion(0),
       FULL_THROTTLE,
       { velocity: { x: 0, z: 0 }, onGround: true },
-      () => true,
+      () => 2,
     );
-    expect(r.jumped).toBe(true);
+    expect(r.jumpVelocity).toBe(SPEC.stepVelocity);
     expect(r.state.speed).toBeGreaterThanOrEqual(SPEC.stepMinSpeed);
     expect(r.state.stepTicks).toBe(SPEC.stepTicks - 1);
+  });
+
+  it("jumps a one-block step with the lower velocity (ADR 0034)", () => {
+    const r = stepMotion(
+      initialMotion(0),
+      FULL_THROTTLE,
+      { velocity: { x: 0, z: 0 }, onGround: true },
+      () => 1,
+    );
+    expect(r.jumpVelocity).toBe(SPEC.oneStepVelocity);
+    expect(r.state.speed).toBeGreaterThanOrEqual(SPEC.stepMinSpeed);
   });
 });

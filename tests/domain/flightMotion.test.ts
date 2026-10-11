@@ -62,7 +62,7 @@ describe("stepFlightMotion (ADR 0021)", () => {
     fc.assert(
       fc.property(inputs, (ins) => {
         for (const { r } of fly(ins)) {
-          expect(r.jumped).toBe(false);
+          expect(r.jumpVelocity).toBe(0);
           expect(r.blocked).toBe(false);
           expect(r.state.expected).toBeUndefined();
           expect(r.state.stepTicks).toBe(0);

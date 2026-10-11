@@ -10,7 +10,7 @@ To use commands, run `docker exec mycar-bds send-command op <player name>`.
 | 2 | Use the item on the ground / use it under a low ceiling | The vehicle appears and the item count drops by one (not in Creative) / no vehicle appears and the item count stays the same | | |
 | 3 | Get in, drive, turn, and slide with the handbrake | The vehicle moves where you look and turns right away. The handbrake makes it slide | | |
 | 4 | Smoothness of the driver's camera | 3 or higher on a 5-point scale | | |
-| 5 | Approach a 2-block step head-on and at an angle | The vehicle climbs it without stopping | | |
+| 5 | While driving, approach a 1-block and a 2-block step head-on and at an angle, then drive over flowers and carpets | The vehicle climbs both steps without stopping, and does not hop over the flowers or carpets (ADR 0034) | | |
 | 6 | Hit a wall at full speed / fall 10 blocks while riding (Survival) | No hearts are lost | | |
 | 7 | Hit a pig | The pig takes damage and is pushed aside | | |
 | 8 | Get out | The door of the seat you sat in swings outward and a door-open sound plays | | |

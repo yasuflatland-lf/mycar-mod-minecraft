@@ -30,7 +30,7 @@ import {
 import { type RamHit, type RamTarget, selectHits } from "./ram";
 import { doorOf, occupiedSeats, vacatedSeats } from "./seats";
 import { SPEC } from "./spec";
-import { shouldStepUp } from "./stepUp";
+import { stepHeight } from "./stepUp";
 
 export interface RiderView {
   id: string;
@@ -48,7 +48,7 @@ export interface TickContext {
   onGround: boolean;
   /** Vertical velocity from the engine (blocks/tick). Read whenever the flight mode is not ground, including the tick takeoff starts. */
   velocityY?: number;
-  /** Whether the block at entity location + offset (world axes, y from the feet) is solid; air and liquids are not. */
+  /** Whether the block at entity location + offset (world axes, y from the feet) is solid; air, liquids and blocks without a collision box (flowers, grass, carpets) are not (ADR 0034). */
   solidAt(offset: Vec3): boolean;
   /** Nearby targets. Called only when the speed exceeds the ram threshold. */
   targets(): readonly RamTarget[];
@@ -71,7 +71,7 @@ export interface TickOutcome {
 function stepProbe(ctx: TickContext): StepProbe {
   return (f, speed) => {
     const r = rightOf(f);
-    return shouldStepUp(
+    return stepHeight(
       (ahead, side, dy) =>
         ctx.solidAt({
           x: f.x * ahead + r.x * side,
@@ -220,7 +220,7 @@ export class Vehicle {
     this.bank = stepBank(this.bank, mode, yawBefore, this.motion.yaw);
     let impulseY: number;
     if (mode === "ground") {
-      impulseY = step.jumped ? SPEC.stepVelocity : 0;
+      impulseY = step.jumpVelocity;
     } else {
       const targetVy = clamp(
         flightVerticalSpeed(mode, climbInput(raw)) - bankSink(mode, this.bank),
