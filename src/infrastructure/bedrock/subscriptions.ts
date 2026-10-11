@@ -99,13 +99,13 @@ export function registerSubscriptions(
     };
   };
 
+  // On touch a short tap on an entity is an attack and only a long press
+  // interacts, so a tap with a dye arrives here and paints instead of counting
+  // toward breaking the vehicle (ADR 0036).
   world.afterEvents.entityHitEntity.subscribe((ev) => {
     const player = ev.damagingEntity;
     if (ev.hitEntity.typeId !== VEHICLE_TYPE || !(player instanceof Player))
       return;
-    // On touch a short tap on an entity is an attack and only a long press
-    // interacts, so a tap with a dye arrives here and paints instead of
-    // counting toward breaking the vehicle (ADR 0036).
     const held = player
       .getComponent("minecraft:inventory")
       ?.container?.getItem(player.selectedSlotIndex);

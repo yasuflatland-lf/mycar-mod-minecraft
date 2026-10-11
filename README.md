@@ -53,7 +53,7 @@ Download `mycar-<version>.mcaddon` from the [latest release](https://github.com/
 
 - Every player gets one **SUV** item the first time they join the world
 - More can be crafted at a crafting table from 5 iron ingots, 1 iron block, and 2 coal blocks
-- Use the item on the top of a block to place the vehicle. Hit an empty vehicle 3 times to break it back into the item
+- Use the item on the top of a block to place the vehicle. Hit an empty vehicle 3 times, without a dye in hand, to break it back into the item
 - The **headlight switch** is crafted from a lever and glowstone dust
 
 ### Controls
