@@ -21,7 +21,12 @@ import {
 import { SPEC } from "../../src/domain/vehicle/spec";
 import { type Body, type Engine, engineStep } from "../support/engineModel";
 
-const FULL_THROTTLE: DriveInput = { throttle: 1, steer: 0, handbrake: false };
+const FULL_THROTTLE: DriveInput = {
+  throttle: 1,
+  steer: 0,
+  handbrake: false,
+  creep: false,
+};
 
 function repeat(input: DriveInput, ticks: number): DriveInput[] {
   return Array.from({ length: ticks }, () => input);
@@ -85,6 +90,7 @@ const driveInput = fc.record({
   throttle: fc.double({ min: -1, max: 1, noNaN: true }),
   steer: fc.double({ min: -1, max: 1, noNaN: true }),
   handbrake: fc.boolean(),
+  creep: fc.boolean(),
 });
 const inputs = fc.array(driveInput, { minLength: 1, maxLength: 300 });
 const mu = fc.double({ min: 0.6, max: 0.75, noNaN: true });
@@ -127,6 +133,44 @@ describe("updateSpeed / steerYaw", () => {
     let s: number = SPEC.maxSpeed;
     for (let i = 0; i < 100; i++) s = updateSpeed(s, 0);
     expect(s).toBe(0);
+  });
+
+  it("creeping speeds up to the creep speed from a stop or from reversing, and never past it", () => {
+    fc.assert(
+      fc.property(
+        fc.double({ min: -SPEC.maxReverse, max: SPEC.creepSpeed, noNaN: true }),
+        (start) => {
+          let s = start;
+          for (let i = 0; i < 100; i++) {
+            const next = updateSpeed(s, 0, true);
+            expect(next).toBeGreaterThanOrEqual(s);
+            expect(next).toBeLessThanOrEqual(SPEC.creepSpeed);
+            s = next;
+          }
+          expect(s).toBe(SPEC.creepSpeed);
+        },
+      ),
+    );
+  });
+
+  it("creeping above the creep speed coasts down to it, like no input, and stops there", () => {
+    fc.assert(
+      fc.property(
+        fc.double({ min: SPEC.creepSpeed, max: SPEC.maxSpeed, noNaN: true }),
+        (start) => {
+          expect(updateSpeed(start, 0, true)).toBe(
+            Math.max(SPEC.creepSpeed, updateSpeed(start, 0)),
+          );
+          let s = start;
+          for (let i = 0; i < 100; i++) s = updateSpeed(s, 0, true);
+          expect(s).toBe(SPEC.creepSpeed);
+        },
+      ),
+    );
+  });
+
+  it("the creep speed is below the ram threshold, so creeping never damages mobs (ADR 0006)", () => {
+    expect(SPEC.creepSpeed).toBeLessThan(SPEC.ramMinSpeed);
   });
 
   it("steering does not change heading when stopped and turns the opposite way in reverse", () => {
@@ -281,7 +325,7 @@ describe("stepMotion (properties, ADR 0002/0003)", () => {
           { velocity: { x: 0, z: 0 }, onGround },
           () => true,
         );
-        const speed = updateSpeed(p.speed, input.throttle);
+        const speed = updateSpeed(p.speed, input.throttle, input.creep);
         expect(r.jumped).toBe(onGround && input.throttle > 0 && speed >= 0);
       }),
     );
@@ -355,7 +399,10 @@ describe("stepMotion (properties, ADR 0002/0003)", () => {
   it("slides sideways more under the handbrake than during normal driving", () => {
     const run = (hb: boolean) => {
       const accel = repeat(FULL_THROTTLE, 60);
-      const turn = repeat({ throttle: 1, steer: 1, handbrake: hb }, 20);
+      const turn = repeat(
+        { throttle: 1, steer: 1, handbrake: hb, creep: false },
+        20,
+      );
       const frames = simulate([...accel, ...turn], { mu: 0.688 });
       return Math.max(
         ...frames.slice(60).map((f) => lateral(f.body.vel, f.state.yaw)),

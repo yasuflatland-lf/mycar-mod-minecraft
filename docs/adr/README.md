@@ -8,7 +8,7 @@ This directory records design decisions and the reasons behind them. The format 
 | [0002](0002-script-driven-vehicle-movement.md) | Drive vehicles by setting their velocity from the script | Accepted |
 | [0003](0003-friction-compensation-and-axis-wall-detection.md) | Estimate and compensate for ground friction, and detect wall collisions per axis | Accepted |
 | [0004](0004-two-block-step-up-by-look-ahead.md) | Climb two-block steps by looking ahead in the script | Accepted |
-| [0005](0005-touch-throttle-compensation.md) | Compensate the throttle from the mobile joystick | Accepted |
+| [0005](0005-touch-throttle-compensation.md) | Compensate the throttle from the mobile joystick | Superseded by 0018 |
 | [0006](0006-ram-damage-and-occupant-protection.md) | Ram damage detection, and always protecting occupants | Accepted |
 | [0007](0007-seats-and-driver.md) | Seats and choosing the driver | Accepted |
 | [0008](0008-vehicle-item-and-breaking.md) | Placing and picking up vehicles | Accepted |
@@ -20,6 +20,7 @@ This directory records design decisions and the reasons behind them. The format 
 | [0014](0014-opt-in-nethernet-dev-server.md) | Offer NetherNet on the dev server as an opt-in transport | Superseded by 0015 |
 | [0015](0015-dev-server-docker-nethernet.md) | Run the development server as BDS in Docker with NetherNet | Accepted |
 | [0016](0016-readme-preview-rendered-from-model.md) | Render the README preview from the model files | Accepted |
+| [0018](0018-sideways-stick-creeps-forward.md) | Treat a sideways stick as a slow forward turn | Accepted |
 
 The measurements and in-game tests behind these decisions are in [the driving-core spike findings](../spike-driving-core.md).
 
