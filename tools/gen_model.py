@@ -41,7 +41,7 @@ NAMES = list(PALETTE)
 # (ADR 0020). entity_emissive_alpha makes a texel glow when its alpha is low but not 0 (ADR 0022).
 ALPHA = {"light": 0, "glow": 40}
 
-# Body color of each paint (ADR 0017, 0031). Khaki writes suv.png; the others write suv_<paint>.png.
+# Body color of each paint (ADR 0031). Khaki writes suv.png; the others write suv_<paint>.png.
 # The red stays darker than the "tail" swatch so the tail lights still show on a red body, the orange
 # stays darker than the "amber" swatch, and the black stays lighter than the "grille" so the slots show.
 BODY_PAINTS = {

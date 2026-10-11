@@ -28,12 +28,12 @@ import type { TestInputStore } from "../testInput/testInputStore";
 import { HeadlightBlocks, isLightBlock } from "./headlightBlocks";
 import {
   BANK_PROPERTY,
+  dyeOf,
   FLIGHT_PROPERTY,
   HEADLIGHTS_PROPERTY,
   HOVER_EVENT,
   ITEM_TYPE,
   LAND_EVENT,
-  PAINT_BY_DYE,
   PAINT_VARIANT,
   PLAYER_TYPE,
   paintEvent,
@@ -313,9 +313,6 @@ export class BedrockVehicleWorld
   }
 
   consumeDye(playerId: string, paint: Paint): void {
-    const dye = Object.keys(PAINT_BY_DYE).find(
-      (d) => PAINT_BY_DYE[d] === paint,
-    );
-    if (dye) this.consumeHeld(playerId, dye);
+    this.consumeHeld(playerId, dyeOf(paint));
   }
 }

@@ -1,5 +1,6 @@
-// Body colors a vehicle can be painted with dye (ADR 0017, 0031). A placed vehicle starts khaki.
-// The order is the minecraft:variant index the Resource Pack picks the texture by, so new paints go at the end.
+// Body colors a vehicle can be painted with dye (ADR 0031). A placed vehicle starts khaki.
+// The order is the minecraft:variant index that vehicles in existing worlds store and that the paint
+// events and render controller map to, so new paints go at the end.
 export const PAINTS = [
   "khaki",
   "green",

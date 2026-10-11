@@ -27,12 +27,13 @@ export const BANK_PROPERTY = "mycar:bank";
 export const HOVER_EVENT = "mycar:hover";
 export const LAND_EVENT = "mycar:land";
 
-/** Dyes that repaint a vehicle when used on it (ADR 0017, 0031). Brown dye turns it back to khaki. */
+/** The vanilla dye that repaints a vehicle with a paint (ADR 0031). Brown dye turns it back to khaki. */
+export function dyeOf(paint: Paint): string {
+  const color = paint === "khaki" ? "brown" : paint;
+  return `minecraft:${color}_dye`;
+}
 export const PAINT_BY_DYE: Readonly<Record<string, Paint>> = Object.fromEntries(
-  PAINTS.map((paint) => [
-    `minecraft:${paint === "khaki" ? "brown" : paint}_dye`,
-    paint,
-  ]),
+  PAINTS.map((paint) => [dyeOf(paint), paint]),
 );
 /** minecraft:variant value for each paint. The render controller picks the texture by this index. */
 export const PAINT_VARIANT: Readonly<Record<Paint, number>> =
