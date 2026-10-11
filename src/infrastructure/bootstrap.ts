@@ -3,6 +3,7 @@ import { DriveVehicles } from "../application/driveVehicles";
 import { HitVehicle } from "../application/hitVehicle";
 import { PaintVehicle } from "../application/paintVehicle";
 import { PlaceVehicle } from "../application/placeVehicle";
+import { SwitchHeadlights } from "../application/switchHeadlights";
 import { BedrockVehicleWorld } from "./bedrock/bedrockVehicleWorld";
 import { registerSubscriptions } from "./bedrock/subscriptions";
 import { InMemoryVehicleRepository } from "./persistence/inMemoryVehicleRepository";
@@ -19,6 +20,7 @@ export function bootstrap(): void {
       place: new PlaceVehicle(bedrock, repo),
       hit: new HitVehicle(bedrock, repo),
       paint: new PaintVehicle(bedrock),
+      headlights: new SwitchHeadlights(bedrock, repo),
     },
     store,
   );

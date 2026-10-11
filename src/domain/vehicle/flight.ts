@@ -1,5 +1,5 @@
 // Flight mode: double-tap Jump to take off and land, and tilt the view to
-// climb or sink (ADR 0020).
+// climb or sink (ADR 0021).
 import { clamp } from "../shared/vec";
 import { SPEC } from "./spec";
 

@@ -1,16 +1,19 @@
 // Capabilities the application layer requires from the game (ports). Implementations live in the infrastructure layer (ADR 0012).
 import type { Vec2, Vec3 } from "../domain/shared/vec";
 import type { RawInput } from "../domain/vehicle/driveInput";
+import type { Cell } from "../domain/vehicle/headlights";
 import type { Paint } from "../domain/vehicle/paint";
 import type { RamHit, RamTarget } from "../domain/vehicle/ram";
 import type { RiderView } from "../domain/vehicle/vehicle";
 
 export interface VehicleSnapshot {
   id: string;
+  location: Vec3;
   yaw: number;
   velocity: Vec2;
   onGround: boolean;
   riders: RiderView[];
+  headlights: boolean;
   testInput?: RawInput;
 }
 
@@ -21,6 +24,11 @@ export interface DriveWorld {
   applyMotion(vehicleId: string, impulse: Vec3, yaw: number): void;
   damage(hit: RamHit, attackerId: string | undefined): void;
   playDoor(vehicleId: string, door: string): void;
+  /**
+   * Keeps light blocks in exactly these cells for the vehicle and clears the
+   * ones it lit before. Also called with no cells for a vehicle that is gone.
+   */
+  shineHeadlights(vehicleId: string, cells: readonly Cell[]): void;
 }
 
 export interface PlacementWorld {
@@ -39,6 +47,12 @@ export interface PaintWorld {
   paintOf(vehicleId: string): Paint | undefined;
   paint(vehicleId: string, paint: Paint): void;
   consumeDye(playerId: string, paint: Paint): void;
+}
+
+export interface HeadlightWorld {
+  /** undefined when the vehicle no longer exists. */
+  headlightsOn(vehicleId: string): boolean | undefined;
+  setHeadlights(vehicleId: string, on: boolean): void;
 }
 
 export interface Logger {

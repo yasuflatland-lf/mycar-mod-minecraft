@@ -11,17 +11,21 @@ import {
 import type {
   BreakWorld,
   DriveWorld,
+  HeadlightWorld,
   PaintWorld,
   PlacementWorld,
   VehicleSnapshot,
 } from "../../application/ports";
 import type { Vec3 } from "../../domain/shared/vec";
+import type { Cell } from "../../domain/vehicle/headlights";
 import { PAINTS, type Paint } from "../../domain/vehicle/paint";
 import type { RamHit, RamTarget } from "../../domain/vehicle/ram";
 import { RAM_QUERY_RADIUS } from "../../domain/vehicle/ramQuery";
 import type { RiderView } from "../../domain/vehicle/vehicle";
 import type { TestInputStore } from "../testInput/testInputStore";
+import { HeadlightBlocks, isLightBlock } from "./headlightBlocks";
 import {
+  HEADLIGHTS_PROPERTY,
   ITEM_TYPE,
   PAINT_BY_DYE,
   PAINT_VARIANT,
@@ -34,10 +38,11 @@ const DIMENSIONS = ["overworld", "nether", "the_end"] as const;
 const isPlayer = (e: Entity): e is Player => e.typeId === PLAYER_TYPE;
 
 export class BedrockVehicleWorld
-  implements DriveWorld, PlacementWorld, BreakWorld, PaintWorld
+  implements DriveWorld, PlacementWorld, BreakWorld, PaintWorld, HeadlightWorld
 {
   /** Vehicles collected by loadedVehicles() for this tick. The other methods look them up here by id. */
   private current = new Map<string, Entity>();
+  private readonly headlightBlocks = new HeadlightBlocks();
 
   constructor(private readonly testInputs: TestInputStore) {}
 
@@ -57,10 +62,12 @@ export class BedrockVehicleWorld
         const v = car.getVelocity();
         snapshots.push({
           id: car.id,
+          location: car.location,
           yaw: car.getRotation().y,
           velocity: { x: v.x, z: v.z },
           onGround: car.isOnGround,
           riders: this.riders(car),
+          headlights: car.getProperty(HEADLIGHTS_PROPERTY) === true,
           testInput: this.testInputs.get(car.id),
         });
       }
@@ -101,7 +108,7 @@ export class BedrockVehicleWorld
         y: car.location.y + offset.y,
         z: car.location.z + offset.z,
       });
-      return b !== undefined && !b.isAir && !b.isLiquid;
+      return b !== undefined && !b.isAir && !b.isLiquid && !isLightBlock(b);
     } catch {
       return false; // Unloaded chunk or outside the world
     }
@@ -158,7 +165,8 @@ export class BedrockVehicleWorld
 
   isAir(dimensionId: string, at: Vec3): boolean {
     try {
-      return world.getDimension(dimensionId).getBlock(at)?.isAir ?? false;
+      const b = world.getDimension(dimensionId).getBlock(at);
+      return b !== undefined && (b.isAir || isLightBlock(b));
     } catch {
       return false;
     }
@@ -198,7 +206,26 @@ export class BedrockVehicleWorld
   }
 
   removeVehicle(vehicleId: string): void {
-    this.entity(vehicleId)?.remove();
+    const car = this.entity(vehicleId);
+    this.headlightBlocks.shine(vehicleId, car, []);
+    car?.remove();
+  }
+
+  shineHeadlights(vehicleId: string, cells: readonly Cell[]): void {
+    this.headlightBlocks.shine(vehicleId, this.entity(vehicleId), cells);
+  }
+
+  headlightsOn(vehicleId: string): boolean | undefined {
+    const car = this.entity(vehicleId);
+    if (!car) return undefined;
+    return car.getProperty(HEADLIGHTS_PROPERTY) === true;
+  }
+
+  setHeadlights(vehicleId: string, on: boolean): void {
+    const car = this.entity(vehicleId);
+    if (!car) return;
+    car.setProperty(HEADLIGHTS_PROPERTY, on);
+    car.dimension.playSound("random.click", car.location);
   }
 
   paintOf(vehicleId: string): Paint | undefined {
