@@ -63,8 +63,11 @@ export class HeadlightBlocks {
     for (const c of clear) {
       try {
         const b = entry.dimension.getBlock(c);
+        // getBlock may also return undefined for an unloaded chunk; keep the
+        // cell then too.
+        if (!b) continue;
         // A player may have built over the light since; leave that block alone.
-        if (b && isLightBlock(b)) b.setType("minecraft:air");
+        if (isLightBlock(b)) b.setType("minecraft:air");
         cleared.add(cellKey(c));
       } catch {
         // Unloaded chunk: keep the cell and clear it on a later tick.

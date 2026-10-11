@@ -8,16 +8,17 @@ const cmd = {
   blockLocation: { x: 10, y: 64, z: -3 },
   yaw: 45,
   creative: false,
+  slot: 2,
 };
 
 describe("PlaceVehicle (ADR 0008)", () => {
-  it("places a vehicle on the block, saves the aggregate, and consumes one item", () => {
+  it("consumes one item from the slot it was used from, then places a vehicle on the block and saves the aggregate", () => {
     const world = new FakeWorld();
     const repo = new InMemoryRepo();
     expect(new PlaceVehicle(world, repo).execute(cmd)).toBe(true);
     expect(world.calls).toEqual([
+      "consume:p:2",
       "spawn:minecraft:overworld:10.5,65,-2.5:45",
-      "consume:p",
     ]);
     expect(repo.get("v1")?.yaw).toBeCloseTo(45);
   });
@@ -38,5 +39,25 @@ describe("PlaceVehicle (ADR 0008)", () => {
       false,
     );
     expect(world.calls).toEqual([]);
+  });
+
+  it("does not place a vehicle when the slot no longer holds the item, such as after switching slots or dropping it (ADR 0024)", () => {
+    const world = new FakeWorld();
+    world.itemInSlot = false;
+    const repo = new InMemoryRepo();
+    expect(new PlaceVehicle(world, repo).execute(cmd)).toBe(false);
+    expect(world.calls).toEqual([]);
+    expect(repo.get("v1")).toBeUndefined();
+  });
+
+  it("places a vehicle in creative mode without needing the item in the slot", () => {
+    const world = new FakeWorld();
+    world.itemInSlot = false;
+    expect(
+      new PlaceVehicle(world, new InMemoryRepo()).execute({
+        ...cmd,
+        creative: true,
+      }),
+    ).toBe(true);
   });
 });

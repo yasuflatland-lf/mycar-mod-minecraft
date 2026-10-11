@@ -211,25 +211,30 @@ export class BedrockVehicleWorld
     return car.id;
   }
 
-  consumeVehicleItem(playerId: string): void {
-    this.consumeHeld(playerId, ITEM_TYPE);
+  consumeVehicleItem(playerId: string, slot: number): boolean {
+    return this.consumeHeld(playerId, ITEM_TYPE, slot);
   }
 
-  /** Takes one item from the selected slot, but only if it still holds `typeId`. */
-  private consumeHeld(playerId: string, typeId: string): void {
+  /** Takes one item from `slot` (the selected one by default), but only if it still holds `typeId`. */
+  private consumeHeld(
+    playerId: string,
+    typeId: string,
+    slot?: number,
+  ): boolean {
     const player = this.player(playerId);
-    if (!player) return;
+    if (!player) return false;
     const inv = player.getComponent("minecraft:inventory")?.container;
-    if (!inv) return;
-    const slot = player.selectedSlotIndex;
-    const item = inv.getItem(slot);
-    if (!item || item.typeId !== typeId) return;
+    if (!inv) return false;
+    const at = slot ?? player.selectedSlotIndex;
+    const item = inv.getItem(at);
+    if (!item || item.typeId !== typeId) return false;
     if (item.amount > 1) {
       item.amount -= 1;
-      inv.setItem(slot, item);
+      inv.setItem(at, item);
     } else {
-      inv.setItem(slot, undefined);
+      inv.setItem(at, undefined);
     }
+    return true;
   }
 
   receivedStarter(playerId: string): boolean | undefined {

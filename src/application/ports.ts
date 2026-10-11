@@ -38,7 +38,8 @@ export interface DriveWorld {
 export interface PlacementWorld {
   isAir(dimensionId: string, at: Vec3): boolean;
   spawnVehicle(dimensionId: string, at: Vec3, yaw: number): string;
-  consumeVehicleItem(playerId: string): void;
+  /** Takes one vehicle item from `slot`. False when that slot no longer holds one. */
+  consumeVehicleItem(playerId: string, slot: number): boolean;
 }
 
 export interface StarterWorld {
