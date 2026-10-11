@@ -26,11 +26,13 @@ import {
   type StepProbe,
   stepFlightMotion,
   stepMotion,
+  WATER,
 } from "./motion";
 import { type RamHit, type RamTarget, selectHits } from "./ram";
 import { doorOf, occupiedSeats, vacatedSeats } from "./seats";
 import { SPEC } from "./spec";
 import { stepHeight } from "./stepUp";
+import { submarineVerticalSpeed } from "./submarine";
 
 export interface RiderView {
   id: string;
@@ -48,7 +50,7 @@ export interface TickContext {
   onGround: boolean;
   /** Blocks of water above the feet; absent or 0 out of water. */
   waterDepth?: number;
-  /** Vertical velocity from the engine (blocks/tick). Read whenever the vehicle form is not car, including the tick takeoff starts. */
+  /** Vertical velocity from the engine (blocks/tick). Read whenever the form is not car, including the tick takeoff starts. */
   velocityY?: number;
   /** Whether the block at entity location + offset (world axes, y from the feet) is solid; air, liquids and blocks without a collision box (flowers, grass, carpets) are not (ADR 0035). */
   solidAt(offset: Vec3): boolean;
@@ -215,12 +217,33 @@ export class Vehicle {
             { velocity: ctx.velocity, onGround: ctx.onGround },
             stepProbe(ctx),
           )
-        : stepFlightMotion(this.motion, input, ctx.velocity);
+        : stepFlightMotion(
+            this.motion,
+            input,
+            ctx.velocity,
+            form === "submarine" ? WATER : undefined,
+          );
     this.motion = step.state;
     this.bank = stepBank(this.bank, form, yawBefore, this.motion.yaw);
     let impulseY: number;
     if (form === "car") {
       impulseY = step.jumpVelocity;
+    } else if (form === "submarine") {
+      const rising =
+        input.throttle > 0 &&
+        step.state.speed >= SPEC.stepMinSpeed &&
+        stepProbe(ctx)(step.forward, step.state.speed) > 0;
+      const targetVy = submarineVerticalSpeed({
+        climb: climbInput(raw),
+        controlled: raw !== undefined,
+        rising,
+        waterDepth: ctx.waterDepth ?? 0,
+      });
+      impulseY = verticalImpulse(
+        targetVy,
+        ctx.velocityY ?? 0,
+        SPEC.waterVerticalDrag,
+      );
     } else {
       const targetVy = clamp(
         verticalSpeed(form, climbInput(raw)) - bankSink(form, this.bank),

@@ -8,6 +8,7 @@ export const AIR_DRAG = 0.91;
 export interface Engine {
   mu: number;
   wallX?: number;
+  drag?: number;
 }
 export interface Body {
   pos: Vec2;
@@ -30,7 +31,7 @@ export function engineStep(
     vx = 0;
     touching = true;
   }
-  const drag = onGround ? e.mu : AIR_DRAG;
+  const drag = e.drag ?? (onGround ? e.mu : AIR_DRAG);
   return {
     body: { pos: { x: px, z: pz }, vel: { x: vx * drag, z: vz * drag } },
     touching,
@@ -41,3 +42,7 @@ export function engineStep(
 // SPEC.flightVerticalDrag for the same reason as AIR_DRAG.
 export const GRAVITY = 0.08;
 export const VERTICAL_DRAG = 0.98;
+
+// Placeholder water measurements, independent of the controller tuning.
+export const WATER_DRAG = 0.8;
+export const WATER_VERTICAL_DRAG = 0.8;
