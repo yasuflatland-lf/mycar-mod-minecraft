@@ -1,12 +1,14 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { FLIGHT_MODES } from "../../src/domain/vehicle/flight";
+import { FORMS } from "../../src/domain/vehicle/form";
 import { SEAT_POSITIONS } from "../../src/domain/vehicle/seats";
 import { SPEC } from "../../src/domain/vehicle/spec";
 import {
   BANK_PROPERTY,
-  FLIGHT_PROPERTY,
+  FORM_PROPERTY,
   GEAR_DOWN_PROPERTY,
+  GRAVITY_OFF_EVENT,
+  GRAVITY_ON_EVENT,
 } from "../../src/infrastructure/bedrock/identifiers";
 
 const read = (p: string) => JSON.parse(readFileSync(p, "utf8"));
@@ -60,29 +62,31 @@ describe("packs/mycar_bp", () => {
     expect(recipe.unlock).toEqual({ context: "AlwaysUnlocked" });
   });
 
-  it("switches gravity off with mycar:hover and back on with mycar:land, and syncs the flight mode to clients (ADR 0021)", () => {
-    expect(entity.description.properties[FLIGHT_PROPERTY]).toEqual({
+  it("switches gravity off with mycar:gravity_off and back on with mycar:gravity_on, and syncs the vehicle form to clients (ADR 0021)", () => {
+    expect(FORM_PROPERTY).toBe("mycar:form");
+    expect(FORMS).toEqual(["car", "takeoff", "hover", "landing"]);
+    expect(entity.description.properties[FORM_PROPERTY]).toEqual({
       type: "enum",
-      values: [...FLIGHT_MODES],
-      default: "ground",
+      values: ["car", "takeoff", "hover", "landing"],
+      default: "car",
       client_sync: true,
     });
-    expect(entity.component_groups["mycar:hovering"]).toEqual({
+    expect(entity.component_groups["mycar:weightless"]).toEqual({
       "minecraft:physics": { has_gravity: false },
     });
     // Removing a group drops its components instead of restoring the base
     // ones, so landing has to add a group that brings physics back. The
     // in-game flight_land test caught a car that floated after landing.
-    expect(entity.component_groups["mycar:grounded"]).toEqual({
+    expect(entity.component_groups["mycar:weighted"]).toEqual({
       "minecraft:physics": {},
     });
-    expect(entity.events["mycar:hover"]).toEqual({
-      add: { component_groups: ["mycar:hovering"] },
-      remove: { component_groups: ["mycar:grounded"] },
+    expect(entity.events[GRAVITY_OFF_EVENT]).toEqual({
+      add: { component_groups: ["mycar:weightless"] },
+      remove: { component_groups: ["mycar:weighted"] },
     });
-    expect(entity.events["mycar:land"]).toEqual({
-      add: { component_groups: ["mycar:grounded"] },
-      remove: { component_groups: ["mycar:hovering"] },
+    expect(entity.events[GRAVITY_ON_EVENT]).toEqual({
+      add: { component_groups: ["mycar:weighted"] },
+      remove: { component_groups: ["mycar:weightless"] },
     });
   });
 

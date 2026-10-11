@@ -1,5 +1,5 @@
 // Landing gear: the wheels unfold before touchdown instead of after (ADR 0033).
-import type { FlightMode } from "./flight";
+import type { Form } from "./form";
 
 /**
  * Whether the wheels should be in the driving pose. Takeoff and flight fold
@@ -9,14 +9,14 @@ import type { FlightMode } from "./flight";
  */
 export function nextGearDown(
   prev: boolean,
-  mode: FlightMode,
+  form: Form,
   groundNear: () => boolean,
 ): boolean {
-  switch (mode) {
-    case "ground":
+  switch (form) {
+    case "car":
       return true;
     case "takeoff":
-    case "flying":
+    case "hover":
       return false;
     case "landing":
       return prev || groundNear();

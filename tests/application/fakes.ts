@@ -11,7 +11,7 @@ import type {
 import type { Vec3 } from "../../src/domain/shared/vec";
 import { Fleet, type FleetState } from "../../src/domain/vehicle/fleet";
 import type { FleetRepository } from "../../src/domain/vehicle/fleetRepository";
-import type { FlightMode } from "../../src/domain/vehicle/flight";
+import type { Form } from "../../src/domain/vehicle/form";
 import type { Cell } from "../../src/domain/vehicle/headlights";
 import type { Paint } from "../../src/domain/vehicle/paint";
 import type { RamHit, RamTarget } from "../../src/domain/vehicle/ram";
@@ -90,8 +90,8 @@ export class FakeWorld
     if (id === this.failOn) throw new Error("boom");
     this.calls.push(`motion:${id}:${yaw.toFixed(0)}`);
   }
-  setFlight(id: string, mode: FlightMode) {
-    this.calls.push(`flight:${id}:${mode}`);
+  setForm(id: string, form: Form) {
+    this.calls.push(`form:${id}:${form}`);
   }
   setThirdPerson(id: string, on: boolean) {
     if (id === this.failCameraOn) throw new Error("camera");
@@ -172,7 +172,7 @@ export const snapshot = (
   velocityY: 0,
   onGround: true,
   riders: [],
-  flight: "ground",
+  form: "car",
   headlights: false,
   ...over,
 });

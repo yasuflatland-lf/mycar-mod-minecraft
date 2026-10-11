@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { forward, type Vec2 } from "../../src/domain/shared/vec";
 import type { RawInput } from "../../src/domain/vehicle/driveInput";
-import type { FlightMode } from "../../src/domain/vehicle/flight";
+import type { Form } from "../../src/domain/vehicle/form";
 import { SPEC } from "../../src/domain/vehicle/spec";
 import { Vehicle } from "../../src/domain/vehicle/vehicle";
 import { AIR_DRAG, GRAVITY, VERTICAL_DRAG } from "../support/engineModel";
@@ -12,7 +12,7 @@ const FORWARD: RawInput = { moveX: 0, moveY: 1, jump: false };
 
 /**
  * One vehicle driven by test input over flat ground at y = 0. Gravity follows
- * the flight mode the vehicle reports, as the mycar:hovering component group
+ * the form the vehicle reports, as the mycar:weightless component group
  * does in game.
  */
 class FlightSim {
@@ -21,12 +21,12 @@ class FlightSim {
   vy = 0;
   vel: Vec2 = { x: 0, z: 0 };
   gravity: boolean;
-  readonly changes: FlightMode[] = [];
+  readonly changes: Form[] = [];
   /** Each landing gear change with the height it happened at. */
   readonly gearYs: [boolean, number][] = [];
 
   constructor(readonly vehicle: Vehicle = Vehicle.create("car", 0)) {
-    this.gravity = vehicle.flightMode === "ground";
+    this.gravity = vehicle.form === "car";
   }
 
   get onGround(): boolean {
@@ -51,9 +51,9 @@ class FlightSim {
       targets: () => [],
     });
     if (out.gearDown !== undefined) this.gearYs.push([out.gearDown, this.y]);
-    if (out.flight) {
-      this.changes.push(out.flight);
-      this.gravity = out.flight === "ground";
+    if (out.form) {
+      this.changes.push(out.form);
+      this.gravity = out.form === "car";
     }
     const drag = this.horizontalDrag();
     this.vel = {
@@ -87,7 +87,7 @@ function flyingSim(): FlightSim {
   const sim = new FlightSim();
   sim.doubleTap();
   sim.run(IDLE, SPEC.takeoffTicks);
-  expect(sim.vehicle.flightMode).toBe("flying");
+  expect(sim.vehicle.form).toBe("hover");
   return sim;
 }
 
@@ -96,7 +96,7 @@ describe("Vehicle in flight (ADR 0021)", () => {
     const sim = new FlightSim();
     sim.doubleTap();
     sim.run(IDLE, SPEC.takeoffTicks + 5);
-    expect(sim.changes).toEqual(["takeoff", "flying"]);
+    expect(sim.changes).toEqual(["takeoff", "hover"]);
     expect(sim.y).toBeGreaterThan(1.2);
     expect(sim.y).toBeLessThan(1.8);
   });
@@ -113,7 +113,7 @@ describe("Vehicle in flight (ADR 0021)", () => {
     sim.doubleTap();
     sim.doubleTap();
     sim.run(IDLE, SPEC.takeoffTicks);
-    expect(sim.changes).toEqual(["takeoff", "flying"]);
+    expect(sim.changes).toEqual(["takeoff", "hover"]);
   });
 
   it("holds altitude while cruising with a level view and reaches max speed", () => {
@@ -146,7 +146,7 @@ describe("Vehicle in flight (ADR 0021)", () => {
     const y0 = sim.y;
     sim.run({ ...IDLE, jump: true }, 20);
     expect(sim.y).toBeGreaterThan(y0 + 5);
-    expect(sim.vehicle.flightMode).toBe("flying");
+    expect(sim.vehicle.form).toBe("hover");
   });
 
   it("lands on a second double tap and turns gravity back on when it touches down", () => {
@@ -154,7 +154,7 @@ describe("Vehicle in flight (ADR 0021)", () => {
     sim.doubleTap();
     expect(sim.changes.at(-1)).toBe("landing");
     sim.run(IDLE, 40);
-    expect(sim.changes.slice(-2)).toEqual(["landing", "ground"]);
+    expect(sim.changes.slice(-2)).toEqual(["landing", "car"]);
     expect(sim.y).toBe(0);
     expect(sim.gravity).toBe(true);
   });
@@ -166,7 +166,7 @@ describe("Vehicle in flight (ADR 0021)", () => {
     expect(sim.vehicle.wheelsDown).toBe(false);
     sim.doubleTap();
     sim.run(IDLE, 100);
-    expect(sim.vehicle.flightMode).toBe("ground");
+    expect(sim.vehicle.form).toBe("car");
     expect(sim.gearYs.map(([down]) => down)).toEqual([true, false, true]);
     const [, y] = sim.gearYs.at(-1) ?? [true, 0];
     expect(y).toBeGreaterThan(SPEC.gearDownHeight - 1);
@@ -176,7 +176,7 @@ describe("Vehicle in flight (ADR 0021)", () => {
   it("returns to the ground when it sinks onto it in flight (ADR 0034)", () => {
     const sim = flyingSim();
     sim.run({ moveX: 0, moveY: -1, jump: false }, 20);
-    expect(sim.changes.slice(-1)).toEqual(["ground"]);
+    expect(sim.changes.slice(-1)).toEqual(["car"]);
     expect(sim.changes).not.toContain("landing");
     expect(sim.gravity).toBe(true);
     expect(sim.y).toBe(0);
@@ -189,11 +189,11 @@ describe("Vehicle in flight (ADR 0021)", () => {
     sim.step(undefined);
     expect(sim.changes.at(-1)).toBe("landing");
     sim.run(undefined, 40);
-    expect(sim.vehicle.flightMode).toBe("ground");
+    expect(sim.vehicle.form).toBe("car");
   });
 
   it("keeps flying without reporting a change when rebuilt in flight", () => {
-    const sim = new FlightSim(Vehicle.rebuild("car", 0, [], "flying"));
+    const sim = new FlightSim(Vehicle.rebuild("car", 0, [], "hover"));
     sim.y = 5;
     sim.run(FORWARD, 20);
     expect(sim.changes).toEqual([]);
@@ -232,7 +232,7 @@ describe("Vehicle in flight (ADR 0021)", () => {
 
 describe("Vehicle banking (ADR 0026)", () => {
   function flying(): FlightSim {
-    const sim = new FlightSim(Vehicle.rebuild("car", 0, [], "flying"));
+    const sim = new FlightSim(Vehicle.rebuild("car", 0, [], "hover"));
     sim.y = 10;
     return sim;
   }

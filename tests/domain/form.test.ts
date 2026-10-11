@@ -2,39 +2,39 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import {
   climbInput,
-  FLIGHT_MODES,
-  type FlightInput,
-  type FlightMode,
-  type FlightState,
-  flightVerticalSpeed,
-  initialFlight,
-  isFlightMode,
-  stepFlight,
+  FORMS,
+  type Form,
+  type FormInput,
+  type FormState,
+  initialForm,
+  isForm,
+  stepForm,
   verticalImpulse,
-} from "../../src/domain/vehicle/flight";
+  verticalSpeed,
+} from "../../src/domain/vehicle/form";
 import { SPEC } from "../../src/domain/vehicle/spec";
 
-type Step = Omit<FlightInput, "tick">;
+type Step = Omit<FormInput, "tick">;
 interface Frame {
-  input: FlightInput;
-  before: FlightState;
-  after: FlightState;
+  input: FormInput;
+  before: FormState;
+  after: FormState;
 }
 
 // A flying vehicle that sinks onto the ground skips landing (ADR 0034).
-const NEXT: Record<FlightMode, readonly FlightMode[]> = {
-  ground: ["takeoff"],
-  takeoff: ["flying"],
-  flying: ["landing", "ground"],
-  landing: ["ground"],
+const NEXT: Record<Form, readonly Form[]> = {
+  car: ["takeoff"],
+  takeoff: ["hover"],
+  hover: ["landing", "car"],
+  landing: ["car"],
 };
 
-function run(steps: readonly Step[], start = initialFlight()): Frame[] {
+function run(steps: readonly Step[], start = initialForm()): Frame[] {
   let state = start;
   return steps.map((step, tick) => {
     const input = { ...step, tick };
     const before = state;
-    state = stepFlight(state, input);
+    state = stepForm(state, input);
     return { input, before, after: state };
   });
 }
@@ -55,15 +55,15 @@ const step = fc.record({
   onGround: fc.boolean(),
 });
 const steps = fc.array(step, { maxLength: 300 });
-const mode = fc.constantFrom(...FLIGHT_MODES);
+const form = fc.constantFrom(...FORMS);
 
-describe("stepFlight (ADR 0021)", () => {
-  it("only moves on in the cycle ground -> takeoff -> flying -> (landing ->) ground", () => {
+describe("stepForm (ADR 0021)", () => {
+  it("only moves on in the cycle car -> takeoff -> hover -> (landing ->) car", () => {
     fc.assert(
-      fc.property(mode, steps, (m, seq) => {
-        for (const f of run(seq, initialFlight(m)))
-          if (f.after.mode !== f.before.mode)
-            expect(NEXT[f.before.mode]).toContain(f.after.mode);
+      fc.property(form, steps, (m, seq) => {
+        for (const f of run(seq, initialForm(m)))
+          if (f.after.form !== f.before.form)
+            expect(NEXT[f.before.form]).toContain(f.after.form);
       }),
     );
   });
@@ -76,7 +76,7 @@ describe("stepFlight (ADR 0021)", () => {
           (frames[i]?.input.jump ?? false) &&
           !(frames[i - 1]?.input.jump ?? false);
         frames.forEach((f, t) => {
-          if (f.before.mode !== "ground" || f.after.mode !== "takeoff") return;
+          if (f.before.form !== "car" || f.after.form !== "takeoff") return;
           expect(press(t)).toBe(true);
           expect(f.input.controlled).toBe(true);
           let earlier = false;
@@ -91,16 +91,14 @@ describe("stepFlight (ADR 0021)", () => {
   it("toggles on two presses 2 to doubleTapTicks ticks apart, but not on presses further apart", () => {
     fc.assert(
       fc.property(fc.integer({ min: 2, max: SPEC.doubleTapTicks }), (gap) => {
-        expect(run(taps([0, gap], gap + 1)).at(-1)?.after.mode).toBe("takeoff");
+        expect(run(taps([0, gap], gap + 1)).at(-1)?.after.form).toBe("takeoff");
       }),
     );
     fc.assert(
       fc.property(
         fc.integer({ min: SPEC.doubleTapTicks + 1, max: 60 }),
         (gap) => {
-          expect(run(taps([0, gap], gap + 1)).at(-1)?.after.mode).toBe(
-            "ground",
-          );
+          expect(run(taps([0, gap], gap + 1)).at(-1)?.after.form).toBe("car");
         },
       ),
     );
@@ -114,13 +112,13 @@ describe("stepFlight (ADR 0021)", () => {
           maxLength: SPEC.takeoffTicks,
         }),
         (seq) => {
-          const modes = run([...taps([0, 2], 3), ...seq]).map(
-            (f) => f.after.mode,
+          const forms = run([...taps([0, 2], 3), ...seq]).map(
+            (f) => f.after.form,
           );
-          expect(modes.filter((m) => m === "takeoff")).toHaveLength(
+          expect(forms.filter((m) => m === "takeoff")).toHaveLength(
             SPEC.takeoffTicks,
           );
-          expect(modes.at(-1)).toBe("flying");
+          expect(forms.at(-1)).toBe("hover");
         },
       ),
     );
@@ -129,13 +127,13 @@ describe("stepFlight (ADR 0021)", () => {
   it("starts landing on the tick nothing controls a flying vehicle in the air", () => {
     fc.assert(
       fc.property(steps, (seq) => {
-        for (const f of run(seq, initialFlight("flying")))
+        for (const f of run(seq, initialForm("hover")))
           if (
-            f.before.mode === "flying" &&
+            f.before.form === "hover" &&
             !f.input.controlled &&
             !f.input.onGround
           )
-            expect(f.after.mode).toBe("landing");
+            expect(f.after.form).toBe("landing");
       }),
     );
   });
@@ -143,9 +141,9 @@ describe("stepFlight (ADR 0021)", () => {
   it("returns to the ground on the tick a flying vehicle touches it (ADR 0034)", () => {
     fc.assert(
       fc.property(steps, (seq) => {
-        for (const f of run(seq, initialFlight("flying")))
-          if (f.before.mode === "flying")
-            expect(f.after.mode === "ground").toBe(f.input.onGround);
+        for (const f of run(seq, initialForm("hover")))
+          if (f.before.form === "hover")
+            expect(f.after.form === "car").toBe(f.input.onGround);
       }),
     );
   });
@@ -153,18 +151,18 @@ describe("stepFlight (ADR 0021)", () => {
   it("touches down exactly when the vehicle is on the ground while landing", () => {
     fc.assert(
       fc.property(steps, (seq) => {
-        for (const f of run(seq, initialFlight("landing")))
-          if (f.before.mode === "landing")
-            expect(f.after.mode === "ground").toBe(f.input.onGround);
+        for (const f of run(seq, initialForm("landing")))
+          if (f.before.form === "landing")
+            expect(f.after.form === "car").toBe(f.input.onGround);
       }),
     );
   });
 
-  it("forgets a pending tap whenever the mode changes", () => {
+  it("forgets a pending tap whenever the form changes", () => {
     fc.assert(
-      fc.property(mode, steps, (m, seq) => {
-        for (const f of run(seq, initialFlight(m)))
-          if (f.after.mode !== f.before.mode)
+      fc.property(form, steps, (m, seq) => {
+        for (const f of run(seq, initialForm(m)))
+          if (f.after.form !== f.before.form)
             expect(f.after.lastTap).toBeUndefined();
       }),
     );
@@ -178,20 +176,20 @@ describe("stepFlight (ADR 0021)", () => {
         { jump: false, controlled: true, onGround: true },
         { jump: true, controlled: true, onGround: true },
       ],
-      initialFlight("flying"),
+      initialForm("hover"),
     );
-    expect(frames.map((f) => f.after.mode)).toEqual([
-      "flying",
+    expect(frames.map((f) => f.after.form)).toEqual([
+      "hover",
       "landing",
-      "ground",
-      "ground",
+      "car",
+      "car",
     ]);
   });
 
   it("a triple tap toggles only once", () => {
-    expect(run(taps([0, 2, 4], 5)).map((f) => f.after.mode)).toEqual([
-      "ground",
-      "ground",
+    expect(run(taps([0, 2, 4], 5)).map((f) => f.after.form)).toEqual([
+      "car",
+      "car",
       "takeoff",
       "takeoff",
       "takeoff",
@@ -199,27 +197,27 @@ describe("stepFlight (ADR 0021)", () => {
   });
 
   it("example: take off, fly, land, and touch down", () => {
-    const modes = run([
+    const forms = run([
       ...taps([0, 2], 3),
       ...taps([], SPEC.takeoffTicks, { onGround: false }),
       ...taps([], 10, { onGround: false }),
       ...taps([0, 2], 3, { onGround: false }),
       ...taps([], 1),
-    ]).map((f) => f.after.mode);
-    expect(modes[2]).toBe("takeoff");
-    expect(modes[2 + SPEC.takeoffTicks]).toBe("flying");
-    expect(modes.at(-2)).toBe("landing");
-    expect(modes.at(-1)).toBe("ground");
+    ]).map((f) => f.after.form);
+    expect(forms[2]).toBe("takeoff");
+    expect(forms[2 + SPEC.takeoffTicks]).toBe("hover");
+    expect(forms.at(-2)).toBe("landing");
+    expect(forms.at(-1)).toBe("car");
   });
 });
 
-describe("isFlightMode", () => {
-  it("accepts exactly the four modes", () => {
-    for (const m of FLIGHT_MODES) expect(isFlightMode(m)).toBe(true);
+describe("isForm", () => {
+  it("accepts exactly the four forms", () => {
+    for (const m of FORMS) expect(isForm(m)).toBe(true);
     fc.assert(
       fc.property(fc.anything(), (v) => {
-        fc.pre(!(FLIGHT_MODES as readonly unknown[]).includes(v));
-        expect(isFlightMode(v)).toBe(false);
+        fc.pre(!(FORMS as readonly unknown[]).includes(v));
+        expect(isForm(v)).toBe(false);
       }),
     );
   });
@@ -271,13 +269,13 @@ describe("climbInput (ADR 0032)", () => {
   });
 });
 
-describe("flightVerticalSpeed (ADR 0021, 0032)", () => {
+describe("verticalSpeed (ADR 0021, 0032)", () => {
   const climb = fc.double({ min: -1, max: 1, noNaN: true });
 
   it("never exceeds maxClimb up or down while flying", () => {
     fc.assert(
       fc.property(fc.double(), (c) => {
-        expect(Math.abs(flightVerticalSpeed("flying", c))).toBeLessThanOrEqual(
+        expect(Math.abs(verticalSpeed("hover", c))).toBeLessThanOrEqual(
           SPEC.maxClimb,
         );
       }),
@@ -287,10 +285,7 @@ describe("flightVerticalSpeed (ADR 0021, 0032)", () => {
   it("follows the climb command while flying", () => {
     fc.assert(
       fc.property(climb, (c) => {
-        expect(flightVerticalSpeed("flying", c)).toBeCloseTo(
-          c * SPEC.maxClimb,
-          12,
-        );
+        expect(verticalSpeed("hover", c)).toBeCloseTo(c * SPEC.maxClimb, 12);
       }),
     );
   });
@@ -298,16 +293,16 @@ describe("flightVerticalSpeed (ADR 0021, 0032)", () => {
   it("rises at takeoffClimb in takeoff, sinks at landingSink while landing, and is 0 on the ground", () => {
     fc.assert(
       fc.property(climb, (c) => {
-        expect(flightVerticalSpeed("takeoff", c)).toBe(SPEC.takeoffClimb);
-        expect(flightVerticalSpeed("landing", c)).toBe(-SPEC.landingSink);
-        expect(flightVerticalSpeed("ground", c)).toBe(0);
+        expect(verticalSpeed("takeoff", c)).toBe(SPEC.takeoffClimb);
+        expect(verticalSpeed("landing", c)).toBe(-SPEC.landingSink);
+        expect(verticalSpeed("car", c)).toBe(0);
       }),
     );
   });
 
   it("holds altitude for a climb command that is not a finite number", () => {
     for (const v of [Number.NaN, Infinity, -Infinity])
-      expect(flightVerticalSpeed("flying", v)).toBe(0);
+      expect(verticalSpeed("hover", v)).toBe(0);
   });
 });
 

@@ -30,8 +30,8 @@ To use commands, run `docker exec mycar-bds send-command op <player name>`.
 | 22 | Get out while flying | The empty vehicle sinks slowly to the ground and the wheels unfold | | |
 | 23 | Tap the handbrake repeatedly while driving on the ground | Note how often the vehicle takes off by accident | | |
 | 24 | With an account that has never joined the world (or after `pnpm server:down` and deleting `server/data/worlds/mycar-dev`), join in Survival / leave and join again / die and respawn | One "SUV" item is in the inventory / no second item is given / no second item is given | | |
-| 25 | In flight, turn hard left and right without touching Jump or pulling the stick back | The body banks into the turn and the vehicle sinks slowly while banked (ADR 0026, 0032) | | |
-| 26 | In flight in third person, pull the stick back until the vehicle touches the ground | On touchdown the wheels unfold, the camera returns to first person, and the vehicle drives on the ground again (ADR 0034) | | |
+| 25 | In hover form, turn hard left and right without touching Jump or pulling the stick back | The body banks into the turn and the vehicle sinks slowly while banked (ADR 0026, 0032) | | |
+| 26 | In hover form in third person, pull the stick back until the vehicle touches the ground | On touchdown the wheels unfold, the camera returns to first person, and the vehicle drives on the ground again (ADR 0034) | | |
 | 27 | Standing outside, tap (mobile) / left-click (PC) a khaki vehicle with red dye, then do it 3 more times | The body turns red and one dye is used (not in Creative); the extra hits change nothing, use no dye, and do not break the vehicle (ADR 0036) | | |
 | 28 | Holding a dye, press the ride button (mobile) / right-click (PC) on a vehicle | You get in, the color does not change, and no dye is used (ADR 0036) | | |
 | 29 | Place 10 vehicles, then place an eleventh / ride the oldest one while another player places a new one | The first vehicle placed disappears without dropping an item / you are dismounted and the vehicle you rode disappears (ADR 0038) | | |

@@ -19,16 +19,16 @@ export const LIGHT_BLOCK = "minecraft:light_block_15";
  * (jump is 0 / 1). "<vehicleId>,clear" clears the input.
  */
 export const TEST_INPUT_EVENT = "mycar:test_input";
-/** Client-synced flight mode. The script reads it back after /reload, and the Resource Pack draws the flight visuals from it (ADR 0021). */
-export const FLIGHT_PROPERTY = "mycar:flight";
+/** Client-synced vehicle form. The script reads it back after /reload, and the Resource Pack draws each form from it (ADR 0021, 0039). */
+export const FORM_PROPERTY = "mycar:form";
 /** Vanilla camera preset that views the player from behind, as F5 does (ADR 0028). */
 export const THIRD_PERSON_CAMERA = "minecraft:third_person";
 /** Client-synced bank angle in degrees; the Resource Pack rolls the model by it (ADR 0026). */
 export const BANK_PROPERTY = "mycar:bank";
 /** Client-synced landing gear; the Resource Pack unfolds the wheels by it (ADR 0033). */
 export const GEAR_DOWN_PROPERTY = "mycar:gear_down";
-export const HOVER_EVENT = "mycar:hover";
-export const LAND_EVENT = "mycar:land";
+export const GRAVITY_OFF_EVENT = "mycar:gravity_off";
+export const GRAVITY_ON_EVENT = "mycar:gravity_on";
 
 /** The vanilla dye that repaints a vehicle with a paint (ADR 0031). Brown dye turns it back to khaki. */
 export function dyeOf(paint: Paint): string {

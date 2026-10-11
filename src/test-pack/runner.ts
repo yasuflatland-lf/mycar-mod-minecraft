@@ -8,7 +8,7 @@ import { nearestSeat, toLocal } from "../domain/vehicle/seats";
 import { SPEC } from "../domain/vehicle/spec";
 import {
   BANK_PROPERTY,
-  FLIGHT_PROPERTY,
+  FORM_PROPERTY,
   GEAR_DOWN_PROPERTY,
   HEADLIGHTS_PROPERTY,
   TEST_INPUT_EVENT as INPUT_EVENT,
@@ -426,8 +426,8 @@ function headlightsFollowAndClear(a: Arena): Promise<Outcome> {
 
 const FLIGHT_LANE = { x: 5.5, z: 4.5 } as const;
 
-function flightMode(car: Entity): string {
-  return String(car.getProperty(FLIGHT_PROPERTY));
+function vehicleForm(car: Entity): string {
+  return String(car.getProperty(FORM_PROPERTY));
 }
 
 /** Two Jump presses 4 ticks apart (ADR 0021). */
@@ -452,22 +452,22 @@ function withAirborneCar<T>(
   });
 }
 
-/** Ticks until the flight mode reads ground, or -1 after `limit` ticks. */
+/** Ticks until the vehicle form reads car, or -1 after `limit` ticks. */
 async function ticksUntilGround(car: Entity, limit: number): Promise<number> {
   for (let t = 0; t < limit; t++) {
     await wait(1);
-    if (flightMode(car) === "ground") return t;
+    if (vehicleForm(car) === "car") return t;
   }
   return -1;
 }
 
 function flightTakeoff(a: Arena): Promise<Outcome> {
   return withAirborneCar(a, async (car) => {
-    const mode = flightMode(car);
+    const form = vehicleForm(car);
     const rise = car.location.y - a.gy;
     return {
-      pass: mode === "flying" && rise >= 1.2 && rise <= 1.8,
-      detail: `mode=${mode} rise=${rise.toFixed(2)}`,
+      pass: form === "hover" && rise >= 1.2 && rise <= 1.8,
+      detail: `form=${form} rise=${rise.toFixed(2)}`,
     };
   });
 }
@@ -543,14 +543,14 @@ function flightLand(a: Arena): Promise<Outcome> {
     drive(car, 0, 0, false);
     await wait(2);
     await doubleTap(car);
-    const afterTap = flightMode(car);
+    const afterTap = vehicleForm(car);
     let gearY = Number.NaN;
     let landedAt = -1;
     for (let t = 0; t < 80; t++) {
       await wait(1);
       if (Number.isNaN(gearY) && car.getProperty(GEAR_DOWN_PROPERTY) === true)
         gearY = car.location.y - a.gy;
-      if (flightMode(car) === "ground") {
+      if (vehicleForm(car) === "car") {
         landedAt = t;
         break;
       }
@@ -593,7 +593,7 @@ function flightDriverless(a: Arena): Promise<Outcome> {
   return withAirborneCar(a, async (car) => {
     clearInput(car);
     await wait(3);
-    const afterClear = flightMode(car);
+    const afterClear = vehicleForm(car);
     const landedAt = await ticksUntilGround(car, 60);
     return {
       pass: afterClear === "landing" && landedAt >= 0,

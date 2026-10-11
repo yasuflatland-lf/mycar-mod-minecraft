@@ -19,7 +19,7 @@ import type {
   VehicleSnapshot,
 } from "../../application/ports";
 import type { Vec3 } from "../../domain/shared/vec";
-import { type FlightMode, isFlightMode } from "../../domain/vehicle/flight";
+import { type Form, isForm } from "../../domain/vehicle/form";
 import type { Cell } from "../../domain/vehicle/headlights";
 import { PAINTS, type Paint } from "../../domain/vehicle/paint";
 import type { RamHit, RamTarget } from "../../domain/vehicle/ram";
@@ -30,12 +30,12 @@ import { HeadlightBlocks, isLightBlock } from "./headlightBlocks";
 import {
   BANK_PROPERTY,
   dyeOf,
-  FLIGHT_PROPERTY,
+  FORM_PROPERTY,
   GEAR_DOWN_PROPERTY,
+  GRAVITY_OFF_EVENT,
+  GRAVITY_ON_EVENT,
   HEADLIGHTS_PROPERTY,
-  HOVER_EVENT,
   ITEM_TYPE,
-  LAND_EVENT,
   PAINT_VARIANT,
   PLAYER_TYPE,
   paintEvent,
@@ -91,7 +91,7 @@ export class BedrockVehicleWorld
         .getEntities({ type: VEHICLE_TYPE })) {
         this.current.set(car.id, car);
         const v = car.getVelocity();
-        const flight = car.getProperty(FLIGHT_PROPERTY);
+        const form = car.getProperty(FORM_PROPERTY);
         snapshots.push({
           id: car.id,
           location: car.location,
@@ -100,7 +100,7 @@ export class BedrockVehicleWorld
           velocityY: v.y,
           onGround: car.isOnGround,
           riders: this.riders(car),
-          flight: isFlightMode(flight) ? flight : "ground",
+          form: isForm(form) ? form : "car",
           headlights: car.getProperty(HEADLIGHTS_PROPERTY) === true,
           testInput: this.testInputs.get(car.id),
         });
@@ -198,15 +198,15 @@ export class BedrockVehicleWorld
     car.setRotation({ x: 0, y: yaw });
   }
 
-  setFlight(vehicleId: string, mode: FlightMode): void {
+  setForm(vehicleId: string, form: Form): void {
     const car = this.entity(vehicleId);
     if (!car) return;
     // The property drives the client animation; gravity lives in a component
     // group, so both change together here (ADR 0021). Gravity goes first: if
-    // the event throws, the property still holds the old mode, and a /reload
+    // the event throws, the property still holds the old form, and a /reload
     // rebuilds the aggregate from it.
-    car.triggerEvent(mode === "ground" ? LAND_EVENT : HOVER_EVENT);
-    car.setProperty(FLIGHT_PROPERTY, mode);
+    car.triggerEvent(form === "car" ? GRAVITY_ON_EVENT : GRAVITY_OFF_EVENT);
+    car.setProperty(FORM_PROPERTY, form);
   }
 
   setThirdPerson(playerId: string, on: boolean): void {

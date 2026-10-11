@@ -6,10 +6,10 @@
       "is_spawnable": false,
       "is_summonable": true,
       "properties": {
-        "mycar:flight": {
+        "mycar:form": {
           "type": "enum",
-          "values": ["ground", "takeoff", "flying", "landing"],
-          "default": "ground",
+          "values": ["car", "takeoff", "hover", "landing"],
+          "default": "car",
           "client_sync": true
         },
         "mycar:bank": {
@@ -47,8 +47,8 @@
       "mycar:paint_purple": { "minecraft:variant": { "value": 13 } },
       "mycar:paint_magenta": { "minecraft:variant": { "value": 14 } },
       "mycar:paint_pink": { "minecraft:variant": { "value": 15 } },
-      "mycar:hovering": { "minecraft:physics": { "has_gravity": false } },
-      "mycar:grounded": { "minecraft:physics": {} }
+      "mycar:weightless": { "minecraft:physics": { "has_gravity": false } },
+      "mycar:weighted": { "minecraft:physics": {} }
     },
     "events": {
       "mycar:paint_khaki": {
@@ -403,13 +403,13 @@
           ]
         }
       },
-      "mycar:hover": {
-        "add": { "component_groups": ["mycar:hovering"] },
-        "remove": { "component_groups": ["mycar:grounded"] }
+      "mycar:gravity_off": {
+        "add": { "component_groups": ["mycar:weightless"] },
+        "remove": { "component_groups": ["mycar:weighted"] }
       },
-      "mycar:land": {
-        "add": { "component_groups": ["mycar:grounded"] },
-        "remove": { "component_groups": ["mycar:hovering"] }
+      "mycar:gravity_on": {
+        "add": { "component_groups": ["mycar:weighted"] },
+        "remove": { "component_groups": ["mycar:weightless"] }
       }
     },
     "components": {

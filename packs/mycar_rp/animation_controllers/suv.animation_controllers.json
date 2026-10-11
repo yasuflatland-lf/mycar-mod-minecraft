@@ -1,7 +1,7 @@
 {
   "format_version": "1.10.0",
   "animation_controllers": {
-    "controller.animation.mycar.suv.flight": {
+    "controller.animation.mycar.suv.form": {
       "initial_state": "ground",
       "states": {
         "ground": {
