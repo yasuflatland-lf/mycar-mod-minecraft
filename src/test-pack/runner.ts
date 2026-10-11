@@ -782,7 +782,8 @@ function submarineShore(a: Arena): Promise<Outcome> {
   // dry one. It becomes a car near the submarine's top speed (0.5) and loses
   // only SPEC.drag (0.02) per tick: with tread 8 it became a car 1.9 blocks
   // past the riser and coasted 7.75 blocks up onto the dry step; with tread
-  // 14 it coasted 7.96 blocks and stopped 4.2 blocks short of the next riser.
+  // 14 it coasted 7.96 blocks and its front stopped 2.5 blocks short of the
+  // next riser.
   const tread = 14;
   const dryX = shoreX + (depth - 1) * tread;
   return withPool(a, depth, () => {
