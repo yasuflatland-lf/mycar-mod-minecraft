@@ -14,7 +14,7 @@ describe("packs/mycar_bp", () => {
     expect(c["minecraft:collision_box"]).toEqual({ width: 1.8, height: 1.6 });
   });
 
-  it("seat positions and order match SEAT_POSITIONS, with the driver's seat at 0 (ADR 0007)", () => {
+  it("seat positions and order match SEAT_POSITIONS, with the driver's seat at 0 (ADR 0019)", () => {
     const seats = c["minecraft:rideable"].seats;
     expect(c["minecraft:rideable"].controlling_seat).toBe(0);
     expect(seats).toHaveLength(4);
@@ -46,5 +46,19 @@ describe("packs/mycar_bp", () => {
 
   it("the recipe is unlocked from the start (BDS does not load the recipe without unlock)", () => {
     expect(recipe.unlock).toEqual({ context: "AlwaysUnlocked" });
+  });
+});
+
+describe("packs/mycar_test_bp", () => {
+  // The in-game seat test only says something about the SUV while the probe
+  // seats riders exactly as the SUV does (ADR 0019).
+  it("the seat probe copies the SUV's rideable, but seats cows instead of players", () => {
+    const probe = read("packs/mycar_test_bp/entities/seat_probe.json")[
+      "minecraft:entity"
+    ].components["minecraft:rideable"];
+    expect(probe).toEqual({
+      ...c["minecraft:rideable"],
+      family_types: ["cow"],
+    });
   });
 });
