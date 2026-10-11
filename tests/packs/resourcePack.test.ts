@@ -121,9 +121,9 @@ describe("Resource Pack flight visuals (ADR 0022)", () => {
     const dep = bp.dependencies.find(
       (d: { uuid?: string }) => d.uuid === rp.header.uuid,
     );
-    // 0.1.24 first ships the submarine visuals; an older cached copy lacks them.
+    // 0.1.25 first ships the sonar (0040); an older cached copy lacks it.
     const [major, minor, patch] = rp.header.version;
-    expect(major * 1e6 + minor * 1e3 + patch).toBeGreaterThanOrEqual(1024);
+    expect(major * 1e6 + minor * 1e3 + patch).toBeGreaterThanOrEqual(1025);
     expect(rp.modules[0].version).toEqual(rp.header.version);
     expect(dep.version).toEqual(rp.header.version);
   });
@@ -232,21 +232,53 @@ describe("Resource Pack sounds (ADR 0030)", () => {
     });
   });
 
-  it("pings the sonar under water only while someone rides (ADR 0040)", () => {
+  /** The sound effects an animate entry plays: a short name, or { name: condition }. */
+  const effectsOfEntry = (entry: unknown): string[] => {
+    const short =
+      typeof entry === "string" ? entry : Object.keys(entry as object)[0];
+    const anim = anims[client.animations[short ?? ""]];
+    return anim?.sound_effects ? effectsOf(client.animations[short ?? ""]) : [];
+  };
+
+  it("loops the sonar only in the submarine form while someone rides (ADR 0040)", () => {
     expect(controller.states.submarine.animations).toContainEqual({
       submarine_sound: "query.has_rider",
     });
     expect(effectsOf(client.animations.submarine_sound)).toEqual(["sonar"]);
+    expect(anims[client.animations.submarine_sound].loop).toBe(true);
     for (const [state, def] of Object.entries<{ animations: unknown[] }>(
       controller.states,
     )) {
       if (state === "submarine") continue;
-      expect(JSON.stringify(def.animations), state).not.toContain("sonar");
+      expect(def.animations.flatMap(effectsOfEntry), state).not.toContain(
+        "sonar",
+      );
     }
+    expect(client.scripts.animate.flatMap(effectsOfEntry)).not.toContain(
+      "sonar",
+    );
+  });
+
+  it("starts the sonar loop with a ping that fades before the loop ends (ADR 0040)", () => {
+    const wav = readFileSync(`${RP}/sounds/mycar/sonar.wav`);
+    const rate = wav.readUInt32LE(24);
+    const samples = new Int16Array(
+      wav.buffer.slice(wav.byteOffset + 44, wav.byteOffset + wav.length),
+    );
+    // Goertzel magnitude of the ping's pitch (SONAR_PING_HZ in tools/gen_sounds.py) over a window.
+    const ping = (fromS: number, toS: number) => {
+      const k = 2 * Math.cos((2 * Math.PI * 1400) / rate);
+      let a = 0;
+      let b = 0;
+      const window = samples.subarray(fromS * rate, toS * rate);
+      for (const x of window) [a, b] = [x + k * a - b, a];
+      return Math.sqrt(a * a + b * b - k * a * b) / window.length;
+    };
+    expect(ping(0, 0.25)).toBeGreaterThan(20 * ping(3.5, 4));
   });
 
   // A loop shorter than its clip stacks copies; a longer one leaves gaps.
-  it("loops each level animation exactly as long as its clip", () => {
+  it("loops each sound animation exactly as long as its clip", () => {
     const seconds = (name: string) => {
       const wav = readFileSync(`${RP}/${name}.wav`);
       // A canonical PCM WAV: byte rate at offset 28, data size at offset 40.

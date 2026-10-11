@@ -12,7 +12,8 @@ out in the water, a faint return from far away, and the low rumble of the deep u
 
 Only the standard library is used, and the random generator is seeded, so the output is reproducible.
 The loops repeat without a click: the hover loops are sums of sines with whole cycles in the loop, and
-the engine loops filter two copies and keep the second, so their ringing wraps around.
+the engine loops filter two copies and keep the second, so their ringing wraps around, and the sonar
+builds its pings two loops long and folds them onto one.
 Each family of sounds has its own seeded generator, so changing one leaves the others as they are.
 """
 import math
@@ -36,13 +37,15 @@ CLANK = [(1100, 9.0, 0.16), (2600, 10.0, 0.08)]
 # Air noise band (Hz) of each hover level, from hovering in place to full speed.
 HOVER_AIR_BANDS = [(700, 2200), (1000, 3000), (1400, 4000), (1900, 5200), (2500, 6500)]
 # One ping per loop, a few seconds apart like an active sonar. The ping fades with a 0.7 s time
-# constant, so most of it rings for about 3 s; its tail wraps around the seam.
+# constant, about -37 dB after 3 s, so its tail runs past the 4 s seam and wraps around.
 SONAR_LOOP_S = 4.0
 SONAR_PING_HZ = 1400
+SONAR_ATTACK_S = 0.004
 SONAR_DECAY_S = 0.7
 # Reflections (delay s, gain) that smear the ping into a wet ring, and the return from the target.
 SONAR_REFLECTIONS = [(0.11, 0.35), (0.23, 0.25), (0.37, 0.18), (0.52, 0.12)]
 SONAR_RETURN = [(1.6, 0.22), (1.73, 0.08)]
+SONAR_RETURN_DECAY_S = SONAR_DECAY_S * 0.7
 SONAR_RUMBLE_BAND = (30, 120)
 
 
@@ -144,15 +147,18 @@ def sonar(rng):
     tail = [0.0] * (2 * n)
 
     def ping(at_s, gain, decay_s):
-        # A slightly detuned copy for each reflection keeps them from cancelling into a comb.
+        # Each copy, the ping included, is detuned by up to 6 Hz, so the copies beat against each
+        # other instead of fusing into one steady tone.
         f = SONAR_PING_HZ + rng.uniform(-6, 6)
         start = round(at_s * RATE)
         for j in range(2 * n - start):
             t = j / RATE
-            env = min(1.0, t / 0.004) * math.exp(-t / decay_s)
-            if env < 1e-4:
+            env = min(1.0, t / SONAR_ATTACK_S) * math.exp(-t / decay_s)
+            # The envelope starts at 0, so only a fade after the attack ends the ping.
+            if t > SONAR_ATTACK_S and env < 1e-4:
                 break
-            # The second harmonic fades fast and gives the "ko" of "kon" before the pure tone rings on.
+            # The second harmonic, with a 0.15 s time constant, gives the onset a harder edge before
+            # the pure tone rings on.
             tone = math.sin(2 * math.pi * f * t) + 0.25 * math.exp(-t / 0.15) * math.sin(4 * math.pi * f * t)
             tail[start + j] += gain * env * tone
 
@@ -160,7 +166,7 @@ def sonar(rng):
     for at_s, gain in SONAR_REFLECTIONS:
         ping(at_s, gain, SONAR_DECAY_S)
     for at_s, gain in SONAR_RETURN:
-        ping(at_s, gain, SONAR_DECAY_S * 0.7)
+        ping(at_s, gain, SONAR_RETURN_DECAY_S)
     rumble = periodic_noise(rng, SONAR_LOOP_S, *SONAR_RUMBLE_BAND, 120)
     # The rumble swells once per loop, so the swell also repeats without a seam.
     return [
