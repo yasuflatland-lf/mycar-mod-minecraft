@@ -39,6 +39,7 @@ This directory records design decisions and the reasons behind them. The format 
 | [0033](0033-lower-the-wheels-before-touchdown.md) | Lower the wheels before touchdown | Accepted |
 | [0034](0034-touch-down-from-flight.md) | Return to the ground when a flying vehicle sinks onto it | Accepted |
 | [0035](0035-jump-one-block-steps-in-the-script.md) | Jump one-block steps in the script, and skip blocks without a collision box | Accepted |
+| [0036](0036-paint-with-a-tap-on-touch.md) | Paint with a tap on touch | Accepted |
 
 The measurements and in-game tests behind these decisions are in [the driving-core spike findings](../spike-driving-core.md).
 

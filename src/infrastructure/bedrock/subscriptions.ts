@@ -3,6 +3,7 @@ import {
   Direction,
   type Entity,
   GameMode,
+  Player,
   ScriptEventSource,
   system,
   world,
@@ -19,7 +20,6 @@ import {
   HEADLIGHT_SWITCH_TYPE,
   ITEM_TYPE,
   PAINT_BY_DYE,
-  PLAYER_TYPE,
   TEST_INPUT_EVENT,
   VEHICLE_TYPE,
 } from "./identifiers";
@@ -88,12 +88,32 @@ export function registerSubscriptions(
     if (ev.initialSpawn) useCases.starter.execute(ev.player.id);
   });
 
+  const paintCommand = (player: Player, vehicle: Entity, itemType = "") => {
+    const paint = PAINT_BY_DYE[itemType];
+    if (!paint) return undefined;
+    return {
+      playerId: player.id,
+      vehicleId: vehicle.id,
+      paint,
+      creative: player.getGameMode() === GameMode.Creative,
+    };
+  };
+
   world.afterEvents.entityHitEntity.subscribe((ev) => {
-    if (
-      ev.hitEntity.typeId !== VEHICLE_TYPE ||
-      ev.damagingEntity.typeId !== PLAYER_TYPE
-    )
+    const player = ev.damagingEntity;
+    if (ev.hitEntity.typeId !== VEHICLE_TYPE || !(player instanceof Player))
       return;
+    // On touch a short tap on an entity is an attack and only a long press
+    // interacts, so a tap with a dye arrives here and paints instead of
+    // counting toward breaking the vehicle (ADR 0036).
+    const held = player
+      .getComponent("minecraft:inventory")
+      ?.container?.getItem(player.selectedSlotIndex);
+    const cmd = paintCommand(player, ev.hitEntity, held?.typeId);
+    if (cmd) {
+      useCases.paint.execute(cmd);
+      return;
+    }
     useCases.hit.execute({
       vehicleId: ev.hitEntity.id,
       tick: system.currentTick,
@@ -131,17 +151,11 @@ export function registerSubscriptions(
       system.run(() => switchHeadlights(playerId, vehicleId));
       return;
     }
-    const paint = PAINT_BY_DYE[ev.itemStack?.typeId ?? ""];
-    if (!paint) return;
+    const cmd = paintCommand(ev.player, ev.target, ev.itemStack?.typeId);
+    if (!cmd) return;
     // Cancelling keeps the player from getting in. Before-events cannot change
     // the world, so the repaint runs on the next tick.
     ev.cancel = true;
-    const cmd = {
-      playerId: ev.player.id,
-      vehicleId: ev.target.id,
-      paint,
-      creative: ev.player.getGameMode() === GameMode.Creative,
-    };
     system.run(() => useCases.paint.execute(cmd));
   });
 }
