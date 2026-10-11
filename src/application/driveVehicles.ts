@@ -40,8 +40,10 @@ export class DriveVehicles {
           solidAt: (offset) => this.world.solidAt(snap.id, offset),
           targets: () => this.world.targetsNear(snap.id),
         });
-        this.world.applyMotion(snap.id, out.impulse, out.yaw);
+        // The mode is sent only on the tick it changes, so send it before
+        // anything else that could throw and skip it.
         if (out.flight) this.world.setFlight(snap.id, out.flight);
+        this.world.applyMotion(snap.id, out.impulse, out.yaw);
         this.world.shineHeadlights(
           snap.id,
           snap.headlights ? headlightCells(snap.location, out.yaw) : [],
