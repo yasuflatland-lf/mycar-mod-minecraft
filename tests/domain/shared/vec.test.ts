@@ -67,13 +67,18 @@ describe("vec", () => {
 
   it("left is the exact opposite of right for every heading", () => {
     fc.assert(
-      fc.property(yaw, (y) => {
-        const f = forward(y);
-        const left = leftOf(f);
-        const right = rightOf(f);
-        expect(left.x).toBeCloseTo(-right.x, 9);
-        expect(left.z).toBeCloseTo(-right.z, 9);
-      }),
+      // Whole degrees off the half turns: the double `yaw` arbitrary leans on
+      // 0 and ±720, where sin(yaw) is 0 and a wrong sign on z goes unseen.
+      fc.property(
+        fc.integer({ min: -719, max: 719 }).filter((d) => d % 180 !== 0),
+        (y) => {
+          const f = forward(y);
+          const left = leftOf(f);
+          const right = rightOf(f);
+          expect(left.x).toBeCloseTo(-right.x, 9);
+          expect(left.z).toBeCloseTo(-right.z, 9);
+        },
+      ),
     );
   });
 
