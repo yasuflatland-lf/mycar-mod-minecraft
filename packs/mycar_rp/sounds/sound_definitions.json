@@ -72,6 +72,12 @@
       "min_distance": 4.0,
       "max_distance": 32.0,
       "sounds": [{ "name": "sounds/mycar/hover_start", "volume": 0.14 }]
+    },
+    "mycar.sonar": {
+      "category": "neutral",
+      "min_distance": 4.0,
+      "max_distance": 48.0,
+      "sounds": [{ "name": "sounds/mycar/sonar", "volume": 0.2 }]
     }
   }
 }

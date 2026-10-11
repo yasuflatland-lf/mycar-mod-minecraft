@@ -44,6 +44,7 @@ This directory records design decisions and the reasons behind them. The format 
 | [0038](0038-keep-at-most-ten-vehicles-in-a-world.md) | Keep at most ten vehicles in a world | Accepted |
 | [0039](0039-vehicle-forms.md) | Vehicle forms | Accepted |
 | [0040](0040-submarine.md) | Submarine form | Accepted |
+| [0041](0041-sonar-sound-under-water.md) | Sonar sound under water | Accepted |
 
 The measurements and in-game tests behind these decisions are in [the driving-core spike findings](../spike-driving-core.md).
 

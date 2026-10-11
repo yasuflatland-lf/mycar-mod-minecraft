@@ -7,10 +7,13 @@ the vehicle's speed.
 hover_0 to hover_4: the "shhh" of rushing air, loops played while the vehicle is off the ground,
 rising in pitch with the speed. The client picks one by the vehicle's speed.
 hover_start: the air swelling in, played once when the wheels start to fold.
+sonar: the loop played while a ridden submarine is under water (ADR 0041): a clear sonar ping that rings
+out in the water, a faint return from far away, and the low rumble of the deep under both.
 
 Only the standard library is used, and the random generator is seeded, so the output is reproducible.
 The loops repeat without a click: the hover loops are sums of sines with whole cycles in the loop, and
-the engine loops filter two copies and keep the second, so their ringing wraps around.
+the engine loops filter two copies and keep the second, so their ringing wraps around, and the sonar
+builds its pings two loops long and folds them onto one.
 Each family of sounds has its own seeded generator, so changing one leaves the others as they are.
 """
 import math
@@ -33,6 +36,17 @@ KNOCK = [(2200, 5.0, 0.3), (3600, 6.0, 0.18)]
 CLANK = [(1100, 9.0, 0.16), (2600, 10.0, 0.08)]
 # Air noise band (Hz) of each hover level, from hovering in place to full speed.
 HOVER_AIR_BANDS = [(700, 2200), (1000, 3000), (1400, 4000), (1900, 5200), (2500, 6500)]
+# One ping per loop, a few seconds apart like an active sonar. The ping fades with a 0.7 s time
+# constant, about -37 dB after 3 s, so its tail runs past the 4 s seam and wraps around.
+SONAR_LOOP_S = 4.0
+SONAR_PING_HZ = 1400
+SONAR_ATTACK_S = 0.004
+SONAR_DECAY_S = 0.7
+# Reflections (delay s, gain) that smear the ping into a wet ring, and the return from the target.
+SONAR_REFLECTIONS = [(0.11, 0.35), (0.23, 0.25), (0.37, 0.18), (0.52, 0.12)]
+SONAR_RETURN = [(1.6, 0.22), (1.73, 0.08)]
+SONAR_RETURN_DECAY_S = SONAR_DECAY_S * 0.7
+SONAR_RUMBLE_BAND = (30, 120)
 
 
 def write(name, samples):
@@ -127,6 +141,40 @@ def hover_start(rng):
     return [(1 - (1 - i / n) ** 3) * air[i] for i in range(n)]
 
 
+def sonar(rng):
+    n = round(RATE * SONAR_LOOP_S)
+    # Two loops long, then folded, so the ringing that runs past the end comes back in at the start.
+    tail = [0.0] * (2 * n)
+
+    def ping(at_s, gain, decay_s):
+        # Each copy, the ping included, is detuned by up to 6 Hz, so the copies beat against each
+        # other instead of fusing into one steady tone.
+        f = SONAR_PING_HZ + rng.uniform(-6, 6)
+        start = round(at_s * RATE)
+        for j in range(2 * n - start):
+            t = j / RATE
+            env = min(1.0, t / SONAR_ATTACK_S) * math.exp(-t / decay_s)
+            # The envelope starts at 0, so only a fade after the attack ends the ping.
+            if t > SONAR_ATTACK_S and env < 1e-4:
+                break
+            # The second harmonic, with a 0.15 s time constant, gives the onset a harder edge before
+            # the pure tone rings on.
+            tone = math.sin(2 * math.pi * f * t) + 0.25 * math.exp(-t / 0.15) * math.sin(4 * math.pi * f * t)
+            tail[start + j] += gain * env * tone
+
+    ping(0.0, 1.0, SONAR_DECAY_S)
+    for at_s, gain in SONAR_REFLECTIONS:
+        ping(at_s, gain, SONAR_DECAY_S)
+    for at_s, gain in SONAR_RETURN:
+        ping(at_s, gain, SONAR_RETURN_DECAY_S)
+    rumble = periodic_noise(rng, SONAR_LOOP_S, *SONAR_RUMBLE_BAND, 120)
+    # The rumble swells once per loop, so the swell also repeats without a seam.
+    return [
+        tail[i] + tail[i + n] + 0.35 * (1 + 0.3 * math.sin(2 * math.pi * i / n)) * rumble[i]
+        for i in range(n)
+    ]
+
+
 rng = random.Random(29)
 for level, rate in enumerate(ENGINE_FIRING_RATES):
     write(f"engine_{level}", engine(rng, rate))
@@ -134,4 +182,6 @@ rng = random.Random(30)
 for level, band in enumerate(HOVER_AIR_BANDS):
     write(f"hover_{level}", hover(rng, band))
 write("hover_start", hover_start(rng))
+rng = random.Random(40)
+write("sonar", sonar(rng))
 print("wrote", ", ".join(sorted(p.name for p in OUT.glob("*.wav"))))

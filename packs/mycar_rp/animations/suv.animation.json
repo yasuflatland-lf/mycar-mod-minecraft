@@ -88,6 +88,11 @@
       "animation_length": 1.0,
       "sound_effects": { "0.0": { "effect": "hover_4" } }
     },
+    "animation.mycar.suv.submarine_sound": {
+      "loop": true,
+      "animation_length": 4.0,
+      "sound_effects": { "0.0": { "effect": "sonar" } }
+    },
     "animation.mycar.suv.wheels_deploy": {
       "animation_length": 1.0,
       "sound_effects": { "0.0": { "effect": "hover_start" } },

@@ -42,7 +42,7 @@
           "transitions": [{ "submarine": "query.all_animations_finished" }]
         },
         "submarine": {
-          "animations": ["submerged"],
+          "animations": ["submerged", { "submarine_sound": "query.has_rider" }],
           "transitions": [
             { "surface": "query.property('mycar:form') != 'submarine'" }
           ]
