@@ -18,6 +18,7 @@ import {
 import { EMPTY_COUNTER, type HitCounter, registerHit } from "./hitCounter";
 import {
   initialMotion,
+  type MotionResult,
   type MotionState,
   type StepProbe,
   stepFlightMotion,
@@ -152,25 +153,24 @@ export class Vehicle {
     });
     const mode = this.flight.mode;
     const input = driveInputFor(raw, mode);
-    const step =
-      mode === "ground"
-        ? stepMotion(
-            this.motion,
-            input,
-            { velocity: ctx.velocity, onGround: ctx.onGround },
-            stepProbe(ctx),
-          )
-        : stepFlightMotion(this.motion, input, ctx.velocity);
+    let step: MotionResult;
+    let impulseY: number;
+    if (mode === "ground") {
+      step = stepMotion(
+        this.motion,
+        input,
+        { velocity: ctx.velocity, onGround: ctx.onGround },
+        stepProbe(ctx),
+      );
+      impulseY = step.jumped ? SPEC.stepVelocity : 0;
+    } else {
+      step = stepFlightMotion(this.motion, input, ctx.velocity);
+      impulseY = verticalImpulse(
+        flightVerticalSpeed(mode, raw?.pitch ?? 0, step.state.speed),
+        ctx.velocityY ?? 0,
+      );
+    }
     this.motion = step.state;
-    const impulseY =
-      mode === "ground"
-        ? step.jumped
-          ? SPEC.stepVelocity
-          : 0
-        : verticalImpulse(
-            flightVerticalSpeed(mode, raw?.pitch ?? 0, step.state.speed),
-            ctx.velocityY ?? 0,
-          );
 
     return {
       impulse: { x: step.impulse.x, y: impulseY, z: step.impulse.z },
