@@ -52,4 +52,7 @@ export const SPEC = {
   // Placing and picking up vehicles (ADR 0008)
   hitsToBreak: 3,
   hitResetTicks: 100,
+  // Headlights (ADR 0020)
+  headlightReach: [4, 9], // blocks ahead of the vehicle's center, one light block each
+  headlightSwitchCooldown: 5, // ticks; one tap can reach the script as both an item use and an interaction
 } as const;

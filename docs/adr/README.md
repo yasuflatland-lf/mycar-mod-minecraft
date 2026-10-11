@@ -23,6 +23,7 @@ This directory records design decisions and the reasons behind them. The format 
 | [0017](0017-repaint-vehicles-with-dye.md) | Repaint vehicles with dye | Accepted |
 | [0018](0018-sideways-stick-creeps-forward.md) | Treat a sideways stick as a slow forward turn | Accepted |
 | [0019](0019-passengers-move-up-to-the-driver-seat.md) | Passengers move up to the driver seat | Accepted |
+| [0020](0020-headlights.md) | Headlights that light up the road | Accepted |
 
 The measurements and in-game tests behind these decisions are in [the driving-core spike findings](../spike-driving-core.md).
 

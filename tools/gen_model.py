@@ -31,6 +31,7 @@ PALETTE = {
     "amber": (235, 150, 30),
 }
 NAMES = list(PALETTE)
+EMISSIVE = {"light"}
 
 # Body color of each paint (ADR 0017). Khaki writes suv.png; the others write suv_<paint>.png.
 # The red stays darker than the "tail" swatch so the tail lights still show on a red body.
@@ -284,6 +285,12 @@ body += disc("z", SPARE, 2.3, -29.3, -29, (0, 30, 60), "rim")
 body += disc("z", SPARE, 0.9, -29.5, -29.3, (0, 45), "trim")
 
 
+# Lamp lenses (the "light" swatch: headlights and fog lamps) get a bone of their own, so the render
+# controller can give them a glowing material while the headlights are on (ADR 0020)
+LIGHT_UV = uv("light")
+headlights = [c for c in body if c["uv"] == LIGHT_UV]
+body = [c for c in body if c["uv"] != LIGHT_UV]
+
 geo = {
     "format_version": "1.12.0",
     "minecraft:geometry": [
@@ -300,6 +307,7 @@ geo = {
                 {"name": "root", "pivot": [0, 0, 0]},
                 {"name": "body", "parent": "root", "pivot": [0, 7, 0], "cubes": body,
                  "locators": {"exhaust": [9, 4.5, -28.6]}},
+                {"name": "headlights", "parent": "body", "pivot": [0, 7, 0], "cubes": headlights},
                 wheel("wheel_fl", -1, 17),
                 wheel("wheel_fr", +1, 17),
                 wheel("wheel_rl", -1, -16),
@@ -340,7 +348,7 @@ turn_around(geo["minecraft:geometry"][0]["bones"])
 def png(path, w, h, pixel):
     rows = b""
     for y in range(h):
-        rows += b"\x00" + b"".join(bytes(pixel(x, y)) + b"\xff" for x in range(w))
+        rows += b"\x00" + b"".join(bytes((*pixel(x, y), 255)[:4]) for x in range(w))
 
     def chunk(t, d):
         return struct.pack(">I", len(d)) + t + d + struct.pack(">I", zlib.crc32(t + d) & 0xFFFFFFFF)
@@ -357,7 +365,9 @@ def swatches(body_color):
         i = x // 4
         if y >= 4 or i >= len(NAMES):
             return (0, 0, 0)
-        return colors[NAMES[i]]
+        # Alpha 0 marks the swatch as emissive for the entity_emissive material; the materials the
+        # lenses use while the headlights are off ignore alpha (ADR 0020)
+        return (*colors[NAMES[i]], 0) if NAMES[i] in EMISSIVE else colors[NAMES[i]]
 
     return swatch
 
@@ -381,4 +391,16 @@ def icon(x, y):
 
 
 png(RP / "textures/items/suv_item.png", 16, 16, icon)
+
+
+def switch_icon(x, y):
+    # 16x16 headlight switch icon: a glowing round lamp on a dark switch plate
+    if (x - 7.5) ** 2 + (y - 6.5) ** 2 <= 16:
+        return PALETTE["light"]
+    if 3 <= x <= 12 and 11 <= y <= 14:
+        return PALETTE["trim"]
+    return (0, 0, 0, 0)
+
+
+png(RP / "textures/items/headlight_switch.png", 16, 16, switch_icon)
 print("cubes:", sum(len(b.get("cubes", [])) for b in geo["minecraft:geometry"][0]["bones"]))

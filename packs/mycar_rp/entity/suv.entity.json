@@ -3,7 +3,11 @@
   "minecraft:client_entity": {
     "description": {
       "identifier": "mycar:suv",
-      "materials": { "default": "entity_alphatest" },
+      "materials": {
+        "default": "entity_alphatest",
+        "lamp": "entity",
+        "lamp_lit": "entity_emissive"
+      },
       "textures": {
         "default": "textures/entity/suv",
         "green": "textures/entity/suv_green",
