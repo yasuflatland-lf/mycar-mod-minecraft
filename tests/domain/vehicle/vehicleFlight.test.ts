@@ -1,6 +1,12 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { forward, rightOf, type Vec2 } from "../../../src/domain/shared/vec";
+import {
+  dot,
+  forward,
+  rightOf,
+  type Vec2,
+  type Vec3,
+} from "../../../src/domain/shared/vec";
 import type { RawInput } from "../../../src/domain/vehicle/driveInput";
 import type { Form } from "../../../src/domain/vehicle/form";
 import { SPEC } from "../../../src/domain/vehicle/spec";
@@ -315,23 +321,29 @@ describe("Vehicle banking (ADR 0026)", () => {
 });
 
 describe("Vehicle landing gear (ADR 0033)", () => {
-  it("starts with the wheels down when placed", () => {
-    expect(Vehicle.create("car", 0).wheelsDown).toBe(true);
-  });
-
-  it("keeps the wheels folded when rebuilt while landing high above the ground", () => {
-    const v = Vehicle.rebuild("car", 0, [], "landing");
-    const out = v.tick({
+  /** One airborne tick of a vehicle rebuilt mid-landing. */
+  function landOnce(yaw: number, solidAt: (offset: Vec3) => boolean) {
+    const vehicle = Vehicle.rebuild("car", yaw, [], "landing");
+    const out = vehicle.tick({
       tick: 0,
       riders: [],
       velocity: { x: 0, z: 0 },
       velocityY: 0,
       onGround: false,
-      solidAt: () => false,
+      solidAt,
       targets: () => [],
     });
-    expect(out.gearDown).toBe(false);
-    expect(v.wheelsDown).toBe(false);
+    return { vehicle, gearDown: out.gearDown };
+  }
+
+  it("starts with the wheels down when placed", () => {
+    expect(Vehicle.create("car", 0).wheelsDown).toBe(true);
+  });
+
+  it("keeps the wheels folded when rebuilt while landing high above the ground", () => {
+    const { vehicle, gearDown } = landOnce(0, () => false);
+    expect(gearDown).toBe(false);
+    expect(vehicle.wheelsDown).toBe(false);
   });
 
   it("lowers the wheels while landing over ground under the center or any corner, in any heading", () => {
@@ -351,21 +363,15 @@ describe("Vehicle landing gear (ADR 0033)", () => {
         (yaw, [ahead, side], depth) => {
           const f = forward(yaw);
           const r = rightOf(f);
-          const v = Vehicle.rebuild("car", yaw, [], "landing");
-          const out = v.tick({
-            tick: 0,
-            onGround: false,
-            velocity: { x: 0, z: 0 },
-            velocityY: 0,
-            riders: [],
-            targets: () => [],
-            // A pillar 0.4 blocks around one probe spot, its top `depth` blocks down.
-            solidAt: (o) =>
-              Math.abs(o.x * f.x + o.z * f.z - ahead) <= 0.4 &&
-              Math.abs(o.x * r.x + o.z * r.z - side) <= 0.4 &&
+          // A pillar 0.4 blocks around one probe spot, its top `depth` blocks down.
+          const { gearDown } = landOnce(
+            yaw,
+            (o) =>
+              Math.abs(dot(o, f) - ahead) <= 0.4 &&
+              Math.abs(dot(o, r) - side) <= 0.4 &&
               o.y <= -depth,
-          });
-          expect(out.gearDown).toBe(depth <= SPEC.gearDownHeight);
+          );
+          expect(gearDown).toBe(depth <= SPEC.gearDownHeight);
         },
       ),
     );
