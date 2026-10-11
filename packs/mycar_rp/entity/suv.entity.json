@@ -4,7 +4,11 @@
     "description": {
       "identifier": "mycar:suv",
       "materials": { "default": "entity_alphatest" },
-      "textures": { "default": "textures/entity/suv" },
+      "textures": {
+        "default": "textures/entity/suv",
+        "green": "textures/entity/suv_green",
+        "red": "textures/entity/suv_red"
+      },
       "geometry": { "default": "geometry.mycar.suv" },
       "animations": {
         "wheels": "animation.mycar.suv.wheels",
@@ -12,7 +16,7 @@
       },
       "particle_effects": { "exhaust": "minecraft:basic_smoke_particle" },
       "scripts": { "animate": ["wheels", { "exhaust": "query.has_rider" }] },
-      "render_controllers": ["controller.render.default"]
+      "render_controllers": ["controller.render.mycar.suv"]
     }
   }
 }

@@ -32,6 +32,14 @@ PALETTE = {
 }
 NAMES = list(PALETTE)
 
+# Body color of each paint (ADR 0017). Khaki writes suv.png; the others write suv_<paint>.png.
+# The red stays darker than the "tail" swatch so the tail lights still show on a red body.
+BODY_PAINTS = {
+    "khaki": PALETTE["body"],
+    "green": (62, 96, 56),
+    "red": (128, 22, 26),
+}
+
 
 def uv(color):
     i = NAMES.index(color)
@@ -296,16 +304,23 @@ def png(path, w, h, pixel):
     path.write_bytes(data)
 
 
-def swatch(x, y):
-    i = x // 4
-    if y >= 4 or i >= len(NAMES):
-        return (0, 0, 0)
-    return PALETTE[NAMES[i]]
+def swatches(body_color):
+    colors = {**PALETTE, "body": body_color}
+
+    def swatch(x, y):
+        i = x // 4
+        if y >= 4 or i >= len(NAMES):
+            return (0, 0, 0)
+        return colors[NAMES[i]]
+
+    return swatch
 
 
 (RP / "textures/entity").mkdir(parents=True, exist_ok=True)
 (RP / "textures/items").mkdir(parents=True, exist_ok=True)
-png(RP / "textures/entity/suv.png", 64, 16, swatch)
+for paint, body_color in BODY_PAINTS.items():
+    name = "suv" if paint == "khaki" else f"suv_{paint}"
+    png(RP / f"textures/entity/{name}.png", 64, 16, swatches(body_color))
 
 
 def icon(x, y):

@@ -1,6 +1,7 @@
 // Composition root: wires the repository, port implementations, and use cases together.
 import { DriveVehicles } from "../application/driveVehicles";
 import { HitVehicle } from "../application/hitVehicle";
+import { PaintVehicle } from "../application/paintVehicle";
 import { PlaceVehicle } from "../application/placeVehicle";
 import { BedrockVehicleWorld } from "./bedrock/bedrockVehicleWorld";
 import { registerSubscriptions } from "./bedrock/subscriptions";
@@ -17,6 +18,7 @@ export function bootstrap(): void {
       drive: new DriveVehicles(bedrock, repo, log),
       place: new PlaceVehicle(bedrock, repo),
       hit: new HitVehicle(bedrock, repo),
+      paint: new PaintVehicle(bedrock),
     },
     store,
   );

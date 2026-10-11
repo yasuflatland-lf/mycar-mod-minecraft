@@ -22,6 +22,7 @@ Work in progress. The first milestone is the **driving core**:
 - Spinning wheels and body tilt
 - Ram damage to mobs, while keeping occupants safe
 - Placing a vehicle from an item and breaking it back into one
+- Repainting a vehicle green or red by using a dye on it
 
 The manual test checklist is in [`docs/manual-test.md`](docs/manual-test.md).
 
