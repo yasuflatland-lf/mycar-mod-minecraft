@@ -1,0 +1,464 @@
+{
+  "format_version": "1.21.80",
+  "minecraft:entity": {
+    "description": {
+      "identifier": "yasu_ride:suv",
+      "is_spawnable": false,
+      "is_summonable": true,
+      "properties": {
+        "yasu_ride:form": {
+          "type": "enum",
+          "values": ["car", "takeoff", "hover", "landing", "submarine"],
+          "default": "car",
+          "client_sync": true
+        },
+        "yasu_ride:bank": {
+          "type": "float",
+          "range": [-30.0, 30.0],
+          "default": 0.0,
+          "client_sync": true
+        },
+        "yasu_ride:gear_down": {
+          "type": "bool",
+          "default": true,
+          "client_sync": true
+        },
+        "yasu_ride:headlights": {
+          "type": "bool",
+          "default": false,
+          "client_sync": true
+        }
+      }
+    },
+    "component_groups": {
+      "yasu_ride:paint_khaki": { "minecraft:variant": { "value": 0 } },
+      "yasu_ride:paint_green": { "minecraft:variant": { "value": 1 } },
+      "yasu_ride:paint_red": { "minecraft:variant": { "value": 2 } },
+      "yasu_ride:paint_white": { "minecraft:variant": { "value": 3 } },
+      "yasu_ride:paint_light_gray": {
+        "minecraft:variant": { "value": 4 }
+      },
+      "yasu_ride:paint_gray": { "minecraft:variant": { "value": 5 } },
+      "yasu_ride:paint_black": { "minecraft:variant": { "value": 6 } },
+      "yasu_ride:paint_orange": { "minecraft:variant": { "value": 7 } },
+      "yasu_ride:paint_yellow": { "minecraft:variant": { "value": 8 } },
+      "yasu_ride:paint_lime": { "minecraft:variant": { "value": 9 } },
+      "yasu_ride:paint_cyan": { "minecraft:variant": { "value": 10 } },
+      "yasu_ride:paint_light_blue": {
+        "minecraft:variant": { "value": 11 }
+      },
+      "yasu_ride:paint_blue": { "minecraft:variant": { "value": 12 } },
+      "yasu_ride:paint_purple": {
+        "minecraft:variant": { "value": 13 }
+      },
+      "yasu_ride:paint_magenta": {
+        "minecraft:variant": { "value": 14 }
+      },
+      "yasu_ride:paint_pink": { "minecraft:variant": { "value": 15 } },
+      "yasu_ride:weightless": {
+        "minecraft:physics": { "has_gravity": false }
+      },
+      "yasu_ride:weighted": { "minecraft:physics": {} }
+    },
+    "events": {
+      "yasu_ride:paint_khaki": {
+        "add": { "component_groups": ["yasu_ride:paint_khaki"] },
+        "remove": {
+          "component_groups": [
+            "yasu_ride:paint_green",
+            "yasu_ride:paint_red",
+            "yasu_ride:paint_white",
+            "yasu_ride:paint_light_gray",
+            "yasu_ride:paint_gray",
+            "yasu_ride:paint_black",
+            "yasu_ride:paint_orange",
+            "yasu_ride:paint_yellow",
+            "yasu_ride:paint_lime",
+            "yasu_ride:paint_cyan",
+            "yasu_ride:paint_light_blue",
+            "yasu_ride:paint_blue",
+            "yasu_ride:paint_purple",
+            "yasu_ride:paint_magenta",
+            "yasu_ride:paint_pink"
+          ]
+        }
+      },
+      "yasu_ride:paint_green": {
+        "add": { "component_groups": ["yasu_ride:paint_green"] },
+        "remove": {
+          "component_groups": [
+            "yasu_ride:paint_khaki",
+            "yasu_ride:paint_red",
+            "yasu_ride:paint_white",
+            "yasu_ride:paint_light_gray",
+            "yasu_ride:paint_gray",
+            "yasu_ride:paint_black",
+            "yasu_ride:paint_orange",
+            "yasu_ride:paint_yellow",
+            "yasu_ride:paint_lime",
+            "yasu_ride:paint_cyan",
+            "yasu_ride:paint_light_blue",
+            "yasu_ride:paint_blue",
+            "yasu_ride:paint_purple",
+            "yasu_ride:paint_magenta",
+            "yasu_ride:paint_pink"
+          ]
+        }
+      },
+      "yasu_ride:paint_red": {
+        "add": { "component_groups": ["yasu_ride:paint_red"] },
+        "remove": {
+          "component_groups": [
+            "yasu_ride:paint_khaki",
+            "yasu_ride:paint_green",
+            "yasu_ride:paint_white",
+            "yasu_ride:paint_light_gray",
+            "yasu_ride:paint_gray",
+            "yasu_ride:paint_black",
+            "yasu_ride:paint_orange",
+            "yasu_ride:paint_yellow",
+            "yasu_ride:paint_lime",
+            "yasu_ride:paint_cyan",
+            "yasu_ride:paint_light_blue",
+            "yasu_ride:paint_blue",
+            "yasu_ride:paint_purple",
+            "yasu_ride:paint_magenta",
+            "yasu_ride:paint_pink"
+          ]
+        }
+      },
+      "yasu_ride:paint_white": {
+        "add": { "component_groups": ["yasu_ride:paint_white"] },
+        "remove": {
+          "component_groups": [
+            "yasu_ride:paint_khaki",
+            "yasu_ride:paint_green",
+            "yasu_ride:paint_red",
+            "yasu_ride:paint_light_gray",
+            "yasu_ride:paint_gray",
+            "yasu_ride:paint_black",
+            "yasu_ride:paint_orange",
+            "yasu_ride:paint_yellow",
+            "yasu_ride:paint_lime",
+            "yasu_ride:paint_cyan",
+            "yasu_ride:paint_light_blue",
+            "yasu_ride:paint_blue",
+            "yasu_ride:paint_purple",
+            "yasu_ride:paint_magenta",
+            "yasu_ride:paint_pink"
+          ]
+        }
+      },
+      "yasu_ride:paint_light_gray": {
+        "add": { "component_groups": ["yasu_ride:paint_light_gray"] },
+        "remove": {
+          "component_groups": [
+            "yasu_ride:paint_khaki",
+            "yasu_ride:paint_green",
+            "yasu_ride:paint_red",
+            "yasu_ride:paint_white",
+            "yasu_ride:paint_gray",
+            "yasu_ride:paint_black",
+            "yasu_ride:paint_orange",
+            "yasu_ride:paint_yellow",
+            "yasu_ride:paint_lime",
+            "yasu_ride:paint_cyan",
+            "yasu_ride:paint_light_blue",
+            "yasu_ride:paint_blue",
+            "yasu_ride:paint_purple",
+            "yasu_ride:paint_magenta",
+            "yasu_ride:paint_pink"
+          ]
+        }
+      },
+      "yasu_ride:paint_gray": {
+        "add": { "component_groups": ["yasu_ride:paint_gray"] },
+        "remove": {
+          "component_groups": [
+            "yasu_ride:paint_khaki",
+            "yasu_ride:paint_green",
+            "yasu_ride:paint_red",
+            "yasu_ride:paint_white",
+            "yasu_ride:paint_light_gray",
+            "yasu_ride:paint_black",
+            "yasu_ride:paint_orange",
+            "yasu_ride:paint_yellow",
+            "yasu_ride:paint_lime",
+            "yasu_ride:paint_cyan",
+            "yasu_ride:paint_light_blue",
+            "yasu_ride:paint_blue",
+            "yasu_ride:paint_purple",
+            "yasu_ride:paint_magenta",
+            "yasu_ride:paint_pink"
+          ]
+        }
+      },
+      "yasu_ride:paint_black": {
+        "add": { "component_groups": ["yasu_ride:paint_black"] },
+        "remove": {
+          "component_groups": [
+            "yasu_ride:paint_khaki",
+            "yasu_ride:paint_green",
+            "yasu_ride:paint_red",
+            "yasu_ride:paint_white",
+            "yasu_ride:paint_light_gray",
+            "yasu_ride:paint_gray",
+            "yasu_ride:paint_orange",
+            "yasu_ride:paint_yellow",
+            "yasu_ride:paint_lime",
+            "yasu_ride:paint_cyan",
+            "yasu_ride:paint_light_blue",
+            "yasu_ride:paint_blue",
+            "yasu_ride:paint_purple",
+            "yasu_ride:paint_magenta",
+            "yasu_ride:paint_pink"
+          ]
+        }
+      },
+      "yasu_ride:paint_orange": {
+        "add": { "component_groups": ["yasu_ride:paint_orange"] },
+        "remove": {
+          "component_groups": [
+            "yasu_ride:paint_khaki",
+            "yasu_ride:paint_green",
+            "yasu_ride:paint_red",
+            "yasu_ride:paint_white",
+            "yasu_ride:paint_light_gray",
+            "yasu_ride:paint_gray",
+            "yasu_ride:paint_black",
+            "yasu_ride:paint_yellow",
+            "yasu_ride:paint_lime",
+            "yasu_ride:paint_cyan",
+            "yasu_ride:paint_light_blue",
+            "yasu_ride:paint_blue",
+            "yasu_ride:paint_purple",
+            "yasu_ride:paint_magenta",
+            "yasu_ride:paint_pink"
+          ]
+        }
+      },
+      "yasu_ride:paint_yellow": {
+        "add": { "component_groups": ["yasu_ride:paint_yellow"] },
+        "remove": {
+          "component_groups": [
+            "yasu_ride:paint_khaki",
+            "yasu_ride:paint_green",
+            "yasu_ride:paint_red",
+            "yasu_ride:paint_white",
+            "yasu_ride:paint_light_gray",
+            "yasu_ride:paint_gray",
+            "yasu_ride:paint_black",
+            "yasu_ride:paint_orange",
+            "yasu_ride:paint_lime",
+            "yasu_ride:paint_cyan",
+            "yasu_ride:paint_light_blue",
+            "yasu_ride:paint_blue",
+            "yasu_ride:paint_purple",
+            "yasu_ride:paint_magenta",
+            "yasu_ride:paint_pink"
+          ]
+        }
+      },
+      "yasu_ride:paint_lime": {
+        "add": { "component_groups": ["yasu_ride:paint_lime"] },
+        "remove": {
+          "component_groups": [
+            "yasu_ride:paint_khaki",
+            "yasu_ride:paint_green",
+            "yasu_ride:paint_red",
+            "yasu_ride:paint_white",
+            "yasu_ride:paint_light_gray",
+            "yasu_ride:paint_gray",
+            "yasu_ride:paint_black",
+            "yasu_ride:paint_orange",
+            "yasu_ride:paint_yellow",
+            "yasu_ride:paint_cyan",
+            "yasu_ride:paint_light_blue",
+            "yasu_ride:paint_blue",
+            "yasu_ride:paint_purple",
+            "yasu_ride:paint_magenta",
+            "yasu_ride:paint_pink"
+          ]
+        }
+      },
+      "yasu_ride:paint_cyan": {
+        "add": { "component_groups": ["yasu_ride:paint_cyan"] },
+        "remove": {
+          "component_groups": [
+            "yasu_ride:paint_khaki",
+            "yasu_ride:paint_green",
+            "yasu_ride:paint_red",
+            "yasu_ride:paint_white",
+            "yasu_ride:paint_light_gray",
+            "yasu_ride:paint_gray",
+            "yasu_ride:paint_black",
+            "yasu_ride:paint_orange",
+            "yasu_ride:paint_yellow",
+            "yasu_ride:paint_lime",
+            "yasu_ride:paint_light_blue",
+            "yasu_ride:paint_blue",
+            "yasu_ride:paint_purple",
+            "yasu_ride:paint_magenta",
+            "yasu_ride:paint_pink"
+          ]
+        }
+      },
+      "yasu_ride:paint_light_blue": {
+        "add": { "component_groups": ["yasu_ride:paint_light_blue"] },
+        "remove": {
+          "component_groups": [
+            "yasu_ride:paint_khaki",
+            "yasu_ride:paint_green",
+            "yasu_ride:paint_red",
+            "yasu_ride:paint_white",
+            "yasu_ride:paint_light_gray",
+            "yasu_ride:paint_gray",
+            "yasu_ride:paint_black",
+            "yasu_ride:paint_orange",
+            "yasu_ride:paint_yellow",
+            "yasu_ride:paint_lime",
+            "yasu_ride:paint_cyan",
+            "yasu_ride:paint_blue",
+            "yasu_ride:paint_purple",
+            "yasu_ride:paint_magenta",
+            "yasu_ride:paint_pink"
+          ]
+        }
+      },
+      "yasu_ride:paint_blue": {
+        "add": { "component_groups": ["yasu_ride:paint_blue"] },
+        "remove": {
+          "component_groups": [
+            "yasu_ride:paint_khaki",
+            "yasu_ride:paint_green",
+            "yasu_ride:paint_red",
+            "yasu_ride:paint_white",
+            "yasu_ride:paint_light_gray",
+            "yasu_ride:paint_gray",
+            "yasu_ride:paint_black",
+            "yasu_ride:paint_orange",
+            "yasu_ride:paint_yellow",
+            "yasu_ride:paint_lime",
+            "yasu_ride:paint_cyan",
+            "yasu_ride:paint_light_blue",
+            "yasu_ride:paint_purple",
+            "yasu_ride:paint_magenta",
+            "yasu_ride:paint_pink"
+          ]
+        }
+      },
+      "yasu_ride:paint_purple": {
+        "add": { "component_groups": ["yasu_ride:paint_purple"] },
+        "remove": {
+          "component_groups": [
+            "yasu_ride:paint_khaki",
+            "yasu_ride:paint_green",
+            "yasu_ride:paint_red",
+            "yasu_ride:paint_white",
+            "yasu_ride:paint_light_gray",
+            "yasu_ride:paint_gray",
+            "yasu_ride:paint_black",
+            "yasu_ride:paint_orange",
+            "yasu_ride:paint_yellow",
+            "yasu_ride:paint_lime",
+            "yasu_ride:paint_cyan",
+            "yasu_ride:paint_light_blue",
+            "yasu_ride:paint_blue",
+            "yasu_ride:paint_magenta",
+            "yasu_ride:paint_pink"
+          ]
+        }
+      },
+      "yasu_ride:paint_magenta": {
+        "add": { "component_groups": ["yasu_ride:paint_magenta"] },
+        "remove": {
+          "component_groups": [
+            "yasu_ride:paint_khaki",
+            "yasu_ride:paint_green",
+            "yasu_ride:paint_red",
+            "yasu_ride:paint_white",
+            "yasu_ride:paint_light_gray",
+            "yasu_ride:paint_gray",
+            "yasu_ride:paint_black",
+            "yasu_ride:paint_orange",
+            "yasu_ride:paint_yellow",
+            "yasu_ride:paint_lime",
+            "yasu_ride:paint_cyan",
+            "yasu_ride:paint_light_blue",
+            "yasu_ride:paint_blue",
+            "yasu_ride:paint_purple",
+            "yasu_ride:paint_pink"
+          ]
+        }
+      },
+      "yasu_ride:paint_pink": {
+        "add": { "component_groups": ["yasu_ride:paint_pink"] },
+        "remove": {
+          "component_groups": [
+            "yasu_ride:paint_khaki",
+            "yasu_ride:paint_green",
+            "yasu_ride:paint_red",
+            "yasu_ride:paint_white",
+            "yasu_ride:paint_light_gray",
+            "yasu_ride:paint_gray",
+            "yasu_ride:paint_black",
+            "yasu_ride:paint_orange",
+            "yasu_ride:paint_yellow",
+            "yasu_ride:paint_lime",
+            "yasu_ride:paint_cyan",
+            "yasu_ride:paint_light_blue",
+            "yasu_ride:paint_blue",
+            "yasu_ride:paint_purple",
+            "yasu_ride:paint_magenta"
+          ]
+        }
+      },
+      "yasu_ride:gravity_off": {
+        "add": { "component_groups": ["yasu_ride:weightless"] },
+        "remove": { "component_groups": ["yasu_ride:weighted"] }
+      },
+      "yasu_ride:gravity_on": {
+        "add": { "component_groups": ["yasu_ride:weighted"] },
+        "remove": { "component_groups": ["yasu_ride:weightless"] }
+      }
+    },
+    "components": {
+      "minecraft:variant": { "value": 0 },
+      "minecraft:type_family": {
+        "family": ["yasu_ride_vehicle", "inanimate"]
+      },
+      "minecraft:collision_box": { "width": 1.8, "height": 1.6 },
+      "minecraft:health": { "value": 20, "max": 20 },
+      "minecraft:physics": {},
+      "minecraft:pushable": {
+        "is_pushable": false,
+        "is_pushable_by_piston": true
+      },
+      "minecraft:knockback_resistance": { "value": 1.0 },
+      "minecraft:input_ground_controlled": {},
+      "minecraft:can_power_jump": {},
+      "minecraft:horse.jump_strength": { "value": 0 },
+      "minecraft:movement": { "value": 0.0 },
+      "minecraft:variable_max_auto_step": {
+        "base_value": 1.0625,
+        "jump_prevented_value": 1.0625
+      },
+      "minecraft:damage_sensor": {
+        "triggers": { "cause": "all", "deals_damage": "no" }
+      },
+      "minecraft:rideable": {
+        "seat_count": 4,
+        "controlling_seat": 0,
+        "crouching_skip_interact": true,
+        "family_types": ["player"],
+        "interact_text": "action.interact.ride.horse",
+        "seats": [
+          { "position": [-0.38, 0.4, 0.35], "lock_rider_rotation": 90 },
+          { "position": [0.38, 0.4, 0.35] },
+          { "position": [-0.38, 0.4, -0.8] },
+          { "position": [0.38, 0.4, -0.8] }
+        ]
+      }
+    }
+  }
+}

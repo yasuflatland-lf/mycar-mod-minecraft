@@ -1,0 +1,28 @@
+{
+  "format_version": "1.20.10",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "yasu_ride:suv_item"
+    },
+    "tags": ["crafting_table"],
+    "unlock": {
+      "context": "AlwaysUnlocked"
+    },
+    "pattern": ["III", "IBI", "C C"],
+    "key": {
+      "I": {
+        "item": "minecraft:iron_ingot"
+      },
+      "B": {
+        "item": "minecraft:iron_block"
+      },
+      "C": {
+        "item": "minecraft:coal_block"
+      }
+    },
+    "result": {
+      "item": "yasu_ride:suv_item",
+      "count": 1
+    }
+  }
+}
