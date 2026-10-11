@@ -10,7 +10,7 @@ export const STARTER_RECEIVED_PROPERTY = id("starter_received");
 export const FLEET_PROPERTY = id("fleet");
 /** Item a rider uses to switch the headlights (ADR 0020). */
 export const HEADLIGHT_SWITCH_TYPE = id("headlight_switch");
-/** Entity property in packs/yasuflatland_bp/entities/yasuflatland/suv.json; the render controller makes the lamps glow by it. */
+/** Entity property in packs/yasu_ride_bp/entities/yasu_ride/suv.se.json; the render controller makes the lamps glow by it. */
 export const HEADLIGHTS_PROPERTY = id("headlights");
 /** Dynamic property on a vehicle holding the cells it put light blocks in. */
 export const LIT_CELLS_PROPERTY = id("lit_cells");
@@ -48,5 +48,5 @@ export const PAINT_VARIANT: Readonly<Record<Paint, number>> =
     Paint,
     number
   >;
-/** Entity event in packs/yasuflatland_bp/entities/yasuflatland/suv.json that sets the variant for a paint. */
+/** Entity event in packs/yasu_ride_bp/entities/yasu_ride/suv.se.json that sets the variant for a paint. */
 export const paintEvent = (paint: Paint): string => id(`paint_${paint}`);
