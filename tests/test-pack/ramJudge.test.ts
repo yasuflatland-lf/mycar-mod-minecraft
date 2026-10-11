@@ -53,7 +53,9 @@ describe("judgeRam", () => {
         hp0,
         x,
         lead,
-        fc.double({ min: -5, max: MIN_PUSH, noNaN: true }),
+        // Keep a margin below MIN_PUSH: at exactly MIN_PUSH, (g + push) - g can
+        // round to just above it and pass.
+        fc.double({ min: -5, max: MIN_PUSH - 0.01, noNaN: true }),
         (hp, g, before, push) => {
           expect(judgeRam(hp, g, rammed(hp, g, before, push)).pass).toBe(false);
         },
