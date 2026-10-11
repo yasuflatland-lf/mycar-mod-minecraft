@@ -105,11 +105,13 @@ describe("Resource Pack flight visuals (ADR 0022)", () => {
     ]);
   });
 
-  it("shows the glow bones only while the wheels are up, and the rear glass while the vehicle is not on the ground", () => {
+  it("shows the glow bones only while the wheels are up, and the rear glass while the vehicle is not on the ground, and hides the submarine bones", () => {
     expect(render.part_visibility).toEqual([
       { "*": true },
       { "glow_*": "!query.property('mycar:gear_down')" },
       { rear_glass: "query.property('mycar:form') != 'car'" },
+      { windows_sealed: false },
+      { "prop_*": false },
     ]);
   });
 
