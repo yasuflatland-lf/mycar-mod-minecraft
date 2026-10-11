@@ -30,6 +30,23 @@ Work in progress. The first milestone is the **driving core**:
 
 The manual test checklist is in [`docs/manual-test.md`](docs/manual-test.md).
 
+## Installing
+
+Download `mycar-<version>.mcaddon` from the [latest release](https://github.com/yasuflatland-lf/mycar-mod-minecraft/releases/latest). Players who join a server that already has the packs do not need to install anything: the server sends the Resource Pack when they join, so accept the download prompt.
+
+### On iPad
+
+1. **Download it in Safari.** Open the [latest release](https://github.com/yasuflatland-lf/mycar-mod-minecraft/releases/latest), tap `mycar-<version>.mcaddon` under Assets, and choose **Download**. It is saved to the Downloads folder in the Files app.
+2. **Open it in Minecraft.**
+   - In the Files app, long-press the file and choose **Share → Minecraft**.
+   - Minecraft starts and shows "Import started..." and then "Successfully imported" at the top of the screen.
+   - If the file name ends in `.zip`, iOS has changed the extension. Long-press it, choose **Rename**, change it back to `.mcaddon`, and share it again.
+   - If Minecraft is not in the share sheet, look under **More** at the right end of the app row.
+3. **Turn it on in a world.**
+   - Open **Edit** on a world, or **Create New** for a new one.
+   - Under **Behavior Packs → Available**, activate **MyCar**. **MyCar Resources** is activated along with it.
+   - Leave the experiments off; none are needed.
+
 ## How to play
 
 ### Getting a vehicle
