@@ -31,6 +31,11 @@ class FlightSim {
     return this.y <= 0;
   }
 
+  private horizontalDrag(): number {
+    if (!this.gravity) return SPEC.flightDrag;
+    return this.onGround ? GROUND_FRICTION : AIR_DRAG;
+  }
+
   step(input: RawInput | undefined): void {
     const out = this.vehicle.tick({
       tick: this.tick++,
@@ -46,11 +51,7 @@ class FlightSim {
       this.changes.push(out.flight);
       this.gravity = out.flight === "ground";
     }
-    const drag = this.gravity
-      ? this.onGround
-        ? GROUND_FRICTION
-        : AIR_DRAG
-      : SPEC.flightDrag;
+    const drag = this.horizontalDrag();
     this.vel = {
       x: (this.vel.x + out.impulse.x) * drag,
       z: (this.vel.z + out.impulse.z) * drag,
