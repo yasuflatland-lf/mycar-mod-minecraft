@@ -267,6 +267,34 @@ describe("Vehicle as a submarine", () => {
     expect(sim.vy).toBeCloseTo(SPEC.maxClimb, 6);
   });
 
+  it("caps speed at water speed so a released throttle slows down at once", () => {
+    fc.assert(
+      fc.property(
+        fc.array(fc.double({ min: 0, max: 1, noNaN: true }), {
+          minLength: 1,
+          maxLength: 150,
+        }),
+        (throttles) => {
+          const sim = new DiveSim(1000);
+          sim.y = 500;
+          for (const moveY of throttles) {
+            sim.step({ ...IDLE, moveY });
+            expect(sim.vehicle.speed).toBeLessThanOrEqual(SPEC.maxWaterSpeed);
+          }
+          sim.run(FORWARD, 100);
+          expect(sim.vehicle.speed).toBe(SPEC.maxWaterSpeed);
+          let previous = length(sim.body.vel);
+          for (let i = 0; i < 5; i++) {
+            sim.step(IDLE);
+            const now = length(sim.body.vel);
+            expect(now).toBeLessThan(previous);
+            previous = now;
+          }
+        },
+      ),
+    );
+  });
+
   it("still rises while a shore step stops it, as a step jump does on the ground", () => {
     const sim = new DiveSim(100);
     sim.obstacle = stepAhead(1);
