@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Vec2 } from "../../src/domain/shared/vec";
+import { forward, type Vec2 } from "../../src/domain/shared/vec";
 import type { RawInput } from "../../src/domain/vehicle/driveInput";
 import type { FlightMode } from "../../src/domain/vehicle/flight";
 import { SPEC } from "../../src/domain/vehicle/spec";
@@ -157,5 +157,34 @@ describe("Vehicle in flight (ADR 0021)", () => {
     sim.run(FORWARD, 20);
     expect(sim.changes).toEqual([]);
     expect(sim.y).toBeCloseTo(5, 6);
+  });
+
+  it("rams a target at most once when it flies into a wall with the throttle held", () => {
+    const sim = flyingSim();
+    sim.run(FORWARD, 60);
+    const f = forward(sim.vehicle.yaw);
+    let hits = 0;
+    for (let i = 0; i < 40; i++) {
+      const out = sim.vehicle.tick({
+        tick: sim.tick++,
+        riders: [],
+        testInput: FORWARD,
+        velocity: { x: 0, z: 0 },
+        velocityY: 0,
+        onGround: false,
+        solidAt: () => false,
+        targets: () => [
+          {
+            id: "mob",
+            offset: { x: f.x * 1.5, y: 0, z: f.z * 1.5 },
+            protectedOccupant: false,
+          },
+        ],
+      });
+      hits += out.hits.length;
+      if (i > 0) expect(out.hits).toEqual([]);
+    }
+    expect(hits).toBeLessThanOrEqual(1);
+    expect(Math.abs(sim.vehicle.speed)).toBeLessThanOrEqual(SPEC.ramMinSpeed);
   });
 });

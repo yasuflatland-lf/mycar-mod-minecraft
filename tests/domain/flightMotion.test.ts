@@ -1,11 +1,13 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { length, type Vec2 } from "../../src/domain/shared/vec";
+import { dot, forward, length, type Vec2 } from "../../src/domain/shared/vec";
 import type { DriveInput } from "../../src/domain/vehicle/driveInput";
 import {
   initialMotion,
   type MotionResult,
+  type MotionState,
   stepFlightMotion,
+  updateSpeed,
 } from "../../src/domain/vehicle/motion";
 import { SPEC } from "../../src/domain/vehicle/spec";
 
@@ -33,6 +35,18 @@ const driveInput = fc.record({
   creep: fc.boolean(),
 });
 const inputs = fc.array(driveInput, { minLength: 1, maxLength: 300 });
+const component = fc.double({ min: -2, max: 2, noNaN: true });
+const vec = fc.record({ x: component, z: component });
+const flyingState = fc.record({
+  speed: fc.double({ min: -SPEC.maxReverse, max: SPEC.maxSpeed, noNaN: true }),
+  yaw: fc.double({ min: -180, max: 180, noNaN: true }),
+  airExpected: vec,
+});
+const prevState = (s: {
+  speed: number;
+  yaw: number;
+  airExpected: Vec2;
+}): MotionState => ({ ...s, stepTicks: 0 });
 
 describe("stepFlightMotion (ADR 0021)", () => {
   it("keeps horizontal speed within max speed", () => {
@@ -78,5 +92,51 @@ describe("stepFlightMotion (ADR 0021)", () => {
     );
     const last = frames.at(-1)?.vel ?? { x: 0, z: 0 };
     expect(length(last)).toBeGreaterThanOrEqual(SPEC.maxSpeed * 0.95);
+  });
+
+  it("reports a wall and drops to the forward speed when an expected axis comes back zero", () => {
+    const axisValue = fc
+      .double({ min: SPEC.blockedAxisMin, max: 2, noNaN: true })
+      .filter((a) => a > SPEC.blockedAxisMin)
+      .chain((a) => fc.constantFrom(a, -a));
+    fc.assert(
+      fc.property(
+        flyingState,
+        driveInput,
+        fc.boolean(),
+        axisValue,
+        component,
+        (s, input, onX, stopped, other) => {
+          const e = onX
+            ? { x: stopped, z: s.airExpected.z }
+            : { x: s.airExpected.x, z: stopped };
+          const v = onX ? { x: 0, z: other } : { x: other, z: 0 };
+          const r = stepFlightMotion(
+            prevState({ ...s, airExpected: e }),
+            input,
+            v,
+          );
+          expect(r.blocked).toBe(true);
+          const vLong = dot(v, forward(r.state.yaw));
+          expect(Math.abs(r.state.speed)).toBeLessThanOrEqual(
+            Math.abs(vLong) + SPEC.accel + 1e-9,
+          );
+        },
+      ),
+    );
+  });
+
+  it("does not report a wall when the velocity keeps the free-flight share of what was given", () => {
+    fc.assert(
+      fc.property(flyingState, driveInput, (s, input) => {
+        const e = s.airExpected;
+        const v = { x: e.x * ENGINE_DRAG, z: e.z * ENGINE_DRAG };
+        const r = stepFlightMotion(prevState(s), input, v);
+        expect(r.blocked).toBe(false);
+        expect(r.state.speed).toBe(
+          updateSpeed(s.speed, input.throttle, input.creep),
+        );
+      }),
+    );
   });
 });
