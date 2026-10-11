@@ -66,7 +66,7 @@ export const SPEC = {
   // reports the measured horizontal value.
   flightDrag: 0.91,
   flightVerticalDrag: 0.98,
-  // Submarine (ADR 0037)
+  // Submarine (ADR 0038)
   maxWaterSpeed: 0.5,
   waterDrag: 0.8, // Placeholder until the submarine in-game tests measure drag.
   waterVerticalDrag: 0.8, // Placeholder until the submarine in-game tests measure drag.

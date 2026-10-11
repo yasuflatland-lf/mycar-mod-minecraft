@@ -41,6 +41,7 @@ This directory records design decisions and the reasons behind them. The format 
 | [0035](0035-jump-one-block-steps-in-the-script.md) | Jump one-block steps in the script, and skip blocks without a collision box | Accepted |
 | [0036](0036-paint-by-hitting-with-a-dye.md) | Paint by hitting with a dye, and get in by interacting | Accepted |
 | [0037](0037-vehicle-forms.md) | Vehicle forms | Accepted |
+| [0038](0038-submarine.md) | Submarine form | Accepted |
 
 The measurements and in-game tests behind these decisions are in [the driving-core spike findings](../spike-driving-core.md).
 
