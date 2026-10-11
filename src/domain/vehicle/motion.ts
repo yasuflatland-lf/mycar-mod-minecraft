@@ -18,6 +18,9 @@ export interface MotionState {
   // tick was on the ground: in the air the engine applies airFriction and only
   // airControl of the impulse, so the ratio would not measure ground friction.
   expected?: Vec2;
+  // Velocity flight aimed for in the previous tick, kept apart from
+  // `expected` so flight ratios never feed the ground friction estimate.
+  airExpected?: Vec2;
   stepTicks: number; // Remaining ticks of control in the air after jumping up a step
 }
 
@@ -66,13 +69,30 @@ export function steerYaw(yaw: number, speed: number, steer: number): number {
   return normalizeYaw(yaw - steer * SPEC.turnRate * factor);
 }
 
+/**
+ * Whether the observed velocity kept less than `keptRatio` of what was given
+ * on either axis. The engine zeroes velocity per axis at walls, so x and z
+ * are checked separately (ADR 0003).
+ */
+function hitWall(v: Vec2, given: Vec2, keptRatio: number): boolean {
+  const axisBlocked = (ve: number, ee: number) =>
+    Math.abs(ee) > SPEC.blockedAxisMin && ve / ee < keptRatio;
+  return axisBlocked(v.x, given.x) || axisBlocked(v.z, given.z);
+}
+
+/** Lowers the internal speed to the actual forward speed after a wall hit. */
+function speedAfterWall(speed: number, vLong: number): number {
+  if (Math.abs(vLong) >= Math.abs(speed)) return speed;
+  return clamp(vLong, -SPEC.maxReverse, SPEC.maxSpeed);
+}
+
 export function stepMotion(
   prev: MotionState,
   input: DriveInput,
   obs: Observation,
   probe: StepProbe,
 ): MotionResult {
-  const st: MotionState = { ...prev };
+  const st: MotionState = { ...prev, airExpected: undefined };
   st.speed = updateSpeed(st.speed, input.throttle, input.creep);
   st.yaw = steerYaw(st.yaw, st.speed, input.steer);
   const f = forward(st.yaw);
@@ -85,15 +105,10 @@ export function stepMotion(
   if (st.expected && obs.onGround) {
     const e = st.expected;
     const limit = (st.friction ?? SPEC.defaultFriction) * SPEC.blockedRatio;
-    // The engine zeroes velocity per axis at walls, so check x and z separately.
-    const axisBlocked = (ve: number, ee: number) =>
-      Math.abs(ee) > SPEC.blockedAxisMin && ve / ee < limit;
-    blocked = axisBlocked(v.x, e.x) || axisBlocked(v.z, e.z);
+    blocked = hitWall(v, e, limit);
     if (blocked) {
-      // While colliding, freeze the friction estimate and lower the internal
-      // speed to the actual forward speed, clamped at the reverse limit.
-      if (Math.abs(vLong) < Math.abs(st.speed))
-        st.speed = clamp(vLong, -SPEC.maxReverse, SPEC.maxSpeed);
+      // While colliding, freeze the friction estimate.
+      st.speed = speedAfterWall(st.speed, vLong);
     } else {
       const eLen2 = e.x * e.x + e.z * e.z;
       if (eLen2 > SPEC.minExpectedForFriction ** 2) {
@@ -154,17 +169,23 @@ export function stepMotion(
  * One tick of horizontal movement with gravity off (ADR 0021). There is no
  * ground friction to estimate and no step to climb, so the impulse is
  * pre-divided by the engine's flight drag and applied in full. The handbrake
- * does not exist in the air.
+ * does not exist in the air. Walls are detected as on the ground (ADR 0003),
+ * against flight drag: in free flight the observed velocity keeps flightDrag
+ * of what was given.
  */
 export function stepFlightMotion(
   prev: MotionState,
   input: DriveInput,
   v: Vec2,
 ): MotionResult {
-  const speed = updateSpeed(prev.speed, input.throttle, input.creep);
+  let speed = updateSpeed(prev.speed, input.throttle, input.creep);
   const yaw = steerYaw(prev.yaw, speed, input.steer);
   const f = forward(yaw);
   const vLong = dot(v, f);
+  const blocked =
+    prev.airExpected !== undefined &&
+    hitWall(v, prev.airExpected, SPEC.flightDrag * SPEC.blockedRatio);
+  if (blocked) speed = speedAfterWall(speed, vLong);
   const keepLat = 1 - SPEC.grip;
   const target = clampLength(
     {
@@ -173,14 +194,22 @@ export function stepFlightMotion(
     },
     SPEC.maxSpeed,
   );
+  const given = {
+    x: target.x / SPEC.flightDrag,
+    z: target.z / SPEC.flightDrag,
+  };
   return {
-    state: { ...prev, speed, yaw, expected: undefined, stepTicks: 0 },
+    state: {
+      ...prev,
+      speed,
+      yaw,
+      expected: undefined,
+      airExpected: given,
+      stepTicks: 0,
+    },
     forward: f,
     jumped: false,
-    blocked: false,
-    impulse: {
-      x: target.x / SPEC.flightDrag - v.x,
-      z: target.z / SPEC.flightDrag - v.z,
-    },
+    blocked,
+    impulse: { x: given.x - v.x, z: given.z - v.z },
   };
 }

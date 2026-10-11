@@ -12,10 +12,10 @@ export function isFlightMode(value: unknown): value is FlightMode {
 
 export interface FlightState {
   readonly mode: FlightMode;
-  /** Ticks spent in mode, counting the tick that entered it. */
+  /** Ticks spent in mode, counting the tick that entered it; 0 for a state built by initialFlight. */
   readonly modeTicks: number;
   readonly jumpHeld: boolean;
-  /** Tick of the last Jump press that has not completed a double tap. */
+  /** Tick of the last Jump press in this mode that has not completed a double tap. */
   readonly lastTap: number | undefined;
 }
 
@@ -31,7 +31,7 @@ export function initialFlight(mode: FlightMode = "ground"): FlightState {
   return { mode, modeTicks: 0, jumpHeld: false, lastTap: undefined };
 }
 
-/** Takeoff and landing run to the end, so a double tap only counts in these modes. */
+/** A double tap toggles only on the ground or in flight; takeoff and landing always run to the end. */
 function acceptsToggle(mode: FlightMode): boolean {
   return mode === "ground" || mode === "flying";
 }
@@ -68,7 +68,9 @@ export function stepFlight(prev: FlightState, input: FlightInput): FlightState {
     mode,
     modeTicks: mode === prev.mode ? prev.modeTicks + 1 : 1,
     jumpHeld: input.jump,
-    lastTap,
+    // A tap left over from flying would otherwise pair with the first tap
+    // after a driverless landing and take off again.
+    lastTap: mode === prev.mode ? lastTap : undefined,
   };
 }
 
