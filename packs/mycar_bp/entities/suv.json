@@ -23,7 +23,8 @@
       "mycar:paint_khaki": { "minecraft:variant": { "value": 0 } },
       "mycar:paint_green": { "minecraft:variant": { "value": 1 } },
       "mycar:paint_red": { "minecraft:variant": { "value": 2 } },
-      "mycar:hovering": { "minecraft:physics": { "has_gravity": false } }
+      "mycar:hovering": { "minecraft:physics": { "has_gravity": false } },
+      "mycar:grounded": { "minecraft:physics": {} }
     },
     "events": {
       "mycar:paint_khaki": {
@@ -44,8 +45,14 @@
           "component_groups": ["mycar:paint_khaki", "mycar:paint_green"]
         }
       },
-      "mycar:hover": { "add": { "component_groups": ["mycar:hovering"] } },
-      "mycar:land": { "remove": { "component_groups": ["mycar:hovering"] } }
+      "mycar:hover": {
+        "add": { "component_groups": ["mycar:hovering"] },
+        "remove": { "component_groups": ["mycar:grounded"] }
+      },
+      "mycar:land": {
+        "add": { "component_groups": ["mycar:grounded"] },
+        "remove": { "component_groups": ["mycar:hovering"] }
+      }
     },
     "components": {
       "minecraft:variant": { "value": 0 },
