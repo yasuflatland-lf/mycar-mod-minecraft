@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DriveVehicles } from "../../src/application/driveVehicles";
 import type { RawInput } from "../../src/domain/vehicle/driveInput";
+import { headlightCells } from "../../src/domain/vehicle/headlights";
 import { Vehicle } from "../../src/domain/vehicle/vehicle";
 import { FakeWorld, InMemoryRepo, snapshot } from "./fakes";
 
@@ -120,7 +121,7 @@ describe("DriveVehicles", () => {
     expect(world.calls).toContain("door:a:door_fr");
   });
 
-  it("rebuilds a vehicle lost in a reload in the flight mode stored on the entity (ADR 0020)", () => {
+  it("rebuilds a vehicle lost in a reload in the flight mode stored on the entity (ADR 0021)", () => {
     const world = new FakeWorld();
     const repo = new InMemoryRepo();
     world.snapshots = [
@@ -135,7 +136,7 @@ describe("DriveVehicles", () => {
     expect(world.calls.some((c) => c.startsWith("flight:"))).toBe(false);
   });
 
-  it("writes the flight mode to the world only on the tick it changes (ADR 0020)", () => {
+  it("writes the flight mode to the world only on the tick it changes (ADR 0021)", () => {
     const world = new FakeWorld();
     const uc = new DriveVehicles(world, new InMemoryRepo(), logger());
     const idle = { moveX: 0, moveY: 0, jump: false };
@@ -147,5 +148,26 @@ describe("DriveVehicles", () => {
     expect(world.calls.filter((c) => c.startsWith("flight:"))).toEqual([
       "flight:a:takeoff",
     ]);
+  });
+
+  it("lights the cells ahead of a vehicle with its headlights on, and none for one with them off", () => {
+    const world = new FakeWorld();
+    const location = { x: 10.5, y: 64, z: -3.2 };
+    world.snapshots = [
+      snapshot("on", { location, yaw: 30, headlights: true }),
+      snapshot("off", { location, yaw: 30 }),
+    ];
+    new DriveVehicles(world, new InMemoryRepo(), logger()).execute(0);
+    expect(world.shone.get("on")).toEqual(headlightCells(location, 30));
+    expect(world.shone.get("off")).toEqual([]);
+  });
+
+  it("clears the lights of a vehicle that is no longer loaded", () => {
+    const world = new FakeWorld();
+    const repo = new InMemoryRepo();
+    repo.save(Vehicle.create("gone", 0));
+    world.shone.set("gone", [{ x: 0, y: 0, z: 4 }]);
+    new DriveVehicles(world, repo, logger()).execute(0);
+    expect(world.shone.get("gone")).toEqual([]);
   });
 });

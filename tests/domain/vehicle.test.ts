@@ -277,3 +277,49 @@ describe("Vehicle (aggregate)", () => {
     );
   });
 });
+
+describe("Vehicle headlight switch (ADR 0020)", () => {
+  const driver: RiderView = {
+    id: "d",
+    offset: seatOffset(0, 0),
+    yaw: 0,
+    raw: IDLE,
+  };
+  const passenger: RiderView = {
+    id: "p",
+    offset: seatOffset(0, 1),
+    yaw: 0,
+    raw: IDLE,
+  };
+
+  it("flips only for the driver", () => {
+    const v = Vehicle.rebuild("v", 0, [driver, passenger]);
+    expect(v.flipHeadlightSwitch("p", 0)).toBe(false);
+    expect(v.flipHeadlightSwitch("outsider", 0)).toBe(false);
+    expect(v.flipHeadlightSwitch("d", 0)).toBe(true);
+  });
+
+  it("does not flip for anyone when nobody drives", () => {
+    expect(Vehicle.create("v", 0).flipHeadlightSwitch("d", 0)).toBe(false);
+  });
+
+  it("flips at most once per cooldown, however often the driver uses it", () => {
+    fc.assert(
+      fc.property(
+        fc
+          .uniqueArray(fc.integer({ min: 0, max: 200 }))
+          .map((t) => t.sort((a, b) => a - b)),
+        (ticks) => {
+          const v = Vehicle.rebuild("v", 0, [driver]);
+          const flipped = ticks.filter((t) => v.flipHeadlightSwitch("d", t));
+          if (ticks.length > 0) expect(flipped[0]).toBe(ticks[0]);
+          for (let i = 1; i < flipped.length; i++) {
+            expect(flipped[i]! - flipped[i - 1]!).toBeGreaterThanOrEqual(
+              SPEC.headlightSwitchCooldown,
+            );
+          }
+        },
+      ),
+    );
+  });
+});

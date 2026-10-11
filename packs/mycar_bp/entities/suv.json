@@ -11,6 +11,11 @@
           "values": ["ground", "takeoff", "flying", "landing"],
           "default": "ground",
           "client_sync": true
+        },
+        "mycar:headlights": {
+          "type": "bool",
+          "default": false,
+          "client_sync": true
         }
       }
     },

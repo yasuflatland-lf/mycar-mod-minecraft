@@ -1,6 +1,7 @@
 // Connects game events to the use cases.
 import {
   Direction,
+  type Entity,
   GameMode,
   ScriptEventSource,
   system,
@@ -10,9 +11,11 @@ import type { DriveVehicles } from "../../application/driveVehicles";
 import type { HitVehicle } from "../../application/hitVehicle";
 import type { PaintVehicle } from "../../application/paintVehicle";
 import type { PlaceVehicle } from "../../application/placeVehicle";
+import type { SwitchHeadlights } from "../../application/switchHeadlights";
 import { parseTestInputMessage } from "../testInput/testInputMessage";
 import type { TestInputStore } from "../testInput/testInputStore";
 import {
+  HEADLIGHT_SWITCH_TYPE,
   ITEM_TYPE,
   PAINT_BY_DYE,
   PLAYER_TYPE,
@@ -26,6 +29,7 @@ export function registerSubscriptions(
     place: PlaceVehicle;
     hit: HitVehicle;
     paint: PaintVehicle;
+    headlights: SwitchHeadlights;
   },
   testInputs: TestInputStore,
 ): void {
@@ -80,8 +84,37 @@ export function registerSubscriptions(
     });
   });
 
+  const ridden = (player: Entity) => {
+    const mount = player.getComponent("minecraft:riding")?.entityRidingOn;
+    return mount?.typeId === VEHICLE_TYPE ? mount : undefined;
+  };
+  const switchHeadlights = (playerId: string, vehicleId: string) =>
+    useCases.headlights.execute({
+      playerId,
+      vehicleId,
+      tick: system.currentTick,
+    });
+
+  world.afterEvents.itemUse.subscribe((ev) => {
+    if (ev.itemStack.typeId !== HEADLIGHT_SWITCH_TYPE) return;
+    const car = ridden(ev.source);
+    if (car) switchHeadlights(ev.source.id, car.id);
+  });
+
   world.beforeEvents.playerInteractWithEntity.subscribe((ev) => {
     if (ev.target.typeId !== VEHICLE_TYPE) return;
+    // A rider aiming at their own vehicle interacts with it instead of using
+    // the item, so the switch is handled here too.
+    if (
+      ev.itemStack?.typeId === HEADLIGHT_SWITCH_TYPE &&
+      ridden(ev.player)?.id === ev.target.id
+    ) {
+      ev.cancel = true;
+      const playerId = ev.player.id;
+      const vehicleId = ev.target.id;
+      system.run(() => switchHeadlights(playerId, vehicleId));
+      return;
+    }
     const paint = PAINT_BY_DYE[ev.itemStack?.typeId ?? ""];
     if (!paint) return;
     // Cancelling keeps the player from getting in. Before-events cannot change

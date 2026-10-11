@@ -55,7 +55,7 @@ const step = fc.record({
 const steps = fc.array(step, { maxLength: 300 });
 const mode = fc.constantFrom(...FLIGHT_MODES);
 
-describe("stepFlight (ADR 0020)", () => {
+describe("stepFlight (ADR 0021)", () => {
   it("only moves on in the cycle ground -> takeoff -> flying -> landing -> ground", () => {
     fc.assert(
       fc.property(mode, steps, (m, seq) => {
@@ -181,7 +181,7 @@ describe("isFlightMode", () => {
   });
 });
 
-describe("flightVerticalSpeed (ADR 0020)", () => {
+describe("flightVerticalSpeed (ADR 0021)", () => {
   const pitch = fc.double({ min: -90, max: 90, noNaN: true });
   const speed = fc.double({
     min: -SPEC.maxReverse,

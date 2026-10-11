@@ -1,4 +1,4 @@
-# 0020. Flight mode: toggle with a double tap, climb with the view pitch, and switch gravity with a component group
+# 0021. Flight mode: toggle with a double tap, climb with the view pitch, and switch gravity with a component group
 
 - Status: Accepted
 - Date: 2026-10-11

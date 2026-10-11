@@ -56,7 +56,7 @@ export interface TickOutcome {
   hits: RamHit[];
   driverId?: string;
   events: VehicleEvent[];
-  /** The new flight mode, only on the tick it changes (ADR 0020). */
+  /** The new flight mode, only on the tick it changes (ADR 0021). */
   flight?: FlightMode;
 }
 
@@ -75,7 +75,7 @@ function stepProbe(ctx: TickContext): StepProbe {
   };
 }
 
-/** Takeoff ignores the controls, and there is no handbrake in the air (ADR 0020). */
+/** Takeoff ignores the controls, and there is no handbrake in the air (ADR 0021). */
 function driveInputFor(
   raw: RawInput | undefined,
   mode: FlightMode,
@@ -92,6 +92,7 @@ export class Vehicle {
   private seats = new Map<string, number>();
   private readonly lastHit = new Map<string, number>();
   private hitCounter: HitCounter = EMPTY_COUNTER;
+  private lastSwitchTick = Number.NEGATIVE_INFINITY;
 
   private constructor(
     readonly id: string,
@@ -111,7 +112,7 @@ export class Vehicle {
    * riders may already be seated. Seeding the seats and the driver keeps the
    * first tick from treating the current driver as newly mounted, which would
    * snap the heading to the driver's view. The flight mode comes from the
-   * entity, so a vehicle in the air keeps flying (ADR 0020).
+   * entity, so a vehicle in the air keeps flying (ADR 0021).
    */
   static rebuild(
     id: string,
@@ -223,6 +224,17 @@ export class Vehicle {
     );
     for (const h of hits) this.lastHit.set(h.id, ctx.tick);
     return hits;
+  }
+
+  /**
+   * A player uses the headlight switch. Only the driver may flip it, and not
+   * again within the cooldown (ADR 0020). Returns whether it flipped.
+   */
+  flipHeadlightSwitch(playerId: string, tick: number): boolean {
+    if (playerId !== this.driverId) return false;
+    if (tick - this.lastSwitchTick < SPEC.headlightSwitchCooldown) return false;
+    this.lastSwitchTick = tick;
+    return true;
   }
 
   /** Hit by a player. Returns VehicleBroken when the vehicle breaks (ADR 0008). */

@@ -48,7 +48,7 @@ describe("packs/mycar_bp", () => {
     expect(recipe.unlock).toEqual({ context: "AlwaysUnlocked" });
   });
 
-  it("switches gravity off with mycar:hover and back on with mycar:land, and syncs the flight mode to clients (ADR 0020)", () => {
+  it("switches gravity off with mycar:hover and back on with mycar:land, and syncs the flight mode to clients (ADR 0021)", () => {
     expect(entity.description.properties["mycar:flight"]).toEqual({
       type: "enum",
       values: ["ground", "takeoff", "flying", "landing"],
