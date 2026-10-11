@@ -4,6 +4,7 @@ import {
   NEUTRAL_INPUT,
   toDriveInput,
 } from "../../../src/domain/vehicle/driveInput";
+import { SPEC } from "../../../src/domain/vehicle/spec";
 
 const axis = fc.double({ min: -1, max: 1, noNaN: true });
 
@@ -71,6 +72,44 @@ describe("toDriveInput (ADR 0018)", () => {
       handbrake: false,
       creep: true,
     });
+  });
+
+  it("yields no throttle, no steering, no handbrake, and no creep as the neutral input", () => {
+    expect(NEUTRAL_INPUT).toEqual({
+      throttle: 0,
+      steer: 0,
+      handbrake: false,
+      creep: false,
+    });
+  });
+
+  it("includes the deadzone edges: 0.1 forward/backward gives no throttle and 0.1 sideways does not creep", () => {
+    for (const edge of [-0.1, 0.1]) {
+      expect(toDriveInput({ moveX: 0, moveY: edge, jump: false })).toEqual({
+        throttle: 0,
+        steer: 0,
+        handbrake: false,
+        creep: false,
+      });
+      expect(toDriveInput({ moveX: edge, moveY: 0, jump: false })).toEqual({
+        throttle: 0,
+        steer: edge,
+        handbrake: false,
+        creep: false,
+      });
+    }
+  });
+
+  it("creeps with the stick exactly 20 degrees from horizontal", () => {
+    const slope = Math.tan((SPEC.sidewaysAngle * Math.PI) / 180);
+    for (const x of [-1, 1]) {
+      expect(toDriveInput({ moveX: x, moveY: slope, jump: false })).toEqual({
+        throttle: 0,
+        steer: x,
+        handbrake: false,
+        creep: true,
+      });
+    }
   });
 
   it("does not creep without sideways input", () => {

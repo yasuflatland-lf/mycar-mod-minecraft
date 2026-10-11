@@ -57,8 +57,7 @@ function acceptsToggle(form: Form): boolean {
 }
 
 function nextForm(prev: FormState, input: FormInput, toggle: boolean): Form {
-  if (prev.form !== "submarine" && isSubmerged(input.waterDepth))
-    return "submarine";
+  if (isSubmerged(input.waterDepth)) return "submarine";
   switch (prev.form) {
     case "car":
       return toggle && input.controlled ? "takeoff" : "car";
@@ -73,9 +72,7 @@ function nextForm(prev: FormState, input: FormInput, toggle: boolean): Form {
     case "submarine":
       if (isDry(input.waterDepth))
         return input.controlled && input.jump ? "hover" : "car";
-      return input.onGround && !isSubmerged(input.waterDepth)
-        ? "car"
-        : "submarine";
+      return input.onGround ? "car" : "submarine";
   }
 }
 
