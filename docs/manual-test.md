@@ -23,4 +23,10 @@ To use commands, run `docker exec mycar-bds send-command op <player name>`.
 | 15 | Use green dye, then red dye, on a placed vehicle / use red dye again | The body turns green, then red, one dye is used each time (not in Creative), and nobody gets in / nothing changes and the dye stays | | |
 | 16 | Craft the headlight switch from a lever and glowstone dust. At night, drive with it in hand and use it (right-click / tap), then use it again | The lamps glow and the road ahead lights up and follows the vehicle; the second use turns both off and leaves no light behind | | |
 | 17 | Use the switch from a passenger seat / outside the vehicle | Nothing changes | | |
-| 18 | Join a new world in Survival / leave and join again / join with a full inventory as a new player | One "SUV" item is in the inventory / no second item is given / the item drops at your feet | | |
+| 18 | While driving, double-tap Jump | The wheels fold flat and glow blue underneath, and the vehicle rises about 1.5 blocks | | |
+| 19 | Fly forward looking level, then up, then down | The vehicle holds its altitude, then climbs, then sinks | | |
+| 20 | Stop in the air and look around | The vehicle holds its altitude | | |
+| 21 | Double-tap Jump in the air (Survival) | The vehicle sinks slowly, the wheels unfold after touchdown, and no hearts are lost | | |
+| 22 | Get out while flying | The empty vehicle sinks slowly to the ground and the wheels unfold | | |
+| 23 | Tap the handbrake repeatedly while driving on the ground | Note how often the vehicle takes off by accident | | |
+| 24 | With an account that has never joined the world (or after `pnpm server:down` and deleting `server/data/worlds/mycar-dev`), join in Survival / leave and join again / die and respawn | One "SUV" item is in the inventory / no second item is given / no second item is given | | |

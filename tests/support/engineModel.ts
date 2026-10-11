@@ -36,3 +36,8 @@ export function engineStep(
     touching,
   };
 }
+
+// Vanilla living-entity values per tick. Kept apart from
+// SPEC.flightVerticalDrag for the same reason as AIR_DRAG.
+export const GRAVITY = 0.08;
+export const VERTICAL_DRAG = 0.98;

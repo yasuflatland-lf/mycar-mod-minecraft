@@ -7,6 +7,8 @@ comment:
   layout: "header, diff, flags, components, files"
 
 component_management:
+  # Keep core first: the README badge reads $[0] from the components API,
+  # because shields.io does not support JSONPath filters.
   individual_components:
     - component_id: core
       name: domain and application

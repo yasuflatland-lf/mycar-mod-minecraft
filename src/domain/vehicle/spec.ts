@@ -55,4 +55,15 @@ export const SPEC = {
   // Headlights (ADR 0020)
   headlightReach: [4, 9], // blocks ahead of the vehicle's center, one light block each
   headlightSwitchCooldown: 5, // ticks; one tap can reach the script as both an item use and an interaction
+  // Flight (ADR 0021)
+  doubleTapTicks: 8, // A second Jump press within this many ticks toggles flight
+  takeoffTicks: 20,
+  takeoffClimb: 0.075, // blocks/tick; 20 ticks lift the vehicle 1.5 blocks
+  landingSink: 0.15, // blocks/tick
+  maxClimb: 0.3, // blocks/tick, up or down
+  pitchDeadzone: 10, // degrees of view pitch around level that hold altitude
+  // Engine drag per tick with gravity off. The flight_cruise in-game test
+  // reports the measured horizontal value.
+  flightDrag: 0.91,
+  flightVerticalDrag: 0.98,
 } as const;

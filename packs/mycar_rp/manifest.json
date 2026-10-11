@@ -4,14 +4,14 @@
     "name": "MyCar Resources",
     "description": "Drivable SUV",
     "uuid": "b5d52b53-d112-4da1-9c1a-b95db192f94a",
-    "version": [0, 1, 5],
+    "version": [0, 1, 7],
     "min_engine_version": [1, 21, 80]
   },
   "modules": [
     {
       "type": "resources",
       "uuid": "06a07c15-60a9-40a3-b6d2-220595805d67",
-      "version": [0, 1, 5]
+      "version": [0, 1, 7]
     }
   ]
 }

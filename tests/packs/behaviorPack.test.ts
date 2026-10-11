@@ -1,10 +1,12 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { FLIGHT_MODES } from "../../src/domain/vehicle/flight";
 import { SEAT_POSITIONS } from "../../src/domain/vehicle/seats";
+import { FLIGHT_PROPERTY } from "../../src/infrastructure/bedrock/identifiers";
 
 const read = (p: string) => JSON.parse(readFileSync(p, "utf8"));
-const c = read("packs/mycar_bp/entities/suv.json")["minecraft:entity"]
-  .components;
+const entity = read("packs/mycar_bp/entities/suv.json")["minecraft:entity"];
+const c = entity.components;
 const recipe = read("packs/mycar_bp/recipes/suv_item.json")[
   "minecraft:recipe_shaped"
 ];
@@ -46,6 +48,32 @@ describe("packs/mycar_bp", () => {
 
   it("the recipe is unlocked from the start (BDS does not load the recipe without unlock)", () => {
     expect(recipe.unlock).toEqual({ context: "AlwaysUnlocked" });
+  });
+
+  it("switches gravity off with mycar:hover and back on with mycar:land, and syncs the flight mode to clients (ADR 0021)", () => {
+    expect(entity.description.properties[FLIGHT_PROPERTY]).toEqual({
+      type: "enum",
+      values: [...FLIGHT_MODES],
+      default: "ground",
+      client_sync: true,
+    });
+    expect(entity.component_groups["mycar:hovering"]).toEqual({
+      "minecraft:physics": { has_gravity: false },
+    });
+    // Removing a group drops its components instead of restoring the base
+    // ones, so landing has to add a group that brings physics back. The
+    // in-game flight_land test caught a car that floated after landing.
+    expect(entity.component_groups["mycar:grounded"]).toEqual({
+      "minecraft:physics": {},
+    });
+    expect(entity.events["mycar:hover"]).toEqual({
+      add: { component_groups: ["mycar:hovering"] },
+      remove: { component_groups: ["mycar:grounded"] },
+    });
+    expect(entity.events["mycar:land"]).toEqual({
+      add: { component_groups: ["mycar:grounded"] },
+      remove: { component_groups: ["mycar:hovering"] },
+    });
   });
 });
 

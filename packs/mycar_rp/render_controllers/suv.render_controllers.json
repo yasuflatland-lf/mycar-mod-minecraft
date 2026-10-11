@@ -17,7 +17,11 @@
           "headlights": "Array.lamps[query.property('mycar:headlights') ? 1 : 0]"
         }
       ],
-      "textures": ["Array.paints[query.variant]"]
+      "textures": ["Array.paints[query.variant]"],
+      "part_visibility": [
+        { "*": true },
+        { "glow_*": "query.property('mycar:flight') != 'ground'" }
+      ]
     }
   }
 }

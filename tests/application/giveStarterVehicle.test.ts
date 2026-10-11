@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { GiveStarterVehicle } from "../../src/application/giveStarterVehicle";
 import { FakeWorld } from "./fakes";
 
-describe("GiveStarterVehicle (ADR 0021)", () => {
+describe("GiveStarterVehicle (ADR 0023)", () => {
   it("gives one item per player, however many times they join", () => {
     fc.assert(
       fc.property(

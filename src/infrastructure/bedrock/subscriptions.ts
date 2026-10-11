@@ -74,8 +74,8 @@ export function registerSubscriptions(
     });
   });
 
-  // initialSpawn is true on every join, not only the first one, so the use
-  // case remembers who already received the item.
+  // initialSpawn is true on every join, not only the first one, so a player
+  // dynamic property records who already received the item (ADR 0023).
   world.afterEvents.playerSpawn.subscribe((ev) => {
     if (ev.initialSpawn) useCases.starter.execute(ev.player.id);
   });

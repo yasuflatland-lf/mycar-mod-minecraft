@@ -1,6 +1,7 @@
 // Capabilities the application layer requires from the game (ports). Implementations live in the infrastructure layer (ADR 0012).
 import type { Vec2, Vec3 } from "../domain/shared/vec";
 import type { RawInput } from "../domain/vehicle/driveInput";
+import type { FlightMode } from "../domain/vehicle/flight";
 import type { Cell } from "../domain/vehicle/headlights";
 import type { Paint } from "../domain/vehicle/paint";
 import type { RamHit, RamTarget } from "../domain/vehicle/ram";
@@ -11,8 +12,10 @@ export interface VehicleSnapshot {
   location: Vec3;
   yaw: number;
   velocity: Vec2;
+  velocityY: number;
   onGround: boolean;
   riders: RiderView[];
+  flight: FlightMode;
   headlights: boolean;
   testInput?: RawInput;
 }
@@ -22,6 +25,7 @@ export interface DriveWorld {
   solidAt(vehicleId: string, offset: Vec3): boolean;
   targetsNear(vehicleId: string): RamTarget[];
   applyMotion(vehicleId: string, impulse: Vec3, yaw: number): void;
+  setFlight(vehicleId: string, mode: FlightMode): void;
   damage(hit: RamHit, attackerId: string | undefined): void;
   playDoor(vehicleId: string, door: string): void;
   /**
