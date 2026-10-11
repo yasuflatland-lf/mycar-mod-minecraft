@@ -130,4 +130,34 @@ describe("PaintVehicle (ADR 0031)", () => {
       }),
     );
   });
+
+  it("trusts the world's color again on a later tick, so a vehicle removed after a paint takes no more dye (ADR 0037)", () => {
+    fc.assert(
+      fc.property(
+        paint,
+        paint,
+        paint,
+        fc.integer({ min: 0, max: 1_000_000 }),
+        fc.integer({ min: 1, max: 100 }),
+        (from, to, next, tick, later) => {
+          fc.pre(from !== to);
+          const world = new FakeWorld();
+          world.paints.set("a", from);
+          const useCase = new PaintVehicle(world);
+          const hit = (color: Paint, at: number) =>
+            useCase.execute({
+              playerId: "p",
+              vehicleId: "a",
+              paint: color,
+              creative: false,
+              tick: at,
+            });
+          expect(hit(to, tick)).toBe(true);
+          world.paints.delete("a");
+          expect(hit(next, tick + later)).toBe(false);
+          expect(world.calls).toEqual([`paint:a:${to}`, `dye:p:${to}`]);
+        },
+      ),
+    );
+  });
 });

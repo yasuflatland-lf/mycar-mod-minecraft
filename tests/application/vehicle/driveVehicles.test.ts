@@ -353,6 +353,23 @@ describe("DriveVehicles third-person camera in flight (ADR 0028)", () => {
     expect(log.lines.filter((l) => l.includes("camera p"))).toHaveLength(1);
   });
 
+  it("logs a camera failure again when it fails after a switch that worked", () => {
+    const world = new FakeWorld();
+    const log = logger();
+    const uc = new DriveVehicles(world, new InMemoryRepo(), log);
+    const flying = { form: "hover" as const, onGround: false };
+    world.snapshots = [snapshot("a", { ...flying, riders: [rider("p")] })];
+    world.failCameraOn = "p";
+    uc.execute(0);
+    world.failCameraOn = undefined;
+    uc.execute(1);
+    world.snapshots = [snapshot("a", flying)];
+    world.failCameraOn = "p";
+    uc.execute(2);
+    expect(cameraCalls(world)).toEqual(["camera:p:third"]);
+    expect(log.lines.filter((l) => l.includes("camera p"))).toHaveLength(2);
+  });
+
   it("retries giving the view back when it fails", () => {
     const world = new FakeWorld();
     const uc = new DriveVehicles(world, new InMemoryRepo(), logger());
