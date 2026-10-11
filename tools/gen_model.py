@@ -89,9 +89,6 @@ body = [
     # Exhaust pipe (rear right = +x side, sticking out backward from under the bumper)
     box(8, 3.5, -28, 10, 5.5, -22, "trim"),
     box(7.75, 3.25, -28.5, 10.25, 5.75, -28, "rim"),
-    # Rear spare tire
-    box(-5, 9, -29, 5, 19, -26, "tire"),
-    box(-2, 12, -29.3, 2, 16, -29, "rim"),
     # Fenders (fender flares)
     box(13, 12, 10, 16, 14, 24, "trim"),
     box(-16, 12, 10, -13, 14, 24, "trim"),
@@ -222,20 +219,69 @@ def door(name):
     }
 
 
+def disc(axis, center, half, a0, a1, angles, color):
+    """Squares turned by each angle around the axle; together they read as a polygon of len(angles) * 4 sides."""
+    cubes = []
+    for angle in angles:
+        if axis == "x":
+            cube = box(a0, center[1] - half, center[2] - half, a1, center[1] + half, center[2] + half, color)
+            cube["rotation"] = [angle, 0, 0]
+        else:
+            cube = box(center[0] - half, center[1] - half, a0, center[0] + half, center[1] + half, a1, color)
+            cube["rotation"] = [0, 0, angle]
+        cube["pivot"] = list(center)
+        cubes.append(cube)
+    return cubes
+
+
+def round_tire(axis, center, radius, a0, a1, segments=16):
+    """A tire whose tread is a ring of thin blocks turned around the axle, like a voxel-art wheel.
+
+    axis is the axle direction ("x" for road wheels, "z" for the spare); a0..a1 is the tire's span along it.
+    """
+    step = 360 / segments
+    # Half a chord, rounded up a little so neighboring tread blocks overlap instead of leaving gaps
+    half_chord = round(radius * math.tan(math.radians(step / 2)) + 0.1, 3)
+    tread = 1.4
+    cubes = []
+    for i in range(segments):
+        cx, cy, cz = center
+        if axis == "x":
+            cube = box(a0, cy + radius - tread, cz - half_chord, a1, cy + radius, cz + half_chord, "tire")
+            cube["rotation"] = [i * step, 0, 0]
+        else:
+            cube = box(cx - half_chord, cy + radius - tread, a0, cx + half_chord, cy + radius, a1, "tire")
+            cube["rotation"] = [0, 0, i * step]
+        cube["pivot"] = list(center)
+        cubes.append(cube)
+    # Sidewall filling the inside of the tread, inset slightly so the tread edge stands out
+    cubes += disc(axis, center, radius - 1.2, a0 + 0.2, a1 - 0.2, (0, 30, 60), "tire")
+    return cubes
+
+
 def wheel(name, x_out, z_center):
     # x_out: sign pointing outward (+1 = right, -1 = left)
     x0, x1 = (12, 16) if x_out > 0 else (-16, -12)
-    hub_x0, hub_x1 = (16, 16.5) if x_out > 0 else (-16.5, -16)
+    rim_x0, rim_x1 = (15.9, 16.2) if x_out > 0 else (-16.2, -15.9)
+    hub_x0, hub_x1 = (16.2, 16.5) if x_out > 0 else (-16.5, -16.2)
+    center = (14 * x_out, 6, z_center)
     return {
         "name": name,
         "parent": "root",
-        "pivot": [14 * x_out, 6, z_center],
+        "pivot": list(center),
         "cubes": [
-            box(x0, 0, z_center - 6, x1, 12, z_center + 6, "tire"),
-            box(hub_x0, 3, z_center - 3, hub_x1, 9, z_center + 3, "rim"),
-            box(hub_x0, 5, z_center - 5, hub_x1, 7, z_center + 5, "rim"),
+            *round_tire("x", center, 6, x0, x1),
+            *disc("x", center, 2.8, rim_x0, rim_x1, (0, 30, 60), "rim"),
+            *disc("x", center, 1.1, hub_x0, hub_x1, (0, 45), "trim"),
         ],
     }
+
+
+# Rear spare tire (on the tailgate, axle along z)
+SPARE = (0, 14, -27.5)
+body += round_tire("z", SPARE, 5, -29, -26)
+body += disc("z", SPARE, 2.3, -29.3, -29, (0, 30, 60), "rim")
+body += disc("z", SPARE, 0.9, -29.5, -29.3, (0, 45), "trim")
 
 
 geo = {
