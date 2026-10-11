@@ -17,7 +17,7 @@ import {
   PAINT_VARIANT,
   paintEvent,
   VEHICLE_TYPE as VEHICLE,
-} from "../infrastructure/bedrock/identifiers";
+} from "../infrastructure/vehicle/bedrock/identifiers";
 import { LOG_TAG, linePrefix, runIdFrom, TEST_EVENT } from "./protocol";
 import { hitTick, judgeRam, PUSH_WINDOW, type RamSample } from "./ramJudge";
 
