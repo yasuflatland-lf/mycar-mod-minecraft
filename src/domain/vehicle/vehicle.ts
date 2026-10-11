@@ -25,7 +25,7 @@ import {
   stepMotion,
 } from "./motion";
 import { type RamHit, type RamTarget, selectHits } from "./ram";
-import { DOOR_BY_SEAT, occupiedSeats, vacatedSeats } from "./seats";
+import { doorOf, occupiedSeats, vacatedSeats } from "./seats";
 import { SPEC } from "./spec";
 import { shouldStepUp } from "./stepUp";
 
@@ -189,7 +189,7 @@ export class Vehicle {
         type: "SeatVacated",
         vehicleId: this.id,
         seat,
-        door: DOOR_BY_SEAT[seat]!,
+        door: doorOf(seat),
       }),
     );
     this.seats = seats;
@@ -229,7 +229,7 @@ export class Vehicle {
   /**
    * A player uses the headlight switch. Only the driver may flip it, and only
    * after the switch has been idle for the cooldown, so a burst of uses from
-   * one touch flips it once (ADR 0023). Returns whether it flipped.
+   * one touch flips it once (ADR 0024). Returns whether it flipped.
    */
   flipHeadlightSwitch(playerId: string, tick: number): boolean {
     if (playerId !== this.driverId) return false;

@@ -53,8 +53,8 @@ export const SPEC = {
   hitsToBreak: 3,
   hitResetTicks: 100,
   // Headlights (ADR 0020)
-  headlightReach: [4, 9, 15, 21, 27], // blocks ahead of the vehicle's center, one light block each; a level-15 block every 6 keeps the road between them lit (ADR 0023)
-  headlightSwitchCooldown: 10, // ticks of idle switch; a held touch repeats the use every 4-6 ticks on mobile (ADR 0023)
+  headlightReach: [4, 9, 15, 21, 27], // blocks ahead of the vehicle's center, one light block each; a level-15 block every 6 keeps the road between them lit (ADR 0024)
+  headlightSwitchCooldown: 10, // ticks of idle switch; a held touch repeats the use every 4-6 ticks on mobile (ADR 0024)
   // Flight (ADR 0021)
   doubleTapTicks: 8, // A second Jump press within this many ticks toggles flight
   takeoffTicks: 20,

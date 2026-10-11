@@ -19,11 +19,9 @@ describe("packs/mycar_bp", () => {
   it("seat positions and order match SEAT_POSITIONS, with the driver's seat at 0 (ADR 0019)", () => {
     const seats = c["minecraft:rideable"].seats;
     expect(c["minecraft:rideable"].controlling_seat).toBe(0);
-    expect(seats).toHaveLength(4);
-    seats.forEach((s: any, i: number) => {
-      expect(s.position[0]).toBe(SEAT_POSITIONS[i]!.x);
-      expect(s.position[2]).toBe(SEAT_POSITIONS[i]!.z);
-    });
+    expect(
+      seats.map((s: { position: number[] }) => [s.position[0], s.position[2]]),
+    ).toEqual(SEAT_POSITIONS.map((p) => [p.x, p.z]));
     expect(seats[0].lock_rider_rotation).toBe(90);
   });
 

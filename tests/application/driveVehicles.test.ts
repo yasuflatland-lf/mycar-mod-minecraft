@@ -71,7 +71,7 @@ describe("DriveVehicles", () => {
     };
     world.snapshots = [snapshot("a", { yaw: 10, riders: [driver] })];
     new DriveVehicles(world, repo, logger()).execute(0);
-    expect(repo.get("a")!.yaw).toBeCloseTo(10);
+    expect(repo.get("a")?.yaw).toBeCloseTo(10);
     expect(world.calls).toContain("motion:a:10");
   });
 
@@ -82,7 +82,7 @@ describe("DriveVehicles", () => {
     expect(() =>
       new DriveVehicles(world, repo, logger()).execute(0),
     ).not.toThrow();
-    expect(repo.get("a")!.speed).toBeLessThanOrEqual(0.0225);
+    expect(repo.get("a")?.speed).toBeLessThanOrEqual(0.0225);
   });
 
   it("discards the aggregates of vehicles that are no longer loaded", () => {

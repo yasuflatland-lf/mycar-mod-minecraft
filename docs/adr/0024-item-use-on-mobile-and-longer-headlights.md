@@ -1,4 +1,4 @@
-# 0023. Make the vehicle item and the headlight switch work on mobile, and light the road three times farther
+# 0024. Make the vehicle item and the headlight switch work on mobile, and light the road three times farther
 
 - Status: Accepted
 - Date: 2026-10-11

@@ -17,6 +17,7 @@ import {
   type TickContext,
   Vehicle,
 } from "../../src/domain/vehicle/vehicle";
+import { defined } from "../support/defined";
 import { engineStep } from "../support/engineModel";
 
 const FORWARD: RawInput = { moveX: 0, moveY: 1, jump: false };
@@ -26,7 +27,7 @@ const GROUND_FRICTION = 0.688;
 function seatOffset(yaw: number, seat: number): Vec2 {
   const f = forward(yaw);
   const l = leftOf(f);
-  const s = SEAT_POSITIONS[seat]!;
+  const s = defined(SEAT_POSITIONS[seat], `seat ${seat}`);
   return { x: l.x * s.x + f.x * s.z, z: l.z * s.x + f.z * s.z };
 }
 
@@ -313,7 +314,9 @@ describe("Vehicle headlight switch (ADR 0020)", () => {
           const v = Vehicle.rebuild("v", 0, [driver]);
           ticks.forEach((t, i) => {
             const idle =
-              i === 0 || t - ticks[i - 1]! >= SPEC.headlightSwitchCooldown;
+              i === 0 ||
+              t - defined(ticks[i - 1], "previous use") >=
+                SPEC.headlightSwitchCooldown;
             expect(v.flipHeadlightSwitch("d", t)).toBe(idle);
           });
         },

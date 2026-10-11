@@ -29,3 +29,4 @@ To use commands, run `docker exec mycar-bds send-command op <player name>`.
 | 21 | Double-tap Jump in the air (Survival) | The vehicle sinks slowly, the wheels unfold after touchdown, and no hearts are lost | | |
 | 22 | Get out while flying | The empty vehicle sinks slowly to the ground and the wheels unfold | | |
 | 23 | Tap the handbrake repeatedly while driving on the ground | Note how often the vehicle takes off by accident | | |
+| 24 | With an account that has never joined the world (or after `pnpm server:down` and deleting `server/data/worlds/mycar-dev`), join in Survival / leave and join again / die and respawn | One "SUV" item is in the inventory / no second item is given / no second item is given | | |

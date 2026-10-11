@@ -17,6 +17,12 @@ export const DOOR_BY_SEAT: readonly string[] = [
   "door_rl",
 ];
 
+export function doorOf(seat: number): string {
+  const door = DOOR_BY_SEAT[seat];
+  if (door === undefined) throw new RangeError(`No door for seat ${seat}`);
+  return door;
+}
+
 /** Converts a world-space offset into seat coordinates for a vehicle facing `f`. */
 export function toLocal(offset: Vec2, f: Vec2): Vec2 {
   return { x: dot(offset, leftOf(f)), z: dot(offset, f) };

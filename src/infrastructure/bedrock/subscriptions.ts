@@ -8,6 +8,7 @@ import {
   world,
 } from "@minecraft/server";
 import type { DriveVehicles } from "../../application/driveVehicles";
+import type { GiveStarterVehicle } from "../../application/giveStarterVehicle";
 import type { HitVehicle } from "../../application/hitVehicle";
 import type { PaintVehicle } from "../../application/paintVehicle";
 import type { PlaceVehicle } from "../../application/placeVehicle";
@@ -27,6 +28,7 @@ export function registerSubscriptions(
   useCases: {
     drive: DriveVehicles;
     place: PlaceVehicle;
+    starter: GiveStarterVehicle;
     hit: HitVehicle;
     paint: PaintVehicle;
     headlights: SwitchHeadlights;
@@ -58,7 +60,7 @@ export function registerSubscriptions(
 
   // The after-event only fires when the interaction did something, and an item
   // with no use behavior does nothing on a block, so a tap never reaches it
-  // (BDS 1.26.52, mobile; ADR 0023). Before-events cannot change the world, so the
+  // (BDS 1.26.52, mobile; ADR 0024). Before-events cannot change the world, so the
   // placement runs on the next tick.
   world.beforeEvents.playerInteractWithBlock.subscribe((ev) => {
     if (
@@ -75,6 +77,12 @@ export function registerSubscriptions(
       creative: ev.player.getGameMode() === GameMode.Creative,
     };
     system.run(() => useCases.place.execute(cmd));
+  });
+
+  // initialSpawn is true on every join, not only the first one, so a player
+  // dynamic property records who already received the item (ADR 0023).
+  world.afterEvents.playerSpawn.subscribe((ev) => {
+    if (ev.initialSpawn) useCases.starter.execute(ev.player.id);
   });
 
   world.afterEvents.entityHitEntity.subscribe((ev) => {
