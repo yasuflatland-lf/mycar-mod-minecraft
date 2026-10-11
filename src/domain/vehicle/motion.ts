@@ -151,7 +151,7 @@ export function stepMotion(
 }
 
 /**
- * One tick of horizontal movement with gravity off (ADR 0020). There is no
+ * One tick of horizontal movement with gravity off (ADR 0021). There is no
  * ground friction to estimate and no step to climb, so the impulse is
  * pre-divided by the engine's flight drag and applied in full. The handbrake
  * does not exist in the air.

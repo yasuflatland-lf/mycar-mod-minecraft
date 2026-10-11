@@ -86,7 +86,7 @@ function flyingSim(): FlightSim {
   return sim;
 }
 
-describe("Vehicle in flight (ADR 0020)", () => {
+describe("Vehicle in flight (ADR 0021)", () => {
   it("takes off on a double tap and rises about 1.5 blocks before flying", () => {
     const sim = new FlightSim();
     sim.doubleTap();

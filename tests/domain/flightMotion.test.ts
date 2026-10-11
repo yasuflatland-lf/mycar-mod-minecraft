@@ -34,7 +34,7 @@ const driveInput = fc.record({
 });
 const inputs = fc.array(driveInput, { minLength: 1, maxLength: 300 });
 
-describe("stepFlightMotion (ADR 0020)", () => {
+describe("stepFlightMotion (ADR 0021)", () => {
   it("keeps horizontal speed within max speed", () => {
     fc.assert(
       fc.property(inputs, (ins) => {
