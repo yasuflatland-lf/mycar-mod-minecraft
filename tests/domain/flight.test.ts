@@ -144,6 +144,34 @@ describe("stepFlight (ADR 0021)", () => {
     );
   });
 
+  it("forgets a pending tap whenever the mode changes", () => {
+    fc.assert(
+      fc.property(mode, steps, (m, seq) => {
+        for (const f of run(seq, initialFlight(m)))
+          if (f.after.mode !== f.before.mode)
+            expect(f.after.lastTap).toBeUndefined();
+      }),
+    );
+  });
+
+  it("a single tap before a driverless landing does not pair with the next tap on the ground", () => {
+    const frames = run(
+      [
+        { jump: true, controlled: true, onGround: true },
+        { jump: false, controlled: false, onGround: true },
+        { jump: false, controlled: true, onGround: true },
+        { jump: true, controlled: true, onGround: true },
+      ],
+      initialFlight("flying"),
+    );
+    expect(frames.map((f) => f.after.mode)).toEqual([
+      "flying",
+      "landing",
+      "ground",
+      "ground",
+    ]);
+  });
+
   it("a triple tap toggles only once", () => {
     expect(run(taps([0, 2, 4], 5)).map((f) => f.after.mode)).toEqual([
       "ground",

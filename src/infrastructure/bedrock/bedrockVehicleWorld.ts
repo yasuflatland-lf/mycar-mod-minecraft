@@ -158,9 +158,11 @@ export class BedrockVehicleWorld
     const car = this.entity(vehicleId);
     if (!car) return;
     // The property drives the client animation; gravity lives in a component
-    // group, so both change together here (ADR 0021).
-    car.setProperty(FLIGHT_PROPERTY, mode);
+    // group, so both change together here (ADR 0021). Gravity goes first: if
+    // the event throws, the property still holds the old mode, and a /reload
+    // rebuilds the aggregate from it.
     car.triggerEvent(mode === "ground" ? LAND_EVENT : HOVER_EVENT);
+    car.setProperty(FLIGHT_PROPERTY, mode);
   }
 
   damage(hit: RamHit, attackerId: string | undefined): void {

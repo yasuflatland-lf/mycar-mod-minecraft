@@ -16,7 +16,7 @@ export const LIGHT_BLOCK = "minecraft:light_block_15";
  * clears the input.
  */
 export const TEST_INPUT_EVENT = "mycar:test_input";
-/** Client-synced enum property the Resource Pack reads to fold the wheels (ADR 0021). */
+/** Client-synced flight mode. The script reads it back after /reload, and the Resource Pack draws the flight visuals from it (ADR 0021). */
 export const FLIGHT_PROPERTY = "mycar:flight";
 export const HOVER_EVENT = "mycar:hover";
 export const LAND_EVENT = "mycar:land";

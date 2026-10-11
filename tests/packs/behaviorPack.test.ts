@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { FLIGHT_MODES } from "../../src/domain/vehicle/flight";
 import { SEAT_POSITIONS } from "../../src/domain/vehicle/seats";
+import { FLIGHT_PROPERTY } from "../../src/infrastructure/bedrock/identifiers";
 
 const read = (p: string) => JSON.parse(readFileSync(p, "utf8"));
 const entity = read("packs/mycar_bp/entities/suv.json")["minecraft:entity"];
@@ -49,9 +51,9 @@ describe("packs/mycar_bp", () => {
   });
 
   it("switches gravity off with mycar:hover and back on with mycar:land, and syncs the flight mode to clients (ADR 0021)", () => {
-    expect(entity.description.properties["mycar:flight"]).toEqual({
+    expect(entity.description.properties[FLIGHT_PROPERTY]).toEqual({
       type: "enum",
-      values: ["ground", "takeoff", "flying", "landing"],
+      values: [...FLIGHT_MODES],
       default: "ground",
       client_sync: true,
     });
