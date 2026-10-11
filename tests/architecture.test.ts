@@ -1,6 +1,6 @@
 // Layer dependencies (ADR 0012): infrastructure -> application -> domain only
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, extname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
@@ -22,6 +22,41 @@ const IMPORT_SPECIFIER = /(?:\bfrom\s+|\bimport\s*\(?\s*)["']([^"']+)["']/g;
 
 function importsOf(source: string): string[] {
   return [...source.matchAll(IMPORT_SPECIFIER)].map((m) => m[1] ?? "");
+}
+
+const LAYERS = ["domain", "application", "infrastructure"];
+const FEATURES = new Set(
+  LAYERS.flatMap((layer) =>
+    readdirSync(join(REPO_ROOT, "src", layer), { withFileTypes: true })
+      .filter((entry) => entry.isDirectory() && entry.name !== "shared")
+      .map((entry) => entry.name),
+  ),
+);
+
+function featureOf(file: string): string | undefined {
+  const [layer, feature, ...rest] = relative(
+    join(REPO_ROOT, "src"),
+    file,
+  ).split(sep);
+  if (layer && LAYERS.includes(layer) && feature && rest.length > 0) {
+    return feature;
+  }
+  return undefined;
+}
+
+function allowsFeatureImport(
+  file: string,
+  specifier: string,
+  features: ReadonlySet<string>,
+): boolean {
+  if (!specifier.startsWith(".")) return true;
+  const source = featureOf(file);
+  const resolved = resolve(dirname(file), specifier);
+  const target = featureOf(
+    extname(resolved) ? resolved : join(resolved, "index.ts"),
+  );
+  if (!target || !features.has(target)) return true;
+  return source === undefined || source === target;
 }
 
 const RULES = [
@@ -46,6 +81,62 @@ describe("importsOf", () => {
   ])("finds the specifier in %s", (source, specifier) => {
     expect(importsOf(source)).toEqual([specifier]);
   });
+});
+
+describe("Feature import resolver", () => {
+  it.each([
+    ["application/vehicle/place.ts", "../../domain/vehicle/vehicle", true],
+    ["domain/vehicle/motion.ts", "./vehicle", true],
+    ["domain/vehicle/motion.ts", "../building/wall", false],
+    ["domain/vehicle/motion.ts", "../building", false],
+    [
+      "infrastructure/vehicle/bedrock/world.ts",
+      "../../../domain/building/wall",
+      false,
+    ],
+    ["domain/shared/vec.ts", "../vehicle/motion", false],
+    [
+      "infrastructure/shared/helper.ts",
+      "../../application/vehicle/ports",
+      false,
+    ],
+    ["domain/vehicle/motion.ts", "../shared/vec", true],
+    ["domain/shared/vec.ts", "./math", true],
+    ["infrastructure/bootstrap.ts", "./vehicle/install", true],
+    ["domain/vehicle/motion.ts", "./nested/../../building/wall", false],
+    ["domain/vehicle/motion.ts", "../../../tests/domain/building/wall", true],
+  ])("resolves %s importing %s as allowed=%s", (file, specifier, allowed) => {
+    expect(
+      allowsFeatureImport(
+        join(REPO_ROOT, "src", file),
+        specifier,
+        new Set(["vehicle", "building"]),
+      ),
+    ).toBe(allowed);
+  });
+});
+
+describe("Feature boundaries (ADR 0046)", () => {
+  for (const layer of LAYERS) {
+    const dir = join(REPO_ROOT, "src", layer);
+    it(`${layer} keeps files in shared or feature folders`, () => {
+      const directFiles = tsFiles(dir).filter((file) => dirname(file) === dir);
+      expect(directFiles).toEqual(
+        layer === "infrastructure" ? [join(dir, "bootstrap.ts")] : [],
+      );
+    });
+
+    it(`${layer} does not import across features or from shared into a feature`, () => {
+      for (const file of tsFiles(dir)) {
+        for (const specifier of importsOf(readFileSync(file, "utf8"))) {
+          expect(
+            allowsFeatureImport(file, specifier, FEATURES),
+            `${file} imports ${specifier}`,
+          ).toBe(true);
+        }
+      }
+    });
+  }
 });
 
 describe("Layer dependency direction (ADR 0012)", () => {
