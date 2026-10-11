@@ -1,4 +1,4 @@
-# 0046. Mutation testing with Stryker, and unused code checks with knip
+# 0048. Mutation testing with Stryker, and unused code checks with knip
 
 - Status: Accepted
 - Date: 2026-10-12

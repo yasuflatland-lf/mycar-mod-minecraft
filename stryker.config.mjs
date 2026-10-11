@@ -14,7 +14,7 @@ export default {
   // exists only inside the game, so no unit test can kill their mutants (0010).
   mutate: ["src/**/*.ts", "!src/main.ts", "!src/test-pack/runner.ts"],
   coverageAnalysis: "perTest",
-  // The first run scored 69% (ADR 0046). A score far below that more likely
+  // The first run scored 69% (ADR 0048). A score far below that more likely
   // means the vitest runner patch stopped matching Vitest's test names and no
   // test ran for any mutant, which Stryker would otherwise report as success.
   thresholds: { high: 80, low: 60, break: 60 },
