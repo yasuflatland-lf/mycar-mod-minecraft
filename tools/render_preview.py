@@ -1,7 +1,10 @@
-"""Render the README preview of the vehicle model from its front-left corner.
+"""Render the README previews of the vehicle model from its front-left corner.
 
-    python3 -I tools/render_preview.py <resource pack> <output png>          write the image
-    python3 -I tools/render_preview.py <resource pack> <output png> --check  fail if it is stale
+    python3 -I tools/render_preview.py <resource pack> <output dir>          write the images
+    python3 -I tools/render_preview.py <resource pack> <output dir> --check  fail if any is stale
+
+Three poses share one camera and one scale, so they line up side by side in the README: on the
+ground, with the headlights on at night, and flying with the wheels folded (ADR 0027).
 
 Only the standard library is used, like gen_model.py. The arithmetic avoids math.sin/cos (their
 last bit can differ between platforms' libm) so the same model renders to the same pixels on a Mac
@@ -17,9 +20,10 @@ from pathlib import Path
 
 GEOMETRY = "models/entity/suv.geo.json"
 TEXTURE = "textures/entity/suv.png"
-WIDTH, HEIGHT = 960, 560
+ANIMATIONS = "animations/suv.animation.json"
+WIDTH, HEIGHT = 800, 600
 SUPERSAMPLE = 3
-MARGIN = 0.06  # fraction of the image kept empty around the vehicle
+MARGIN = 0.04  # fraction of the image kept empty around the union of all poses
 
 # Seen from the vehicle's front-left at 45 degrees, about 25 degrees above the ground.
 VIEW_DIRECTION = (-1.0, 0.65, -1.0)
@@ -31,6 +35,39 @@ SHADE_UP, SHADE_DOWN, SHADE_Z, SHADE_X = 1.0, 0.5, 0.8, 0.6
 SHADOW_LAYERS = 12
 SHADOW_ALPHA = 0.025  # per layer, so the center of the shadow is 0.3
 SHADOW_GROWTH = 0.5  # pixels (model units) added around the footprint per layer
+
+# Dusk: unlit surfaces are dimmed and tinted blue so the lamps stand out.
+NIGHT_TINT = (0.6, 0.64, 0.8)
+LAMP_LIT = (255, 246, 205)
+# Light on the road ahead. In game it reaches 27 blocks (ADR 0024); the picture shows the first
+# few so the vehicle keeps its size.
+BEAM_LAYERS = 24
+BEAM_LENGTH = 36.0
+BEAM_ALPHA = 0.03
+BEAM_SPREAD = 0.35  # half width gained per unit of length
+BEAM_COLOR = (255, 232, 160)
+
+# Flight: the takeoff lifts the vehicle 1.5 blocks (ADR 0021).
+FLIGHT_LIFT = 24.0
+GLOW_LIT = (130, 205, 255)
+GLOW_POOL_LAYERS = 10
+GLOW_POOL_ALPHA = 0.03
+GLOW_POOL_SIZE = 1.0
+GLOW_POOL_GROWTH = 0.6
+FLIGHT_SHADOW_ALPHA = 0.012  # the shadow of a hovering vehicle is fainter
+
+# Bloom around emissive faces, in output pixels. The lamps glow where they can be seen. The discs
+# under the folded wheels are hidden from above, so their bloom is drawn through the body but only
+# shows around it.
+BLOOM_RADIUS = 6
+BLOOM_PASSES = 3
+BLOOM = {"lamp": {"strength": 1.6, "through_body": False}, "disc": {"strength": 2.2, "through_body": True}}
+
+POSES = {
+    "suv-front-left.png": {"lamps": False, "flying": False},
+    "suv-headlights.png": {"lamps": True, "flying": False},
+    "suv-flying.png": {"lamps": False, "flying": True},
+}
 
 
 def read_png(path):
@@ -134,9 +171,13 @@ def cube_faces(cube):
     }
     pivot, rotation = cube.get("pivot", [0, 0, 0]), cube.get("rotation", [0, 0, 0])
     for name, quad in corners.items():
-        # Bedrock geometry is mirrored on x compared with the world: the steering wheel at the model's
-        # -x shows up on the right in game. Flipping x here makes the picture match the game.
-        yield name, [(-px, py, pz) for px, py, pz in (rotate(p, pivot, rotation) for p in quad)]
+        yield name, [rotate(p, pivot, rotation) for p in quad]
+
+
+def folded_wheels(animations):
+    """Bone name -> (z rotation, position) of the folded wheels, read from the hover animation (ADR 0022)."""
+    bones = animations["animations"]["animation.mycar.suv.wheels_folded"]["bones"]
+    return {name: (pose["rotation"][2], pose["position"]) for name, pose in bones.items()}
 
 
 def sub(a, b):
@@ -161,22 +202,76 @@ def shade(normal):
     return nx * nx * SHADE_X + nz * nz * SHADE_Z + ny * ny * (SHADE_UP if ny > 0 else SHADE_DOWN)
 
 
-def collect(geo, texture):
+def mirror(quad):
+    # Bedrock geometry is mirrored on x compared with the world: the steering wheel at the model's
+    # -x shows up on the right in game. Flipping x here makes the picture match the game.
+    return [(-x, y, z) for x, y, z in quad]
+
+
+def collect(geo, texture, folds, pose):
+    """Return the vehicle's faces as (quad, rgb, bloom group or None)."""
     desc = geo["description"]
+    lift = FLIGHT_LIFT if pose["flying"] else 0.0
     polygons = []
     for bone in geo["bones"]:
-        # The preview shows the vehicle on the ground, where the render controller hides the glow (ADR 0022)
-        if bone["name"].startswith("glow_"):
+        name = bone["name"]
+        # The render controller hides the glow on the ground (ADR 0022)
+        if name.startswith("glow_") and not pose["flying"]:
             continue
+        fold = folds.get(name) if pose["flying"] else None
+        emissive = "lamp" if name == "headlights" and pose["lamps"] else "disc" if name.startswith("glow_") else None
         for cube in bone.get("cubes", []):
-            for name, quad in cube_faces(cube):
+            for face, quad in cube_faces(cube):
+                if fold:
+                    # Animation rotations turn the other way from the model's own (ADR 0022: hub side down)
+                    angle, (dx, dy, dz) = fold
+                    quad = [rotate(p, bone["pivot"], (0, 0, -angle)) for p in quad]
+                    quad = [(x - dx, y + dy, z + dz) for x, y, z in quad]
+                quad = mirror([(x, y + lift, z) for x, y, z in quad])
                 normal = cross(sub(quad[1], quad[0]), sub(quad[3], quad[0]))
                 if dot(normal, normal) == 0:
                     continue
-                r, g, b, _ = face_color(texture, cube["uv"][name], desc["texture_width"], desc["texture_height"])
-                k = shade(normalize(normal))
-                polygons.append((quad, (r * k, g * k, b * k)))
+                if emissive:
+                    rgb = LAMP_LIT if emissive == "lamp" else GLOW_LIT
+                else:
+                    r, g, b, _ = face_color(texture, cube["uv"][face], desc["texture_width"], desc["texture_height"])
+                    k = shade(normalize(normal))
+                    tint = NIGHT_TINT if pose["lamps"] else (1.0, 1.0, 1.0)
+                    rgb = (r * k * tint[0], g * k * tint[1], b * k * tint[2])
+                polygons.append((quad, rgb, emissive))
     return polygons
+
+
+def ground_layers(polygons, pose, ground_y):
+    """Translucent quads on the ground as (quad, alpha, rgb): the shadow, then light pools."""
+    points = [p for quad, _, emissive in polygons if not emissive for p in quad]
+    x_lo, x_hi = min(p[0] for p in points), max(p[0] for p in points)
+    z_lo, z_hi = min(p[2] for p in points), max(p[2] for p in points)
+    shadow_alpha = FLIGHT_SHADOW_ALPHA if pose["flying"] else SHADOW_ALPHA
+    layers = []
+    for layer in range(SHADOW_LAYERS):
+        g = layer * SHADOW_GROWTH
+        quad = [(x_lo - g, ground_y, z_lo - g), (x_hi + g, ground_y, z_lo - g), (x_hi + g, ground_y, z_hi + g), (x_lo - g, ground_y, z_hi + g)]
+        layers.append((quad, shadow_alpha, (0, 0, 0)))
+    if pose["lamps"]:
+        # The front is the model's -z side (ADR 0009)
+        half = (x_hi - x_lo) / 2 * 0.6
+        for layer in range(BEAM_LAYERS):
+            length = BEAM_LENGTH * (layer + 1) / BEAM_LAYERS
+            spread = half + length * BEAM_SPREAD
+            quad = [(-half, ground_y, z_lo), (-spread, ground_y, z_lo - length), (spread, ground_y, z_lo - length), (half, ground_y, z_lo)]
+            layers.append((quad, BEAM_ALPHA, BEAM_COLOR))
+    if pose["flying"]:
+        for quad, _, emissive in polygons:
+            if emissive != "disc" or quad[0][1] != min(p[1] for p in quad):
+                continue
+            cx = sum(p[0] for p in quad) / 4
+            cz = sum(p[2] for p in quad) / 4
+            for layer in range(GLOW_POOL_LAYERS):
+                s = GLOW_POOL_SIZE + layer * GLOW_POOL_GROWTH
+                pool = [(cx - s, ground_y, cz - s), (cx + s, ground_y, cz - s), (cx + s, ground_y, cz + s), (cx - s, ground_y, cz + s)]
+                layers.append((pool, GLOW_POOL_ALPHA, GLOW_LIT))
+    return layers
 
 
 class Camera:
@@ -220,43 +315,65 @@ def fill(polygon, w, h, plot):
             plot(px, py, qa * (px + 0.5) + qb * yc + qc)
 
 
-def render(rp):
-    geo = json.loads((rp / GEOMETRY).read_text())["minecraft:geometry"][0]
-    polygons = collect(geo, read_png(rp / TEXTURE))
-    points = [p for quad, _ in polygons for p in quad]
-    camera = Camera(points)
+def box_blur(plane, w, h, x0, y0, x1, y1, radius):
+    """Blur plane[y * w + x] in place inside the box [x0, x1) x [y0, y1), rows then columns."""
+    n = 2 * radius + 1
+    for y in range(y0, y1):
+        row = [plane[y * w + x] for x in range(x0, x1)]
+        for x in range(x0, x1):
+            lo, hi = max(0, x - x0 - radius), min(len(row), x - x0 + radius + 1)
+            plane[y * w + x] = sum(row[lo:hi]) / n
+    for x in range(x0, x1):
+        col = [plane[y * w + x] for y in range(y0, y1)]
+        for y in range(y0, y1):
+            lo, hi = max(0, y - y0 - radius), min(len(col), y - y0 + radius + 1)
+            plane[y * w + x] = sum(col[lo:hi]) / n
 
-    ground_y = min(p[1] for p in points)
-    x_lo, x_hi = min(p[0] for p in points), max(p[0] for p in points)
-    z_lo, z_hi = min(p[2] for p in points), max(p[2] for p in points)
-    shadows = []
-    for layer in range(SHADOW_LAYERS):
-        g = layer * SHADOW_GROWTH
-        shadows.append([(x_lo - g, ground_y, z_lo - g), (x_hi + g, ground_y, z_lo - g), (x_hi + g, ground_y, z_hi + g), (x_lo - g, ground_y, z_hi + g)])
 
-    # Fit everything, shadow included, into the image with a margin on every side
-    projected = [camera.project(p) for p in points + [p for quad in shadows for p in quad]]
-    sx_lo, sx_hi = min(p[0] for p in projected), max(p[0] for p in projected)
-    sy_lo, sy_hi = min(p[1] for p in projected), max(p[1] for p in projected)
+def add_bloom(planes, body, source, config):
+    """Blur the emissive samples in source (supersampled index -> rgb) and add them to planes."""
+    w, n = WIDTH * SUPERSAMPLE, SUPERSAMPLE * SUPERSAMPLE
+    bloom = [[0.0] * (WIDTH * HEIGHT) for _ in range(4)]
+    rows, cols = [], []
+    for i, rgb in source.items():
+        oy, ox = i // w // SUPERSAMPLE, (i % w) // SUPERSAMPLE
+        rows.append(oy)
+        cols.append(ox)
+        o = oy * WIDTH + ox
+        for c in range(3):
+            bloom[c][o] += rgb[c] / n
+        bloom[3][o] += 1.0 / n
+    # Only blur the box the bloom can reach, which keeps this fast in pure Python
+    reach = BLOOM_RADIUS * BLOOM_PASSES
+    x0, x1 = max(0, min(cols) - reach), min(WIDTH, max(cols) + reach + 1)
+    y0, y1 = max(0, min(rows) - reach), min(HEIGHT, max(rows) + reach + 1)
+    for plane in bloom:
+        for _ in range(BLOOM_PASSES):
+            box_blur(plane, WIDTH, HEIGHT, x0, y0, x1, y1, BLOOM_RADIUS)
+    for y in range(y0, y1):
+        for x in range(x0, x1):
+            o = y * WIDTH + x
+            k = config["strength"] * (1.0 - body[o] if config["through_body"] else 1.0)
+            for c in range(4):
+                planes[c][o] += bloom[c][o] * k
+
+
+def rasterize(polygons, layers, to_screen):
     w, h = WIDTH * SUPERSAMPLE, HEIGHT * SUPERSAMPLE
-    scale = min(w * (1 - 2 * MARGIN) / (sx_hi - sx_lo), h * (1 - 2 * MARGIN) / (sy_hi - sy_lo))
-    off_x = w / 2 - scale * (sx_lo + sx_hi) / 2
-    off_y = h / 2 - scale * (sy_lo + sy_hi) / 2
 
-    def to_screen(quad):
-        return [(off_x + scale * x, off_y + scale * y, q) for x, y, q in map(camera.project, quad)]
+    ground = [None] * (w * h)  # premultiplied (r, g, b, a) of the shadow and light pools
+    for quad, alpha, rgb in layers:
 
-    shadow = [0.0] * (w * h)
-    for quad in shadows:
+        def lay(px, py, _, alpha=alpha, rgb=rgb):
+            i = py * w + px
+            r, g, b, a = ground[i] or (0.0, 0.0, 0.0, 0.0)
+            ground[i] = (r + rgb[0] * alpha, g + rgb[1] * alpha, b + rgb[2] * alpha, a + alpha)
 
-        def darken(px, py, _):
-            shadow[py * w + px] += SHADOW_ALPHA
-
-        fill(to_screen(quad), w, h, darken)
+        fill(to_screen(quad), w, h, lay)
 
     depth = [0.0] * (w * h)  # stores 1/depth, so larger is nearer and 0 is empty
     color = [None] * (w * h)
-    for quad, rgb in polygons:
+    for quad, rgb, _ in polygons:
 
         def paint(px, py, q, rgb=rgb):
             i = py * w + px
@@ -267,35 +384,99 @@ def render(rp):
         fill(to_screen(quad), w, h, paint)
 
     # Average each SUPERSAMPLE x SUPERSAMPLE block with premultiplied alpha
-    out = bytearray(WIDTH * HEIGHT * 4)
     n = SUPERSAMPLE * SUPERSAMPLE
+    planes = [[0.0] * (WIDTH * HEIGHT) for _ in range(4)]
+    body = [0.0] * (WIDTH * HEIGHT)  # fraction of each output pixel the vehicle covers
     for oy in range(HEIGHT):
         for ox in range(WIDTH):
             r = g = b = a = 0.0
+            covered = 0
             for sy in range(oy * SUPERSAMPLE, (oy + 1) * SUPERSAMPLE):
                 for sx in range(ox * SUPERSAMPLE, (ox + 1) * SUPERSAMPLE):
                     i = sy * w + sx
                     if color[i] is not None:
                         r, g, b, a = r + color[i][0], g + color[i][1], b + color[i][2], a + 1.0
-                    else:
-                        a += shadow[i]  # black, so it only adds coverage
-            o = (oy * WIDTH + ox) * 4
-            if a > 0:
-                out[o : o + 4] = bytes((round(r / a), round(g / a), round(b / a), round(255 * a / n)))
+                        covered += 1
+                    elif ground[i] is not None:
+                        gr, gg, gb, ga = ground[i]
+                        k = min(1.0, ga) / ga
+                        r, g, b, a = r + gr * k, g + gg * k, b + gb * k, a + ga * k
+            o = oy * WIDTH + ox
+            planes[0][o], planes[1][o], planes[2][o], planes[3][o] = r / n, g / n, b / n, a / n
+            body[o] = covered / n
+
+    for group, config in BLOOM.items():
+        source = {}
+        for quad, rgb, emissive in polygons:
+            if emissive != group:
+                continue
+
+            def light(px, py, q, rgb=rgb, through=config["through_body"]):
+                i = py * w + px
+                if through or q >= depth[i]:
+                    source[i] = rgb
+
+            fill(to_screen(quad), w, h, light)
+        if source:
+            add_bloom(planes, body, source, config)
+
+    out = bytearray(WIDTH * HEIGHT * 4)
+    for o in range(WIDTH * HEIGHT):
+        a = planes[3][o]
+        if a > 0:
+            out[o * 4 : o * 4 + 4] = bytes(
+                (*(min(255, round(planes[c][o] / a)) for c in range(3)), min(255, round(255 * a)))
+            )
     return out
 
 
+def render(rp):
+    geo = json.loads((rp / GEOMETRY).read_text())["minecraft:geometry"][0]
+    texture = read_png(rp / TEXTURE)
+    folds = folded_wheels(json.loads((rp / ANIMATIONS).read_text()))
+
+    scenes = {name: collect(geo, texture, folds, pose) for name, pose in POSES.items()}
+    ground_y = min(p[1] for quad, _, _ in scenes["suv-front-left.png"] for p in quad)
+    layers = {name: ground_layers(scenes[name], pose, ground_y) for name, pose in POSES.items()}
+
+    # One camera and one scale for every pose, so the vehicle has the same size in each picture
+    camera = Camera([p for polygons in scenes.values() for quad, _, _ in polygons for p in quad])
+    projected = [
+        camera.project(p)
+        for name in POSES
+        for quad in [q for q, _, _ in scenes[name]] + [q for q, _, _ in layers[name]]
+        for p in quad
+    ]
+    sx_lo, sx_hi = min(p[0] for p in projected), max(p[0] for p in projected)
+    sy_lo, sy_hi = min(p[1] for p in projected), max(p[1] for p in projected)
+    w, h = WIDTH * SUPERSAMPLE, HEIGHT * SUPERSAMPLE
+    scale = min(w * (1 - 2 * MARGIN) / (sx_hi - sx_lo), h * (1 - 2 * MARGIN) / (sy_hi - sy_lo))
+    off_x = w / 2 - scale * (sx_lo + sx_hi) / 2
+    off_y = h / 2 - scale * (sy_lo + sy_hi) / 2
+
+    def to_screen(quad):
+        return [(off_x + scale * x, off_y + scale * y, q) for x, y, q in map(camera.project, quad)]
+
+    return {name: rasterize(scenes[name], layers[name], to_screen) for name in POSES}
+
+
 def main():
-    rp, target = Path(sys.argv[1]), Path(sys.argv[2])
-    pixels = render(rp)
+    rp, out_dir = Path(sys.argv[1]), Path(sys.argv[2])
+    images = render(rp)
     if "--check" in sys.argv[3:]:
-        current = bytes(c for row in read_png(target) for px in row for c in px) if target.exists() else b""
-        if current != bytes(pixels):
-            sys.exit(f"{target} is out of date with the model. Run `pnpm model` and commit the result.")
-        print(f"{target} is up to date")
+        stale = []
+        for name, pixels in images.items():
+            target = out_dir / name
+            current = bytes(c for row in read_png(target) for px in row for c in px) if target.exists() else b""
+            if current != bytes(pixels):
+                stale.append(str(target))
+        if stale:
+            sys.exit(f"{', '.join(stale)} out of date with the model. Run `pnpm model` and commit the result.")
+        print(f"previews in {out_dir} are up to date")
         return
-    write_png(target, WIDTH, HEIGHT, pixels)
-    print(f"wrote {target}")
+    for name, pixels in images.items():
+        write_png(out_dir / name, WIDTH, HEIGHT, pixels)
+        print(f"wrote {out_dir / name}")
 
 
 main()

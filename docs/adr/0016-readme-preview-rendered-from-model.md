@@ -1,6 +1,6 @@
 # 0016. Render the README preview from the model files
 
-- Status: Accepted
+- Status: Superseded by 0027
 - Date: 2026-10-11
 
 ## Context
