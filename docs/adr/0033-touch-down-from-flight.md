@@ -19,4 +19,5 @@ The `flight_touchdown` in-game test showed that `Entity.isOnGround` turns true w
 
 - Sinking onto the ground ends the flight, so skimming over the ground means staying above it. To fly again, double-tap Jump to take off
 - The wheels unfold after this touchdown, not before it, because `landing`, where 0032 lowers them early, is skipped
+- The bank sink (0026) counts too: a full-lock circle from the 1.5-block takeoff height touches down in about 56 ticks (2.8 s) and ends the flight. A driver who circles low holds Jump
 - Flying into the side of a block does not count as touching the ground: the engine treats it as a wall, and the vehicle keeps flying

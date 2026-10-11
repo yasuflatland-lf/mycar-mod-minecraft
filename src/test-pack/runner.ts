@@ -556,11 +556,14 @@ function flightTouchdown(a: Arena): Promise<Outcome> {
   return withAirborneCar(a, async (car) => {
     drive(car, 0, -1);
     const landedAt = await ticksUntilGround(car, 40);
+    // Release the stick, or it reverses the car once it is on the ground.
+    drive(car, 0, 0);
     await wait(20);
     const restY = car.location.y - a.gy;
+    const gearDown = car.getProperty(GEAR_DOWN_PROPERTY) === true;
     return {
-      pass: landedAt >= 0 && Math.abs(restY) <= 0.1,
-      detail: `landedAt=${landedAt} restY=${restY.toFixed(2)}`,
+      pass: landedAt >= 0 && Math.abs(restY) <= 0.1 && gearDown,
+      detail: `landedAt=${landedAt} restY=${restY.toFixed(2)} gearDown=${gearDown}`,
     };
   });
 }

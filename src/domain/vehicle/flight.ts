@@ -79,7 +79,8 @@ export function stepFlight(prev: FlightState, input: FlightInput): FlightState {
 
 /**
  * Climb command from -1 (sink) to 1 (climb): held Jump climbs and the stick
- * pulled back sinks, so both together cancel out. A sideways stick only
+ * pulled back sinks; Jump with the stick pulled fully back (past
+ * `throttleFullAt`) holds altitude. A sideways stick only
  * steers and creeps (ADR 0018), so it never sinks.
  */
 export function climbInput(raw: RawInput | undefined): number {
@@ -90,7 +91,7 @@ export function climbInput(raw: RawInput | undefined): number {
 
 /**
  * Target vertical velocity in blocks/tick. While flying, the climb command
- * sets it whatever the view pitch or the forward speed (ADR 0031).
+ * sets it independent of the forward speed (ADR 0031).
  */
 export function flightVerticalSpeed(mode: FlightMode, climb: number): number {
   switch (mode) {

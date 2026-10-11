@@ -12,7 +12,7 @@ The descend button is Sneak, and it cannot be used while riding: Sneak dismounts
 
 ## Decision
 
-- While `flying`, the climb command is `clamp((Jump held ? 1 : 0) + min(0, throttle), -1, 1)`, with the throttle from `toDriveInput` (0018). Holding Jump climbs, pulling the stick back (S on PC) sinks, and both together hold altitude. A sideways stick only steers and creeps, so it never sinks
+- While `flying`, the climb command is `clamp((Jump held ? 1 : 0) + min(0, throttle), -1, 1)`, with the throttle from `toDriveInput` (0018). Holding Jump climbs, pulling the stick back (S on PC) sinks, and Jump with the stick pulled fully back holds altitude; with the stick only partly back, Jump still climbs. A sideways stick only steers and creeps, so it never sinks
 - In the air a negative throttle is dropped from the drive input, so pulling the stick back sinks without braking or reversing. The vehicle coasts forward under drag
 - The target vertical speed is `command * SPEC.maxClimb` (0.3 blocks/tick). It no longer depends on the forward speed, so a vehicle hovering in place climbs and sinks too. The bank sink of 0026 is still subtracted, and the sum is still capped at ±`SPEC.maxClimb`
 - The view pitch is not read any more. `SPEC.pitchDeadzone` and the fifth field of the test input message are removed

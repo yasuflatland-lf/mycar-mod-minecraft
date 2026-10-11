@@ -133,9 +133,12 @@ describe("Vehicle in flight (ADR 0021)", () => {
     sim.run({ ...FORWARD, jump: true }, 20);
     expect(sim.y).toBeGreaterThan(y0 + 5);
     const y1 = sim.y;
+    const v1 = sim.vehicle.speed;
     sim.run({ moveX: 0, moveY: -1, jump: false }, 10);
     expect(sim.y).toBeLessThan(y1 - 2);
-    expect(sim.vehicle.speed).toBeGreaterThanOrEqual(0);
+    // The car coasts under drag alone; read as a brake, the pulled-back stick
+    // would shed 10 * SPEC.brake instead.
+    expect(v1 - sim.vehicle.speed).toBeCloseTo(10 * SPEC.drag, 6);
   });
 
   it("climbs on held Jump while hovering in place (ADR 0031)", () => {
@@ -177,6 +180,8 @@ describe("Vehicle in flight (ADR 0021)", () => {
     expect(sim.changes).not.toContain("landing");
     expect(sim.gravity).toBe(true);
     expect(sim.y).toBe(0);
+    expect(sim.vehicle.wheelsDown).toBe(true);
+    expect(sim.gearYs.at(-1)?.[0]).toBe(true);
   });
 
   it("starts landing as soon as the input goes away mid-flight", () => {

@@ -18,6 +18,6 @@ The client cannot see how far the ground is below the vehicle. The script can: i
 
 ## Consequences
 
-- A landing from higher than about 4 blocks finishes unfolding about a block above the ground. A landing that starts lower unfolds at once and touches down before the unfold ends, as before
+- A landing from higher than about 4 blocks finishes unfolding about a block above the ground. A landing that starts below about 3 blocks unfolds at once and touches down before the unfold ends; from the 1.5-block cruise height after takeoff, about 12 of the 20 unfold ticks have passed at touchdown
 - The hover sound and glow stop when the wheels start to unfold, a moment before touchdown
-- Landing on water or lava finds no solid block, so the wheels unfold only when the mode returns to `ground`
+- Water and lava do not count as ground. With gravity off the vehicle keeps sinking through them, so the wheels come down once the bed is within 4 blocks, or only at touchdown if it is deeper

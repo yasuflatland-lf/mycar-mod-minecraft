@@ -17,10 +17,12 @@ export function parseTestInputMessage(
   const moveY = Number(y);
   if (!Number.isFinite(moveX) || !Number.isFinite(moveY)) return undefined;
   if (jump !== "0" && jump !== "1") return undefined;
-  const input: RawInput = {
-    moveX: clamp(moveX, -1, 1),
-    moveY: clamp(moveY, -1, 1),
-    jump: jump === "1",
+  return {
+    vehicleId,
+    input: {
+      moveX: clamp(moveX, -1, 1),
+      moveY: clamp(moveY, -1, 1),
+      jump: jump === "1",
+    },
   };
-  return { vehicleId, input };
 }

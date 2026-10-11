@@ -329,8 +329,9 @@ def floor_lever(x, z, height, knob, lean=-15):
 
 SHIFT_X, SHIFT_Z = 0, 8.5
 body.append(box(-1.8, 7, 4, 1.8, 7.6, 11, "trim"))  # transmission tunnel
-for i, (half, height) in enumerate(((1.0, 0.5), (0.75, 0.4), (0.85, 0.4), (0.6, 0.4), (0.7, 0.35), (0.45, 0.4))):
-    y = 7.6 + sum(h for _, h in ((1.0, 0.5), (0.75, 0.4), (0.85, 0.4), (0.6, 0.4), (0.7, 0.35))[:i])
+BOOT_RINGS = ((1.0, 0.5), (0.75, 0.4), (0.85, 0.4), (0.6, 0.4), (0.7, 0.35), (0.45, 0.4))  # (half width, height)
+for i, (half, height) in enumerate(BOOT_RINGS):
+    y = 7.6 + sum(h for _, h in BOOT_RINGS[:i])
     body.append(box(SHIFT_X - half, y, SHIFT_Z - half, SHIFT_X + half, y + height, SHIFT_Z + half, "tire"))  # boot
 body += floor_lever(SHIFT_X, SHIFT_Z, 7.2, 0.55)
 for x in (-1.1, 1.1):
