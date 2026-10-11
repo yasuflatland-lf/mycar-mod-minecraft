@@ -10,7 +10,7 @@ This directory records design decisions and the reasons behind them. The format 
 | [0004](0004-two-block-step-up-by-look-ahead.md) | Climb two-block steps by looking ahead in the script | Accepted |
 | [0005](0005-touch-throttle-compensation.md) | Compensate the throttle from the mobile joystick | Superseded by 0018 |
 | [0006](0006-ram-damage-and-occupant-protection.md) | Ram damage detection, and always protecting occupants | Accepted |
-| [0007](0007-seats-and-driver.md) | Seats and choosing the driver | Accepted |
+| [0007](0007-seats-and-driver.md) | Seats and choosing the driver | Superseded by 0019 |
 | [0008](0008-vehicle-item-and-breaking.md) | Placing and picking up vehicles | Accepted |
 | [0009](0009-vehicle-model-conventions.md) | Vehicle model conventions, and accepting a square collision box | Accepted |
 | [0010](0010-testing-strategy.md) | Testing strategy | Accepted |
@@ -22,6 +22,7 @@ This directory records design decisions and the reasons behind them. The format 
 | [0016](0016-readme-preview-rendered-from-model.md) | Render the README preview from the model files | Accepted |
 | [0017](0017-repaint-vehicles-with-dye.md) | Repaint vehicles with dye | Accepted |
 | [0018](0018-sideways-stick-creeps-forward.md) | Treat a sideways stick as a slow forward turn | Accepted |
+| [0019](0019-passengers-move-up-to-the-driver-seat.md) | Passengers move up to the driver seat | Accepted |
 
 The measurements and in-game tests behind these decisions are in [the driving-core spike findings](../spike-driving-core.md).
 

@@ -3,6 +3,7 @@
 import { type Dimension, type Entity, system, world } from "@minecraft/server";
 import { forward } from "../domain/shared/vec";
 import { PAINTS } from "../domain/vehicle/paint";
+import { nearestSeat, toLocal } from "../domain/vehicle/seats";
 import { SPEC } from "../domain/vehicle/spec";
 import {
   TEST_INPUT_EVENT as INPUT_EVENT,
@@ -15,6 +16,10 @@ import { hitTick, judgeRam, PUSH_WINDOW, type RamSample } from "./ramJudge";
 
 // setupArena clears and floors this x/z rectangle and keeps it ticking.
 const ARENA = { minX: 0, maxX: 120, minZ: 0, maxZ: 40 } as const;
+
+// Mirrors the SUV's minecraft:rideable but seats cows, because only players
+// can ride the SUV and a test has no players (ADR 0010).
+const SEAT_PROBE = "mycar_test:seat_probe";
 
 interface Outcome {
   pass: boolean;
@@ -110,6 +115,7 @@ async function setupArena(): Promise<Arena> {
   );
   dim.runCommand(`kill @e[type=${VEHICLE}]`);
   dim.runCommand("kill @e[type=cow]");
+  dim.runCommand(`kill @e[type=${SEAT_PROBE}]`);
   await wait(5);
   return { dim, gy };
 }
@@ -174,15 +180,19 @@ async function turnAndHandbrake(a: Arena): Promise<Outcome> {
   };
 }
 
+function summonCow(a: Arena, x: number, z: number): Entity | undefined {
+  // Mobs from spawnEntity far from players despawn at once, so use summon.
+  a.dim.runCommand(`summon minecraft:cow ${x} ${a.gy} ${z}`);
+  return a.dim.getEntities({
+    type: "minecraft:cow",
+    location: { x, y: a.gy, z },
+    maxDistance: 2,
+  })[0];
+}
+
 function ramCow(a: Arena): Promise<Outcome> {
   return withCar(a, 5.5, 30.5, -90, async (car) => {
-    // Mobs from spawnEntity far from players despawn at once, so use summon.
-    a.dim.runCommand(`summon minecraft:cow 25.5 ${a.gy} 30.5`);
-    const cow = a.dim.getEntities({
-      type: "minecraft:cow",
-      location: { x: 25.5, y: a.gy, z: 30.5 },
-      maxDistance: 2,
-    })[0];
+    const cow = summonCow(a, 25.5, 30.5);
     if (!cow) return { pass: false, detail: "cow not found" };
     try {
       // A wandering cow can step out of the car's path. Resistance III takes
@@ -271,6 +281,58 @@ function step2(
   });
 }
 
+/** The seat a rider sits in, judged the same way as the main pack (ADR 0019). */
+function seatOf(vehicle: Entity, rider: Entity): number {
+  const offset = {
+    x: rider.location.x - vehicle.location.x,
+    z: rider.location.z - vehicle.location.z,
+  };
+  return nearestSeat(toLocal(offset, forward(vehicle.getRotation().y)));
+}
+
+// Bedrock seats riders by their index in the rider list, so a passenger moves
+// up into the driver's seat when the driver gets out (ADR 0019).
+async function seatsAfterDriverLeaves(a: Arena): Promise<Outcome> {
+  a.dim.runCommand(`summon ${SEAT_PROBE} 30.5 ${a.gy} 8.5`);
+  const probe = a.dim.getEntities({
+    type: SEAT_PROBE,
+    location: { x: 30.5, y: a.gy, z: 8.5 },
+    maxDistance: 1.5,
+  })[0];
+  const cows = [0, 1, 2].map((i) => summonCow(a, 26.5 + i * 2, 4.5));
+  try {
+    const rideable = probe?.getComponent("minecraft:rideable");
+    const [driver, passenger, next] = cows;
+    if (!probe || !rideable || !driver || !passenger || !next)
+      return { pass: false, detail: "probe or cows missing" };
+    probe.setRotation({ x: 0, y: -90 });
+    const board = async (cow: Entity) => {
+      const ok = rideable.addRider(cow);
+      await wait(5);
+      return ok;
+    };
+    const boarded = (await board(driver)) && (await board(passenger));
+    const before = [seatOf(probe, driver), seatOf(probe, passenger)];
+    rideable.ejectRider(driver);
+    await wait(5);
+    const afterLeave = seatOf(probe, passenger);
+    const nextBoarded = await board(next);
+    const afterBoard = [seatOf(probe, passenger), seatOf(probe, next)];
+    return {
+      pass:
+        boarded &&
+        nextBoarded &&
+        before.join() === "0,1" &&
+        afterLeave === 0 &&
+        afterBoard.join() === "0,1",
+      detail: `boarded=${boarded && nextBoarded} before=${before} afterLeave=${afterLeave} afterBoard=${afterBoard}`,
+    };
+  } finally {
+    for (const cow of cows) if (cow?.isValid) cow.remove();
+    if (probe?.isValid) probe.remove();
+  }
+}
+
 // Players cannot be simulated, so this drives the entity events that the dye
 // interaction triggers and reads back the variant the texture is chosen by.
 function paintEvents(a: Arena): Promise<Outcome> {
@@ -297,6 +359,7 @@ async function runAll(runId: string): Promise<void> {
     ["wall_diagonal", () => wallDiagonal(a)],
     ["step2_front", () => step2(a, 8, -90, 100)],
     ["step2_diagonal", () => step2(a, 30, -60, 100)],
+    ["seats_after_driver_leaves", () => seatsAfterDriverLeaves(a)],
     ["paint_events", () => paintEvents(a)],
   ];
   let passed = 0;

@@ -142,7 +142,7 @@ export class Vehicle {
   }
 
   private updateDriver(riders: readonly RiderView[]): RiderView | undefined {
-    // Driver = the rider in the driver's seat (seat 0) (ADR 0007)
+    // Driver = the rider in the driver's seat (seat 0) (ADR 0019)
     const driver = riders.find((r) => this.seats.get(r.id) === 0);
     if (
       driver &&
