@@ -1,6 +1,7 @@
-# src/infrastructure/bedrock, bootstrap.ts, main.ts, and src/test-pack/runner.ts
-# depend on @minecraft/server, which exists only inside the game, so unit tests
-# cannot load them and the in-game tests cover them instead (ADR 0010, 0012).
+# src/infrastructure/vehicle/bedrock, src/infrastructure/vehicle/install.ts,
+# bootstrap.ts, main.ts, and src/test-pack/runner.ts depend on @minecraft/server,
+# which exists only inside the game, so unit tests cannot load them and the
+# in-game tests cover them instead (ADR 0010, 0012).
 # Components keep that from hiding how well the pure logic is tested, without
 # dropping those files from the total.
 comment:

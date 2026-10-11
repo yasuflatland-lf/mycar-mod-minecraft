@@ -1,4 +1,5 @@
-// Composition root: wires the repository, port implementations, and use cases together.
+// Wires the vehicle feature's repository, port implementations, and use cases
+// together; bootstrap() calls it once.
 import { DriveVehicles } from "../../application/vehicle/driveVehicles";
 import { GiveStarterVehicle } from "../../application/vehicle/giveStarterVehicle";
 import { HitVehicle } from "../../application/vehicle/hitVehicle";
