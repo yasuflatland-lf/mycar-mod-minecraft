@@ -24,6 +24,7 @@ pnpm build         # esbuild bundle into the Behavior Pack and the test pack
 pnpm package       # zip the packs into dist/mycar-<version>.mcaddon (after build)
 pnpm model         # regenerate the Resource Pack model and the README preview (Python 3)
 pnpm model:check   # fail if docs/images/suv-front-left.png is stale
+pnpm sounds        # regenerate the Resource Pack sounds (Python 3)
 pnpm server:up     # register the packs and start the dev BDS (Docker)
 pnpm server:down   # stop the dev BDS
 pnpm test:game     # run the in-game tests on the running dev BDS

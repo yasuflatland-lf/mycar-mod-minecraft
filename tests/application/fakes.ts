@@ -52,6 +52,7 @@ export class FakeWorld
   /** Whether the slot a vehicle item was used from still holds one. */
   itemInSlot = true;
   failOn: string | undefined;
+  failCameraOn: string | undefined;
   readonly calls: string[] = [];
   private nextId = 1;
 
@@ -70,6 +71,13 @@ export class FakeWorld
   }
   setFlight(id: string, mode: FlightMode) {
     this.calls.push(`flight:${id}:${mode}`);
+  }
+  setThirdPerson(id: string, on: boolean) {
+    if (id === this.failCameraOn) throw new Error("camera");
+    this.calls.push(`camera:${id}:${on ? "third" : "own"}`);
+  }
+  setBank(id: string, degrees: number) {
+    this.calls.push(`bank:${id}:${degrees}`);
   }
   damage(hit: RamHit, attackerId: string | undefined) {
     this.calls.push(`damage:${hit.id}:${attackerId ?? "-"}`);

@@ -18,6 +18,12 @@
         }
       }
     },
+    "animation.mycar.suv.bank": {
+      "loop": true,
+      "bones": {
+        "root": { "rotation": [0, 0, "-query.property('mycar:bank')"] }
+      }
+    },
     "animation.mycar.suv.exhaust": {
       "loop": true,
       "animation_length": 0.2,
@@ -25,8 +31,64 @@
         "0.0": { "effect": "exhaust", "locator": "exhaust" }
       }
     },
+    "animation.mycar.suv.engine_sound_0": {
+      "loop": true,
+      "animation_length": 1.0,
+      "sound_effects": { "0.0": { "effect": "engine_0" } }
+    },
+    "animation.mycar.suv.engine_sound_1": {
+      "loop": true,
+      "animation_length": 1.0,
+      "sound_effects": { "0.0": { "effect": "engine_1" } }
+    },
+    "animation.mycar.suv.engine_sound_2": {
+      "loop": true,
+      "animation_length": 1.0,
+      "sound_effects": { "0.0": { "effect": "engine_2" } }
+    },
+    "animation.mycar.suv.engine_sound_3": {
+      "loop": true,
+      "animation_length": 1.0,
+      "sound_effects": { "0.0": { "effect": "engine_3" } }
+    },
+    "animation.mycar.suv.engine_sound_4": {
+      "loop": true,
+      "animation_length": 1.0,
+      "sound_effects": { "0.0": { "effect": "engine_4" } }
+    },
+    "animation.mycar.suv.engine_sound_5": {
+      "loop": true,
+      "animation_length": 1.0,
+      "sound_effects": { "0.0": { "effect": "engine_5" } }
+    },
+    "animation.mycar.suv.hover_sound_0": {
+      "loop": true,
+      "animation_length": 1.0,
+      "sound_effects": { "0.0": { "effect": "hover_0" } }
+    },
+    "animation.mycar.suv.hover_sound_1": {
+      "loop": true,
+      "animation_length": 1.0,
+      "sound_effects": { "0.0": { "effect": "hover_1" } }
+    },
+    "animation.mycar.suv.hover_sound_2": {
+      "loop": true,
+      "animation_length": 1.0,
+      "sound_effects": { "0.0": { "effect": "hover_2" } }
+    },
+    "animation.mycar.suv.hover_sound_3": {
+      "loop": true,
+      "animation_length": 1.0,
+      "sound_effects": { "0.0": { "effect": "hover_3" } }
+    },
+    "animation.mycar.suv.hover_sound_4": {
+      "loop": true,
+      "animation_length": 1.0,
+      "sound_effects": { "0.0": { "effect": "hover_4" } }
+    },
     "animation.mycar.suv.wheels_deploy": {
       "animation_length": 1.0,
+      "sound_effects": { "0.0": { "effect": "hover_start" } },
       "bones": {
         "wheel_fl": {
           "rotation": { "0.0": [0, 0, 0], "1.0": [0, 0, 90] },

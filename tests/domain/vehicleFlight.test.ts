@@ -188,3 +188,46 @@ describe("Vehicle in flight (ADR 0021)", () => {
     expect(Math.abs(sim.vehicle.speed)).toBeLessThanOrEqual(SPEC.ramMinSpeed);
   });
 });
+
+describe("Vehicle banking (ADR 0026)", () => {
+  function flying(): FlightSim {
+    const sim = new FlightSim(Vehicle.rebuild("car", 0, [], "flying"));
+    sim.y = 10;
+    return sim;
+  }
+
+  function bankOver(sim: FlightSim, input: RawInput, ticks: number): number[] {
+    const banks: number[] = [];
+    for (let i = 0; i < ticks; i++) {
+      sim.step(input);
+      banks.push(sim.vehicle.bankAngle);
+    }
+    return banks;
+  }
+
+  it("banks left while steering left in flight and levels out after", () => {
+    const sim = flying();
+    bankOver(sim, FORWARD, 40);
+    const left = bankOver(sim, { ...FORWARD, moveX: 1 }, 20);
+    expect(left.at(-1)).toBeLessThan(0);
+    const after = bankOver(sim, FORWARD, 20);
+    expect(after.at(-1)).toBe(0);
+  });
+
+  it("loses altitude while banked and holds it in level flight", () => {
+    const sim = flying();
+    bankOver(sim, FORWARD, 40);
+    const level = sim.y;
+    bankOver(sim, FORWARD, 40);
+    expect(Math.abs(sim.y - level)).toBeLessThan(0.05);
+    bankOver(sim, { ...FORWARD, moveX: 1 }, 40);
+    expect(sim.y).toBeLessThan(level - 0.5);
+  });
+
+  it("stays level while steering on the ground", () => {
+    const sim = new FlightSim();
+    bankOver(sim, FORWARD, 20);
+    const turning = bankOver(sim, { ...FORWARD, moveX: 1 }, 20);
+    expect(turning.every((b) => b === 0)).toBe(true);
+  });
+});

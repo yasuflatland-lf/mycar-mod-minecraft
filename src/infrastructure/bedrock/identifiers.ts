@@ -20,6 +20,10 @@ export const LIGHT_BLOCK = "minecraft:light_block_15";
 export const TEST_INPUT_EVENT = "mycar:test_input";
 /** Client-synced flight mode. The script reads it back after /reload, and the Resource Pack draws the flight visuals from it (ADR 0021). */
 export const FLIGHT_PROPERTY = "mycar:flight";
+/** Vanilla camera preset that views the player from behind, as F5 does (ADR 0027). */
+export const THIRD_PERSON_CAMERA = "minecraft:third_person";
+/** Client-synced bank angle in degrees; the Resource Pack rolls the model by it (ADR 0026). */
+export const BANK_PROPERTY = "mycar:bank";
 export const HOVER_EVENT = "mycar:hover";
 export const LAND_EVENT = "mycar:land";
 

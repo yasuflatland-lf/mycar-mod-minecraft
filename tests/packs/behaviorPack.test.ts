@@ -2,7 +2,11 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { FLIGHT_MODES } from "../../src/domain/vehicle/flight";
 import { SEAT_POSITIONS } from "../../src/domain/vehicle/seats";
-import { FLIGHT_PROPERTY } from "../../src/infrastructure/bedrock/identifiers";
+import { SPEC } from "../../src/domain/vehicle/spec";
+import {
+  BANK_PROPERTY,
+  FLIGHT_PROPERTY,
+} from "../../src/infrastructure/bedrock/identifiers";
 
 const read = (p: string) => JSON.parse(readFileSync(p, "utf8"));
 const entity = read("packs/mycar_bp/entities/suv.json")["minecraft:entity"];
@@ -78,6 +82,15 @@ describe("packs/mycar_bp", () => {
     expect(entity.events["mycar:land"]).toEqual({
       add: { component_groups: ["mycar:grounded"] },
       remove: { component_groups: ["mycar:hovering"] },
+    });
+  });
+
+  it("syncs a bank angle to clients whose range holds every angle the script sends (ADR 0026)", () => {
+    expect(entity.description.properties[BANK_PROPERTY]).toEqual({
+      type: "float",
+      range: [-SPEC.maxBank, SPEC.maxBank],
+      default: 0,
+      client_sync: true,
     });
   });
 });

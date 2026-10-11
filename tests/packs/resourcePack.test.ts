@@ -1,5 +1,6 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { defined } from "../support/defined";
 
 const read = (p: string) => JSON.parse(readFileSync(p, "utf8"));
 const RP = "packs/mycar_rp";
@@ -32,7 +33,10 @@ describe("Resource Pack flight visuals (ADR 0022)", () => {
     expect(controller.initial_state).toBe("ground");
     expect(s.ground.animations).toEqual(["wheels"]);
     expect(s.deploy.animations).toEqual(["wheels_deploy"]);
-    expect(s.hover.animations).toEqual(["wheels_folded", "hover_glow"]);
+    expect(s.hover.animations.slice(0, 2)).toEqual([
+      "wheels_folded",
+      "hover_glow",
+    ]);
     expect(s.retract.animations).toEqual(["wheels_retract"]);
     for (const state of [s.ground, s.hover]) {
       expect(JSON.stringify(state.transitions)).toContain(
@@ -43,7 +47,11 @@ describe("Resource Pack flight visuals (ADR 0022)", () => {
 
   it("every animation a controller state plays resolves to an animation in the pack", () => {
     for (const [name, state] of Object.entries(controller.states)) {
-      for (const short of (state as { animations: string[] }).animations) {
+      const entries = (state as { animations: (string | object)[] }).animations;
+      for (const entry of entries) {
+        // A conditional entry is { name: condition }.
+        const short =
+          typeof entry === "string" ? entry : (Object.keys(entry)[0] ?? "");
         const id = client.animations[short];
         expect(id, `${name}: ${short}`).toBeDefined();
         expect(anims[id], `${name}: ${id}`).toBeDefined();
@@ -85,10 +93,11 @@ describe("Resource Pack flight visuals (ADR 0022)", () => {
     ]);
   });
 
-  it("shows the glow bones only while the vehicle is not on the ground", () => {
+  it("shows the glow bones and the rear glass only while the vehicle is not on the ground", () => {
     expect(render.part_visibility).toEqual([
       { "*": true },
       { "glow_*": "query.property('mycar:flight') != 'ground'" },
+      { rear_glass: "query.property('mycar:flight') != 'ground'" },
     ]);
   });
 
@@ -100,5 +109,127 @@ describe("Resource Pack flight visuals (ADR 0022)", () => {
     );
     expect(rp.modules[0].version).toEqual(rp.header.version);
     expect(dep.version).toEqual(rp.header.version);
+  });
+});
+
+describe("Resource Pack banking (ADR 0026)", () => {
+  const geo = read(`${RP}/models/entity/suv.geo.json`)["minecraft:geometry"][0];
+  const root = geo.bones.find((b: { name: string }) => b.name === "root");
+
+  // A positive z rotation lowers the model's +x side, which is the vehicle's
+  // left (0022 folds the left wheels hub side down with +90), so a bank to the
+  // right (positive) needs a negative z rotation.
+  it("rolls the whole model about its length by mycar:bank", () => {
+    expect(client.scripts.animate).toContain("bank");
+    expect(client.animations.bank).toBe("animation.mycar.suv.bank");
+    expect(anims["animation.mycar.suv.bank"].bones).toEqual({
+      root: { rotation: [0, 0, "-query.property('mycar:bank')"] },
+    });
+  });
+
+  it("rolls around a pivot inside the body rather than at the wheels' contact patch", () => {
+    expect(root.pivot[0]).toBe(0);
+    expect(root.pivot[2]).toBe(0);
+    expect(root.pivot[1]).toBeGreaterThan(6);
+  });
+});
+
+describe("Resource Pack sounds (ADR 0029)", () => {
+  const defs = read(`${RP}/sounds/sound_definitions.json`).sound_definitions;
+  const effectsOf = (anim: string) =>
+    Object.values<{ effect: string }>(anims[anim].sound_effects).map(
+      (k) => k.effect,
+    );
+
+  it("maps every sound effect to a definition whose files exist", () => {
+    for (const event of Object.values<string>(client.sound_effects)) {
+      expect(defs[event], event).toBeDefined();
+      for (const sound of defs[event].sounds)
+        expect(existsSync(`${RP}/${sound.name}.wav`), sound.name).toBe(true);
+    }
+  });
+
+  const GROUND =
+    "query.has_rider && query.property('mycar:flight') == 'ground'";
+
+  /** The [lo, hi) range of query.ground_speed each level plays in, in level order. */
+  function speedRanges(
+    entries: Record<string, string>[],
+    prefix: string,
+    guard: string,
+  ): [number, number][] {
+    return entries.map((entry, level) => {
+      const [name, condition] = defined(
+        Object.entries(entry)[0],
+        `level ${level}`,
+      );
+      expect(name).toBe(`${prefix}${level}`);
+      let rest = condition;
+      if (guard) {
+        expect(rest.startsWith(guard), name).toBe(true);
+        rest = rest.slice(guard.length).replace(/^ && /, "");
+      }
+      const lo = /query\.ground_speed >= ([\d.]+)/.exec(rest)?.[1];
+      const hi = /query\.ground_speed < ([\d.]+)/.exec(rest)?.[1];
+      return [lo ? Number(lo) : 0, hi ? Number(hi) : Number.POSITIVE_INFINITY];
+    });
+  }
+
+  function expectContiguous(ranges: [number, number][]): void {
+    expect(ranges[0]?.[0]).toBe(0);
+    expect(ranges.at(-1)?.[1]).toBe(Number.POSITIVE_INFINITY);
+    ranges.slice(1).forEach(([lo, hi], i) => {
+      expect(lo).toBe(ranges[i]?.[1]);
+      expect(lo).toBeLessThan(hi);
+    });
+  }
+
+  it("rumbles the engine on the ground at a pitch that rises with the speed", () => {
+    const levels = client.scripts.animate.filter(
+      (a: unknown) =>
+        typeof a === "object" &&
+        a !== null &&
+        (Object.keys(a)[0] ?? "").startsWith("engine_sound_"),
+    );
+    expect(levels.length).toBeGreaterThan(1);
+    expectContiguous(speedRanges(levels, "engine_sound_", GROUND));
+    levels.forEach((_: unknown, i: number) => {
+      expect(effectsOf(client.animations[`engine_sound_${i}`])).toEqual([
+        `engine_${i}`,
+      ]);
+    });
+  });
+
+  it("swells as the wheels fold, and rushes while hovering at a pitch that rises with the speed", () => {
+    expect(effectsOf("animation.mycar.suv.wheels_deploy")).toEqual([
+      "hover_start",
+    ]);
+    const levels = controller.states.hover.animations.filter(
+      (a: unknown) => typeof a === "object" && a !== null,
+    );
+    expect(levels.length).toBeGreaterThan(1);
+    expectContiguous(speedRanges(levels, "hover_sound_", ""));
+    levels.forEach((_: unknown, i: number) => {
+      expect(effectsOf(client.animations[`hover_sound_${i}`])).toEqual([
+        `hover_${i}`,
+      ]);
+    });
+  });
+
+  // A loop shorter than its clip stacks copies; a longer one leaves gaps.
+  it("loops each level animation exactly as long as its clip", () => {
+    const seconds = (name: string) => {
+      const wav = readFileSync(`${RP}/${name}.wav`);
+      // A canonical PCM WAV: byte rate at offset 28, data size at offset 40.
+      return wav.readUInt32LE(40) / wav.readUInt32LE(28);
+    };
+    for (const [short, id] of Object.entries<string>(client.animations)) {
+      const anim = anims[id];
+      if (!anim?.loop || !anim.sound_effects) continue;
+      const [effect] = Object.values<{ effect: string }>(anim.sound_effects);
+      const event = client.sound_effects[defined(effect, short).effect];
+      const [sound] = defs[event].sounds;
+      expect(anim.animation_length, short).toBeCloseTo(seconds(sound.name), 3);
+    }
   });
 });

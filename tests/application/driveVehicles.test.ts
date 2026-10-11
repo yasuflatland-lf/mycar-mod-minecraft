@@ -150,6 +150,18 @@ describe("DriveVehicles", () => {
     ]);
   });
 
+  it("writes the bank angle on the first tick and then only when it changes (ADR 0026)", () => {
+    const world = new FakeWorld();
+    const uc = new DriveVehicles(world, new InMemoryRepo(), logger());
+    for (let tick = 0; tick < 3; tick++) {
+      world.snapshots = [snapshot("a", { testInput: FULL_THROTTLE })];
+      uc.execute(tick);
+    }
+    expect(world.calls.filter((c) => c.startsWith("bank:"))).toEqual([
+      "bank:a:0",
+    ]);
+  });
+
   it("still writes a flight mode change when moving the vehicle throws on that tick", () => {
     const world = new FakeWorld();
     const uc = new DriveVehicles(world, new InMemoryRepo(), logger());
@@ -182,5 +194,84 @@ describe("DriveVehicles", () => {
     world.shone.set("gone", [{ x: 0, y: 0, z: 4 }]);
     new DriveVehicles(world, repo, logger()).execute(0);
     expect(world.shone.get("gone")).toEqual([]);
+  });
+});
+
+describe("DriveVehicles third-person camera in flight (ADR 0027)", () => {
+  const rider = (id: string) => ({
+    id,
+    offset: { x: -0.38, z: 0.35 },
+    yaw: 0,
+    raw: { moveX: 0, moveY: 0, jump: false },
+  });
+  const cameraCalls = (world: FakeWorld) =>
+    world.calls.filter((c) => c.startsWith("camera:"));
+
+  it("switches riders of a flying vehicle to third person once, and back when they get off", () => {
+    const world = new FakeWorld();
+    const uc = new DriveVehicles(world, new InMemoryRepo(), logger());
+    const flying = { flight: "flying" as const, onGround: false };
+    world.snapshots = [snapshot("a", { ...flying, riders: [rider("p")] })];
+    uc.execute(0);
+    uc.execute(1);
+    world.snapshots = [snapshot("a", { ...flying, testInput: FULL_THROTTLE })];
+    uc.execute(2);
+    uc.execute(3);
+    expect(cameraCalls(world)).toEqual(["camera:p:third", "camera:p:own"]);
+  });
+
+  it("gives the view back when the vehicle lands", () => {
+    const world = new FakeWorld();
+    const repo = new InMemoryRepo();
+    const uc = new DriveVehicles(world, repo, logger());
+    const idle = { moveX: 0, moveY: 0, jump: false };
+    const pressed = { ...idle, jump: true };
+    const tapTwice = [pressed, idle, pressed, idle];
+    let tick = 0;
+    const drive = (input: RawInput, onGround: boolean) => {
+      world.snapshots = [
+        snapshot("a", {
+          onGround,
+          riders: [{ ...rider("p"), raw: input }],
+        }),
+      ];
+      uc.execute(tick++);
+    };
+    for (const input of tapTwice) drive(input, true);
+    expect(repo.get("a")?.flightMode).toBe("takeoff");
+    while (repo.get("a")?.flightMode !== "flying") drive(idle, false);
+    for (const input of tapTwice) drive(input, false);
+    expect(repo.get("a")?.flightMode).toBe("landing");
+    drive(idle, true);
+    expect(repo.get("a")?.flightMode).toBe("ground");
+    expect(cameraCalls(world)).toEqual(["camera:p:third", "camera:p:own"]);
+  });
+
+  it("leaves riders of a vehicle on the ground with their own view", () => {
+    const world = new FakeWorld();
+    const uc = new DriveVehicles(world, new InMemoryRepo(), logger());
+    world.snapshots = [snapshot("a", { riders: [rider("p")] })];
+    uc.execute(0);
+    expect(cameraCalls(world)).toEqual([]);
+  });
+
+  it("logs a camera failure without stopping the vehicles, and retries on the next tick", () => {
+    const world = new FakeWorld();
+    const log = logger();
+    const uc = new DriveVehicles(world, new InMemoryRepo(), log);
+    world.failCameraOn = "p";
+    world.snapshots = [
+      snapshot("a", {
+        flight: "flying",
+        onGround: false,
+        riders: [rider("p")],
+      }),
+    ];
+    uc.execute(0);
+    expect(log.lines.some((l) => l.includes("camera p"))).toBe(true);
+    expect(world.calls.some((c) => c.startsWith("motion:a"))).toBe(true);
+    world.failCameraOn = undefined;
+    uc.execute(1);
+    expect(cameraCalls(world)).toEqual(["camera:p:third"]);
   });
 });
