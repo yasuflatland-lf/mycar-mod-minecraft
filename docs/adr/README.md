@@ -40,6 +40,7 @@ This directory records design decisions and the reasons behind them. The format 
 | [0034](0034-touch-down-from-flight.md) | Return to the ground when a flying vehicle sinks onto it | Accepted |
 | [0035](0035-jump-one-block-steps-in-the-script.md) | Jump one-block steps in the script, and skip blocks without a collision box | Accepted |
 | [0036](0036-paint-by-hitting-with-a-dye.md) | Paint by hitting with a dye, and get in by interacting | Accepted |
+| [0037](0037-one-dye-per-repaint-within-a-tick.md) | Use one dye per repaint within a tick | Accepted |
 
 The measurements and in-game tests behind these decisions are in [the driving-core spike findings](../spike-driving-core.md).
 
