@@ -1,4 +1,4 @@
-// Look ahead and decide whether to jump when nearing a one- or two-block step (ADR 0004, 0034).
+// Look ahead and decide whether to jump when nearing a one- or two-block step (ADR 0004, 0035).
 import { SPEC } from "./spec";
 
 export type SolidAt = (ahead: number, side: number, dy: number) => boolean;
@@ -26,7 +26,7 @@ const OVERHEAD_PROBE = Math.ceil(SPEC.carHeight) + 0.5;
 /**
  * Height of the step to jump onto now: 0 for none, 1 or 2 blocks. One-block
  * steps were once left to the engine's auto step, which a controlling rider
- * turns off (ADR 0034).
+ * turns off (ADR 0035).
  */
 export function stepHeight(solid: SolidAt, speed: number): 0 | 1 | 2 {
   if (solid(0, 0, OVERHEAD_PROBE)) return 0; // Blocked overhead

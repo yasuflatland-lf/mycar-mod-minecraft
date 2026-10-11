@@ -34,6 +34,19 @@
       "mycar:paint_khaki": { "minecraft:variant": { "value": 0 } },
       "mycar:paint_green": { "minecraft:variant": { "value": 1 } },
       "mycar:paint_red": { "minecraft:variant": { "value": 2 } },
+      "mycar:paint_white": { "minecraft:variant": { "value": 3 } },
+      "mycar:paint_light_gray": { "minecraft:variant": { "value": 4 } },
+      "mycar:paint_gray": { "minecraft:variant": { "value": 5 } },
+      "mycar:paint_black": { "minecraft:variant": { "value": 6 } },
+      "mycar:paint_orange": { "minecraft:variant": { "value": 7 } },
+      "mycar:paint_yellow": { "minecraft:variant": { "value": 8 } },
+      "mycar:paint_lime": { "minecraft:variant": { "value": 9 } },
+      "mycar:paint_cyan": { "minecraft:variant": { "value": 10 } },
+      "mycar:paint_light_blue": { "minecraft:variant": { "value": 11 } },
+      "mycar:paint_blue": { "minecraft:variant": { "value": 12 } },
+      "mycar:paint_purple": { "minecraft:variant": { "value": 13 } },
+      "mycar:paint_magenta": { "minecraft:variant": { "value": 14 } },
+      "mycar:paint_pink": { "minecraft:variant": { "value": 15 } },
       "mycar:hovering": { "minecraft:physics": { "has_gravity": false } },
       "mycar:grounded": { "minecraft:physics": {} }
     },
@@ -41,19 +54,353 @@
       "mycar:paint_khaki": {
         "add": { "component_groups": ["mycar:paint_khaki"] },
         "remove": {
-          "component_groups": ["mycar:paint_green", "mycar:paint_red"]
+          "component_groups": [
+            "mycar:paint_green",
+            "mycar:paint_red",
+            "mycar:paint_white",
+            "mycar:paint_light_gray",
+            "mycar:paint_gray",
+            "mycar:paint_black",
+            "mycar:paint_orange",
+            "mycar:paint_yellow",
+            "mycar:paint_lime",
+            "mycar:paint_cyan",
+            "mycar:paint_light_blue",
+            "mycar:paint_blue",
+            "mycar:paint_purple",
+            "mycar:paint_magenta",
+            "mycar:paint_pink"
+          ]
         }
       },
       "mycar:paint_green": {
         "add": { "component_groups": ["mycar:paint_green"] },
         "remove": {
-          "component_groups": ["mycar:paint_khaki", "mycar:paint_red"]
+          "component_groups": [
+            "mycar:paint_khaki",
+            "mycar:paint_red",
+            "mycar:paint_white",
+            "mycar:paint_light_gray",
+            "mycar:paint_gray",
+            "mycar:paint_black",
+            "mycar:paint_orange",
+            "mycar:paint_yellow",
+            "mycar:paint_lime",
+            "mycar:paint_cyan",
+            "mycar:paint_light_blue",
+            "mycar:paint_blue",
+            "mycar:paint_purple",
+            "mycar:paint_magenta",
+            "mycar:paint_pink"
+          ]
         }
       },
       "mycar:paint_red": {
         "add": { "component_groups": ["mycar:paint_red"] },
         "remove": {
-          "component_groups": ["mycar:paint_khaki", "mycar:paint_green"]
+          "component_groups": [
+            "mycar:paint_khaki",
+            "mycar:paint_green",
+            "mycar:paint_white",
+            "mycar:paint_light_gray",
+            "mycar:paint_gray",
+            "mycar:paint_black",
+            "mycar:paint_orange",
+            "mycar:paint_yellow",
+            "mycar:paint_lime",
+            "mycar:paint_cyan",
+            "mycar:paint_light_blue",
+            "mycar:paint_blue",
+            "mycar:paint_purple",
+            "mycar:paint_magenta",
+            "mycar:paint_pink"
+          ]
+        }
+      },
+      "mycar:paint_white": {
+        "add": { "component_groups": ["mycar:paint_white"] },
+        "remove": {
+          "component_groups": [
+            "mycar:paint_khaki",
+            "mycar:paint_green",
+            "mycar:paint_red",
+            "mycar:paint_light_gray",
+            "mycar:paint_gray",
+            "mycar:paint_black",
+            "mycar:paint_orange",
+            "mycar:paint_yellow",
+            "mycar:paint_lime",
+            "mycar:paint_cyan",
+            "mycar:paint_light_blue",
+            "mycar:paint_blue",
+            "mycar:paint_purple",
+            "mycar:paint_magenta",
+            "mycar:paint_pink"
+          ]
+        }
+      },
+      "mycar:paint_light_gray": {
+        "add": { "component_groups": ["mycar:paint_light_gray"] },
+        "remove": {
+          "component_groups": [
+            "mycar:paint_khaki",
+            "mycar:paint_green",
+            "mycar:paint_red",
+            "mycar:paint_white",
+            "mycar:paint_gray",
+            "mycar:paint_black",
+            "mycar:paint_orange",
+            "mycar:paint_yellow",
+            "mycar:paint_lime",
+            "mycar:paint_cyan",
+            "mycar:paint_light_blue",
+            "mycar:paint_blue",
+            "mycar:paint_purple",
+            "mycar:paint_magenta",
+            "mycar:paint_pink"
+          ]
+        }
+      },
+      "mycar:paint_gray": {
+        "add": { "component_groups": ["mycar:paint_gray"] },
+        "remove": {
+          "component_groups": [
+            "mycar:paint_khaki",
+            "mycar:paint_green",
+            "mycar:paint_red",
+            "mycar:paint_white",
+            "mycar:paint_light_gray",
+            "mycar:paint_black",
+            "mycar:paint_orange",
+            "mycar:paint_yellow",
+            "mycar:paint_lime",
+            "mycar:paint_cyan",
+            "mycar:paint_light_blue",
+            "mycar:paint_blue",
+            "mycar:paint_purple",
+            "mycar:paint_magenta",
+            "mycar:paint_pink"
+          ]
+        }
+      },
+      "mycar:paint_black": {
+        "add": { "component_groups": ["mycar:paint_black"] },
+        "remove": {
+          "component_groups": [
+            "mycar:paint_khaki",
+            "mycar:paint_green",
+            "mycar:paint_red",
+            "mycar:paint_white",
+            "mycar:paint_light_gray",
+            "mycar:paint_gray",
+            "mycar:paint_orange",
+            "mycar:paint_yellow",
+            "mycar:paint_lime",
+            "mycar:paint_cyan",
+            "mycar:paint_light_blue",
+            "mycar:paint_blue",
+            "mycar:paint_purple",
+            "mycar:paint_magenta",
+            "mycar:paint_pink"
+          ]
+        }
+      },
+      "mycar:paint_orange": {
+        "add": { "component_groups": ["mycar:paint_orange"] },
+        "remove": {
+          "component_groups": [
+            "mycar:paint_khaki",
+            "mycar:paint_green",
+            "mycar:paint_red",
+            "mycar:paint_white",
+            "mycar:paint_light_gray",
+            "mycar:paint_gray",
+            "mycar:paint_black",
+            "mycar:paint_yellow",
+            "mycar:paint_lime",
+            "mycar:paint_cyan",
+            "mycar:paint_light_blue",
+            "mycar:paint_blue",
+            "mycar:paint_purple",
+            "mycar:paint_magenta",
+            "mycar:paint_pink"
+          ]
+        }
+      },
+      "mycar:paint_yellow": {
+        "add": { "component_groups": ["mycar:paint_yellow"] },
+        "remove": {
+          "component_groups": [
+            "mycar:paint_khaki",
+            "mycar:paint_green",
+            "mycar:paint_red",
+            "mycar:paint_white",
+            "mycar:paint_light_gray",
+            "mycar:paint_gray",
+            "mycar:paint_black",
+            "mycar:paint_orange",
+            "mycar:paint_lime",
+            "mycar:paint_cyan",
+            "mycar:paint_light_blue",
+            "mycar:paint_blue",
+            "mycar:paint_purple",
+            "mycar:paint_magenta",
+            "mycar:paint_pink"
+          ]
+        }
+      },
+      "mycar:paint_lime": {
+        "add": { "component_groups": ["mycar:paint_lime"] },
+        "remove": {
+          "component_groups": [
+            "mycar:paint_khaki",
+            "mycar:paint_green",
+            "mycar:paint_red",
+            "mycar:paint_white",
+            "mycar:paint_light_gray",
+            "mycar:paint_gray",
+            "mycar:paint_black",
+            "mycar:paint_orange",
+            "mycar:paint_yellow",
+            "mycar:paint_cyan",
+            "mycar:paint_light_blue",
+            "mycar:paint_blue",
+            "mycar:paint_purple",
+            "mycar:paint_magenta",
+            "mycar:paint_pink"
+          ]
+        }
+      },
+      "mycar:paint_cyan": {
+        "add": { "component_groups": ["mycar:paint_cyan"] },
+        "remove": {
+          "component_groups": [
+            "mycar:paint_khaki",
+            "mycar:paint_green",
+            "mycar:paint_red",
+            "mycar:paint_white",
+            "mycar:paint_light_gray",
+            "mycar:paint_gray",
+            "mycar:paint_black",
+            "mycar:paint_orange",
+            "mycar:paint_yellow",
+            "mycar:paint_lime",
+            "mycar:paint_light_blue",
+            "mycar:paint_blue",
+            "mycar:paint_purple",
+            "mycar:paint_magenta",
+            "mycar:paint_pink"
+          ]
+        }
+      },
+      "mycar:paint_light_blue": {
+        "add": { "component_groups": ["mycar:paint_light_blue"] },
+        "remove": {
+          "component_groups": [
+            "mycar:paint_khaki",
+            "mycar:paint_green",
+            "mycar:paint_red",
+            "mycar:paint_white",
+            "mycar:paint_light_gray",
+            "mycar:paint_gray",
+            "mycar:paint_black",
+            "mycar:paint_orange",
+            "mycar:paint_yellow",
+            "mycar:paint_lime",
+            "mycar:paint_cyan",
+            "mycar:paint_blue",
+            "mycar:paint_purple",
+            "mycar:paint_magenta",
+            "mycar:paint_pink"
+          ]
+        }
+      },
+      "mycar:paint_blue": {
+        "add": { "component_groups": ["mycar:paint_blue"] },
+        "remove": {
+          "component_groups": [
+            "mycar:paint_khaki",
+            "mycar:paint_green",
+            "mycar:paint_red",
+            "mycar:paint_white",
+            "mycar:paint_light_gray",
+            "mycar:paint_gray",
+            "mycar:paint_black",
+            "mycar:paint_orange",
+            "mycar:paint_yellow",
+            "mycar:paint_lime",
+            "mycar:paint_cyan",
+            "mycar:paint_light_blue",
+            "mycar:paint_purple",
+            "mycar:paint_magenta",
+            "mycar:paint_pink"
+          ]
+        }
+      },
+      "mycar:paint_purple": {
+        "add": { "component_groups": ["mycar:paint_purple"] },
+        "remove": {
+          "component_groups": [
+            "mycar:paint_khaki",
+            "mycar:paint_green",
+            "mycar:paint_red",
+            "mycar:paint_white",
+            "mycar:paint_light_gray",
+            "mycar:paint_gray",
+            "mycar:paint_black",
+            "mycar:paint_orange",
+            "mycar:paint_yellow",
+            "mycar:paint_lime",
+            "mycar:paint_cyan",
+            "mycar:paint_light_blue",
+            "mycar:paint_blue",
+            "mycar:paint_magenta",
+            "mycar:paint_pink"
+          ]
+        }
+      },
+      "mycar:paint_magenta": {
+        "add": { "component_groups": ["mycar:paint_magenta"] },
+        "remove": {
+          "component_groups": [
+            "mycar:paint_khaki",
+            "mycar:paint_green",
+            "mycar:paint_red",
+            "mycar:paint_white",
+            "mycar:paint_light_gray",
+            "mycar:paint_gray",
+            "mycar:paint_black",
+            "mycar:paint_orange",
+            "mycar:paint_yellow",
+            "mycar:paint_lime",
+            "mycar:paint_cyan",
+            "mycar:paint_light_blue",
+            "mycar:paint_blue",
+            "mycar:paint_purple",
+            "mycar:paint_pink"
+          ]
+        }
+      },
+      "mycar:paint_pink": {
+        "add": { "component_groups": ["mycar:paint_pink"] },
+        "remove": {
+          "component_groups": [
+            "mycar:paint_khaki",
+            "mycar:paint_green",
+            "mycar:paint_red",
+            "mycar:paint_white",
+            "mycar:paint_light_gray",
+            "mycar:paint_gray",
+            "mycar:paint_black",
+            "mycar:paint_orange",
+            "mycar:paint_yellow",
+            "mycar:paint_lime",
+            "mycar:paint_cyan",
+            "mycar:paint_light_blue",
+            "mycar:paint_blue",
+            "mycar:paint_purple",
+            "mycar:paint_magenta"
+          ]
         }
       },
       "mycar:hover": {

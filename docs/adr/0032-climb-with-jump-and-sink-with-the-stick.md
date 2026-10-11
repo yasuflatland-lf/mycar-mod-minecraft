@@ -1,4 +1,4 @@
-# 0031. Climb with held Jump and sink with the stick pulled back
+# 0032. Climb with held Jump and sink with the stick pulled back
 
 - Status: Accepted
 - Date: 2026-10-11

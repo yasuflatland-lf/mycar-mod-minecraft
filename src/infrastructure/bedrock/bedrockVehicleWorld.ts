@@ -28,13 +28,13 @@ import type { TestInputStore } from "../testInput/testInputStore";
 import { HeadlightBlocks, isLightBlock } from "./headlightBlocks";
 import {
   BANK_PROPERTY,
+  dyeOf,
   FLIGHT_PROPERTY,
   GEAR_DOWN_PROPERTY,
   HEADLIGHTS_PROPERTY,
   HOVER_EVENT,
   ITEM_TYPE,
   LAND_EVENT,
-  PAINT_BY_DYE,
   PAINT_VARIANT,
   PLAYER_TYPE,
   paintEvent,
@@ -138,7 +138,7 @@ export class BedrockVehicleWorld
       const above = b.above();
       if (above && !above.isAir && !above.isLiquid) return true;
       // Flowers, grass, carpets and torches have no collision box: a ray cast
-      // down from just above the cell passes through them (ADR 0034).
+      // down from just above the cell passes through them (ADR 0035).
       const hit = car.dimension.getBlockFromRay(
         { x: at.x, y: b.location.y + 1.001, z: at.z },
         { x: 0, y: -1, z: 0 },
@@ -333,9 +333,6 @@ export class BedrockVehicleWorld
   }
 
   consumeDye(playerId: string, paint: Paint): void {
-    const dye = Object.keys(PAINT_BY_DYE).find(
-      (d) => PAINT_BY_DYE[d] === paint,
-    );
-    if (dye) this.consumeHeld(playerId, dye);
+    this.consumeHeld(playerId, dyeOf(paint));
   }
 }

@@ -1,5 +1,5 @@
 // Flight mode: double-tap Jump to take off and land (ADR 0021), hold Jump to
-// climb and pull the stick back to sink (ADR 0031).
+// climb and pull the stick back to sink (ADR 0032).
 import { clamp } from "../shared/vec";
 import { type RawInput, toDriveInput } from "./driveInput";
 import { SPEC } from "./spec";
@@ -48,7 +48,7 @@ function nextMode(
     case "takeoff":
       return prev.modeTicks >= SPEC.takeoffTicks ? "flying" : "takeoff";
     case "flying":
-      // Sinking onto the ground lands at once, as touchdown ends landing (ADR 0033).
+      // Sinking onto the ground lands at once, as touchdown ends landing (ADR 0034).
       if (input.onGround) return "ground";
       return toggle || !input.controlled ? "landing" : "flying";
     case "landing":
@@ -91,7 +91,7 @@ export function climbInput(raw: RawInput | undefined): number {
 
 /**
  * Target vertical velocity in blocks/tick. While flying, the climb command
- * sets it independent of the forward speed (ADR 0031).
+ * sets it independent of the forward speed (ADR 0032).
  */
 export function flightVerticalSpeed(mode: FlightMode, climb: number): number {
   switch (mode) {

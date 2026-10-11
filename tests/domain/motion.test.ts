@@ -426,7 +426,7 @@ describe("stepMotion (properties, ADR 0002/0003)", () => {
     expect(r.state.stepTicks).toBe(SPEC.stepTicks - 1);
   });
 
-  it("jumps a one-block step with the lower velocity (ADR 0034)", () => {
+  it("jumps a one-block step with the lower velocity (ADR 0035)", () => {
     const r = stepMotion(
       initialMotion(0),
       FULL_THROTTLE,

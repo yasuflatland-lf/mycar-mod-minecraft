@@ -1,4 +1,4 @@
-// Landing gear: the wheels unfold before touchdown instead of after (ADR 0032).
+// Landing gear: the wheels unfold before touchdown instead of after (ADR 0033).
 import type { FlightMode } from "./flight";
 
 /**

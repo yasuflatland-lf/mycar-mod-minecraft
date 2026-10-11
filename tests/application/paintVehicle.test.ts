@@ -6,7 +6,7 @@ import { FakeWorld } from "./fakes";
 
 const paint = fc.constantFrom(...PAINTS);
 
-describe("PaintVehicle (ADR 0017)", () => {
+describe("PaintVehicle (ADR 0031)", () => {
   it("repaints to a different color, and consumes the dye only outside creative", () => {
     fc.assert(
       fc.property(paint, paint, fc.boolean(), (from, to, creative) => {

@@ -11,7 +11,20 @@
       "textures": {
         "default": "textures/entity/suv",
         "green": "textures/entity/suv_green",
-        "red": "textures/entity/suv_red"
+        "red": "textures/entity/suv_red",
+        "white": "textures/entity/suv_white",
+        "light_gray": "textures/entity/suv_light_gray",
+        "gray": "textures/entity/suv_gray",
+        "black": "textures/entity/suv_black",
+        "orange": "textures/entity/suv_orange",
+        "yellow": "textures/entity/suv_yellow",
+        "lime": "textures/entity/suv_lime",
+        "cyan": "textures/entity/suv_cyan",
+        "light_blue": "textures/entity/suv_light_blue",
+        "blue": "textures/entity/suv_blue",
+        "purple": "textures/entity/suv_purple",
+        "magenta": "textures/entity/suv_magenta",
+        "pink": "textures/entity/suv_pink"
       },
       "geometry": { "default": "geometry.mycar.suv" },
       "animations": {

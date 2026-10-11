@@ -38,7 +38,7 @@ describe("Resource Pack flight visuals (ADR 0022)", () => {
       "hover_glow",
     ]);
     expect(s.retract.animations).toEqual(["wheels_retract"]);
-    // The wheels follow the landing gear, so they unfold before touchdown (ADR 0032).
+    // The wheels follow the landing gear, so they unfold before touchdown (ADR 0033).
     expect(s.ground.transitions).toEqual([
       { deploy: "!query.property('mycar:gear_down')" },
     ]);

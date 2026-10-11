@@ -1,4 +1,4 @@
-# 0034. Jump one-block steps in the script, and skip blocks without a collision box
+# 0035. Jump one-block steps in the script, and skip blocks without a collision box
 
 - Status: Accepted
 - Date: 2026-10-11
@@ -29,6 +29,6 @@ The script's solid check counted every block that is not air, a liquid, or a lig
 ## Consequences
 
 - With a rider, one-block steps, slabs and stairs are climbed with a small hop instead of the engine's smooth step. Without a rider the script now hops them too, because it jumps before the engine would step
-- Flowers, grass, carpets and torches no longer count as obstacles, for steps and for the landing gear probe (0032). A two-block step with a flower on top is now climbed
+- Flowers, grass, carpets and torches no longer count as obstacles, for steps and for the landing gear probe (0033). A two-block step with a flower on top is now climbed
 - A passable block under a solid one (a flower under an overhang) still counts as solid
 - The in-game test `passable_no_hop` drives over carpets and torches without a jump. Climbing with a rider cannot be tested from a script, because only players can ride the SUV; manual test row 5 covers it

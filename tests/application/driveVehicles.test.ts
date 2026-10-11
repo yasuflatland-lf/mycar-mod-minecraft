@@ -164,7 +164,7 @@ describe("DriveVehicles", () => {
     ]);
   });
 
-  it("writes the landing gear on the first tick and then only when it changes (ADR 0032)", () => {
+  it("writes the landing gear on the first tick and then only when it changes (ADR 0033)", () => {
     const world = new FakeWorld();
     const uc = new DriveVehicles(world, new InMemoryRepo(), logger());
     const idle = { moveX: 0, moveY: 0, jump: false };

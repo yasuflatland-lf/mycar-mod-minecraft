@@ -1,6 +1,6 @@
 # 0022. Fold the wheels and light their undersides in flight
 
-- Status: Superseded in part by 0032 (when the wheels unfold)
+- Status: Superseded in part by 0033 (when the wheels unfold)
 - Date: 2026-10-11
 
 ## Context

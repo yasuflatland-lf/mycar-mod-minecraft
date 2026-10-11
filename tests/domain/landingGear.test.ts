@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { FLIGHT_MODES } from "../../src/domain/vehicle/flight";
 import { nextGearDown } from "../../src/domain/vehicle/landingGear";
 
-describe("nextGearDown (ADR 0032)", () => {
+describe("nextGearDown (ADR 0033)", () => {
   const mode = fc.constantFrom(...FLIGHT_MODES);
 
   it("is down on the ground and up in takeoff and flight, whatever lies below", () => {

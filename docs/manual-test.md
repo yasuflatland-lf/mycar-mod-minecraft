@@ -10,7 +10,7 @@ To use commands, run `docker exec mycar-bds send-command op <player name>`.
 | 2 | Use the item on the ground / use it under a low ceiling | The vehicle appears and the item count drops by one (not in Creative) / no vehicle appears and the item count stays the same | | |
 | 3 | Get in, drive, turn, and slide with the handbrake | The vehicle moves where you look and turns right away. The handbrake makes it slide | | |
 | 4 | Smoothness of the driver's camera | 3 or higher on a 5-point scale | | |
-| 5 | While driving, approach a 1-block and a 2-block step head-on and at an angle, then drive over flowers and carpets | The vehicle climbs both steps without stopping, and does not hop over the flowers or carpets (ADR 0034) | | |
+| 5 | While driving, approach a 1-block and a 2-block step head-on and at an angle, then drive over flowers and carpets | The vehicle climbs both steps without stopping, and does not hop over the flowers or carpets (ADR 0035) | | |
 | 6 | Hit a wall at full speed / fall 10 blocks while riding (Survival) | No hearts are lost | | |
 | 7 | Hit a pig | The pig takes damage and is pushed aside | | |
 | 8 | Get out | The door of the seat you sat in swings outward and a door-open sound plays | | |
@@ -20,15 +20,15 @@ To use commands, run `docker exec mycar-bds send-command op <player name>`.
 | 12 | The moving vehicle as seen by a passenger | 3 or higher on a 5-point scale | | |
 | 13 | Appearance (SUV shape, khaki, interior and exterior) | As intended | | |
 | 14 | Stop, then hold the stick straight right (mobile) / hold only D (PC) | The vehicle moves slowly forward and turns right; it does not back up | | |
-| 15 | Use green dye, then red dye, on a placed vehicle / use red dye again | The body turns green, then red, one dye is used each time (not in Creative), and nobody gets in / nothing changes and the dye stays | | |
+| 15 | Use green dye, then light blue dye, then brown dye, on a placed vehicle / use brown dye again | The body turns green, then light blue, then khaki, one dye is used each time (not in Creative), and nobody gets in / nothing changes and the dye stays | | |
 | 16 | Craft the headlight switch from a lever and glowstone dust. At night, drive with it in hand and use it (right-click / tap), then use it again | The lamps glow and the road ahead lights up and follows the vehicle; the second use turns both off and leaves no light behind | | |
 | 17 | Use the switch from a passenger seat / outside the vehicle | Nothing changes | | |
 | 18 | While driving, double-tap Jump | The wheels fold flat and glow blue underneath, and the vehicle rises about 1.5 blocks | | |
-| 19 | Fly forward, then hold Jump, then pull the stick back (S on PC) | The vehicle holds its altitude, then climbs, then sinks without backing up (ADR 0031) | | |
-| 20 | Fly forward and stop in the air, looking up and down each time | Only the view moves; the vehicle holds its altitude (ADR 0031) | | |
-| 21 | Hold Jump to climb about 10 blocks, then double-tap Jump (Survival) | The vehicle sinks slowly, the wheels unfold a few blocks above the ground and are down at touchdown, and no hearts are lost (ADR 0032) | | |
+| 19 | Fly forward, then hold Jump, then pull the stick back (S on PC) | The vehicle holds its altitude, then climbs, then sinks without backing up (ADR 0032) | | |
+| 20 | Fly forward and stop in the air, looking up and down each time | Only the view moves; the vehicle holds its altitude (ADR 0032) | | |
+| 21 | Hold Jump to climb about 10 blocks, then double-tap Jump (Survival) | The vehicle sinks slowly, the wheels unfold a few blocks above the ground and are down at touchdown, and no hearts are lost (ADR 0033) | | |
 | 22 | Get out while flying | The empty vehicle sinks slowly to the ground and the wheels unfold | | |
 | 23 | Tap the handbrake repeatedly while driving on the ground | Note how often the vehicle takes off by accident | | |
 | 24 | With an account that has never joined the world (or after `pnpm server:down` and deleting `server/data/worlds/mycar-dev`), join in Survival / leave and join again / die and respawn | One "SUV" item is in the inventory / no second item is given / no second item is given | | |
-| 25 | In flight, turn hard left and right without touching Jump or pulling the stick back | The body banks into the turn and the vehicle sinks slowly while banked (ADR 0026, 0031) | | |
-| 26 | In flight in third person, pull the stick back until the vehicle touches the ground | On touchdown the wheels unfold, the camera returns to first person, and the vehicle drives on the ground again (ADR 0033) | | |
+| 25 | In flight, turn hard left and right without touching Jump or pulling the stick back | The body banks into the turn and the vehicle sinks slowly while banked (ADR 0026, 0032) | | |
+| 26 | In flight in third person, pull the stick back until the vehicle touches the ground | On touchdown the wheels unfold, the camera returns to first person, and the vehicle drives on the ground again (ADR 0034) | | |

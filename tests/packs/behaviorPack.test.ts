@@ -96,7 +96,7 @@ describe("packs/mycar_bp", () => {
   });
 });
 
-describe("packs/mycar_bp landing gear (ADR 0032)", () => {
+describe("packs/mycar_bp landing gear (ADR 0033)", () => {
   it("syncs whether the wheels are down, down by default for a vehicle on the ground", () => {
     expect(entity.description.properties[GEAR_DOWN_PROPERTY]).toEqual({
       type: "bool",

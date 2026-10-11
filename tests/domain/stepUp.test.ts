@@ -39,7 +39,7 @@ const startIn = (s: number) =>
   });
 const laneIndex = fc.integer({ min: 0, max: 2 });
 
-describe("stepHeight (ADR 0004, 0034)", () => {
+describe("stepHeight (ADR 0004, 0035)", () => {
   it("jumps for a step of height 2 within look-ahead range (on any ray)", () => {
     fc.assert(
       fc.property(
@@ -132,7 +132,7 @@ describe("stepHeight (ADR 0004, 0034)", () => {
     ).toBe(0);
   });
 
-  it("jumps a height-1 step within look-ahead range, which a controlling rider keeps the engine from stepping (ADR 0034)", () => {
+  it("jumps a height-1 step within look-ahead range, which a controlling rider keeps the engine from stepping (ADR 0035)", () => {
     fc.assert(
       fc.property(
         speed.chain((s) => fc.tuple(fc.constant(s), startIn(s))),

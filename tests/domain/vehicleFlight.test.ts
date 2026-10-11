@@ -126,7 +126,7 @@ describe("Vehicle in flight (ADR 0021)", () => {
     );
   });
 
-  it("climbs while Jump is held and sinks while the stick is pulled back (ADR 0031)", () => {
+  it("climbs while Jump is held and sinks while the stick is pulled back (ADR 0032)", () => {
     const sim = flyingSim();
     sim.run(FORWARD, 50);
     const y0 = sim.y;
@@ -141,7 +141,7 @@ describe("Vehicle in flight (ADR 0021)", () => {
     expect(v1 - sim.vehicle.speed).toBeCloseTo(10 * SPEC.drag, 6);
   });
 
-  it("climbs on held Jump while hovering in place (ADR 0031)", () => {
+  it("climbs on held Jump while hovering in place (ADR 0032)", () => {
     const sim = flyingSim();
     const y0 = sim.y;
     sim.run({ ...IDLE, jump: true }, 20);
@@ -159,7 +159,7 @@ describe("Vehicle in flight (ADR 0021)", () => {
     expect(sim.gravity).toBe(true);
   });
 
-  it("lowers the wheels before touchdown when landing from high up (ADR 0032)", () => {
+  it("lowers the wheels before touchdown when landing from high up (ADR 0033)", () => {
     const sim = flyingSim();
     sim.run({ ...IDLE, jump: true }, 30);
     sim.run(IDLE, 10);
@@ -173,7 +173,7 @@ describe("Vehicle in flight (ADR 0021)", () => {
     expect(y).toBeLessThanOrEqual(SPEC.gearDownHeight);
   });
 
-  it("returns to the ground when it sinks onto it in flight (ADR 0033)", () => {
+  it("returns to the ground when it sinks onto it in flight (ADR 0034)", () => {
     const sim = flyingSim();
     sim.run({ moveX: 0, moveY: -1, jump: false }, 20);
     expect(sim.changes.slice(-1)).toEqual(["ground"]);

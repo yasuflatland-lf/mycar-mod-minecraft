@@ -32,13 +32,13 @@ export interface Observation {
   velocity: Vec2;
   onGround: boolean;
 }
-/** Height of the step to jump onto now: 0 for none (ADR 0004, 0034). */
+/** Height of the step to jump onto now: 0 for none (ADR 0004, 0035). */
 export type StepProbe = (f: Vec2, speed: number) => 0 | 1 | 2;
 export interface MotionResult {
   state: MotionState;
   forward: Vec2;
   impulse: Vec2;
-  /** Upward velocity to give for a step jump this tick, 0 when not jumping (ADR 0004, 0034). */
+  /** Upward velocity to give for a step jump this tick, 0 when not jumping (ADR 0004, 0035). */
   jumpVelocity: number;
   blocked: boolean; // Whether a wall collision was detected this tick
 }
@@ -126,7 +126,7 @@ export function stepMotion(
     ? (st.friction ?? SPEC.defaultFriction)
     : SPEC.airFriction;
 
-  // Steps (ADR 0004, 0034)
+  // Steps (ADR 0004, 0035)
   let jumpVelocity = 0;
   const height =
     input.throttle > 0 && st.speed >= 0 && obs.onGround

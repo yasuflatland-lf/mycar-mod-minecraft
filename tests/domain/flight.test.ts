@@ -21,7 +21,7 @@ interface Frame {
   after: FlightState;
 }
 
-// A flying vehicle that sinks onto the ground skips landing (ADR 0033).
+// A flying vehicle that sinks onto the ground skips landing (ADR 0034).
 const NEXT: Record<FlightMode, readonly FlightMode[]> = {
   ground: ["takeoff"],
   takeoff: ["flying"],
@@ -140,7 +140,7 @@ describe("stepFlight (ADR 0021)", () => {
     );
   });
 
-  it("returns to the ground on the tick a flying vehicle touches it (ADR 0033)", () => {
+  it("returns to the ground on the tick a flying vehicle touches it (ADR 0034)", () => {
     fc.assert(
       fc.property(steps, (seq) => {
         for (const f of run(seq, initialFlight("flying")))
@@ -225,7 +225,7 @@ describe("isFlightMode", () => {
   });
 });
 
-describe("climbInput (ADR 0031)", () => {
+describe("climbInput (ADR 0032)", () => {
   const axis = fc.double({ min: -1, max: 1, noNaN: true });
 
   it("stays within -1 to 1", () => {
@@ -271,7 +271,7 @@ describe("climbInput (ADR 0031)", () => {
   });
 });
 
-describe("flightVerticalSpeed (ADR 0021, 0031)", () => {
+describe("flightVerticalSpeed (ADR 0021, 0032)", () => {
   const climb = fc.double({ min: -1, max: 1, noNaN: true });
 
   it("never exceeds maxClimb up or down while flying", () => {

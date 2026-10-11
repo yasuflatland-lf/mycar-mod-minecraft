@@ -154,7 +154,7 @@ function accelAndStep1(a: Arena): Promise<Outcome> {
 }
 
 // Carpets and torches have no collision box, so the step look-ahead must not
-// jump for them (ADR 0034).
+// jump for them (ADR 0035).
 function passableNoHop(a: Arena): Promise<Outcome> {
   a.dim.runCommand(`fill 30 ${a.gy} 25 34 ${a.gy} 28 white_carpet`);
   a.dim.runCommand(`fill 40 ${a.gy} 25 40 ${a.gy} 28 torch`);

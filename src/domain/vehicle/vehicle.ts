@@ -48,7 +48,7 @@ export interface TickContext {
   onGround: boolean;
   /** Vertical velocity from the engine (blocks/tick). Read whenever the flight mode is not ground, including the tick takeoff starts. */
   velocityY?: number;
-  /** Whether the block at entity location + offset (world axes, y from the feet) is solid; air, liquids and blocks without a collision box (flowers, grass, carpets) are not (ADR 0034). */
+  /** Whether the block at entity location + offset (world axes, y from the feet) is solid; air, liquids and blocks without a collision box (flowers, grass, carpets) are not (ADR 0035). */
   solidAt(offset: Vec3): boolean;
   /** Nearby targets. Called only when the speed exceeds the ram threshold. */
   targets(): readonly RamTarget[];
@@ -64,7 +64,7 @@ export interface TickOutcome {
   flight?: FlightMode;
   /** The new bank angle in degrees, only on the tick it changes and on the first tick (ADR 0026). */
   bank?: number;
-  /** Whether the wheels are in the driving pose, only on the tick it changes and on the first tick (ADR 0032). */
+  /** Whether the wheels are in the driving pose, only on the tick it changes and on the first tick (ADR 0033). */
   gearDown?: boolean;
 }
 
@@ -109,7 +109,7 @@ function groundNear(ctx: TickContext, f: Vec2): boolean {
 
 /**
  * Takeoff ignores the controls, and there is no handbrake in the air (ADR
- * 0021). In the air the stick pulled back sinks instead of reversing (ADR 0031).
+ * 0021). In the air the stick pulled back sinks instead of reversing (ADR 0032).
  */
 function driveInputFor(
   raw: RawInput | undefined,
@@ -182,7 +182,7 @@ export class Vehicle {
     return this.flight.mode;
   }
 
-  /** Whether the wheels are in the driving pose (ADR 0032). */
+  /** Whether the wheels are in the driving pose (ADR 0033). */
   get wheelsDown(): boolean {
     return this.gearDown;
   }

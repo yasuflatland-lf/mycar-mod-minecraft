@@ -1,4 +1,4 @@
-import type { Paint } from "../../domain/vehicle/paint";
+import { PAINTS, type Paint } from "../../domain/vehicle/paint";
 
 export const VEHICLE_TYPE = "mycar:suv";
 export const ITEM_TYPE = "mycar:suv_item";
@@ -23,21 +23,24 @@ export const FLIGHT_PROPERTY = "mycar:flight";
 export const THIRD_PERSON_CAMERA = "minecraft:third_person";
 /** Client-synced bank angle in degrees; the Resource Pack rolls the model by it (ADR 0026). */
 export const BANK_PROPERTY = "mycar:bank";
-/** Client-synced landing gear; the Resource Pack unfolds the wheels by it (ADR 0032). */
+/** Client-synced landing gear; the Resource Pack unfolds the wheels by it (ADR 0033). */
 export const GEAR_DOWN_PROPERTY = "mycar:gear_down";
 export const HOVER_EVENT = "mycar:hover";
 export const LAND_EVENT = "mycar:land";
 
-/** Dyes that repaint a vehicle when used on it (ADR 0017). */
-export const PAINT_BY_DYE: Readonly<Record<string, Paint>> = {
-  "minecraft:green_dye": "green",
-  "minecraft:red_dye": "red",
-};
+/** The vanilla dye that repaints a vehicle with a paint (ADR 0031). Brown dye turns it back to khaki. */
+export function dyeOf(paint: Paint): string {
+  const color = paint === "khaki" ? "brown" : paint;
+  return `minecraft:${color}_dye`;
+}
+export const PAINT_BY_DYE: Readonly<Record<string, Paint>> = Object.fromEntries(
+  PAINTS.map((paint) => [dyeOf(paint), paint]),
+);
 /** minecraft:variant value for each paint. The render controller picks the texture by this index. */
-export const PAINT_VARIANT: Readonly<Record<Paint, number>> = {
-  khaki: 0,
-  green: 1,
-  red: 2,
-};
+export const PAINT_VARIANT: Readonly<Record<Paint, number>> =
+  Object.fromEntries(PAINTS.map((paint, i) => [paint, i])) as Record<
+    Paint,
+    number
+  >;
 /** Entity event in packs/mycar_bp/entities/suv.json that sets the variant for a paint. */
 export const paintEvent = (paint: Paint): string => `mycar:paint_${paint}`;
