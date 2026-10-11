@@ -16,6 +16,7 @@ import type { LimitVehicles } from "../../../application/vehicle/limitVehicles";
 import type { PaintVehicle } from "../../../application/vehicle/paintVehicle";
 import type { PlaceVehicle } from "../../../application/vehicle/placeVehicle";
 import type { SwitchHeadlights } from "../../../application/vehicle/switchHeadlights";
+import { NAMESPACE } from "../../shared/identifiers";
 import { parseTestInputMessage } from "../testInput/testInputMessage";
 import type { TestInputStore } from "../testInput/testInputStore";
 import {
@@ -67,7 +68,7 @@ export function registerSubscriptions(
         return;
       const parsed = parseTestInputMessage(ev.message);
       if (!parsed) {
-        console.warn(`[mycar] ignored test input: ${ev.message}`);
+        console.warn(`[yasuflatland] ignored test input: ${ev.message}`);
         return;
       }
       if (parsed.input !== undefined) {
@@ -76,7 +77,7 @@ export function registerSubscriptions(
         testInputs.clear(parsed.vehicleId);
       }
     },
-    { namespaces: ["mycar"] },
+    { namespaces: [NAMESPACE] },
   );
 
   // The after-event only fires when the interaction did something, and an item

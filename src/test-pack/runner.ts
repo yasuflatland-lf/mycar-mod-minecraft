@@ -26,7 +26,7 @@ const ARENA = { minX: 0, maxX: 120, minZ: 0, maxZ: 90 } as const;
 
 // Mirrors the SUV's minecraft:rideable but seats cows, because only players
 // can ride the SUV and a test has no players (ADR 0010).
-const SEAT_PROBE = "mycar_test:seat_probe";
+const SEAT_PROBE = "yasuflatland_test:seat_probe";
 
 interface Outcome {
   pass: boolean;
@@ -109,17 +109,17 @@ async function setupArena(): Promise<Arena> {
   const dim = world.getDimension("overworld");
   const { minX, maxX, minZ, maxZ } = ARENA;
   // The arena grew to z 90 for the submarine pool. Older worlds keep the
-  // smaller "mycartest" area, and re-adding a name in the tick that removes it
+  // smaller "yasuflatlandtest" area, and re-adding a name in the tick that removes it
   // fails silently, so the larger area gets a name of its own.
   try {
-    dim.runCommand("tickingarea remove mycartest");
+    dim.runCommand("tickingarea remove yasuflatlandtest");
   } catch {
     // Not in this world
   }
   // An existing area of the same name keeps its old bounds; withPool reports
   // the fill that then fails in the chunks left out.
   dim.runCommand(
-    `tickingarea add ${minX} -64 ${minZ} ${maxX} 0 ${maxZ} mycar_arena true`,
+    `tickingarea add ${minX} -64 ${minZ} ${maxX} 0 ${maxZ} yasuflatland_arena true`,
   );
   await wait(60);
   const top = dim.getTopmostBlock({ x: 5, z: 20 });
@@ -678,11 +678,11 @@ async function withPool<T>(
       `fill ${minX} ${bottom} ${z} ${maxX} ${a.gy - 1} ${z} stone`,
     );
   // runCommand reports a fill into unloaded chunks as successCount 0 instead
-  // of throwing. Seen in game with a mycar_arena area kept from a smaller
+  // of throwing. Seen in game with a yasuflatland_arena area kept from a smaller
   // arena: every submarine test then failed with enteredAt=-1.
   if (fillPool("water").successCount === 0)
     throw new Error(
-      `the pool was not filled: check that "tickingarea list" shows mycar_arena covering x ${ARENA.minX}-${ARENA.maxX}, z ${ARENA.minZ}-${ARENA.maxZ}`,
+      `the pool was not filled: check that "tickingarea list" shows yasuflatland_arena covering x ${ARENA.minX}-${ARENA.maxX}, z ${ARENA.minZ}-${ARENA.maxZ}`,
     );
   try {
     await wait(5);

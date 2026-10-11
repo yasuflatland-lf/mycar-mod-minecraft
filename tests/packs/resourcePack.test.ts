@@ -3,18 +3,26 @@ import { describe, expect, it } from "vitest";
 import { defined } from "../support/defined";
 
 const read = (p: string) => JSON.parse(readFileSync(p, "utf8"));
-const RP = "packs/mycar_rp";
-const client = read(`${RP}/entity/suv.entity.json`)["minecraft:client_entity"]
-  .description;
-const anims = read(`${RP}/animations/suv.animation.json`).animations;
+const RP = "packs/yasuflatland_rp";
+const client = read(`${RP}/entity/yasuflatland/suv.entity.json`)[
+  "minecraft:client_entity"
+].description;
+const anims = read(
+  `${RP}/animations/yasuflatland/suv.animation.json`,
+).animations;
 const controller = read(
-  `${RP}/animation_controllers/suv.animation_controllers.json`,
-).animation_controllers["controller.animation.mycar.suv.form"];
-const render = read(`${RP}/render_controllers/suv.render_controllers.json`)
-  .render_controllers["controller.render.mycar.suv"];
-const particle = read(`${RP}/particles/hover_glow.json`).particle_effect;
+  `${RP}/animation_controllers/yasuflatland/suv.animation_controllers.json`,
+).animation_controllers["controller.animation.yasuflatland.suv.form"];
+const render = read(
+  `${RP}/render_controllers/yasuflatland/suv.render_controllers.json`,
+).render_controllers["controller.render.yasuflatland.suv"];
+const particle = read(
+  `${RP}/particles/yasuflatland/hover_glow.json`,
+).particle_effect;
 const WHEELS = ["wheel_fl", "wheel_fr", "wheel_rl", "wheel_rr"];
-const geo = read(`${RP}/models/entity/suv.geo.json`)["minecraft:geometry"][0];
+const geo = read(`${RP}/models/entity/yasuflatland/suv.geo.json`)[
+  "minecraft:geometry"
+][0];
 const geoPivot = (name: string): number[] =>
   defined(
     geo.bones.find((b: { name: string }) => b.name === name),
@@ -32,13 +40,17 @@ describe("Resource Pack flight visuals (ADR 0022)", () => {
       if (file.isFile() && file.name.endsWith(".json"))
         expect(
           readFileSync(`${file.parentPath}/${file.name}`, "utf8"),
-        ).not.toContain("mycar:" + "flight");
+        ).not.toContain("yasuflatland:" + "flight");
     }
   });
   it("runs the form controller and the custom render controller with an emissive material", () => {
     expect(client.scripts.animate).toContain("form");
-    expect(client.animations.form).toBe("controller.animation.mycar.suv.form");
-    expect(client.render_controllers).toEqual(["controller.render.mycar.suv"]);
+    expect(client.animations.form).toBe(
+      "controller.animation.yasuflatland.suv.form",
+    );
+    expect(client.render_controllers).toEqual([
+      "controller.render.yasuflatland.suv",
+    ]);
     expect(client.materials.default).toBe("entity_emissive_alpha");
     expect(client.particle_effects.hover_glow).toBe(
       particle.description.identifier,
@@ -57,10 +69,10 @@ describe("Resource Pack flight visuals (ADR 0022)", () => {
     expect(s.retract.animations).toEqual(["wheels_retract"]);
     // The wheels follow the landing gear, so they unfold before touchdown (ADR 0033).
     expect(s.ground.transitions).toContainEqual({
-      deploy: "!query.property('mycar:gear_down')",
+      deploy: "!query.property('yasuflatland:gear_down')",
     });
     expect(s.hover.transitions).toEqual([
-      { retract: "query.property('mycar:gear_down')" },
+      { retract: "query.property('yasuflatland:gear_down')" },
     ]);
   });
 
@@ -79,7 +91,7 @@ describe("Resource Pack flight visuals (ADR 0022)", () => {
   });
 
   it("folds every wheel 90 degrees, lowers it 4 px and moves it 6 px out, with the two sides turning opposite ways", () => {
-    const folded = anims["animation.mycar.suv.wheels_folded"].bones;
+    const folded = anims["animation.yasuflatland.suv.wheels_folded"].bones;
     for (const w of WHEELS) {
       expect(Math.abs(folded[w].rotation[2]), w).toBe(90);
       // Animation positions run along the model's axes (ADR 0043), so the
@@ -93,9 +105,9 @@ describe("Resource Pack flight visuals (ADR 0022)", () => {
   });
 
   it("deploys into the folded pose and retracts out of it", () => {
-    const folded = anims["animation.mycar.suv.wheels_folded"].bones;
-    const deploy = anims["animation.mycar.suv.wheels_deploy"];
-    const retract = anims["animation.mycar.suv.wheels_retract"];
+    const folded = anims["animation.yasuflatland.suv.wheels_folded"].bones;
+    const deploy = anims["animation.yasuflatland.suv.wheels_deploy"];
+    const retract = anims["animation.yasuflatland.suv.wheels_retract"];
     for (const w of WHEELS) {
       expect(deploy.bones[w].rotation["1.0"]).toEqual(folded[w].rotation);
       expect(retract.bones[w].rotation["0.0"]).toEqual(folded[w].rotation);
@@ -112,7 +124,7 @@ describe("Resource Pack flight visuals (ADR 0022)", () => {
     const arms = WHEELS.map((w) => w.replace("wheel_", "arm_"));
     const subArms = ["sub_arm_rl", "sub_arm_rr"];
     const scaleIn = (anim: string, b: string) =>
-      anims[`animation.mycar.suv.${anim}`].bones[b]?.scale;
+      anims[`animation.yasuflatland.suv.${anim}`].bones[b]?.scale;
     for (const b of arms) {
       expect(scaleIn("wheels_deploy", b), b).toEqual({
         "0.0": [0, 0, 0],
@@ -144,9 +156,9 @@ describe("Resource Pack flight visuals (ADR 0022)", () => {
   });
 
   it("emits the glow particle from every hover locator", () => {
-    const locators = anims["animation.mycar.suv.hover_glow"].particle_effects[
-      "0.0"
-    ].map((e: { locator: string }) => e.locator);
+    const locators = anims[
+      "animation.yasuflatland.suv.hover_glow"
+    ].particle_effects["0.0"].map((e: { locator: string }) => e.locator);
     expect(locators.sort()).toEqual([
       "hover_fl",
       "hover_fr",
@@ -158,15 +170,15 @@ describe("Resource Pack flight visuals (ADR 0022)", () => {
   it("selects glow, rear glass and sealed window visibility from gear and form", () => {
     expect(render.part_visibility).toEqual([
       { "*": true },
-      { "glow_*": "!query.property('mycar:gear_down')" },
-      { rear_glass: "query.property('mycar:form') != 'car'" },
-      { windows_sealed: "query.property('mycar:form') == 'submarine'" },
+      { "glow_*": "!query.property('yasuflatland:gear_down')" },
+      { rear_glass: "query.property('yasuflatland:form') != 'car'" },
+      { windows_sealed: "query.property('yasuflatland:form') == 'submarine'" },
     ]);
   });
 
   it("keeps the Resource Pack module and the Behavior Pack's dependency on the Resource Pack version (ADR 0015)", () => {
     const rp = read(`${RP}/manifest.json`);
-    const bp = read("packs/mycar_bp/manifest.json");
+    const bp = read("packs/yasuflatland_bp/manifest.json");
     const dep = bp.dependencies.find(
       (d: { uuid?: string }) => d.uuid === rp.header.uuid,
     );
@@ -184,11 +196,11 @@ describe("Resource Pack banking (ADR 0026)", () => {
   // A positive z rotation lowers the model's +x side, which is the vehicle's
   // left (0022 folds the left wheels hub side down with +90), so a bank to the
   // right (positive) needs a negative z rotation.
-  it("rolls the whole model about its length by mycar:bank", () => {
+  it("rolls the whole model about its length by yasuflatland:bank", () => {
     expect(client.scripts.animate).toContain("bank");
-    expect(client.animations.bank).toBe("animation.mycar.suv.bank");
-    expect(anims["animation.mycar.suv.bank"].bones).toEqual({
-      root: { rotation: [0, 0, "-query.property('mycar:bank')"] },
+    expect(client.animations.bank).toBe("animation.yasuflatland.suv.bank");
+    expect(anims["animation.yasuflatland.suv.bank"].bones).toEqual({
+      root: { rotation: [0, 0, "-query.property('yasuflatland:bank')"] },
     });
   });
 
@@ -214,7 +226,8 @@ describe("Resource Pack sounds (ADR 0030)", () => {
     }
   });
 
-  const GROUND = "query.has_rider && query.property('mycar:form') == 'car'";
+  const GROUND =
+    "query.has_rider && query.property('yasuflatland:form') == 'car'";
 
   /** The [lo, hi) range of query.ground_speed each level plays in, in level order. */
   function speedRanges(
@@ -265,7 +278,7 @@ describe("Resource Pack sounds (ADR 0030)", () => {
   });
 
   it("swells as the wheels fold, and rushes while hovering at a pitch that rises with the speed", () => {
-    expect(effectsOf("animation.mycar.suv.wheels_deploy")).toEqual([
+    expect(effectsOf("animation.yasuflatland.suv.wheels_deploy")).toEqual([
       "hover_start",
     ]);
     const levels = controller.states.hover.animations.filter(
@@ -308,7 +321,7 @@ describe("Resource Pack sounds (ADR 0030)", () => {
   });
 
   it("starts the sonar loop with a ping that fades before the loop ends (ADR 0041)", () => {
-    const wav = readFileSync(`${RP}/sounds/mycar/sonar.wav`);
+    const wav = readFileSync(`${RP}/sounds/yasuflatland/sonar.wav`);
     const rate = wav.readUInt32LE(24);
     const samples = new Int16Array(
       wav.buffer.slice(wav.byteOffset + 44, wav.byteOffset + wav.length),
@@ -359,9 +372,9 @@ describe("Resource Pack submarine visuals (ADR 0040)", () => {
   }
   const bones = new Map<string, Bone>(geo.bones.map((b: Bone) => [b.name, b]));
   const bone = (name: string) => defined(bones.get(name), name);
-  const dive = anims["animation.mycar.suv.dive"];
-  const submerged = anims["animation.mycar.suv.submerged"];
-  const surface = anims["animation.mycar.suv.surface"];
+  const dive = anims["animation.yasuflatland.suv.dive"];
+  const submerged = anims["animation.yasuflatland.suv.submerged"];
+  const surface = anims["animation.yasuflatland.suv.surface"];
   const REAR = ["rl", "rr"] as const;
   const TURNED = [
     ...REAR.map((s) => `wheel_${s}`),
@@ -446,7 +459,9 @@ describe("Resource Pack submarine visuals (ADR 0040)", () => {
 
   it("registers the three submarine animations", () => {
     for (const name of ["dive", "submerged", "surface"]) {
-      expect(client.animations[name]).toBe(`animation.mycar.suv.${name}`);
+      expect(client.animations[name]).toBe(
+        `animation.yasuflatland.suv.${name}`,
+      );
       expect(anims[client.animations[name]]).toBeDefined();
     }
   });
@@ -454,8 +469,8 @@ describe("Resource Pack submarine visuals (ADR 0040)", () => {
   it("serializes diving and surfacing with the gear transforms through ground", () => {
     const s = controller.states;
     expect(s.ground.transitions).toEqual([
-      { dive: "query.property('mycar:form') == 'submarine'" },
-      { deploy: "!query.property('mycar:gear_down')" },
+      { dive: "query.property('yasuflatland:form') == 'submarine'" },
+      { deploy: "!query.property('yasuflatland:gear_down')" },
     ]);
     expect(s.dive).toEqual({
       animations: ["dive"],
@@ -463,7 +478,9 @@ describe("Resource Pack submarine visuals (ADR 0040)", () => {
     });
     expect(s.submarine).toEqual({
       animations: ["submerged", { submarine_sound: "query.has_rider" }],
-      transitions: [{ surface: "query.property('mycar:form') != 'submarine'" }],
+      transitions: [
+        { surface: "query.property('yasuflatland:form') != 'submarine'" },
+      ],
     });
     expect(s.surface).toEqual({
       animations: ["surface"],

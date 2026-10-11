@@ -8,13 +8,15 @@ import {
 } from "../../src/infrastructure/vehicle/bedrock/identifiers";
 
 const read = (p: string) => JSON.parse(readFileSync(p, "utf8"));
-const entity = read("packs/mycar_bp/entities/suv.json")["minecraft:entity"];
-const client = read("packs/mycar_rp/entity/suv.entity.json")[
-  "minecraft:client_entity"
-].description;
+const entity = read("packs/yasuflatland_bp/entities/yasuflatland/suv.json")[
+  "minecraft:entity"
+];
+const client = read(
+  "packs/yasuflatland_rp/entity/yasuflatland/suv.entity.json",
+)["minecraft:client_entity"].description;
 const controller = read(
-  "packs/mycar_rp/render_controllers/suv.render_controllers.json",
-).render_controllers["controller.render.mycar.suv"];
+  "packs/yasuflatland_rp/render_controllers/yasuflatland/suv.render_controllers.json",
+).render_controllers["controller.render.yasuflatland.suv"];
 
 describe("vehicle paints (ADR 0031)", () => {
   it("a new vehicle starts khaki", () => {
@@ -32,13 +34,15 @@ describe("vehicle paints (ADR 0031)", () => {
         paint,
       ).toBe(PAINT_VARIANT[paint]);
       expect(new Set([group, ...event.remove.component_groups])).toEqual(
-        new Set(PAINTS.map((p) => `mycar:paint_${p}`)),
+        new Set(PAINTS.map((p) => `yasuflatland:paint_${p}`)),
       );
     }
   });
 
   it("the render controller picks each paint's texture by its variant, and the texture exists", () => {
-    expect(client.render_controllers).toEqual(["controller.render.mycar.suv"]);
+    expect(client.render_controllers).toEqual([
+      "controller.render.yasuflatland.suv",
+    ]);
     expect(controller.textures).toEqual(["Array.paints[query.variant]"]);
     const slots: string[] = controller.arrays.textures["Array.paints"];
     for (const paint of PAINTS) {
@@ -47,7 +51,7 @@ describe("vehicle paints (ADR 0031)", () => {
       expect(path, paint).toMatch(
         paint === "khaki" ? /\/suv$/ : new RegExp(`/suv_${paint}$`),
       );
-      expect(existsSync(`packs/mycar_rp/${path}.png`), path).toBe(true);
+      expect(existsSync(`packs/yasuflatland_rp/${path}.png`), path).toBe(true);
     }
   });
 

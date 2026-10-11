@@ -55,9 +55,11 @@ export class LimitVehicles {
         this.repo.remove(id);
         fleet.forget(id);
         removed = true;
-        this.log.warn(`[mycar] ${id}: removed, over ${SPEC.maxVehicles}`);
+        this.log.warn(
+          `[yasuflatland] ${id}: removed, over ${SPEC.maxVehicles}`,
+        );
       } catch (e) {
-        this.log.warn(`[mycar] ${id}: ${e}`);
+        this.log.warn(`[yasuflatland] ${id}: ${e}`);
       }
     }
     return removed;

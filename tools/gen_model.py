@@ -1,4 +1,4 @@
-"""Generate the model and textures for the MyCar SUV.
+"""Generate the model and textures for the Yasuflatland Add-on SUV.
 
 Coordinates are in pixels (16 px = 1 block). The definitions below use "forward +z, right +x",
 and are rotated 180° around the Y axis just before writing, because in Bedrock the front of an
@@ -15,7 +15,7 @@ import zlib
 from pathlib import Path
 
 RP = Path(sys.argv[1])
-(RP / "models/entity").mkdir(parents=True, exist_ok=True)
+(RP / "models/entity/yasuflatland").mkdir(parents=True, exist_ok=True)
 
 # Color swatches. Each color fills a 4x4 cell, and each face's UV points at the cell's center 2x2
 PALETTE = {
@@ -564,7 +564,7 @@ geo = {
     "minecraft:geometry": [
         {
             "description": {
-                "identifier": "geometry.mycar.suv",
+                "identifier": "geometry.yasuflatland.suv",
                 "texture_width": TEXTURE_WIDTH,
                 "texture_height": 16,
                 "visible_bounds_width": 5,
@@ -627,7 +627,7 @@ def turn_around(bones):
 
 
 turn_around(geo["minecraft:geometry"][0]["bones"])
-(RP / "models/entity/suv.geo.json").write_text(json.dumps(geo, indent=1))
+(RP / "models/entity/yasuflatland/suv.geo.json").write_text(json.dumps(geo, indent=1))
 
 
 def png(path, w, h, pixel):
@@ -657,11 +657,11 @@ def swatches(body_color):
     return swatch
 
 
-(RP / "textures/entity").mkdir(parents=True, exist_ok=True)
-(RP / "textures/items").mkdir(parents=True, exist_ok=True)
+(RP / "textures/entity/yasuflatland").mkdir(parents=True, exist_ok=True)
+(RP / "textures/items/yasuflatland").mkdir(parents=True, exist_ok=True)
 for paint, body_color in BODY_PAINTS.items():
     name = "suv" if paint == "khaki" else f"suv_{paint}"
-    png(RP / f"textures/entity/{name}.png", TEXTURE_WIDTH, 16, swatches(body_color))
+    png(RP / f"textures/entity/yasuflatland/{name}.png", TEXTURE_WIDTH, 16, swatches(body_color))
 
 
 def icon(x, y):
@@ -675,7 +675,7 @@ def icon(x, y):
     return (0, 0, 0)
 
 
-png(RP / "textures/items/suv_item.png", 16, 16, icon)
+png(RP / "textures/items/yasuflatland/suv_item.png", 16, 16, icon)
 
 
 def switch_icon(x, y):
@@ -687,5 +687,5 @@ def switch_icon(x, y):
     return (0, 0, 0, 0)
 
 
-png(RP / "textures/items/headlight_switch.png", 16, 16, switch_icon)
+png(RP / "textures/items/yasuflatland/headlight_switch.png", 16, 16, switch_icon)
 print("cubes:", sum(len(b.get("cubes", [])) for b in geo["minecraft:geometry"][0]["bones"]))

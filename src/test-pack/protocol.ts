@@ -2,13 +2,13 @@
 // of @minecraft/server imports and of TypeScript-only syntax that Node's type
 // stripping cannot erase.
 
-export const TEST_EVENT = "mycar:test";
-export const LOG_TAG = "[MYCAR-TEST]";
+export const TEST_EVENT = "yasuflatland:test";
+export const LOG_TAG = "[YASUFLATLAND-TEST]";
 export const MANUAL_RUN_ID = "manual";
 
 const RUN_ID = /^[A-Za-z0-9_-]{1,32}$/;
 
-/** A run started by hand (`/scriptevent mycar:test`) has no id in its message. */
+/** A run started by hand (`/scriptevent yasuflatland:test`) has no id in its message. */
 export function runIdFrom(message: string): string {
   const id = message.trim();
   return RUN_ID.test(id) ? id : MANUAL_RUN_ID;

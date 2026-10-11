@@ -19,7 +19,7 @@ export class DynamicPropertyFleetRepository implements FleetRepository {
       // Starting over forgets the order and the evicted list. Vehicles join
       // again as the oldest when they next load or the script restarts.
       this.log.warn(
-        `[mycar] ignored a malformed ${FLEET_PROPERTY} (${e}): ${String(raw).slice(0, 200)}`,
+        `[yasuflatland] ignored a malformed ${FLEET_PROPERTY} (${e}): ${String(raw).slice(0, 200)}`,
       );
       return Fleet.empty();
     }
