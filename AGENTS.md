@@ -87,4 +87,4 @@ Use `yasuflatland:<snake_case>` for IDs, properties, groups, and events; the tes
 When adding a new kind of content, place its code by the feature boundaries rule above (0046), and:
 
 - Build identifiers with `id()` from `src/infrastructure/shared/identifiers.ts`.
-- Put pack files under `<type>/yasuflatland/`, flat below the namespace folder; test entities go under `entities/yasuflatland_test/`.
+- Put pack files under `<type>/yasuflatland/`, flat below the namespace folder; test entities go under `entities/yasuflatland_test/`; `tests/packs/layout.test.ts` enforces this layout.
