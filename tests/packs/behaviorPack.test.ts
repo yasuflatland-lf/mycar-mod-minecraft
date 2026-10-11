@@ -32,6 +32,13 @@ describe("packs/mycar_bp", () => {
     });
   });
 
+  it("takes Jump as a zero-strength power jump, so a touch rider's Jump does not dismount them (ADR 0025)", () => {
+    expect(c["minecraft:input_ground_controlled"]).toEqual({});
+    expect(c["minecraft:can_power_jump"]).toEqual({});
+    expect(c["minecraft:horse.jump_strength"]).toEqual({ value: 0 });
+    expect(c["minecraft:movement"]).toEqual({ value: 0.0 });
+  });
+
   it("leaves one-block steps to the engine (ADR 0004)", () => {
     expect(c["minecraft:variable_max_auto_step"].base_value).toBe(1.0625);
   });

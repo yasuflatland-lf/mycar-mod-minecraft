@@ -199,6 +199,29 @@ describe("Vehicle (aggregate)", () => {
     );
   });
 
+  it("keeps the driver while they ride, even when their position reads as another seat for a tick (ADR 0025)", () => {
+    const sim = new Sim();
+    const v = Vehicle.create("car", 0);
+    sim.riders = [{ id: "d", seat: 0, yaw: 0, raw: FORWARD }];
+    sim.run(v, 10);
+    sim.riders = [{ id: "d", seat: 1, yaw: 0, raw: FORWARD }];
+    sim.run(v, 1, 10);
+    expect(v.flipHeadlightSwitch("d", 100)).toBe(true);
+  });
+
+  it("makes the passenger who moved up to the driver's seat the driver once the driver leaves", () => {
+    const sim = new Sim();
+    const v = Vehicle.create("car", 0);
+    sim.riders = [
+      { id: "d", seat: 0, yaw: 0, raw: IDLE },
+      { id: "p", seat: 1, yaw: 0, raw: IDLE },
+    ];
+    sim.run(v, 5);
+    sim.riders = [{ id: "p", seat: 0, yaw: 0, raw: IDLE }];
+    sim.run(v, 1, 5);
+    expect(v.flipHeadlightSwitch("p", 100)).toBe(true);
+  });
+
   it("when the driver disappears (e.g. disconnects), emits the driver's door event once and the vehicle coasts to a stop", () => {
     const sim = new Sim();
     const v = Vehicle.create("car", 0);

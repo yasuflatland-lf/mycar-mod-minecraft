@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-10-11
+- Amended by: [0025](0025-jump-on-touch-and-a-sticky-driver.md) (the driver stays the driver while riding)
 
 ## Context
 

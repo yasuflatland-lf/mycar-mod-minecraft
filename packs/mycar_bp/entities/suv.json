@@ -65,6 +65,9 @@
         "is_pushable_by_piston": true
       },
       "minecraft:knockback_resistance": { "value": 1.0 },
+      "minecraft:input_ground_controlled": {},
+      "minecraft:can_power_jump": {},
+      "minecraft:horse.jump_strength": { "value": 0 },
       "minecraft:movement": { "value": 0.0 },
       "minecraft:variable_max_auto_step": {
         "base_value": 1.0625,
