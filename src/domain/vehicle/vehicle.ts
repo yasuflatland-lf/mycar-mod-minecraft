@@ -93,7 +93,7 @@ export class Vehicle {
   private seats = new Map<string, number>();
   private readonly lastHit = new Map<string, number>();
   private hitCounter: HitCounter = EMPTY_COUNTER;
-  private lastSwitchTick = Number.NEGATIVE_INFINITY;
+  private lastSwitchUseTick = Number.NEGATIVE_INFINITY;
 
   private constructor(
     readonly id: string,
@@ -227,14 +227,15 @@ export class Vehicle {
   }
 
   /**
-   * A player uses the headlight switch. Only the driver may flip it, and not
-   * again within the cooldown (ADR 0020). Returns whether it flipped.
+   * A player uses the headlight switch. Only the driver may flip it, and only
+   * after the switch has been idle for the cooldown, so a burst of uses from
+   * one touch flips it once (ADR 0023). Returns whether it flipped.
    */
   flipHeadlightSwitch(playerId: string, tick: number): boolean {
     if (playerId !== this.driverId) return false;
-    if (tick - this.lastSwitchTick < SPEC.headlightSwitchCooldown) return false;
-    this.lastSwitchTick = tick;
-    return true;
+    const idle = tick - this.lastSwitchUseTick;
+    this.lastSwitchUseTick = tick;
+    return idle >= SPEC.headlightSwitchCooldown;
   }
 
   /** Hit by a player. Returns VehicleBroken when the vehicle breaks (ADR 0008). */

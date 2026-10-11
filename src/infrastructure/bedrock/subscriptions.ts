@@ -56,20 +56,25 @@ export function registerSubscriptions(
     { namespaces: ["mycar"] },
   );
 
-  world.afterEvents.playerInteractWithBlock.subscribe((ev) => {
+  // The after-event only fires when the interaction did something, and an item
+  // with no use behavior does nothing on a block, so a tap never reaches it
+  // (BDS 1.26.52, mobile; ADR 0023). Before-events cannot change the world, so the
+  // placement runs on the next tick.
+  world.beforeEvents.playerInteractWithBlock.subscribe((ev) => {
     if (
       !ev.isFirstEvent ||
       ev.itemStack?.typeId !== ITEM_TYPE ||
       ev.blockFace !== Direction.Up
     )
       return;
-    useCases.place.execute({
+    const cmd = {
       playerId: ev.player.id,
       dimensionId: ev.block.dimension.id,
       blockLocation: ev.block.location,
       yaw: ev.player.getRotation().y,
       creative: ev.player.getGameMode() === GameMode.Creative,
-    });
+    };
+    system.run(() => useCases.place.execute(cmd));
   });
 
   world.afterEvents.entityHitEntity.subscribe((ev) => {

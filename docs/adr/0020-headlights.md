@@ -2,6 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-10-11
+- Amended by: [0023](0023-item-use-on-mobile-and-longer-headlights.md) (switch cooldown and reach)
 
 ## Context
 
