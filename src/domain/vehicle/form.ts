@@ -1,4 +1,4 @@
-// Forms of the transforming vehicle (ADR 0038): double-tap Jump to take off
+// Forms of the transforming vehicle (ADR 0039): double-tap Jump to take off
 // and land (ADR 0021), hold Jump to climb and pull the stick back to sink (ADR 0032).
 import { clamp } from "../shared/vec";
 import { type RawInput, toDriveInput } from "./driveInput";
