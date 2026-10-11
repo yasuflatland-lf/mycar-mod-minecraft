@@ -114,6 +114,8 @@ pnpm test:game       # in-game tests
 
 CI runs the Biome check, the README preview check, type checking, tests, the build, and packaging on every pull request.
 
+The dev world starts fresh as `yasuflatland-dev`. The world from before the rename can be deleted by hand; its path is recorded in [ADR 0047](docs/adr/0047-rename-to-the-yasuflatland-add-on.md). Before your first `pnpm server:up` after the rename, remove the dev container from before the rename once, since it still holds the server ports: find its name with `docker ps -a`, then run `docker rm -f <name>`.
+
 ## Releasing
 
 Bump the Behavior Pack version in `packs/yasuflatland_bp/manifest.json` and write the release summary in `docs/releases/v<version>.md`, starting from [`docs/releases/TEMPLATE.md`](docs/releases/TEMPLATE.md). Describe what players can do now in plain words; the release workflow puts it above the PR list that GitHub generates, and fails if the file is missing. Merge both to `main`, then either:
@@ -129,7 +131,7 @@ Switch the headlights off before upgrading. Old vehicles and items disappear bec
 
 The fleet record starts empty, and every player receives the starter vehicle again on their next join. Get additional vehicles with `/give @s yasuflatland:suv_item` or the recipe. Pack UUIDs stay the same, so worlds that already list the packs load the new versions.
 
-The dev world starts fresh as `yasuflatland-dev`. The old dev world can be deleted by hand; its historical path is recorded in [ADR 0047](docs/adr/0047-rename-to-the-yasuflatland-add-on.md).
+On a dedicated server, delete the old MyCar pack folders from `behavior_packs` and `resource_packs` (the ones ending in `_bp` and `_rp` that predate `yasuflatland_bp` and `yasuflatland_rp`) before you copy in the new ones. The old and new folders share UUIDs, so keeping both leaves the server with two packs under one UUID.
 
 ## License
 

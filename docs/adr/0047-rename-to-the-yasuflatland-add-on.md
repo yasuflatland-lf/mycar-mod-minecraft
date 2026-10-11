@@ -27,6 +27,8 @@ Ship one Behavior Pack and one Resource Pack as the **Yasuflatland Add-on**, in 
 | `mycar_bp`, `mycar_rp`, `mycar_test_bp` | `yasuflatland_bp`, `yasuflatland_rp`, `yasuflatland_test_bp` |
 | `NAMESPACE = "mycar"` | `NAMESPACE = "yasuflatland"`; build infrastructure IDs with `id()` |
 | `[mycar]` script log prefix | `[yasuflatland]` |
+| `[MYCAR-TEST]` test pack log tag | `[YASUFLATLAND-TEST]` |
+| `mycar_arena` test ticking area | `yasuflatland_arena` |
 | `mycar-bds` container, `mycar-dev` Compose project and world | `yasuflatland-bds`, `yasuflatland-dev` |
 | `dist/mycar-<version>.mcaddon` | `dist/yasuflatland-addon-<version>.mcaddon` |
 | `mycar-mod-minecraft` repository and package name | `yasuflatland-addon-minecraft` |
@@ -43,6 +45,6 @@ Historical ADRs, release summaries, and design documents retain the former name.
 - `mycar:*` vehicles and items disappear from existing worlds. Players get new ones with `/give @s yasuflatland:suv_item` or the recipe.
 - Switch the headlights off before upgrading. Light blocks left by a vehicle with its lights on stay in the world because its record of lit cells lives on the vanished entity. No cleanup or migration is added.
 - The fleet record starts empty, and every player receives the starter vehicle again on their next join because the dynamic property keys change.
-- The dev world starts fresh as `yasuflatland-dev`. Leave `server/data/worlds/mycar-dev` alone; it can be deleted by hand.
+- The dev world starts fresh as `yasuflatland-dev`. Leave `server/data/worlds/mycar-dev` alone; it can be deleted by hand. The test pack no longer removes the `mycartest` ticking area that older test runs left behind, because the fresh dev world never had it.
 - UUID continuity preserves world pack registration, but does not preserve content with the old IDs. Resource Pack changes require a server restart and a fresh client download (0015).
 - Immediately after merge, the owner renames the GitHub repository to `yasuflatland-addon-minecraft` and checks the Codecov badge so the updated README links resolve.

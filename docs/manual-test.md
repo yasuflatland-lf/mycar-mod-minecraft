@@ -46,8 +46,10 @@ To use commands, run `docker exec yasuflatland-bds send-command op <player name>
 
 ## Upgrading from MyCar 0.5.0 and earlier
 
-Switch the headlights off before upgrading. Old vehicles and items disappear because their IDs are not migrated. Light blocks from a vehicle whose headlights are on remain in the world: the record of lit cells lives on the vanished entity.
+Setup: in a world that used MyCar 0.5.0, place two vehicles and switch the headlights of one of them off, then stop the server and replace the old pack folders with the new ones as described under "Upgrading from MyCar 0.5.0 and earlier" in the [README](../README.md).
 
-The fleet record starts empty, and every player receives the starter vehicle again on their next join. Get additional vehicles with `/give @s yasuflatland:suv_item` or the recipe. Pack UUIDs stay the same, so worlds that already list the packs load the new versions.
-
-The dev world starts fresh as `yasuflatland-dev`. The old dev world can be deleted by hand; its historical path is recorded in [ADR 0047](adr/0047-rename-to-the-yasuflatland-add-on.md).
+| # | Steps | Pass condition | PC | Mobile |
+|---|---|---|---|---|
+| U1 | Start the server with the new packs and open the world | The world loads without content log errors and the old vehicles and items are gone | | |
+| U2 | Join with a player who had received the starter vehicle before | One "SUV" item is given again | | |
+| U3 | Look where the vehicle with its headlights off stood | No light blocks are left there | | |

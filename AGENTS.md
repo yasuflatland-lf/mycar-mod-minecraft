@@ -84,9 +84,7 @@ Ship all content in the Yasuflatland Add-on: `yasuflatland-addon-minecraft`, wit
 
 Use `yasuflatland:<snake_case>` for IDs, properties, groups, and events; the test entity namespace is `yasuflatland_test:`. Geometry names use `geometry.yasuflatland.<name>`, animations use `animation.yasuflatland.<entity>.<name>`, controllers use `controller.<kind>.yasuflatland.<entity>[.<name>]`, and sounds use `yasuflatland.<name>`. Lang keys follow IDs. Item texture shortnames use `yasuflatland_<name>` and the atlas resource pack name is `yasuflatland`. Keep engine-fixed manifest, lang, atlas, and sound definition files at their required paths (0047).
 
-When adding a new kind of content:
+When adding a new kind of content, place its code by the feature boundaries rule above (0046), and:
 
-- Add feature folders in the three layers, following ADR 0046; all driven entities belong to `vehicle`.
-- Expose an infrastructure `install<Feature>()` function and call it from `bootstrap()`.
 - Build identifiers with `id()` from `src/infrastructure/shared/identifiers.ts`.
 - Put pack files under `<type>/yasuflatland/`, flat below the namespace folder; test entities go under `entities/yasuflatland_test/`.
