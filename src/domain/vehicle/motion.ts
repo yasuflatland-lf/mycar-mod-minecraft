@@ -38,7 +38,19 @@ export interface MotionResult {
   blocked: boolean; // Whether a wall collision was detected this tick
 }
 
-export function updateSpeed(speed: number, throttle: number): number {
+export function updateSpeed(
+  speed: number,
+  throttle: number,
+  creep = false,
+): number {
+  if (creep) {
+    if (speed >= SPEC.creepSpeed)
+      return Math.max(SPEC.creepSpeed, speed - SPEC.drag);
+    return Math.min(
+      SPEC.creepSpeed,
+      speed + (speed < 0 ? SPEC.brake : SPEC.accel),
+    );
+  }
   let s = speed;
   if (throttle > 0) s += (s < 0 ? SPEC.brake : SPEC.accel) * throttle;
   else if (throttle < 0)
@@ -61,7 +73,7 @@ export function stepMotion(
   probe: StepProbe,
 ): MotionResult {
   const st: MotionState = { ...prev };
-  st.speed = updateSpeed(st.speed, input.throttle);
+  st.speed = updateSpeed(st.speed, input.throttle, input.creep);
   st.yaw = steerYaw(st.yaw, st.speed, input.steer);
   const f = forward(st.yaw);
   const v = obs.velocity;
