@@ -16,16 +16,18 @@ The target setup is a Bedrock Dedicated Server on a home LAN, with players joini
 
 ## Status
 
-Work in progress. The first milestone is the **driving core**:
+Work in progress. The [latest release](https://github.com/yasuflatland-lf/yasuflatland-addon-minecraft/releases/latest) has one vehicle, the **SUV**, that drives, flies, and dives:
 
-- Getting in and out, with a driver seat and passenger seats
-- Arcade-style acceleration, inertia, and steering
+- Getting in and out, with a driver seat and three passenger seats; a passenger moves up when the driver gets out
+- Arcade-style acceleration, inertia, steering, and a handbrake slide, tuned so touch players get full throttle like keyboard players
 - Climbing steps up to two blocks high
-- Spinning wheels and body tilt
-- Ram damage to mobs, while keeping occupants safe
+- Spinning wheels, body tilt, muffler smoke, and engine and wind sounds
+- Ram damage to mobs, while keeping occupants safe from crashes and falls
+- Flying: the wheels fold out on arms, the body banks into turns, and the camera pulls back to third person
+- Diving: deep water turns the SUV into a submarine with sealed windows, bronze propellers, a sonar ping, and unlimited air
 - Placing a vehicle from an item and breaking it back into one
 - At most 10 vehicles per world: placing an eleventh removes the oldest
-- A free vehicle item for every player on their first join
+- A free vehicle item for every player on their first join, and a crafting recipe for more
 - Repainting a vehicle with any of the 16 dyes
 - Switching the headlights on and off with a switch item, which lights up the road ahead at night
 

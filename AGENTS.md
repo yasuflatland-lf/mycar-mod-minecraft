@@ -17,9 +17,11 @@ pnpm install --frozen-lockfile
 pnpm lint          # Biome format + lint check (CI runs `biome ci`)
 pnpm lint:fix      # apply Biome fixes
 pnpm lint:lang     # fail on Japanese/CJK text in tracked and unignored files
+pnpm lint:unused   # knip: fail on unused files, exports, and dependencies
 pnpm typecheck     # tsc --noEmit
 pnpm test          # vitest + fast-check
 pnpm test:coverage # same, with a coverage report in coverage/ (CI uploads it to Codecov)
+pnpm test:mutation # Stryker mutation testing, report in reports/mutation (not in CI)
 pnpm build         # esbuild bundle into the Behavior Pack and the test pack
 pnpm package       # zip the packs into dist/yasuflatland-addon-<version>.mcaddon (after build)
 pnpm model         # regenerate the Resource Pack model and the README previews (Python 3)
@@ -30,7 +32,7 @@ pnpm server:down   # stop the dev BDS
 pnpm test:game     # run the in-game tests on the running dev BDS
 ```
 
-Before you say a change is done, run `pnpm lint`, `pnpm lint:lang`, `pnpm typecheck`, and `pnpm test`. When you change `src/infrastructure`, `src/test-pack`, or the packs, also run `pnpm build`, restart the dev BDS, and run `pnpm test:game` if Docker is available. CI runs the lint, typecheck, test, build, and package checks on every pull request ([unit-test.yml](.github/workflows/unit-test.yml), which also uploads coverage to Codecov) and runs the in-game tests against a BDS container ([integration-test.yml](.github/workflows/integration-test.yml)).
+Before you say a change is done, run `pnpm lint`, `pnpm lint:lang`, `pnpm lint:unused`, `pnpm typecheck`, and `pnpm test`. When you change `src/infrastructure`, `src/test-pack`, or the packs, also run `pnpm build`, restart the dev BDS, and run `pnpm test:game` if Docker is available. CI runs the lint, unused code, test, build, and package checks on every pull request ([unit-test.yml](.github/workflows/unit-test.yml), which also uploads coverage to Codecov) and runs the in-game tests against a BDS container ([integration-test.yml](.github/workflows/integration-test.yml)).
 
 ## Language and comments
 
