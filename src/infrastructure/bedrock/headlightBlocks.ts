@@ -57,6 +57,19 @@ export class HeadlightBlocks {
     }
   }
 
+  /**
+   * Clears the cells of vehicles that are gone. A vehicle removed as its chunk
+   * loads may have lit cells in chunks that are not loaded yet, and nothing
+   * else asks for its id again (ADR 0038).
+   */
+  clearGone(live: ReadonlySet<string>): void {
+    for (const [id, entry] of this.lit) {
+      if (live.has(id)) continue;
+      this.update(entry, []);
+      if (entry.cells.length === 0) this.lit.delete(id);
+    }
+  }
+
   private update(entry: Lit, wanted: readonly Cell[]): void {
     const { clear, light } = relight(entry.cells, wanted);
     const cleared = new Set<string>();

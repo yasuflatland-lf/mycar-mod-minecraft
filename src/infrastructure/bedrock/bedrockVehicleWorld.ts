@@ -12,6 +12,7 @@ import type {
   BreakWorld,
   DriveWorld,
   HeadlightWorld,
+  LimitWorld,
   PaintWorld,
   PlacementWorld,
   StarterWorld,
@@ -54,7 +55,8 @@ export class BedrockVehicleWorld
     StarterWorld,
     BreakWorld,
     PaintWorld,
-    HeadlightWorld
+    HeadlightWorld,
+    LimitWorld
 {
   /** Vehicles collected by loadedVehicles() for this tick. The other methods look them up here by id. */
   private current = new Map<string, Entity>();
@@ -70,6 +72,15 @@ export class BedrockVehicleWorld
   private player(playerId: string): Player | undefined {
     const player = world.getEntity(playerId);
     return player && isPlayer(player) ? player : undefined;
+  }
+
+  loadedVehicleIds(): string[] {
+    return DIMENSIONS.flatMap((dimId) =>
+      world
+        .getDimension(dimId)
+        .getEntities({ type: VEHICLE_TYPE })
+        .map((car) => car.id),
+    );
   }
 
   loadedVehicles(): VehicleSnapshot[] {
@@ -97,7 +108,9 @@ export class BedrockVehicleWorld
         });
       }
     }
-    this.testInputs.retain(new Set(this.current.keys()));
+    const live = new Set(this.current.keys());
+    this.testInputs.retain(live);
+    this.headlightBlocks.clearGone(live);
     return snapshots;
   }
 

@@ -901,6 +901,33 @@ function submarineShallow(a: Arena): Promise<Outcome> {
   );
 }
 
+// Summons one more car than the limit; the first one summoned is the oldest
+// and must go (ADR 0038).
+async function vehicleLimit(a: Arena): Promise<Outcome> {
+  const cars: Entity[] = [];
+  try {
+    for (let i = 0; i <= SPEC.maxVehicles; i++) {
+      cars.push(
+        spawnCar(a, 60.5 + (i % 6) * 6, 30.5 + Math.floor(i / 6) * 6, 0),
+      );
+    }
+    // Checked before the wait, so a car lost for another reason fails the test.
+    const summoned = cars.filter((c) => c.isValid).length;
+    await wait(20);
+    const [oldest, ...rest] = cars;
+    const restValid = rest.filter((c) => c.isValid).length;
+    return {
+      pass:
+        summoned === cars.length &&
+        !oldest?.isValid &&
+        restValid === SPEC.maxVehicles,
+      detail: `summoned=${summoned} oldestRemoved=${!oldest?.isValid} restValid=${restValid}`,
+    };
+  } finally {
+    for (const car of cars) if (car.isValid) car.remove();
+  }
+}
+
 async function runAll(runId: string): Promise<void> {
   const a = await setupArena();
   const tests: [string, () => Promise<Outcome>][] = [
@@ -926,6 +953,7 @@ async function runAll(runId: string): Promise<void> {
     ["submarine_shore", () => submarineShore(a)],
     ["submarine_unmanned", () => submarineUnmanned(a)],
     ["submarine_shallow", () => submarineShallow(a)],
+    ["vehicle_limit", () => vehicleLimit(a)],
   ];
   let passed = 0;
   const lines: string[] = [];
