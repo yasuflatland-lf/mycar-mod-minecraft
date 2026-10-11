@@ -5,6 +5,7 @@ import {
   forward,
   leftOf,
   normalizeYaw,
+  rightOf,
   type Vec2,
   type Vec3,
 } from "../../../src/domain/shared/vec";
@@ -12,6 +13,7 @@ import type { RawInput } from "../../../src/domain/vehicle/driveInput";
 import type { RamTarget } from "../../../src/domain/vehicle/ram";
 import { SEAT_POSITIONS } from "../../../src/domain/vehicle/seats";
 import { SPEC } from "../../../src/domain/vehicle/spec";
+import { STEP_LANES } from "../../../src/domain/vehicle/stepUp";
 import {
   type RiderView,
   type TickContext,
@@ -51,6 +53,31 @@ function stepAhead(yaw: number, distance: number, height: number) {
       ahead >= distance &&
       ahead < distance + 3 &&
       Math.abs(side) <= 1.5 &&
+      p.y >= 0 &&
+      p.y < height
+    );
+  };
+}
+
+/**
+ * A step `height` blocks tall and 3 deep, starting `distance` blocks ahead
+ * along `yaw`, but only 0.8 blocks wide around the look-ahead lane `lane`
+ * (positive is the vehicle's right), so the other two lanes miss it.
+ */
+function stepOnLane(
+  yaw: number,
+  distance: number,
+  height: number,
+  lane: number,
+) {
+  const f = forward(yaw);
+  return (p: Vec3) => {
+    const ahead = dot({ x: p.x, z: p.z }, f);
+    const side = dot({ x: p.x, z: p.z }, rightOf(f));
+    return (
+      ahead >= distance &&
+      ahead < distance + 3 &&
+      Math.abs(side - lane) <= 0.4 &&
       p.y >= 0 &&
       p.y < height
     );
@@ -197,6 +224,145 @@ describe("Vehicle (aggregate)", () => {
         expect(drive(1)).toContain(SPEC.oneStepVelocity);
         expect(drive(3).every((y) => y === 0)).toBe(true);
       }),
+    );
+  });
+
+  it("jumps up a step that only one look-ahead lane reaches, in any heading (ADR 0004)", () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: -180, max: 179 }),
+        fc.constantFrom(...STEP_LANES),
+        (yaw, lane) => {
+          const sim = new Sim();
+          sim.yaw = yaw;
+          sim.solid = stepOnLane(yaw, 8, 2, lane);
+          sim.riders = [{ id: "d", seat: 0, yaw, raw: FORWARD }];
+          sim.run(Vehicle.create("car", yaw), 40);
+          expect(sim.impulseY).toContain(SPEC.stepVelocity);
+        },
+      ),
+    );
+  });
+
+  it("never jumps up a step while a ceiling hangs right above the roof, in any heading", () => {
+    fc.assert(
+      fc.property(fc.integer({ min: -180, max: 179 }), (yaw) => {
+        const stepDistance = 8;
+        const f = forward(yaw);
+        const step = stepAhead(yaw, stepDistance, 2);
+        const sim = new Sim();
+        sim.yaw = yaw;
+        // A ceiling 2 to 3 blocks up over the approach, ending where the step starts.
+        sim.solid = (p) => {
+          const ahead = dot({ x: p.x, z: p.z }, f);
+          const side = dot({ x: p.x, z: p.z }, leftOf(f));
+          const ceiling =
+            ahead > -10 &&
+            ahead < stepDistance &&
+            Math.abs(side) <= 2 &&
+            p.y >= 2 &&
+            p.y < 3;
+          return ceiling || step(p);
+        };
+        sim.riders = [{ id: "d", seat: 0, yaw, raw: FORWARD }];
+        sim.run(Vehicle.create("car", yaw), 19);
+        expect(sim.impulseY.every((y) => y === 0)).toBe(true);
+      }),
+    );
+  });
+
+  it("a rebuilt vehicle is driven by the rider in the driver's seat, whatever order the riders come in (ADR 0019)", () => {
+    fc.assert(
+      fc.property(
+        fc.subarray([1, 2, 3], { minLength: 1 }),
+        fc.nat(),
+        (passengerSeats, at) => {
+          const sim = new Sim();
+          const passengers = passengerSeats.map((seat) => ({
+            id: `p${seat}`,
+            seat,
+            yaw: 0,
+            raw: IDLE,
+          }));
+          const i = at % (passengers.length + 1);
+          sim.riders = [
+            ...passengers.slice(0, i),
+            { id: "d", seat: 0, yaw: 0, raw: FORWARD },
+            ...passengers.slice(i),
+          ];
+          const riders: RiderView[] = sim.riders.map((r) => ({
+            id: r.id,
+            offset: seatOffset(0, r.seat),
+            yaw: r.yaw,
+            raw: r.raw,
+          }));
+          const v = Vehicle.rebuild("car", 0, riders);
+          sim.run(v, 40);
+          expect(sim.pos.z).toBeGreaterThan(5);
+        },
+      ),
+    );
+  });
+
+  it("aligns the heading with a boarding driver's view only below mountAlignSpeed", () => {
+    // One tick of this throttle from a standstill gives exactly mountAlignSpeed.
+    const creep: RawInput = {
+      moveX: 0,
+      moveY: (SPEC.mountAlignSpeed / SPEC.accel) * SPEC.throttleFullAt,
+      jump: false,
+    };
+    const board = (raw: RawInput) => {
+      const sim = new Sim();
+      const v = Vehicle.create("car", 0);
+      sim.testInput = raw;
+      sim.run(v, 1);
+      const speed = v.speed;
+      sim.riders = [{ id: "d", seat: 0, yaw: 90, raw: IDLE }];
+      sim.run(v, 1, 1);
+      return { speed, yaw: v.yaw };
+    };
+    expect(board(creep)).toEqual({ speed: SPEC.mountAlignSpeed, yaw: 0 });
+    const slower = board({ ...creep, moveY: creep.moveY * 0.99 });
+    expect(slower.speed).toBeLessThan(SPEC.mountAlignSpeed);
+    expect(slower.yaw).toBeCloseTo(90);
+  });
+
+  it("queries nearby targets only while faster than ramMinSpeed (ADR 0006)", () => {
+    fc.assert(
+      fc.property(
+        fc.array(fc.double({ min: -1, max: 1, noNaN: true }), {
+          minLength: 1,
+          maxLength: 60,
+        }),
+        (moveYs) => {
+          const v = Vehicle.create("car", 0);
+          let vel: Vec2 = { x: 0, z: 0 };
+          let pos: Vec2 = { x: 0, z: 0 };
+          moveYs.forEach((moveY, tick) => {
+            let queried = false;
+            const out = v.tick({
+              tick,
+              riders: [],
+              testInput: { moveX: 0, moveY, jump: false },
+              velocity: vel,
+              onGround: true,
+              solidAt: () => false,
+              targets: () => {
+                queried = true;
+                return [];
+              },
+            });
+            const r = engineStep(
+              { pos, vel },
+              { x: out.impulse.x, z: out.impulse.z },
+              { mu: GROUND_FRICTION },
+            );
+            pos = r.body.pos;
+            vel = r.body.vel;
+            expect(queried).toBe(Math.abs(v.speed) > SPEC.ramMinSpeed);
+          });
+        },
+      ),
     );
   });
 

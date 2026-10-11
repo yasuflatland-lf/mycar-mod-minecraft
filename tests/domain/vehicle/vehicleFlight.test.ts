@@ -1,5 +1,6 @@
+import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { forward, type Vec2 } from "../../../src/domain/shared/vec";
+import { forward, rightOf, type Vec2 } from "../../../src/domain/shared/vec";
 import type { RawInput } from "../../../src/domain/vehicle/driveInput";
 import type { Form } from "../../../src/domain/vehicle/form";
 import { SPEC } from "../../../src/domain/vehicle/spec";
@@ -92,6 +93,46 @@ function flyingSim(): FlightSim {
 }
 
 describe("Vehicle in flight (ADR 0021)", () => {
+  it("ignores the controls during takeoff", () => {
+    fc.assert(
+      fc.property(
+        fc.record({
+          moveX: fc.double({ min: -1, max: 1, noNaN: true }),
+          moveY: fc.double({ min: -1, max: 1, noNaN: true }),
+          jump: fc.boolean(),
+        }),
+        (input) => {
+          const sim = new FlightSim();
+          sim.doubleTap();
+          expect(sim.vehicle.form).toBe("takeoff");
+          while (sim.vehicle.form === "takeoff") {
+            expect(sim.vehicle.speed).toBe(0);
+            expect(sim.vehicle.yaw).toBe(0);
+            sim.step(input);
+          }
+        },
+      ),
+    );
+  });
+
+  it("does not take off on a single Jump press from a driver who boards a driverless vehicle", () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 1, max: SPEC.doubleTapTicks }),
+        fc.integer({ min: 1, max: SPEC.doubleTapTicks }),
+        (driverless, idle) => {
+          const sim = new FlightSim();
+          sim.run(undefined, driverless);
+          sim.run(IDLE, idle);
+          sim.step({ ...IDLE, jump: true });
+          sim.run(IDLE, SPEC.takeoffTicks);
+          expect(sim.changes).toEqual([]);
+          expect(sim.vehicle.form).toBe("car");
+        },
+      ),
+    );
+  });
+
   it("takes off on a double tap and rises about 1.5 blocks before flying", () => {
     const sim = new FlightSim();
     sim.doubleTap();
@@ -270,5 +311,63 @@ describe("Vehicle banking (ADR 0026)", () => {
     bankOver(sim, FORWARD, 20);
     const turning = bankOver(sim, { ...FORWARD, moveX: 1 }, 20);
     expect(turning.every((b) => b === 0)).toBe(true);
+  });
+});
+
+describe("Vehicle landing gear (ADR 0033)", () => {
+  it("starts with the wheels down when placed", () => {
+    expect(Vehicle.create("car", 0).wheelsDown).toBe(true);
+  });
+
+  it("keeps the wheels folded when rebuilt while landing high above the ground", () => {
+    const v = Vehicle.rebuild("car", 0, [], "landing");
+    const out = v.tick({
+      tick: 0,
+      riders: [],
+      velocity: { x: 0, z: 0 },
+      velocityY: 0,
+      onGround: false,
+      solidAt: () => false,
+      targets: () => [],
+    });
+    expect(out.gearDown).toBe(false);
+    expect(v.wheelsDown).toBe(false);
+  });
+
+  it("lowers the wheels while landing over ground under the center or any corner, in any heading", () => {
+    const d = SPEC.gearProbeOffset;
+    const spots = [
+      [0, 0],
+      [d, d],
+      [d, -d],
+      [-d, d],
+      [-d, -d],
+    ] as const;
+    fc.assert(
+      fc.property(
+        fc.integer({ min: -180, max: 179 }),
+        fc.constantFrom(...spots),
+        fc.integer({ min: 1, max: SPEC.gearDownHeight + 1 }),
+        (yaw, [ahead, side], depth) => {
+          const f = forward(yaw);
+          const r = rightOf(f);
+          const v = Vehicle.rebuild("car", yaw, [], "landing");
+          const out = v.tick({
+            tick: 0,
+            onGround: false,
+            velocity: { x: 0, z: 0 },
+            velocityY: 0,
+            riders: [],
+            targets: () => [],
+            // A pillar 0.4 blocks around one probe spot, its top `depth` blocks down.
+            solidAt: (o) =>
+              Math.abs(o.x * f.x + o.z * f.z - ahead) <= 0.4 &&
+              Math.abs(o.x * r.x + o.z * r.z - side) <= 0.4 &&
+              o.y <= -depth,
+          });
+          expect(out.gearDown).toBe(depth <= SPEC.gearDownHeight);
+        },
+      ),
+    );
   });
 });
