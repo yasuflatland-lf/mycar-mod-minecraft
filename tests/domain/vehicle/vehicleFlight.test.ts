@@ -108,25 +108,43 @@ describe("Vehicle in flight (ADR 0021)", () => {
           jump: fc.boolean(),
         }),
         (input) => {
-          const sim = new FlightSim();
-          sim.doubleTap();
-          expect(sim.vehicle.form).toBe("takeoff");
-          while (sim.vehicle.form === "takeoff") {
-            expect(sim.vehicle.speed).toBe(0);
-            expect(sim.vehicle.yaw).toBe(0);
-            sim.step(input);
+          const held = new FlightSim();
+          const idle = new FlightSim();
+          for (const sim of [held, idle]) {
+            sim.run(FORWARD, 20);
+            sim.doubleTap(FORWARD);
           }
+          expect(held.vehicle.form).toBe("takeoff");
+          expect(held.vehicle.speed).toBeGreaterThan(0);
+          let ticks = 0;
+          for (; ticks <= SPEC.takeoffTicks; ticks++) {
+            held.step(input);
+            idle.step(IDLE);
+            if (held.vehicle.form !== "takeoff") break;
+            expect(held.vehicle.speed).toBe(idle.vehicle.speed);
+            expect(held.vehicle.yaw).toBe(idle.vehicle.yaw);
+          }
+          expect(ticks).toBeGreaterThan(0);
+          expect(held.vehicle.form).toBe("hover");
         },
       ),
     );
   });
 
-  it("does not take off on a single Jump press from a driver who boards a driverless vehicle", () => {
+  it("does not count driverless ticks as a Jump press", () => {
     fc.assert(
       fc.property(
-        fc.integer({ min: 1, max: SPEC.doubleTapTicks }),
-        fc.integer({ min: 1, max: SPEC.doubleTapTicks }),
-        (driverless, idle) => {
+        // The press comes within doubleTapTicks of every driverless tick, so
+        // a driverless tick read as a Jump press would always pair with it.
+        fc
+          .integer({ min: 1, max: SPEC.doubleTapTicks - 1 })
+          .chain((driverless) =>
+            fc.tuple(
+              fc.constant(driverless),
+              fc.integer({ min: 1, max: SPEC.doubleTapTicks - driverless }),
+            ),
+          ),
+        ([driverless, idle]) => {
           const sim = new FlightSim();
           sim.run(undefined, driverless);
           sim.run(IDLE, idle);
@@ -346,7 +364,7 @@ describe("Vehicle landing gear (ADR 0033)", () => {
     expect(vehicle.wheelsDown).toBe(false);
   });
 
-  it("lowers the wheels while landing over ground under the center or any corner, in any heading", () => {
+  it("lowers the wheels while landing over ground within gearDownHeight under the center or any corner, and keeps them up over deeper ground, in any heading", () => {
     const d = SPEC.gearProbeOffset;
     const spots = [
       [0, 0],
@@ -363,13 +381,14 @@ describe("Vehicle landing gear (ADR 0033)", () => {
         (yaw, [ahead, side], depth) => {
           const f = forward(yaw);
           const r = rightOf(f);
-          // A pillar 0.4 blocks around one probe spot, its top `depth` blocks down.
           const { gearDown } = landOnce(
             yaw,
+            // A one-block slab 0.4 blocks around one probe spot, `depth` blocks down.
             (o) =>
               Math.abs(dot(o, f) - ahead) <= 0.4 &&
               Math.abs(dot(o, r) - side) <= 0.4 &&
-              o.y <= -depth,
+              o.y <= -depth &&
+              o.y > -depth - 1,
           );
           expect(gearDown).toBe(depth <= SPEC.gearDownHeight);
         },

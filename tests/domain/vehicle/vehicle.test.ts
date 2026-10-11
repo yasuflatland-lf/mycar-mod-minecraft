@@ -25,6 +25,12 @@ import { engineStep } from "../../support/engineModel";
 const FORWARD: RawInput = { moveX: 0, moveY: 1, jump: false };
 const IDLE: RawInput = { moveX: 0, moveY: 0, jump: false };
 const GROUND_FRICTION = 0.688;
+/**
+ * From standstill the look-ahead first reaches a step 8 blocks ahead on this
+ * tick, and the car is still short of it, so a probe can only find the step
+ * by looking ahead, not by standing inside it.
+ */
+const STEP_REACH_TICKS = 19;
 
 function seatOffset(yaw: number, seat: number): Vec2 {
   const f = forward(yaw);
@@ -211,10 +217,7 @@ describe("Vehicle (aggregate)", () => {
           sim.yaw = yaw;
           sim.solid = stepAhead(yaw, stepDistance, height);
           sim.riders = [{ id: "d", seat: 0, yaw, raw: FORWARD }];
-          // From standstill the look-ahead first reaches the step on tick 19,
-          // and the car is still short of it, so a probe can only find the
-          // step by looking ahead, not by standing inside it.
-          sim.run(Vehicle.create("car", yaw), 19);
+          sim.run(Vehicle.create("car", yaw), STEP_REACH_TICKS);
           expect(dot(sim.pos, forward(yaw))).toBeLessThan(
             stepDistance - SPEC.hitboxFront,
           );
@@ -237,7 +240,8 @@ describe("Vehicle (aggregate)", () => {
           sim.yaw = yaw;
           sim.solid = stepOnLane(yaw, 8, 2, lane);
           sim.riders = [{ id: "d", seat: 0, yaw, raw: FORWARD }];
-          sim.run(Vehicle.create("car", yaw), 40);
+          sim.run(Vehicle.create("car", yaw), STEP_REACH_TICKS);
+          expect(dot(sim.pos, forward(yaw))).toBeLessThan(8 - SPEC.hitboxFront);
           expect(sim.impulseY).toContain(SPEC.stepVelocity);
         },
       ),
@@ -265,7 +269,7 @@ describe("Vehicle (aggregate)", () => {
           return ceiling || step(p);
         };
         sim.riders = [{ id: "d", seat: 0, yaw, raw: FORWARD }];
-        sim.run(Vehicle.create("car", yaw), 19);
+        sim.run(Vehicle.create("car", yaw), STEP_REACH_TICKS);
         expect(sim.impulseY.every((y) => y === 0)).toBe(true);
       }),
     );
@@ -327,14 +331,63 @@ describe("Vehicle (aggregate)", () => {
     expect(slower.yaw).toBeCloseTo(90);
   });
 
+  it("does not query nearby targets at exactly ramMinSpeed, as when creeping up a step (ADR 0006)", () => {
+    // A step jump raises a slower vehicle to stepMinSpeed, which equals
+    // ramMinSpeed, so creeping up a step reaches the threshold exactly.
+    const v = Vehicle.create("car", 0);
+    let vel: Vec2 = { x: 0, z: 0 };
+    let pos: Vec2 = { x: 0, z: 0 };
+    const step = stepAhead(0, 3, 1);
+    for (let tick = 0; tick < 40; tick++) {
+      let queried = false;
+      const at = pos;
+      const out = v.tick({
+        tick,
+        riders: [],
+        testInput: { moveX: 0, moveY: 0.2, jump: false },
+        velocity: vel,
+        onGround: true,
+        solidAt: (o) => step({ x: at.x + o.x, y: o.y, z: at.z + o.z }),
+        targets: () => {
+          queried = true;
+          return [];
+        },
+      });
+      if (out.impulse.y > 0) {
+        expect(v.speed).toBe(SPEC.ramMinSpeed);
+        expect(queried).toBe(false);
+        return;
+      }
+      const r = engineStep(
+        { pos, vel },
+        { x: out.impulse.x, z: out.impulse.z },
+        { mu: GROUND_FRICTION },
+      );
+      pos = r.body.pos;
+      vel = r.body.vel;
+    }
+    expect.unreachable("the vehicle never jumped the step");
+  });
+
   it("queries nearby targets only while faster than ramMinSpeed (ADR 0006)", () => {
     fc.assert(
       fc.property(
-        fc.array(fc.double({ min: -1, max: 1, noNaN: true }), {
-          minLength: 1,
-          maxLength: 60,
-        }),
-        (moveYs) => {
+        // Each throttle is held for a while, so runs reach both sides of
+        // ramMinSpeed, forward and in reverse.
+        fc.array(
+          fc.record({
+            moveY: fc.oneof(
+              fc.constantFrom(-1, 1),
+              fc.double({ min: -1, max: 1, noNaN: true }),
+            ),
+            ticks: fc.integer({ min: 1, max: 30 }),
+          }),
+          { minLength: 1, maxLength: 4 },
+        ),
+        (phases) => {
+          const moveYs = phases.flatMap((p) =>
+            Array<number>(p.ticks).fill(p.moveY),
+          );
           const v = Vehicle.create("car", 0);
           let vel: Vec2 = { x: 0, z: 0 };
           let pos: Vec2 = { x: 0, z: 0 };
