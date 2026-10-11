@@ -7,6 +7,7 @@ import type {
   VehicleSnapshot,
 } from "../../src/application/ports";
 import type { Vec3 } from "../../src/domain/shared/vec";
+import type { FlightMode } from "../../src/domain/vehicle/flight";
 import type { Cell } from "../../src/domain/vehicle/headlights";
 import type { Paint } from "../../src/domain/vehicle/paint";
 import type { RamHit, RamTarget } from "../../src/domain/vehicle/ram";
@@ -55,6 +56,9 @@ export class FakeWorld
   applyMotion(id: string, _impulse: Vec3, yaw: number) {
     if (id === this.failOn) throw new Error("boom");
     this.calls.push(`motion:${id}:${yaw.toFixed(0)}`);
+  }
+  setFlight(id: string, mode: FlightMode) {
+    this.calls.push(`flight:${id}:${mode}`);
   }
   damage(hit: RamHit, attackerId: string | undefined) {
     this.calls.push(`damage:${hit.id}:${attackerId ?? "-"}`);
@@ -109,8 +113,10 @@ export const snapshot = (
   location: { x: 0, y: 0, z: 0 },
   yaw: 0,
   velocity: { x: 0, z: 0 },
+  velocityY: 0,
   onGround: true,
   riders: [],
+  flight: "ground",
   headlights: false,
   ...over,
 });

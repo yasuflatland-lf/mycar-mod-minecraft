@@ -10,8 +10,16 @@ export const HEADLIGHTS_PROPERTY = "mycar:headlights";
 /** Dynamic property on a vehicle holding the cells it put light blocks in. */
 export const LIT_CELLS_PROPERTY = "mycar:lit_cells";
 export const LIGHT_BLOCK = "minecraft:light_block_15";
-/** Test input messages have the form "<vehicleId>,<moveX>,<moveY>,<jump>" (jump is 0 / 1). "<vehicleId>,clear" clears the input. */
+/**
+ * Test input messages have the form "<vehicleId>,<moveX>,<moveY>,<jump>[,<pitch>]"
+ * (jump is 0 / 1, pitch in degrees with negative looking up). "<vehicleId>,clear"
+ * clears the input.
+ */
 export const TEST_INPUT_EVENT = "mycar:test_input";
+/** Client-synced flight mode. The script reads it back after /reload, and the Resource Pack draws the flight visuals from it (ADR 0021). */
+export const FLIGHT_PROPERTY = "mycar:flight";
+export const HOVER_EVENT = "mycar:hover";
+export const LAND_EVENT = "mycar:land";
 
 /** Dyes that repaint a vehicle when used on it (ADR 0017). */
 export const PAINT_BY_DYE: Readonly<Record<string, Paint>> = {

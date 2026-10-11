@@ -94,18 +94,42 @@ describe("parseTestInputMessage", () => {
     );
   });
 
-  it("rejects messages whose field count is neither 2 nor 4", () => {
+  it("rejects messages whose field count is not 2, 4, or 5", () => {
     const part = fc.string().filter((value) => !value.includes(","));
     fc.assert(
       fc.property(
         fc
           .array(part, { maxLength: 10 })
-          .filter((parts) => parts.length !== 2 && parts.length !== 4),
+          .filter((parts) => ![2, 4, 5].includes(parts.length)),
         (parts) => {
           expect(parseTestInputMessage(parts.join(","))).toBeUndefined();
         },
       ),
     );
+  });
+
+  it("reads an optional fifth field as the view pitch, clamped to -90..90", () => {
+    const pitch = finite.filter((value) => !Object.is(value, -0));
+    fc.assert(
+      fc.property(
+        vehicleId,
+        axis,
+        axis,
+        fc.boolean(),
+        pitch,
+        (id, x, y, jump, p) => {
+          const parsed = parseTestInputMessage(
+            `${id},${x},${y},${jump ? "1" : "0"},${p}`,
+          );
+          expect(parsed?.input?.pitch).toBe(Math.min(90, Math.max(-90, p)));
+        },
+      ),
+    );
+  });
+
+  it("rejects a pitch that is blank or not a finite number", () => {
+    for (const p of ["", " ", "abc", "NaN", "Infinity", "-Infinity"])
+      expect(parseTestInputMessage(`car,0,1,0,${p}`)).toBeUndefined();
   });
 
   it("rejects a two-field message unless it is clear", () => {

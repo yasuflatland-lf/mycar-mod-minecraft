@@ -121,6 +121,48 @@ describe("DriveVehicles", () => {
     expect(world.calls).toContain("door:a:door_fr");
   });
 
+  it("rebuilds a vehicle lost in a reload in the flight mode stored on the entity (ADR 0021)", () => {
+    const world = new FakeWorld();
+    const repo = new InMemoryRepo();
+    world.snapshots = [
+      snapshot("a", {
+        flight: "flying",
+        onGround: false,
+        testInput: FULL_THROTTLE,
+      }),
+    ];
+    new DriveVehicles(world, repo, logger()).execute(0);
+    expect(repo.get("a")?.flightMode).toBe("flying");
+    expect(world.calls.some((c) => c.startsWith("flight:"))).toBe(false);
+  });
+
+  it("writes the flight mode to the world only on the tick it changes (ADR 0021)", () => {
+    const world = new FakeWorld();
+    const uc = new DriveVehicles(world, new InMemoryRepo(), logger());
+    const idle = { moveX: 0, moveY: 0, jump: false };
+    const pressed = { ...idle, jump: true };
+    [pressed, idle, pressed, idle, idle].forEach((input, tick) => {
+      world.snapshots = [snapshot("a", { testInput: input })];
+      uc.execute(tick);
+    });
+    expect(world.calls.filter((c) => c.startsWith("flight:"))).toEqual([
+      "flight:a:takeoff",
+    ]);
+  });
+
+  it("still writes a flight mode change when moving the vehicle throws on that tick", () => {
+    const world = new FakeWorld();
+    const uc = new DriveVehicles(world, new InMemoryRepo(), logger());
+    const idle = { moveX: 0, moveY: 0, jump: false };
+    const pressed = { ...idle, jump: true };
+    world.failOn = "a";
+    [pressed, idle, pressed].forEach((input, tick) => {
+      world.snapshots = [snapshot("a", { testInput: input })];
+      uc.execute(tick);
+    });
+    expect(world.calls).toContain("flight:a:takeoff");
+  });
+
   it("lights the cells ahead of a vehicle with its headlights on, and none for one with them off", () => {
     const world = new FakeWorld();
     const location = { x: 10.5, y: 64, z: -3.2 };
