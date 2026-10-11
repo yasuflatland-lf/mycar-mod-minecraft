@@ -9,7 +9,7 @@ import {
   TEST_EVENT,
 } from "../src/test-pack/protocol.ts";
 
-const CONTAINER = "mycar-bds";
+const CONTAINER = "yasuflatland-bds";
 const runId = randomBytes(4).toString("hex");
 const since = new Date().toISOString();
 // Write the command to bedrock_server's stdin ourselves, as Mojang's Creator
