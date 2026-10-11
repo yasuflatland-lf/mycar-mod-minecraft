@@ -8,15 +8,15 @@ import {
 } from "../../src/infrastructure/vehicle/bedrock/identifiers";
 
 const read = (p: string) => JSON.parse(readFileSync(p, "utf8"));
-const entity = read("packs/yasuflatland_bp/entities/yasuflatland/suv.json")[
-  "minecraft:entity"
-];
+const entity = read(
+  "packs/yasuflatland_ride_bp/entities/yasuflatland_ride/suv.json",
+)["minecraft:entity"];
 const client = read(
-  "packs/yasuflatland_rp/entity/yasuflatland/suv.entity.json",
+  "packs/yasuflatland_ride_rp/entity/yasuflatland_ride/suv.entity.json",
 )["minecraft:client_entity"].description;
 const controller = read(
-  "packs/yasuflatland_rp/render_controllers/yasuflatland/suv.render_controllers.json",
-).render_controllers["controller.render.yasuflatland.suv"];
+  "packs/yasuflatland_ride_rp/render_controllers/yasuflatland_ride/suv.render_controllers.json",
+).render_controllers["controller.render.yasuflatland_ride.suv"];
 
 describe("vehicle paints (ADR 0031)", () => {
   it("a new vehicle starts khaki", () => {
@@ -34,14 +34,14 @@ describe("vehicle paints (ADR 0031)", () => {
         paint,
       ).toBe(PAINT_VARIANT[paint]);
       expect(new Set([group, ...event.remove.component_groups])).toEqual(
-        new Set(PAINTS.map((p) => `yasuflatland:paint_${p}`)),
+        new Set(PAINTS.map((p) => `yasuflatland_ride:paint_${p}`)),
       );
     }
   });
 
   it("the render controller picks each paint's texture by its variant, and the texture exists", () => {
     expect(client.render_controllers).toEqual([
-      "controller.render.yasuflatland.suv",
+      "controller.render.yasuflatland_ride.suv",
     ]);
     expect(controller.textures).toEqual(["Array.paints[query.variant]"]);
     const slots: string[] = controller.arrays.textures["Array.paints"];
@@ -51,7 +51,9 @@ describe("vehicle paints (ADR 0031)", () => {
       expect(path, paint).toMatch(
         paint === "khaki" ? /\/suv$/ : new RegExp(`/suv_${paint}$`),
       );
-      expect(existsSync(`packs/yasuflatland_rp/${path}.png`), path).toBe(true);
+      expect(existsSync(`packs/yasuflatland_ride_rp/${path}.png`), path).toBe(
+        true,
+      );
     }
   });
 

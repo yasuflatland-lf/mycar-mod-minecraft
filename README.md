@@ -1,9 +1,9 @@
-# 🚗 Yasuflatland Add-on
+# 🚗 Yasuflatland Ride
 
-[![Unit Tests](https://github.com/yasuflatland-lf/yasuflatland-addon-minecraft/actions/workflows/unit-test.yml/badge.svg?branch=main)](https://github.com/yasuflatland-lf/yasuflatland-addon-minecraft/actions/workflows/unit-test.yml)
-[![Integration Test](https://github.com/yasuflatland-lf/yasuflatland-addon-minecraft/actions/workflows/integration-test.yml/badge.svg?branch=main)](https://github.com/yasuflatland-lf/yasuflatland-addon-minecraft/actions/workflows/integration-test.yml)
-[![all code coverage](https://img.shields.io/codecov/c/github/yasuflatland-lf/yasuflatland-addon-minecraft/main?label=all%20code&logo=codecov)](https://codecov.io/gh/yasuflatland-lf/yasuflatland-addon-minecraft)
-[![domain and application coverage](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.codecov.io%2Fapi%2Fv2%2Fgithub%2Fyasuflatland-lf%2Frepos%2Fyasuflatland-addon-minecraft%2Fcomponents%2F%3Fbranch%3Dmain&query=%24%5B0%5D.coverage&suffix=%25&label=domain%20and%20application&logo=codecov&color=brightgreen)](https://app.codecov.io/gh/yasuflatland-lf/yasuflatland-addon-minecraft/components)
+[![Unit Tests](https://github.com/yasuflatland-lf/yasuflatland-ride-minecraft/actions/workflows/unit-test.yml/badge.svg?branch=main)](https://github.com/yasuflatland-lf/yasuflatland-ride-minecraft/actions/workflows/unit-test.yml)
+[![Integration Test](https://github.com/yasuflatland-lf/yasuflatland-ride-minecraft/actions/workflows/integration-test.yml/badge.svg?branch=main)](https://github.com/yasuflatland-lf/yasuflatland-ride-minecraft/actions/workflows/integration-test.yml)
+[![all code coverage](https://img.shields.io/codecov/c/github/yasuflatland-lf/yasuflatland-ride-minecraft/main?label=all%20code&logo=codecov)](https://codecov.io/gh/yasuflatland-lf/yasuflatland-ride-minecraft)
+[![domain and application coverage](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.codecov.io%2Fapi%2Fv2%2Fgithub%2Fyasuflatland-lf%2Frepos%2Fyasuflatland-ride-minecraft%2Fcomponents%2F%3Fbranch%3Dmain&query=%24%5B0%5D.coverage&suffix=%25&label=domain%20and%20application&logo=codecov&color=brightgreen)](https://app.codecov.io/gh/yasuflatland-lf/yasuflatland-ride-minecraft/components)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 | On the ground | Headlights on | Flying | Under water |
@@ -12,11 +12,13 @@
 
 A vehicle add-on for Minecraft Bedrock Edition, inspired by [MrCrayfish's Vehicle Mod](https://www.curseforge.com/minecraft/mc-mods/mrcrayfishs-vehicle-mod). It is built as a Behavior Pack + Resource Pack driven by the stable Script API (`@minecraft/server` 2.x), with no experimental toggles required.
 
+This add-on holds only rides: the SUV now and boats later. House-building parts will ship as a separate add-on with their own namespace. The `yasuflatland_ride` namespace never changes after this release ([ADR 0047](docs/adr/0047-rename-to-yasuflatland-ride.md)).
+
 The target setup is a Bedrock Dedicated Server on a home LAN, with players joining from PC (keyboard) and mobile (touch).
 
 ## Status
 
-Work in progress. The [latest release](https://github.com/yasuflatland-lf/yasuflatland-addon-minecraft/releases/latest) has one vehicle, the **SUV**, that drives, flies, and dives:
+Work in progress. The [latest release](https://github.com/yasuflatland-lf/yasuflatland-ride-minecraft/releases/latest) has one vehicle, the **SUV**, that drives, flies, and dives:
 
 - Getting in and out, with a driver seat and three passenger seats; a passenger moves up when the driver gets out
 - Arcade-style acceleration, inertia, steering, and a handbrake slide, tuned so touch players get full throttle like keyboard players
@@ -35,11 +37,11 @@ The manual test checklist is in [`docs/manual-test.md`](docs/manual-test.md).
 
 ## Installing
 
-Download `yasuflatland-addon-<version>.mcaddon` from the [latest release](https://github.com/yasuflatland-lf/yasuflatland-addon-minecraft/releases/latest). Players who join a server that already has the packs do not need to install anything: the server sends the Resource Pack when they join, so accept the download prompt.
+Download `yasuflatland-ride-<version>.mcaddon` from the [latest release](https://github.com/yasuflatland-lf/yasuflatland-ride-minecraft/releases/latest). Players who join a server that already has the packs do not need to install anything: the server sends the Resource Pack when they join, so accept the download prompt.
 
 ### On iPad
 
-1. **Download it in Safari.** Open the [latest release](https://github.com/yasuflatland-lf/yasuflatland-addon-minecraft/releases/latest), tap `yasuflatland-addon-<version>.mcaddon` under Assets, and choose **Download**. It is saved to the Downloads folder in the Files app.
+1. **Download it in Safari.** Open the [latest release](https://github.com/yasuflatland-lf/yasuflatland-ride-minecraft/releases/latest), tap `yasuflatland-ride-<version>.mcaddon` under Assets, and choose **Download**. It is saved to the Downloads folder in the Files app.
 2. **Open it in Minecraft.**
    - In the Files app, long-press the file and choose **Share → Minecraft**.
    - Minecraft starts and shows "Import started..." and then "Successfully imported" at the top of the screen.
@@ -47,7 +49,7 @@ Download `yasuflatland-addon-<version>.mcaddon` from the [latest release](https:
    - If Minecraft is not in the share sheet, look under **More** at the right end of the app row.
 3. **Turn it on in a world.**
    - Open **Edit** on a world, or **Create New** for a new one.
-   - Under **Behavior Packs → Available**, activate **Yasuflatland Add-on**. **Yasuflatland Add-on Resources** is activated along with it.
+   - Under **Behavior Packs → Available**, activate **Yasuflatland Ride**. **Yasuflatland Ride Resources** is activated along with it.
    - Leave the experiments off; none are needed.
 
 ## How to play
@@ -107,7 +109,7 @@ pnpm install
 pnpm lint            # format and lint check with Biome
 pnpm test            # unit tests, property-based tests, and the layer dependency check
 pnpm build           # bundle the TypeScript into the Behavior Pack
-pnpm package         # zip the packs into dist/yasuflatland-addon-<version>.mcaddon (run after build)
+pnpm package         # zip the packs into dist/yasuflatland-ride-<version>.mcaddon (run after build)
 pnpm model           # generate the vehicle model, texture, and README preview
 pnpm model:check     # fail if the README preview is out of date with the model
 pnpm server:up       # start the dev BDS in Docker
@@ -116,24 +118,26 @@ pnpm test:game       # in-game tests
 
 CI runs the Biome check, the README preview check, type checking, tests, the build, and packaging on every pull request.
 
-The dev world starts fresh as `yasuflatland-dev`. The world from before the rename can be deleted by hand; its path is recorded in [ADR 0047](docs/adr/0047-rename-to-the-yasuflatland-add-on.md). Before your first `pnpm server:up` after the rename, remove the dev container from before the rename once, since it still holds the server ports: find its name with `docker ps -a`, then run `docker rm -f <name>`.
+The dev world starts fresh as `yasuflatland-ride-dev`. The world from before the rename can be deleted by hand; its path is recorded in [ADR 0047](docs/adr/0047-rename-to-yasuflatland-ride.md). Before your first `pnpm server:up` after the rename, remove the dev container from before the rename once, since it still holds the server ports: find its name with `docker ps -a`, then run `docker rm -f <name>`.
+
+After the stack merges, the owner will rename the GitHub repository to `yasuflatland-ride-minecraft` and check the Codecov badge. The links above use that destination.
 
 ## Releasing
 
-Bump the Behavior Pack version in `packs/yasuflatland_bp/manifest.json` and write the release summary in `docs/releases/v<version>.md`, starting from [`docs/releases/TEMPLATE.md`](docs/releases/TEMPLATE.md). Describe what players can do now in plain words; the release workflow puts it above the PR list that GitHub generates, and fails if the file is missing. Merge both to `main`, then either:
+Bump the Behavior Pack version in `packs/yasuflatland_ride_bp/manifest.json` and write the release summary in `docs/releases/v<version>.md`, starting from [`docs/releases/TEMPLATE.md`](docs/releases/TEMPLATE.md). Describe what players can do now in plain words; the release workflow puts it above the PR list that GitHub generates, and fails if the file is missing. Merge both to `main`, then either:
 
 - open **Actions → Release → Run workflow** on `main`, which tags the commit as `v<version>` (for example `v0.1.0` for `[0, 1, 0]`), or
 - push a matching tag yourself: `git tag v0.1.0 && git push origin v0.1.0`.
 
-The release workflow runs the checks, builds `yasuflatland-addon-<version>.mcaddon`, and attaches it to a new GitHub Release. Opening the file on a device imports both packs into Minecraft.
+The release workflow runs the checks, builds `yasuflatland-ride-<version>.mcaddon`, and attaches it to a new GitHub Release. Opening the file on a device imports both packs into Minecraft.
 
 ## Upgrading from MyCar 0.5.0 and earlier
 
 Switch the headlights off before upgrading. Old vehicles and items disappear because their IDs are not migrated. Light blocks from a vehicle whose headlights are on remain in the world: the record of lit cells lives on the vanished entity.
 
-The fleet record starts empty, and every player receives the starter vehicle again on their next join. Get additional vehicles with `/give @s yasuflatland:suv_item` or the recipe. Pack UUIDs stay the same, so worlds that already list the packs load the new versions.
+The fleet record starts empty, and every player receives the starter vehicle again on their next join. Get additional vehicles with `/give @s yasuflatland_ride:suv_item` or the recipe. Pack UUIDs stay the same, so worlds that already list the packs load the new versions.
 
-On a dedicated server, delete the old MyCar pack folders from `behavior_packs` and `resource_packs` (the ones ending in `_bp` and `_rp` that predate `yasuflatland_bp` and `yasuflatland_rp`) before you copy in the new ones. The old and new folders share UUIDs, so keeping both leaves the server with two packs under one UUID.
+On a dedicated server, delete the old MyCar pack folders from `behavior_packs` and `resource_packs` (the ones ending in `_bp` and `_rp` that predate `yasuflatland_ride_bp` and `yasuflatland_ride_rp`) before you copy in the new ones. The old and new folders share UUIDs, so keeping both leaves the server with two packs under one UUID.
 
 ## License
 

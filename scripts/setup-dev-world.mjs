@@ -2,10 +2,10 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 const readHeader = (path) => JSON.parse(readFileSync(path, "utf8")).header;
-const bp = readHeader("packs/yasuflatland_bp/manifest.json");
-const testBp = readHeader("packs/yasuflatland_test_bp/manifest.json");
-const rp = readHeader("packs/yasuflatland_rp/manifest.json");
-const dir = "server/data/worlds/yasuflatland-dev";
+const bp = readHeader("packs/yasuflatland_ride_bp/manifest.json");
+const testBp = readHeader("packs/yasuflatland_ride_test_bp/manifest.json");
+const rp = readHeader("packs/yasuflatland_ride_rp/manifest.json");
+const dir = "server/data/worlds/yasuflatland-ride-dev";
 mkdirSync(dir, { recursive: true });
 writeFileSync(
   `${dir}/world_behavior_packs.json`,

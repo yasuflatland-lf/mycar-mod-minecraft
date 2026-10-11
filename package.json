@@ -1,5 +1,5 @@
 {
-  "name": "yasuflatland-addon-minecraft",
+  "name": "yasuflatland-ride-minecraft",
   "private": true,
   "license": "MIT",
   "type": "module",
@@ -14,9 +14,9 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage '--coverage.include=src/**' --coverage.reporter=text --coverage.reporter=lcov",
     "test:mutation": "stryker run",
-    "model": "python3 -I tools/gen_model.py packs/yasuflatland_rp && biome format --write packs/yasuflatland_rp/models/entity/yasuflatland/suv.geo.json && python3 -I tools/render_preview.py packs/yasuflatland_rp docs/images",
-    "sounds": "python3 -I tools/gen_sounds.py packs/yasuflatland_rp",
-    "model:check": "python3 -I tools/render_preview.py packs/yasuflatland_rp docs/images --check",
+    "model": "python3 -I tools/gen_model.py packs/yasuflatland_ride_rp && biome format --write packs/yasuflatland_ride_rp/models/entity/yasuflatland_ride/suv.geo.json && python3 -I tools/render_preview.py packs/yasuflatland_ride_rp docs/images",
+    "sounds": "python3 -I tools/gen_sounds.py packs/yasuflatland_ride_rp",
+    "model:check": "python3 -I tools/render_preview.py packs/yasuflatland_ride_rp docs/images --check",
     "server:up": "node scripts/server-up.mjs",
     "server:down": "docker compose -f server/compose.yaml down",
     "test:game": "node scripts/game-test.mjs"
