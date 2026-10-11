@@ -381,6 +381,8 @@ describe("DriveVehicles submarine riders (ADR 0039)", () => {
     yaw: 0,
     raw: { moveX: 0, moveY: 0, jump: false },
   });
+  const breathing = (id: string) =>
+    `breathing:${id}:${SPEC.waterBreathingTicks}`;
   const breathingCalls = (world: FakeWorld) =>
     world.calls.filter((c) => c.startsWith("breathing:"));
 
@@ -398,18 +400,18 @@ describe("DriveVehicles submarine riders (ADR 0039)", () => {
     expect(repo.get("a")?.form).toBe("submarine");
     expect(world.calls).toContain("form:a:submarine");
     expect(breathingCalls(world)).toEqual([
-      "breathing:driver:60",
-      "breathing:passenger:60",
+      breathing("driver"),
+      breathing("passenger"),
     ]);
     for (let tick = 1; tick < SPEC.waterBreathingInterval; tick++)
       uc.execute(tick);
     expect(breathingCalls(world)).toHaveLength(2);
     uc.execute(SPEC.waterBreathingInterval);
     expect(breathingCalls(world)).toEqual([
-      "breathing:driver:60",
-      "breathing:passenger:60",
-      "breathing:driver:60",
-      "breathing:passenger:60",
+      breathing("driver"),
+      breathing("passenger"),
+      breathing("driver"),
+      breathing("passenger"),
     ]);
   });
 
@@ -440,8 +442,8 @@ describe("DriveVehicles submarine riders (ADR 0039)", () => {
     ];
     new DriveVehicles(world, new InMemoryRepo(), log).execute(20);
     expect(breathingCalls(world)).toEqual([
-      "breathing:good:60",
-      "breathing:other:60",
+      breathing("good"),
+      breathing("other"),
     ]);
     expect(log.lines.some((line) => line.includes("breathing bad"))).toBe(true);
   });
@@ -465,7 +467,7 @@ describe("DriveVehicles submarine riders (ADR 0039)", () => {
       "camera:p:own",
     ]);
     expect(world.calls).toContain("form:a:car");
-    expect(breathingCalls(world)).toEqual(["breathing:p:60"]);
+    expect(breathingCalls(world)).toEqual([breathing("p")]);
   });
 
   it("stops refreshing breathing once a rider leaves", () => {
@@ -477,7 +479,7 @@ describe("DriveVehicles submarine riders (ADR 0039)", () => {
     uc.execute(0);
     world.snapshots = [snapshot("a", { waterDepth: SPEC.carHeight })];
     uc.execute(20);
-    expect(breathingCalls(world)).toEqual(["breathing:p:60"]);
+    expect(breathingCalls(world)).toEqual([breathing("p")]);
     expect(world.calls).toContain("camera:p:own");
   });
 });
