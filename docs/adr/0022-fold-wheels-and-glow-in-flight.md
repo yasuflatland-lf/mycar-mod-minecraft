@@ -5,7 +5,7 @@
 
 ## Context
 
-In flight (0021) the SUV should look like the hover conversion in Back to the Future Part II: the wheels turn flat under the body and glow blue underneath. The body itself must not change. Entities cannot light up blocks, because the stable API has no dynamic light. The wheel spin is an animation on the wheel bones driven by `query.modified_distance_moved` (0009).
+In flight (0021) the SUV should look like the hover conversion in Back to the Future Part II: the wheels turn flat under the body and glow blue underneath. The body itself must not change. An entity cannot emit block light (0020). The headlights work around this by placing light blocks; lighting the ground under a flying car the same way is left out of this decision. The wheel spin is an animation on the wheel bones driven by `query.modified_distance_moved` (0009).
 
 ## Decision
 

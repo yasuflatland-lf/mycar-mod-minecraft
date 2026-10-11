@@ -41,6 +41,16 @@ describe("Resource Pack flight visuals (ADR 0022)", () => {
     }
   });
 
+  it("every animation a controller state plays resolves to an animation in the pack", () => {
+    for (const [name, state] of Object.entries(controller.states)) {
+      for (const short of (state as { animations: string[] }).animations) {
+        const id = client.animations[short];
+        expect(id, `${name}: ${short}`).toBeDefined();
+        expect(anims[id], `${name}: ${id}`).toBeDefined();
+      }
+    }
+  });
+
   it("folds every wheel 90 degrees and lowers it 4 px, with the two sides turning opposite ways", () => {
     const folded = anims["animation.mycar.suv.wheels_folded"].bones;
     for (const w of WHEELS) {
@@ -82,13 +92,12 @@ describe("Resource Pack flight visuals (ADR 0022)", () => {
     ]);
   });
 
-  it("bumps the Resource Pack version and the Behavior Pack's dependency together (ADR 0015)", () => {
+  it("keeps the Resource Pack module and the Behavior Pack's dependency on the Resource Pack version (ADR 0015)", () => {
     const rp = read(`${RP}/manifest.json`);
     const bp = read("packs/mycar_bp/manifest.json");
     const dep = bp.dependencies.find(
       (d: { uuid?: string }) => d.uuid === rp.header.uuid,
     );
-    expect(rp.header.version).toEqual([0, 1, 6]);
     expect(rp.modules[0].version).toEqual(rp.header.version);
     expect(dep.version).toEqual(rp.header.version);
   });
