@@ -30,6 +30,13 @@ const anims = JSON.parse(
   readFileSync("packs/mycar_rp/animations/suv.animation.json", "utf8"),
 ).animations;
 
+// How far the hover animation moves each folded wheel out (ADR 0043). Read
+// from the hand-written animation, so the generated glow and arms must follow
+// it.
+const FOLD_OUT = Math.abs(
+  anims["animation.mycar.suv.wheels_folded"].bones.wheel_fl.position[0],
+);
+
 function pivot(name: string): Vec3 {
   const p = bones.get(name)?.pivot;
   if (!p) throw new Error(`${name} has no pivot`);
@@ -118,13 +125,42 @@ describe("SUV model (ADR 0009)", () => {
     }
   });
 
-  it("has a glow bone with a hover locator under each wheel (ADR 0022)", () => {
+  // The folded wheels hang FOLD_OUT px out from their axles, and the glow
+  // stays under them.
+  it("has a glow bone with a hover locator under each folded wheel (ADR 0022)", () => {
     for (const w of ["fl", "fr", "rl", "rr"]) {
       const wheel = pivot(`wheel_${w}`);
       const glow = pivot(`glow_${w}`);
-      expect(glow[0], `glow_${w} x`).toBe(wheel[0]);
+      expect(glow[0], `glow_${w} x`).toBe(
+        wheel[0] + FOLD_OUT * Math.sign(wheel[0]),
+      );
       expect(glow[2], `glow_${w} z`).toBe(wheel[2]);
       expect(bones.get(`glow_${w}`)?.locators?.[`hover_${w}`]).toHaveLength(3);
+    }
+  });
+
+  // Each arm runs from inside the wheel arch down and out to the hub on top
+  // of the folded wheel, which sits FOLD_OUT px out and 4 px down (ADR 0043).
+  it("has an arm from the wheel arch to each folded wheel's hub (ADR 0043)", () => {
+    for (const w of ["fl", "fr", "rl", "rr"]) {
+      const wheel = pivot(`wheel_${w}`);
+      const out = Math.sign(wheel[0]);
+      const arm = bones.get(`arm_${w}`);
+      const cubes = arm?.cubes ?? [];
+      expect(arm?.parent).toBe("root");
+      const xs = cubes.flatMap((c) => [c.origin[0], c.origin[0] + c.size[0]]);
+      const ys = cubes.flatMap((c) => [c.origin[1], c.origin[1] + c.size[1]]);
+      const hubX = Math.abs(wheel[0]) + FOLD_OUT;
+      expect(Math.min(...xs.map((x) => x * out))).toBeLessThan(13);
+      expect(Math.max(...xs.map((x) => x * out))).toBeGreaterThan(hubX);
+      // The folded tire spans y 0 to 4, so the arm rests on its top face.
+      expect(Math.min(...ys)).toBeCloseTo(4, 6);
+      for (const c of cubes) {
+        expect(c.rotation, `arm_${w}`).toBeUndefined();
+        // Each arm stays in its own wheel's plane, centered on the axle in z.
+        expect(c.origin[2], `arm_${w}`).toBeLessThan(wheel[2]);
+        expect(c.origin[2] + c.size[2], `arm_${w}`).toBeGreaterThan(wheel[2]);
+      }
     }
   });
 
@@ -242,14 +278,49 @@ describe("SUV model (ADR 0009)", () => {
       expect(prop?.pivot).toEqual(pivot(`wheel_${side}`));
     });
 
-    it("has a hub and three blades 120 degrees apart", () => {
-      const angles = (prop?.cubes ?? [])
-        .map((c) => c.rotation?.[0])
-        .filter((a): a is number => a !== undefined && a !== 0)
-        .map((a) => ((a % 360) + 360) % 360)
-        .sort((a, b) => a - b);
-      expect(angles).toEqual([120, 240]);
-      expect(prop?.cubes?.length).toBeGreaterThanOrEqual(4);
+    // A ship propeller (ADR 0042): four scimitar blades, each built from
+    // segments that turn further around the axle toward the tip, so the blade
+    // sweeps back. Blade segments sit wholly on one side of the axle before
+    // they are turned; the hub cubes are centered on it.
+    it("has four blades 90 degrees apart, each swept further toward the tip", () => {
+      const [, py] = pivot(`prop_${side}`);
+      const reach = (c: Cube) => c.origin[1] + c.size[1] - py;
+      const blades = (prop?.cubes ?? []).filter((c) => c.origin[1] > py);
+      // Sweeps stay under 45 degrees, so the nearest multiple of 90 is the
+      // blade a segment belongs to. gen_model.py turns the model 180 degrees
+      // about y before writing it, which negates rotations about x, so only
+      // the sweep's size has to grow toward the tip; its sign is pinned to be
+      // the same on both props below.
+      const angle = (c: Cube) => c.rotation?.[0] ?? 0;
+      const nearestRightAngle = (c: Cube) => Math.round(angle(c) / 90);
+      const quadrants = new Map<number, Cube[]>();
+      for (const c of blades) {
+        const q = ((nearestRightAngle(c) % 4) + 4) % 4;
+        quadrants.set(q, [...(quadrants.get(q) ?? []), c]);
+      }
+      expect([...quadrants.keys()].sort()).toEqual([0, 1, 2, 3]);
+      const sweeps = [...quadrants.values()].map((segments) =>
+        segments
+          .sort((a, b) => reach(a) - reach(b))
+          .map((c) => angle(c) - nearestRightAngle(c) * 90),
+      );
+      for (const s of sweeps) {
+        expect(s, JSON.stringify(s)).toEqual(sweeps[0]);
+        expect(s.length).toBeGreaterThanOrEqual(3);
+        for (let i = 1; i < s.length; i++) {
+          expect(Math.abs(s[i] ?? 0), JSON.stringify(s)).toBeGreaterThan(
+            Math.abs(s[i - 1] ?? 0),
+          );
+          expect(Math.sign(s[i] ?? 0) * Math.sign(s.at(-1) ?? 0)).toBe(1);
+        }
+      }
+    });
+
+    it("sweeps its blades the same way as the other prop", () => {
+      const other = bones.get(side === "rl" ? "prop_rr" : "prop_rl");
+      const angles = (cubes: Cube[] | undefined) =>
+        (cubes ?? []).map((c) => c.rotation?.[0] ?? 0).sort((a, b) => a - b);
+      expect(angles(prop?.cubes)).toEqual(angles(other?.cubes));
     });
 
     it("turns its blades only around the axle", () => {

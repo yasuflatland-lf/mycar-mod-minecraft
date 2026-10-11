@@ -81,7 +81,7 @@ export const SPEC = {
   floatGain: 0.25, // blocks/tick of buoyancy per block of depth off the float line
   waterBreathingInterval: 20, // ticks
   waterBreathingTicks: 60, // ticks
-  // Banking in flight (ADR 0026)
+  // Banking in flight (ADR 0026) and under water (ADR 0044)
   maxBank: 30, // degrees at the full turn rate
   bankRate: 3, // degrees/tick; 10 ticks from level to full bank
   // Landing gear (ADR 0033). Unfolding takes 1 s (ADR 0022), 3 blocks of

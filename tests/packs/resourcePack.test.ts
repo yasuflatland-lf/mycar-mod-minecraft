@@ -14,6 +14,12 @@ const render = read(`${RP}/render_controllers/suv.render_controllers.json`)
   .render_controllers["controller.render.mycar.suv"];
 const particle = read(`${RP}/particles/hover_glow.json`).particle_effect;
 const WHEELS = ["wheel_fl", "wheel_fr", "wheel_rl", "wheel_rr"];
+const geo = read(`${RP}/models/entity/suv.geo.json`)["minecraft:geometry"][0];
+const geoPivot = (name: string): number[] =>
+  defined(
+    geo.bones.find((b: { name: string }) => b.name === name),
+    name,
+  ).pivot;
 
 describe("Resource Pack flight visuals (ADR 0022)", () => {
   it("has no obsolete vehicle property references (ADR 0039)", () => {
@@ -72,11 +78,14 @@ describe("Resource Pack flight visuals (ADR 0022)", () => {
     }
   });
 
-  it("folds every wheel 90 degrees and lowers it 4 px, with the two sides turning opposite ways", () => {
+  it("folds every wheel 90 degrees, lowers it 4 px and moves it 6 px out, with the two sides turning opposite ways", () => {
     const folded = anims["animation.mycar.suv.wheels_folded"].bones;
     for (const w of WHEELS) {
       expect(Math.abs(folded[w].rotation[2]), w).toBe(90);
-      expect(folded[w].position, w).toEqual([0, -4, 0]);
+      // Animation positions run along the model's axes (ADR 0043), so the
+      // outward step takes the sign of the wheel's side.
+      const outward = Math.sign(geoPivot(w)[0] ?? 0);
+      expect(folded[w].position, w).toEqual([6 * outward, -4, 0]);
     }
     expect(folded.wheel_fl.rotation[2]).toBe(-folded.wheel_fr.rotation[2]);
     expect(folded.wheel_rl.rotation[2]).toBe(folded.wheel_fl.rotation[2]);
@@ -91,6 +100,46 @@ describe("Resource Pack flight visuals (ADR 0022)", () => {
       expect(deploy.bones[w].rotation["1.0"]).toEqual(folded[w].rotation);
       expect(retract.bones[w].rotation["0.0"]).toEqual(folded[w].rotation);
       expect(retract.bones[w].rotation["1.0"]).toEqual([0, 0, 0]);
+      expect(deploy.bones[w].position["1.0"]).toEqual(folded[w].position);
+      expect(retract.bones[w].position["0.0"]).toEqual(folded[w].position);
+      expect(retract.bones[w].position["1.0"]).toEqual([0, 0, 0]);
+    }
+  });
+
+  // The arms are not tied to a visibility rule for the same reason as the
+  // props: each state pins them, so they grow and shrink with the wheels.
+  it("shows the flight arms only while the wheels fold, hang or retract, and the submarine arms only with the props (ADR 0043)", () => {
+    const arms = WHEELS.map((w) => w.replace("wheel_", "arm_"));
+    const subArms = ["sub_arm_rl", "sub_arm_rr"];
+    const scaleIn = (anim: string, b: string) =>
+      anims[`animation.mycar.suv.${anim}`].bones[b]?.scale;
+    for (const b of arms) {
+      expect(scaleIn("wheels_deploy", b), b).toEqual({
+        "0.0": [0, 0, 0],
+        "1.0": [1, 1, 1],
+      });
+      expect(scaleIn("wheels_folded", b), b).toEqual([1, 1, 1]);
+      expect(scaleIn("wheels_retract", b), b).toEqual({
+        "0.0": [1, 1, 1],
+        "1.0": [0, 0, 0],
+      });
+      for (const anim of ["wheels", "dive", "submerged", "surface"])
+        expect(scaleIn(anim, b), `${anim} ${b}`).toEqual([0, 0, 0]);
+    }
+    for (const b of subArms) {
+      for (const anim of ["dive", "submerged", "surface"]) {
+        expect(scaleIn(anim, b), `${anim} ${b}`).toBeDefined();
+        expect(scaleIn(anim, b), `${anim} ${b}`).toEqual(
+          scaleIn(anim, b.replace("sub_arm_", "prop_")),
+        );
+      }
+      for (const anim of [
+        "wheels",
+        "wheels_deploy",
+        "wheels_folded",
+        "wheels_retract",
+      ])
+        expect(scaleIn(anim, b), `${anim} ${b}`).toEqual([0, 0, 0]);
     }
   });
 
@@ -130,7 +179,6 @@ describe("Resource Pack flight visuals (ADR 0022)", () => {
 });
 
 describe("Resource Pack banking (ADR 0026)", () => {
-  const geo = read(`${RP}/models/entity/suv.geo.json`)["minecraft:geometry"][0];
   const root = geo.bones.find((b: { name: string }) => b.name === "root");
 
   // A positive z rotation lowers the model's +x side, which is the vehicle's
@@ -309,7 +357,6 @@ describe("Resource Pack submarine visuals (ADR 0040)", () => {
     pivot: Vec3;
     cubes?: Cube[];
   }
-  const geo = read(`${RP}/models/entity/suv.geo.json`)["minecraft:geometry"][0];
   const bones = new Map<string, Bone>(geo.bones.map((b: Bone) => [b.name, b]));
   const bone = (name: string) => defined(bones.get(name), name);
   const dive = anims["animation.mycar.suv.dive"];
@@ -320,6 +367,8 @@ describe("Resource Pack submarine visuals (ADR 0040)", () => {
     ...REAR.map((s) => `wheel_${s}`),
     ...REAR.map((s) => `prop_${s}`),
   ];
+  const SUB_ARMS = REAR.map((s) => `sub_arm_${s}`);
+  const FLIGHT_ARMS = ["fl", "fr", "rl", "rr"].map((s) => `arm_${s}`);
 
   // Right-handed rotations in file coordinates, x first, then y, then z, as
   // Blockbench applies Bedrock rotations. With this, +y turns +z toward +x,
@@ -476,7 +525,9 @@ describe("Resource Pack submarine visuals (ADR 0040)", () => {
     expect(surface.loop ?? false).toBe(false);
     expect(submerged.loop).toBe(true);
     for (const anim of [dive, submerged, surface])
-      expect(Object.keys(anim.bones).sort()).toEqual([...TURNED].sort());
+      expect(Object.keys(anim.bones).sort()).toEqual(
+        [...TURNED, ...SUB_ARMS, ...FLIGHT_ARMS].sort(),
+      );
   });
 
   it("turns each rear hub to face the rear, with the prop behind its wheel", () => {
@@ -499,6 +550,22 @@ describe("Resource Pack submarine visuals (ADR 0040)", () => {
         bodyCubes.some((c) => insideCube(p, c)),
       );
       expect(clash, name).toBeUndefined();
+    }
+  });
+
+  // The arm holds the turned wheel from the front, so it must reach from the
+  // body to the hub and stay in front of the prop, which is behind the wheel.
+  it("holds each turned wheel with an arm from the body to the hub, in front of the prop (ADR 0043)", () => {
+    for (const side of REAR) {
+      const wheel = `wheel_${side}`;
+      const outward = Math.sign(bone(wheel).pivot[0]);
+      const hubX = bone(wheel).pivot[0] + submerged.bones[wheel].position[0];
+      const arm = samples(`sub_arm_${side}`);
+      const xs = arm.map((p) => p[0] * outward);
+      expect(Math.min(...xs)).toBeLessThan(13);
+      expect(Math.max(...xs)).toBeGreaterThanOrEqual(hubX * outward);
+      const propZ = Math.min(...posed(`prop_${side}`).map((p) => p[2]));
+      expect(Math.max(...arm.map((p) => p[2]))).toBeLessThan(propZ);
     }
   });
 

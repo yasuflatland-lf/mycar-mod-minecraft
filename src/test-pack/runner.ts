@@ -22,7 +22,7 @@ import { LOG_TAG, linePrefix, runIdFrom, TEST_EVENT } from "./protocol";
 import { hitTick, judgeRam, PUSH_WINDOW, type RamSample } from "./ramJudge";
 
 // setupArena clears and floors this x/z rectangle and keeps it ticking.
-const ARENA = { minX: 0, maxX: 120, minZ: 0, maxZ: 40 } as const;
+const ARENA = { minX: 0, maxX: 120, minZ: 0, maxZ: 90 } as const;
 
 // Mirrors the SUV's minecraft:rideable but seats cows, because only players
 // can ride the SUV and a test has no players (ADR 0010).
@@ -108,19 +108,35 @@ async function withCar<T>(
 async function setupArena(): Promise<Arena> {
   const dim = world.getDimension("overworld");
   const { minX, maxX, minZ, maxZ } = ARENA;
+  // The arena grew to z 90 for the submarine pool. Older worlds keep the
+  // smaller "mycartest" area, and re-adding a name in the tick that removes it
+  // fails silently, so the larger area gets a name of its own.
+  try {
+    dim.runCommand("tickingarea remove mycartest");
+  } catch {
+    // Not in this world
+  }
+  // An existing area of the same name keeps its old bounds; withPool reports
+  // the fill that then fails in the chunks left out.
   dim.runCommand(
-    `tickingarea add ${minX} -64 ${minZ} ${maxX} 0 ${maxZ} mycartest true`,
+    `tickingarea add ${minX} -64 ${minZ} ${maxX} 0 ${maxZ} mycar_arena true`,
   );
   await wait(60);
   const top = dim.getTopmostBlock({ x: 5, z: 20 });
   if (!top) throw new Error("arena chunk not loaded");
   const gy = top.location.y + 1;
-  // fill is capped at 32,768 blocks per call, so the clear is split in two.
+  // fill is capped at 32,768 blocks per call, so the clear is split in four.
   const midX = (minX + maxX) / 2;
-  dim.runCommand(`fill ${minX} ${gy} ${minZ} ${midX} ${gy + 6} ${maxZ} air`);
-  dim.runCommand(
-    `fill ${midX + 1} ${gy} ${minZ} ${maxX} ${gy + 6} ${maxZ} air`,
-  );
+  const midZ = Math.floor((minZ + maxZ) / 2);
+  for (const [x0, x1] of [
+    [minX, midX],
+    [midX + 1, maxX],
+  ])
+    for (const [z0, z1] of [
+      [minZ, midZ],
+      [midZ + 1, maxZ],
+    ])
+      dim.runCommand(`fill ${x0} ${gy} ${z0} ${x1} ${gy + 6} ${z1} air`);
   dim.runCommand(
     `fill ${minX} ${gy - 1} ${minZ} ${maxX} ${gy - 1} ${maxZ} stone`,
   );
@@ -129,6 +145,9 @@ async function setupArena(): Promise<Arena> {
   dim.runCommand(`kill @e[type=${VEHICLE}]`);
   dim.runCommand("kill @e[type=cow]");
   dim.runCommand(`kill @e[type=${SEAT_PROBE}]`);
+  // The pool's water replaces the stone under passable_no_hop's carpets and
+  // torches, which then drop as items.
+  dim.runCommand("kill @e[type=item]");
   await wait(5);
   return { dim, gy };
 }
@@ -612,7 +631,9 @@ function flightDriverless(a: Arena): Promise<Outcome> {
   });
 }
 
-const POOL = { minX: 15, maxX: 85, minZ: 2, maxZ: 12, z: 7.5 } as const;
+// 80 blocks across z, so a submarine has room to turn (submarine_bank); the
+// lane runs along the low-z edge and right turns head into the open water.
+const POOL = { minX: 15, maxX: 85, minZ: 2, maxZ: 81, z: 7.5 } as const;
 // Deep enough for a full car height of water with a block under it. In the
 // flat dev world (gy = -60) this puts the pool's stone floor at -64, the
 // bottom of the world, so a carHeight above 2 no longer fits; withPool throws
@@ -656,7 +677,13 @@ async function withPool<T>(
     a.dim.runCommand(
       `fill ${minX} ${bottom} ${z} ${maxX} ${a.gy - 1} ${z} stone`,
     );
-  fillPool("water");
+  // runCommand reports a fill into unloaded chunks as successCount 0 instead
+  // of throwing. Seen in game with a mycar_arena area kept from a smaller
+  // arena: every submarine test then failed with enteredAt=-1.
+  if (fillPool("water").successCount === 0)
+    throw new Error(
+      `the pool was not filled: check that "tickingarea list" shows mycar_arena covering x ${ARENA.minX}-${ARENA.maxX}, z ${ARENA.minZ}-${ARENA.maxZ}`,
+    );
   try {
     await wait(5);
     return await run();
@@ -744,6 +771,29 @@ function submarineDive(a: Arena): Promise<Outcome> {
           withinFivePercent(speed, SPEC.maxWaterSpeed) &&
           withinFivePercent(riseSpeed, SPEC.maxClimb),
         detail: `enteredAt=${enteredAt} submerged=${submerged} y0=${(y0 - a.gy).toFixed(3)} drift=${drift.toFixed(3)} speed=${speed.toFixed(3)} riseSpeed=${riseSpeed.toFixed(3)} measuredDrag=${measuredDrag.toFixed(3)} measuredVerticalDrag=${measuredVerticalDrag.toFixed(3)}`,
+      };
+    }),
+  );
+}
+
+function submarineBank(a: Arena): Promise<Outcome> {
+  return withPool(a, DIVE_DEPTH, () =>
+    withDivingCar(a, async (car, enteredAt) => {
+      const bank = () => Number(car.getProperty(BANK_PROPERTY));
+      // Turn right into the open water, as flight_bank does in the air (ADR 0044).
+      drive(car, -1, 1);
+      await wait(20);
+      const turning = bank();
+      drive(car, 0, 0);
+      await wait(20);
+      const straight = bank();
+      return {
+        pass:
+          enteredAt >= 0 &&
+          vehicleForm(car) === "submarine" &&
+          turning >= SPEC.maxBank / 2 &&
+          straight === 0,
+        detail: `enteredAt=${enteredAt} turning=${turning.toFixed(1)} straight=${straight.toFixed(1)}`,
       };
     }),
   );
@@ -949,6 +999,7 @@ async function runAll(runId: string): Promise<void> {
     ["flight_touchdown", () => flightTouchdown(a)],
     ["flight_driverless", () => flightDriverless(a)],
     ["submarine_dive", () => submarineDive(a)],
+    ["submarine_bank", () => submarineBank(a)],
     ["submarine_breach", () => submarineBreach(a)],
     ["submarine_shore", () => submarineShore(a)],
     ["submarine_unmanned", () => submarineUnmanned(a)],

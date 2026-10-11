@@ -6,9 +6,9 @@
 [![domain and application coverage](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.codecov.io%2Fapi%2Fv2%2Fgithub%2Fyasuflatland-lf%2Frepos%2Fmycar-mod-minecraft%2Fcomponents%2F%3Fbranch%3Dmain&query=%24%5B0%5D.coverage&suffix=%25&label=domain%20and%20application&logo=codecov&color=brightgreen)](https://app.codecov.io/gh/yasuflatland-lf/mycar-mod-minecraft/components)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-| On the ground | Headlights on | Flying |
-|:---:|:---:|:---:|
-| ![The SUV on the ground, seen from its front-left corner](docs/images/suv-front-left.png) | ![The SUV with its headlights on, lighting the ground ahead](docs/images/suv-headlights.png) | ![The SUV flying with its wheels folded flat and glowing blue underneath](docs/images/suv-flying.png) |
+| On the ground | Headlights on | Flying | Under water |
+|:---:|:---:|:---:|:---:|
+| ![The SUV on the ground, seen from its front-left corner](docs/images/suv-front-left.png) | ![The SUV with its headlights on, lighting the ground ahead](docs/images/suv-headlights.png) | ![The SUV flying with its wheels folded flat on gunmetal arms and glowing blue underneath](docs/images/suv-flying.png) | ![The SUV as a submarine, with sealed blue windows and its rear wheels turned backward on gunmetal arms](docs/images/suv-submarine.png) |
 
 A vehicle add-on for Minecraft Bedrock Edition, inspired by [MrCrayfish's Vehicle Mod](https://www.curseforge.com/minecraft/mc-mods/mrcrayfishs-vehicle-mod). It is built as a Behavior Pack + Resource Pack driven by the stable Script API (`@minecraft/server` 2.x), with no experimental toggles required.
 
@@ -68,6 +68,10 @@ Download `mycar-<version>.mcaddon` from the [latest release](https://github.com/
 | Handbrake (slide) | Space (jump) | Jump button |
 | Take off / land | Double-tap Space | Double-tap the jump button |
 | Climb / descend while flying | Hold Space / hold S | Hold the jump button / pull the stick back |
+| Dive | Drive into water at least as deep as the vehicle is tall | Drive into water at least as deep as the vehicle is tall |
+| Rise / sink under water | Hold Space / hold S | Hold the jump button / pull the stick back |
+| Surface and fly | Hold Space until the body is out of the water | Hold the jump button until the body is out of the water |
+| Leave the water | Drive onto the shore | Drive onto the shore |
 | Headlights on / off | Right-click with the switch in hand (driver only) | Tap with the switch in hand (driver only) |
 | Repaint | Left-click the vehicle with a dye | Tap the vehicle with a dye |
 
@@ -78,7 +82,8 @@ The vehicle seats 4. The first player to get in drives and the others ride as pa
 - **Driving.** The vehicle speeds up and coasts like an arcade racer, up to 0.9 blocks per tick (18 blocks per second), and turns as soon as you steer. The handbrake makes it slide sideways. Pushing only sideways (A or D alone, or the stick held flat to one side) creeps forward slowly while turning, instead of backing up
 - **Terrain.** It climbs steps up to two blocks high without stopping, and the wheels spin as it rolls
 - **Ramming.** It damages and pushes away mobs it hits at speed. People inside never take damage, from crashes or from falls
-- **Flying.** A double-tap of jump folds the wheels flat under the body, lights them blue, and lifts the vehicle 1.5 blocks. In the air it keeps the same handling and holds its altitude; hold jump to climb and pull back to sink, while the view stays free to look around. Another double-tap lands it slowly, sinking onto the ground lands it at once, and an empty vehicle in the air sinks to the ground by itself
+- **Flying.** A double-tap of jump folds the wheels flat under the body, lights them blue, and lifts the vehicle 1.5 blocks. In the air it keeps the same handling, banks into turns like an airplane, and holds its altitude; hold jump to climb and pull back to sink, while the view stays free to look around. Another double-tap lands it slowly, sinking onto the ground lands it at once, and an empty vehicle in the air sinks to the ground by itself
+- **Under water.** Driving into water at least as deep as the vehicle is tall turns it into a submarine: the windows seal blue, the rear wheels turn backward on gunmetal arms around spinning bronze propellers, and a sonar ping sounds while someone rides. It keeps the flying handling and banks into turns, holds its depth, and rises or sinks with jump and pull-back. Riders do not lose air. Hold jump until the whole body is out of the water to take off, or drive onto a shore to become a car again; an empty submarine floats up to the surface
 - **Headlights.** At night they light the road up to 27 blocks ahead and follow the vehicle
 - **Paint.** A placed vehicle starts khaki. Each of the 16 dyes repaints it in that dye's color, except brown dye, which turns it back to khaki; each repaint uses one dye. Ink sacs, bone meal, cocoa beans, and lapis lazuli do not repaint. a broken vehicle drops a plain item, so the next one starts khaki again
 

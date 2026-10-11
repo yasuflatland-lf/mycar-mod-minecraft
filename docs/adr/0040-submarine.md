@@ -1,6 +1,6 @@
 # 0040. Submarine form
 
-- Status: Accepted
+- Status: Superseded in part by 0042 (propeller shape and color), 0044 (banking under water), and 0045 (README previews)
 - Date: 2026-10-11
 - Extends: 0009 (bones), 0022 (transform animations), 0028 (camera), 0033 (gear), 0035 (steps), and 0039 (forms)
 

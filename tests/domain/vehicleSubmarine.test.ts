@@ -328,18 +328,27 @@ describe("Vehicle as a submarine", () => {
     expect(sim.vy).toBeCloseTo(SPEC.maxClimb, 6);
   });
 
-  it("keeps its bank level, gear down, and horizontal speed bounded throughout random dive controls", () => {
+  // The submarine rolls into turns like the hover form (ADR 0044), within the
+  // same limit.
+  it("keeps its bank within maxBank, gear down, and horizontal speed bounded throughout random dive controls", () => {
     fc.assert(
       fc.property(
         fc.array(rawInput, { minLength: 1, maxLength: 200 }),
         (inputs) => {
           const sim = new DiveSim(1000);
           sim.y = 500;
+          let sent: number | undefined;
           for (const input of inputs) {
             const out = sim.step(input);
-            expect(sim.vehicle.bankAngle).toBe(0);
+            expect(Math.abs(sim.vehicle.bankAngle)).toBeLessThanOrEqual(
+              SPEC.maxBank + 1e-9,
+            );
             expect(sim.vehicle.wheelsDown).toBe(true);
-            expect(out.bank === undefined || out.bank === 0).toBe(true);
+            // The client sees every new angle: it is sent on the tick it
+            // changes, and on the first tick (ADR 0026).
+            if (sim.vehicle.bankAngle !== sent)
+              expect(out.bank).toBe(sim.vehicle.bankAngle);
+            sent = sim.vehicle.bankAngle;
             expect(out.gearDown === undefined || out.gearDown).toBe(true);
             expect(length(sim.body.vel)).toBeLessThanOrEqual(
               SPEC.maxWaterSpeed + 1e-9,
@@ -349,6 +358,21 @@ describe("Vehicle as a submarine", () => {
         },
       ),
     );
+  });
+
+  // Unlike hover, a banked submarine does not sink: buoyancy and the climb
+  // input set its vertical speed (ADR 0044).
+  it("banks into a turn under water, keeps its depth, and levels out after", () => {
+    const sim = new DiveSim(1000);
+    sim.y = 500;
+    sim.run(FORWARD, 40);
+    expect(sim.vehicle.form).toBe("submarine");
+    const depth = sim.y;
+    sim.run({ ...FORWARD, moveX: 1 }, 20);
+    expect(sim.vehicle.bankAngle).toBeLessThan(-SPEC.maxBank / 2);
+    expect(Math.abs(sim.y - depth)).toBeLessThan(0.05);
+    sim.run(FORWARD, 20);
+    expect(sim.vehicle.bankAngle).toBe(0);
   });
 
   it("breaches into hover with Jump held and becomes a car on a shallow shore", () => {
