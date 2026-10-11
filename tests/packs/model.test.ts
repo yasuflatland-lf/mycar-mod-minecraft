@@ -106,7 +106,7 @@ describe("SUV model (ADR 0009)", () => {
     }
   });
 
-  it("has a glow bone with a hover locator under each wheel (ADR 0021)", () => {
+  it("has a glow bone with a hover locator under each wheel (ADR 0022)", () => {
     for (const w of ["fl", "fr", "rl", "rr"]) {
       const wheel = pivot(`wheel_${w}`);
       const glow = pivot(`glow_${w}`);

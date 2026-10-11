@@ -165,7 +165,7 @@ def collect(geo, texture):
     desc = geo["description"]
     polygons = []
     for bone in geo["bones"]:
-        # The preview shows the vehicle on the ground, where the render controller hides the glow (ADR 0021)
+        # The preview shows the vehicle on the ground, where the render controller hides the glow (ADR 0022)
         if bone["name"].startswith("glow_"):
             continue
         for cube in bone.get("cubes", []):
