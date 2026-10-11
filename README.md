@@ -1,9 +1,9 @@
-# 🚗 mycar-mod-minecraft
+# 🚗 Yasuflatland Add-on
 
-[![Unit Tests](https://github.com/yasuflatland-lf/mycar-mod-minecraft/actions/workflows/unit-test.yml/badge.svg?branch=main)](https://github.com/yasuflatland-lf/mycar-mod-minecraft/actions/workflows/unit-test.yml)
-[![Integration Test](https://github.com/yasuflatland-lf/mycar-mod-minecraft/actions/workflows/integration-test.yml/badge.svg?branch=main)](https://github.com/yasuflatland-lf/mycar-mod-minecraft/actions/workflows/integration-test.yml)
-[![all code coverage](https://img.shields.io/codecov/c/github/yasuflatland-lf/mycar-mod-minecraft/main?label=all%20code&logo=codecov)](https://codecov.io/gh/yasuflatland-lf/mycar-mod-minecraft)
-[![domain and application coverage](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.codecov.io%2Fapi%2Fv2%2Fgithub%2Fyasuflatland-lf%2Frepos%2Fmycar-mod-minecraft%2Fcomponents%2F%3Fbranch%3Dmain&query=%24%5B0%5D.coverage&suffix=%25&label=domain%20and%20application&logo=codecov&color=brightgreen)](https://app.codecov.io/gh/yasuflatland-lf/mycar-mod-minecraft/components)
+[![Unit Tests](https://github.com/yasuflatland-lf/yasuflatland-addon-minecraft/actions/workflows/unit-test.yml/badge.svg?branch=main)](https://github.com/yasuflatland-lf/yasuflatland-addon-minecraft/actions/workflows/unit-test.yml)
+[![Integration Test](https://github.com/yasuflatland-lf/yasuflatland-addon-minecraft/actions/workflows/integration-test.yml/badge.svg?branch=main)](https://github.com/yasuflatland-lf/yasuflatland-addon-minecraft/actions/workflows/integration-test.yml)
+[![all code coverage](https://img.shields.io/codecov/c/github/yasuflatland-lf/yasuflatland-addon-minecraft/main?label=all%20code&logo=codecov)](https://codecov.io/gh/yasuflatland-lf/yasuflatland-addon-minecraft)
+[![domain and application coverage](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.codecov.io%2Fapi%2Fv2%2Fgithub%2Fyasuflatland-lf%2Frepos%2Fyasuflatland-addon-minecraft%2Fcomponents%2F%3Fbranch%3Dmain&query=%24%5B0%5D.coverage&suffix=%25&label=domain%20and%20application&logo=codecov&color=brightgreen)](https://app.codecov.io/gh/yasuflatland-lf/yasuflatland-addon-minecraft/components)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 | On the ground | Headlights on | Flying | Under water |
@@ -33,11 +33,11 @@ The manual test checklist is in [`docs/manual-test.md`](docs/manual-test.md).
 
 ## Installing
 
-Download `mycar-<version>.mcaddon` from the [latest release](https://github.com/yasuflatland-lf/mycar-mod-minecraft/releases/latest). Players who join a server that already has the packs do not need to install anything: the server sends the Resource Pack when they join, so accept the download prompt.
+Download `yasuflatland-addon-<version>.mcaddon` from the [latest release](https://github.com/yasuflatland-lf/yasuflatland-addon-minecraft/releases/latest). Players who join a server that already has the packs do not need to install anything: the server sends the Resource Pack when they join, so accept the download prompt.
 
 ### On iPad
 
-1. **Download it in Safari.** Open the [latest release](https://github.com/yasuflatland-lf/mycar-mod-minecraft/releases/latest), tap `mycar-<version>.mcaddon` under Assets, and choose **Download**. It is saved to the Downloads folder in the Files app.
+1. **Download it in Safari.** Open the [latest release](https://github.com/yasuflatland-lf/yasuflatland-addon-minecraft/releases/latest), tap `yasuflatland-addon-<version>.mcaddon` under Assets, and choose **Download**. It is saved to the Downloads folder in the Files app.
 2. **Open it in Minecraft.**
    - In the Files app, long-press the file and choose **Share → Minecraft**.
    - Minecraft starts and shows "Import started..." and then "Successfully imported" at the top of the screen.
@@ -45,7 +45,7 @@ Download `mycar-<version>.mcaddon` from the [latest release](https://github.com/
    - If Minecraft is not in the share sheet, look under **More** at the right end of the app row.
 3. **Turn it on in a world.**
    - Open **Edit** on a world, or **Create New** for a new one.
-   - Under **Behavior Packs → Available**, activate **MyCar**. **MyCar Resources** is activated along with it.
+   - Under **Behavior Packs → Available**, activate **Yasuflatland Add-on**. **Yasuflatland Add-on Resources** is activated along with it.
    - Leave the experiments off; none are needed.
 
 ## How to play
@@ -105,7 +105,7 @@ pnpm install
 pnpm lint            # format and lint check with Biome
 pnpm test            # unit tests, property-based tests, and the layer dependency check
 pnpm build           # bundle the TypeScript into the Behavior Pack
-pnpm package         # zip the packs into dist/mycar-<version>.mcaddon (run after build)
+pnpm package         # zip the packs into dist/yasuflatland-addon-<version>.mcaddon (run after build)
 pnpm model           # generate the vehicle model, texture, and README preview
 pnpm model:check     # fail if the README preview is out of date with the model
 pnpm server:up       # start the dev BDS in Docker
@@ -116,13 +116,22 @@ CI runs the Biome check, the README preview check, type checking, tests, the bui
 
 ## Releasing
 
-Bump the Behavior Pack version in `packs/mycar_bp/manifest.json` and write the release summary in `docs/releases/v<version>.md`, starting from [`docs/releases/TEMPLATE.md`](docs/releases/TEMPLATE.md). Describe what players can do now in plain words; the release workflow puts it above the PR list that GitHub generates, and fails if the file is missing. Merge both to `main`, then either:
+Bump the Behavior Pack version in `packs/yasuflatland_bp/manifest.json` and write the release summary in `docs/releases/v<version>.md`, starting from [`docs/releases/TEMPLATE.md`](docs/releases/TEMPLATE.md). Describe what players can do now in plain words; the release workflow puts it above the PR list that GitHub generates, and fails if the file is missing. Merge both to `main`, then either:
 
 - open **Actions → Release → Run workflow** on `main`, which tags the commit as `v<version>` (for example `v0.1.0` for `[0, 1, 0]`), or
 - push a matching tag yourself: `git tag v0.1.0 && git push origin v0.1.0`.
 
-The release workflow runs the checks, builds `mycar-<version>.mcaddon`, and attaches it to a new GitHub Release. Opening the file on a device imports both packs into Minecraft.
+The release workflow runs the checks, builds `yasuflatland-addon-<version>.mcaddon`, and attaches it to a new GitHub Release. Opening the file on a device imports both packs into Minecraft.
+
+## Upgrading from MyCar 0.5.0 and earlier
+
+Switch the headlights off before upgrading. Old vehicles and items disappear because their IDs are not migrated. Light blocks from a vehicle whose headlights are on remain in the world: the record of lit cells lives on the vanished entity.
+
+The fleet record starts empty, and every player receives the starter vehicle again on their next join. Get additional vehicles with `/give @s yasuflatland:suv_item` or the recipe. Pack UUIDs stay the same, so worlds that already list the packs load the new versions.
+
+The dev world starts fresh as `yasuflatland-dev`. The old dev world can be deleted by hand; its historical path is recorded in [ADR 0047](docs/adr/0047-rename-to-the-yasuflatland-add-on.md).
 
 ## License
 
 [MIT](LICENSE)
+
