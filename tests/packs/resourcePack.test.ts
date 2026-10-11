@@ -121,6 +121,7 @@ describe("Resource Pack flight visuals (ADR 0022)", () => {
     const dep = bp.dependencies.find(
       (d: { uuid?: string }) => d.uuid === rp.header.uuid,
     );
+    expect(rp.header.version).toEqual([0, 1, 24]);
     expect(rp.modules[0].version).toEqual(rp.header.version);
     expect(dep.version).toEqual(rp.header.version);
   });
