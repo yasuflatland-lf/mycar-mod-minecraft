@@ -1,4 +1,4 @@
-# 🚗 Yasuflatland Ride
+# <img src="packs/yasu_ride_rp/pack_icon.png" width="64" alt="Hovering SUV pack icon"> Yasuflatland Ride
 
 [![Unit Tests](https://github.com/yasuflatland-lf/yasuflatland-ride-minecraft/actions/workflows/unit-test.yml/badge.svg?branch=main)](https://github.com/yasuflatland-lf/yasuflatland-ride-minecraft/actions/workflows/unit-test.yml)
 [![Integration Test](https://github.com/yasuflatland-lf/yasuflatland-ride-minecraft/actions/workflows/integration-test.yml/badge.svg?branch=main)](https://github.com/yasuflatland-lf/yasuflatland-ride-minecraft/actions/workflows/integration-test.yml)

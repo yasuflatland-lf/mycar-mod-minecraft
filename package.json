@@ -14,9 +14,9 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage '--coverage.include=src/**' --coverage.reporter=text --coverage.reporter=lcov",
     "test:mutation": "stryker run",
-    "model": "python3 -I tools/gen_model.py packs/yasu_ride_rp && biome format --write packs/yasu_ride_rp/models/entity/yasu_ride/suv.geo.json && python3 -I tools/render_preview.py packs/yasu_ride_rp docs/images",
+    "model": "python3 -I tools/gen_model.py packs/yasu_ride_rp && biome format --write packs/yasu_ride_rp/models/entity/yasu_ride/suv.geo.json && python3 -I tools/render_preview.py packs/yasu_ride_rp docs/images --icons packs/yasu_ride_rp packs/yasu_ride_bp packs/yasu_ride_test_bp",
     "sounds": "python3 -I tools/gen_sounds.py packs/yasu_ride_rp",
-    "model:check": "python3 -I tools/render_preview.py packs/yasu_ride_rp docs/images --check",
+    "model:check": "python3 -I tools/render_preview.py packs/yasu_ride_rp docs/images --check --icons packs/yasu_ride_rp packs/yasu_ride_bp packs/yasu_ride_test_bp",
     "server:up": "node scripts/server-up.mjs",
     "server:down": "docker compose -f server/compose.yaml down",
     "test:game": "node scripts/game-test.mjs"
