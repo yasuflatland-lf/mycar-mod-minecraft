@@ -29,6 +29,8 @@ PALETTE = {
     "glass": (40, 52, 60),
     "gauge": (225, 225, 215),
     "amber": (235, 150, 30),
+    "leather": (110, 68, 38),
+    "spoke": (97, 97, 97),  # #616161
 }
 NAMES = list(PALETTE)
 EMISSIVE = {"light"}
@@ -50,6 +52,21 @@ def uv(color):
 
 def box(x0, y0, z0, x1, y1, z1, color):
     return {"origin": [x0, y0, z0], "size": [x1 - x0, y1 - y0, z1 - z0], "uv": uv(color)}
+
+
+def disc(axis, center, half, a0, a1, angles, color):
+    """Squares turned by each angle around the axle; together they read as a polygon of len(angles) * 4 sides."""
+    cubes = []
+    for angle in angles:
+        if axis == "x":
+            cube = box(a0, center[1] - half, center[2] - half, a1, center[1] + half, center[2] + half, color)
+            cube["rotation"] = [angle, 0, 0]
+        else:
+            cube = box(center[0] - half, center[1] - half, a0, center[0] + half, center[1] + half, a1, color)
+            cube["rotation"] = [0, 0, angle]
+        cube["pivot"] = list(center)
+        cubes.append(cube)
+    return cubes
 
 
 body = [
@@ -107,34 +124,58 @@ body = [
     box(-11, 10, -18, 11, 19, -17, "seat"),
 ]
 
-# Steering wheel (+x side; shown in game as right-hand drive). Small blocks arranged on a circle make it
-# look round, tilted 20° toward the driver. Light gray so it does not get lost in the dark interior
+# Steering wheel (+x side; shown in game as right-hand drive), tilted 20° toward the driver. Like the
+# tires, the rim is a ring of thin blocks turned around the column. Brown leather rim, gray spokes,
+# and a black hub and column
 WHEEL_CENTER = (6.0, 16.5)  # (x, y)
 WHEEL_PIVOT = [WHEEL_CENTER[0], WHEEL_CENTER[1], 9.5]
 WHEEL_RADIUS = 2.4
+WHEEL_TILT = -20
 
 
-def tilted(cube):
+def tilted_spin(spin):
+    """Euler angles for "turn by spin around z, then tilt around x".
+
+    A cube applies its x rotation first and z last, so a tilted, spun block needs all three angles.
+    """
+    st, ct = math.sin(math.radians(WHEEL_TILT)), math.cos(math.radians(WHEEL_TILT))
+    sz, cz = math.sin(math.radians(spin)), math.cos(math.radians(spin))
+    # M = Rx(tilt) @ Rz(spin), decomposed as Rz(c) @ Ry(b) @ Rx(a)
+    m00, m10 = cz, ct * sz
+    m20, m21, m22 = st * sz, st * cz, ct
+    b = math.asin(-m20)
+    a = math.atan2(m21, m22)
+    c = math.atan2(m10, m00)
+    return [round(math.degrees(v), 3) for v in (a, b, c)]
+
+
+def steering_part(x0, y0, x1, y1, color, z0=9.0, z1=9.8, spin=0):
+    cube = box(x0, y0, z0, x1, y1, z1, color)
     cube["pivot"] = WHEEL_PIVOT
-    cube["rotation"] = [-20, 0, 0]
+    cube["rotation"] = tilted_spin(spin)
     return cube
 
 
 def small(cx, cy, w, h, color, z0=9.0, z1=9.8):
-    return tilted(box(cx - w / 2, cy - h / 2, z0, cx + w / 2, cy + h / 2, z1, color))
+    return steering_part(cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2, color, z0, z1)
 
 
 cx, cy = WHEEL_CENTER
+RIM_SEGMENTS, RIM_WIDTH = 16, 0.7
+rim_half_chord = round(WHEEL_RADIUS * math.tan(math.radians(180 / RIM_SEGMENTS)) + 0.05, 3)
 steering = [
-    small(cx + WHEEL_RADIUS * math.cos(math.radians(a)), cy + WHEEL_RADIUS * math.sin(math.radians(a)), 1.0, 1.0, "rim")
-    for a in range(0, 360, 30)
+    steering_part(
+        cx - rim_half_chord, cy + WHEEL_RADIUS - RIM_WIDTH / 2, cx + rim_half_chord, cy + WHEEL_RADIUS + RIM_WIDTH / 2,
+        "leather", spin=i * 360 / RIM_SEGMENTS,
+    )
+    for i in range(RIM_SEGMENTS)
 ]
+steering += [steering_part(cx - 0.7, cy - 0.7, cx + 0.7, cy + 0.7, "grille", 9.1, 9.9, spin) for spin in (0, 45)]  # hub
 steering += [
-    small(cx, cy, 1.4, 1.4, "trim", 9.1, 9.9),  # hub
-    small(cx - 1.2, cy, 1.2, 0.5, "rim"),  # spoke (left)
-    small(cx + 1.2, cy, 1.2, 0.5, "rim"),  # spoke (right)
-    small(cx, cy - 1.2, 0.5, 1.2, "rim"),  # spoke (bottom)
-    small(cx, cy, 0.8, 0.8, "trim", 9.9, 11.0),  # column
+    small(cx - 1.2, cy, 1.2, 0.5, "spoke"),  # spoke (left)
+    small(cx + 1.2, cy, 1.2, 0.5, "spoke"),  # spoke (right)
+    small(cx, cy - 1.2, 0.5, 1.2, "spoke"),  # spoke (bottom)
+    small(cx, cy, 0.8, 0.8, "grille", 9.9, 11.0),  # column
 ]
 body += steering
 
@@ -182,14 +223,30 @@ for side in (+1, -1):
 for side in (+1, -1):
     body.append(box(11.0 * side - 1, 4, 28, 11.0 * side + 1, 6, 28.2, "light"))
 
-# Gauges (behind the steering wheel, on the driver's side of the dashboard). Two round dials + red needles
-body += [
-    box(2.5, 16.8, 10, 9.5, 19.8, 10.6, "grille"),  # gauge bezel
-    box(3, 17.2, 9.9, 5.6, 19.4, 10, "gauge"),  # speedometer
-    box(6.4, 17.2, 9.9, 9, 19.4, 10, "gauge"),  # tachometer
-    box(4.2, 18.0, 9.8, 4.4, 19.2, 9.9, "tail"),  # needle
-    box(7.6, 18.0, 9.8, 7.8, 19.2, 9.9, "tail"),  # needle
-]
+def round_face(center, radius, z0, z1, color, segments=12):
+    """A flat round face (facing -z) made of thin blocks reaching out from the center like clock hands.
+
+    Turned squares would leave their corners poking out like a gear; these blocks only overhang the
+    circle by a few percent at their outer corners.
+    """
+    cx, cy, _ = center
+    half_chord = radius * math.tan(math.radians(180 / segments))
+    cubes = []
+    for i in range(segments):
+        cube = box(cx - half_chord, cy, z0, cx + half_chord, cy + radius, z1, color)
+        cube["pivot"] = list(center)
+        cube["rotation"] = [0, 0, round(i * 360 / segments, 3)]
+        cubes.append(cube)
+    return cubes
+
+
+# Gauges (behind the steering wheel, on the driver's side of the dashboard). Two round dials with red
+# needles, each in a round black bezel
+for dial_x in (4.3, 7.7):  # speedometer, tachometer
+    center = (dial_x, 18.3, 10)
+    body += round_face(center, 1.6, 10, 10.6, "grille")  # bezel
+    body += round_face(center, 1.25, 9.9, 10, "gauge")  # dial
+    body.append(box(dial_x - 0.1, 18.3, 9.8, dial_x + 0.1, 19.3, 9.9, "tail"))  # needle
 
 # Center console and shift lever (between the front seats)
 body += [
@@ -218,21 +275,6 @@ def door(name):
         "pivot": [12.5 * side, 12, z_front],
         "cubes": [box(x0, 7, z_back, x1, 17, z_front, "body")],
     }
-
-
-def disc(axis, center, half, a0, a1, angles, color):
-    """Squares turned by each angle around the axle; together they read as a polygon of len(angles) * 4 sides."""
-    cubes = []
-    for angle in angles:
-        if axis == "x":
-            cube = box(a0, center[1] - half, center[2] - half, a1, center[1] + half, center[2] + half, color)
-            cube["rotation"] = [angle, 0, 0]
-        else:
-            cube = box(center[0] - half, center[1] - half, a0, center[0] + half, center[1] + half, a1, color)
-            cube["rotation"] = [0, 0, angle]
-        cube["pivot"] = list(center)
-        cubes.append(cube)
-    return cubes
 
 
 def round_tire(axis, center, radius, a0, a1, segments=16):
