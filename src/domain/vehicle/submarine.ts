@@ -11,7 +11,12 @@ export interface DiveInput {
   waterDepth: number;
 }
 
-/** Target vertical velocity in blocks/tick, with controlled climb taking priority over step rise and buoyancy. */
+/**
+ * Target vertical velocity in blocks/tick, with controlled climb taking
+ * priority over step rise and buoyancy. With a driver, buoyancy only pulls
+ * down to the float line so a dive holds its depth; without one, the vehicle
+ * floats up to the float line.
+ */
 export function submarineVerticalSpeed(input: DiveInput): number {
   if (input.controlled && Number.isFinite(input.climb) && input.climb !== 0)
     return clamp(input.climb, -1, 1) * SPEC.maxClimb;
