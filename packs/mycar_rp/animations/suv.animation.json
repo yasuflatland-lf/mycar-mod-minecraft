@@ -16,8 +16,8 @@
         "wheel_rr": {
           "rotation": ["-query.modified_distance_moved * 152.8", 0, 0]
         },
-        "prop_rl": { "scale": 0 },
-        "prop_rr": { "scale": 0 }
+        "prop_rl": { "scale": [0, 0, 0] },
+        "prop_rr": { "scale": [0, 0, 0] }
       }
     },
     "animation.mycar.suv.bank": {
@@ -113,8 +113,8 @@
           "rotation": { "0.0": [0, 0, 0], "1.0": [0, 0, -90] },
           "position": { "0.0": [0, 0, 0], "1.0": [0, -4, 0] }
         },
-        "prop_rl": { "scale": 0 },
-        "prop_rr": { "scale": 0 }
+        "prop_rl": { "scale": [0, 0, 0] },
+        "prop_rr": { "scale": [0, 0, 0] }
       }
     },
     "animation.mycar.suv.wheels_folded": {
@@ -124,8 +124,8 @@
         "wheel_rl": { "rotation": [0, 0, 90], "position": [0, -4, 0] },
         "wheel_fr": { "rotation": [0, 0, -90], "position": [0, -4, 0] },
         "wheel_rr": { "rotation": [0, 0, -90], "position": [0, -4, 0] },
-        "prop_rl": { "scale": 0 },
-        "prop_rr": { "scale": 0 }
+        "prop_rl": { "scale": [0, 0, 0] },
+        "prop_rr": { "scale": [0, 0, 0] }
       }
     },
     "animation.mycar.suv.wheels_retract": {
@@ -147,8 +147,8 @@
           "rotation": { "0.0": [0, 0, -90], "1.0": [0, 0, 0] },
           "position": { "0.0": [0, -4, 0], "1.0": [0, 0, 0] }
         },
-        "prop_rl": { "scale": 0 },
-        "prop_rr": { "scale": 0 }
+        "prop_rl": { "scale": [0, 0, 0] },
+        "prop_rr": { "scale": [0, 0, 0] }
       }
     },
     "animation.mycar.suv.hover_glow": {
@@ -233,7 +233,7 @@
             "1.0": [0, -90, 0]
           },
           "position": { "0.0": [0, 0, 0], "0.5": [6, 0, 0], "1.0": [6, 0, 0] },
-          "scale": { "0.0": 0, "0.5": 0, "1.0": 1 }
+          "scale": { "0.0": [0, 0, 0], "0.5": [0, 0, 0], "1.0": [1, 1, 1] }
         },
         "wheel_rr": {
           "rotation": { "0.0": [0, 0, 0], "0.5": [0, 0, 0], "1.0": [0, 90, 0] },
@@ -246,7 +246,7 @@
             "0.5": [-6, 0, 0],
             "1.0": [-6, 0, 0]
           },
-          "scale": { "0.0": 0, "0.5": 0, "1.0": 1 }
+          "scale": { "0.0": [0, 0, 0], "0.5": [0, 0, 0], "1.0": [1, 1, 1] }
         }
       }
     },
@@ -257,13 +257,13 @@
         "prop_rl": {
           "rotation": [0, -90, "query.modified_distance_moved * 360"],
           "position": [6, 0, 0],
-          "scale": 1
+          "scale": [1, 1, 1]
         },
         "wheel_rr": { "rotation": [0, 90, 0], "position": [-6, 0, 0] },
         "prop_rr": {
           "rotation": [0, 90, "query.modified_distance_moved * 360"],
           "position": [-6, 0, 0],
-          "scale": 1
+          "scale": [1, 1, 1]
         }
       }
     },
@@ -285,7 +285,7 @@
             "1.0": [0, 0, 0]
           },
           "position": { "0.0": [6, 0, 0], "0.5": [6, 0, 0], "1.0": [0, 0, 0] },
-          "scale": { "0.0": 1, "0.5": 0, "1.0": 0 }
+          "scale": { "0.0": [1, 1, 1], "0.5": [0, 0, 0], "1.0": [0, 0, 0] }
         },
         "wheel_rr": {
           "rotation": { "0.0": [0, 90, 0], "0.5": [0, 0, 0], "1.0": [0, 0, 0] },
@@ -298,7 +298,7 @@
             "0.5": [-6, 0, 0],
             "1.0": [0, 0, 0]
           },
-          "scale": { "0.0": 1, "0.5": 0, "1.0": 0 }
+          "scale": { "0.0": [1, 1, 1], "0.5": [0, 0, 0], "1.0": [0, 0, 0] }
         }
       }
     }

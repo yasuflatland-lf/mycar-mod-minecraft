@@ -536,19 +536,19 @@ describe("Resource Pack submarine visuals (ADR 0040)", () => {
       expect(submerged.bones[`prop_${side}`]).toEqual({
         rotation: [0, wheel.rotation[1], "query.modified_distance_moved * 360"],
         position: wheel.position,
-        scale: 1,
+        scale: [1, 1, 1],
       });
       expect(dive.bones[`prop_${side}`].scale).toEqual({
-        "0.0": 0,
-        "0.5": 0,
-        "1.0": 1,
+        "0.0": [0, 0, 0],
+        "0.5": [0, 0, 0],
+        "1.0": [1, 1, 1],
       });
       // The props are gone before surface hands over to ground and then
       // deploy, so they fold away before the wheels fold for hover.
       expect(surface.bones[`prop_${side}`].scale).toEqual({
-        "0.0": 1,
-        "0.5": 0,
-        "1.0": 0,
+        "0.0": [1, 1, 1],
+        "0.5": [0, 0, 0],
+        "1.0": [0, 0, 0],
       });
     }
     expect(submerged.bones.wheel_rl.rotation[1]).toBe(
@@ -569,9 +569,39 @@ describe("Resource Pack submarine visuals (ADR 0040)", () => {
       const pinned = state.animations.some((entry) => {
         if (typeof entry !== "string") return false;
         const animBones = anims[client.animations[entry]]?.bones ?? {};
-        return REAR.every((side) => animBones[`prop_${side}`]?.scale === 0);
+        return REAR.every(
+          (side) =>
+            JSON.stringify(animBones[`prop_${side}`]?.scale) === "[0,0,0]",
+        );
       });
       expect(pinned, name).toBe(true);
+    }
+  });
+});
+
+describe("Resource Pack animation file", () => {
+  // The client drops the whole animation file, with no content log error, when
+  // one bone channel holds a bare number, so no animation in it plays: in game
+  // the props showed on the ground and the bank never rolled the body.
+  it("gives every bone channel a vector or Molang value", () => {
+    const isValue = (v: unknown) =>
+      typeof v === "string" ||
+      (Array.isArray(v) &&
+        v.length === 3 &&
+        v.every((c) => typeof c === "number" || typeof c === "string"));
+    for (const [name, anim] of Object.entries<{
+      bones?: Record<string, Record<string, unknown>>;
+    }>(anims)) {
+      for (const [bone, channels] of Object.entries(anim.bones ?? {})) {
+        for (const [channel, value] of Object.entries(channels)) {
+          const values =
+            value !== null && typeof value === "object" && !Array.isArray(value)
+              ? Object.values(value)
+              : [value];
+          for (const v of values)
+            expect(isValue(v), `${name} ${bone}.${channel}`).toBe(true);
+        }
+      }
     }
   });
 });
