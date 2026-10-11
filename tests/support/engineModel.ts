@@ -43,6 +43,8 @@ export function engineStep(
 export const GRAVITY = 0.08;
 export const VERTICAL_DRAG = 0.98;
 
-// Placeholder water measurements, independent of the controller tuning.
-export const WATER_DRAG = 0.8;
-export const WATER_VERTICAL_DRAG = 0.8;
+// Engine drag in water with gravity off, as the submarine_dive in-game test
+// measured it (rounded). Kept apart from SPEC.waterDrag for the same reason as
+// AIR_DRAG.
+export const WATER_DRAG = 0.83;
+export const WATER_VERTICAL_DRAG = 0.83;
