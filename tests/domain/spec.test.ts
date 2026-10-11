@@ -2,6 +2,13 @@ import { describe, expect, it } from "vitest";
 import { SPEC } from "../../src/domain/vehicle/spec";
 
 describe("SPEC", () => {
+  it("keeps submarine buoyancy and speed within vehicle limits", () => {
+    expect(SPEC.floatDraft).toBeLessThan(SPEC.carHeight);
+    expect(SPEC.surfaceRise).toBeGreaterThan(0);
+    expect(SPEC.surfaceRise).toBeLessThanOrEqual(SPEC.maxClimb);
+    expect(SPEC.maxWaterSpeed).toBeLessThanOrEqual(SPEC.maxSpeed);
+  });
+
   it("matches the values in the ADRs", () => {
     expect(SPEC.maxSpeed).toBe(0.9);
     expect(SPEC.maxReverse).toBe(0.2);
