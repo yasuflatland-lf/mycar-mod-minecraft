@@ -8,6 +8,7 @@ import {
   world,
 } from "@minecraft/server";
 import type { DriveVehicles } from "../../application/driveVehicles";
+import type { GiveStarterVehicle } from "../../application/giveStarterVehicle";
 import type { HitVehicle } from "../../application/hitVehicle";
 import type { PaintVehicle } from "../../application/paintVehicle";
 import type { PlaceVehicle } from "../../application/placeVehicle";
@@ -27,6 +28,7 @@ export function registerSubscriptions(
   useCases: {
     drive: DriveVehicles;
     place: PlaceVehicle;
+    starter: GiveStarterVehicle;
     hit: HitVehicle;
     paint: PaintVehicle;
     headlights: SwitchHeadlights;
@@ -70,6 +72,12 @@ export function registerSubscriptions(
       yaw: ev.player.getRotation().y,
       creative: ev.player.getGameMode() === GameMode.Creative,
     });
+  });
+
+  // initialSpawn is true on every join, not only the first one, so a player
+  // dynamic property records who already received the item (ADR 0023).
+  world.afterEvents.playerSpawn.subscribe((ev) => {
+    if (ev.initialSpawn) useCases.starter.execute(ev.player.id);
   });
 
   world.afterEvents.entityHitEntity.subscribe((ev) => {
