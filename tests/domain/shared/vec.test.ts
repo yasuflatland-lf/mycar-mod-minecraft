@@ -64,4 +64,24 @@ describe("vec", () => {
       }),
     );
   });
+
+  it("left is the exact opposite of right for every heading", () => {
+    fc.assert(
+      fc.property(yaw, (y) => {
+        const f = forward(y);
+        const left = leftOf(f);
+        const right = rightOf(f);
+        expect(left.x).toBeCloseTo(-right.x, 9);
+        expect(left.z).toBeCloseTo(-right.z, 9);
+      }),
+    );
+  });
+
+  it("normalizeYaw maps every half turn to 180, never -180", () => {
+    fc.assert(
+      fc.property(fc.integer({ min: -1000, max: 1000 }), (turns) => {
+        expect(normalizeYaw(180 + 360 * turns)).toBe(180);
+      }),
+    );
+  });
 });
