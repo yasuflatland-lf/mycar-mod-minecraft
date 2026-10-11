@@ -82,12 +82,12 @@ describe("judgeRam", () => {
     fc.assert(
       fc.property(
         hp0,
+        // An integer spawn keeps (g + MIN_PUSH) - g exact, unlike `x`.
         fc.integer({ min: 1, max: 30 }),
         lead,
         (hp, g, before) => {
-          expect(judgeRam(hp, g, rammed(hp, g, before, MIN_PUSH)).pass).toBe(
-            false,
-          );
+          const samples = rammed(hp, g, before, MIN_PUSH);
+          expect(judgeRam(hp, g, samples).pass).toBe(false);
         },
       ),
     );
