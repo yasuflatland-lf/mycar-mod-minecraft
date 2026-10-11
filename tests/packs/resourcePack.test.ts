@@ -34,12 +34,11 @@ describe("Resource Pack flight visuals (ADR 0022)", () => {
     expect(s.deploy.animations).toEqual(["wheels_deploy"]);
     expect(s.hover.animations).toEqual(["wheels_folded", "hover_glow"]);
     expect(s.retract.animations).toEqual(["wheels_retract"]);
-    expect(JSON.stringify(s.ground.transitions)).toContain(
-      "query.property('mycar:flight')",
-    );
-    expect(JSON.stringify(s.hover.transitions)).toContain(
-      "query.property('mycar:flight')",
-    );
+    for (const state of [s.ground, s.hover]) {
+      expect(JSON.stringify(state.transitions)).toContain(
+        "query.property('mycar:flight')",
+      );
+    }
   });
 
   it("folds every wheel 90 degrees and lowers it 4 px, with the two sides turning opposite ways", () => {
@@ -65,10 +64,10 @@ describe("Resource Pack flight visuals (ADR 0022)", () => {
   });
 
   it("emits the glow particle from every hover locator", () => {
-    const effects = anims["animation.mycar.suv.hover_glow"].particle_effects[
+    const locators = anims["animation.mycar.suv.hover_glow"].particle_effects[
       "0.0"
     ].map((e: { locator: string }) => e.locator);
-    expect(effects.sort()).toEqual([
+    expect(locators.sort()).toEqual([
       "hover_fl",
       "hover_fr",
       "hover_rl",
@@ -90,7 +89,7 @@ describe("Resource Pack flight visuals (ADR 0022)", () => {
       (d: { uuid?: string }) => d.uuid === rp.header.uuid,
     );
     expect(rp.header.version).toEqual([0, 1, 6]);
-    expect(rp.modules[0].version).toEqual([0, 1, 6]);
-    expect(dep.version).toEqual([0, 1, 6]);
+    expect(rp.modules[0].version).toEqual(rp.header.version);
+    expect(dep.version).toEqual(rp.header.version);
   });
 });
