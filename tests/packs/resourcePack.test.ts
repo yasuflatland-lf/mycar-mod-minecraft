@@ -186,6 +186,20 @@ describe("Resource Pack flight visuals (ADR 0022)", () => {
     expect(rp.modules[0].version).toEqual(rp.header.version);
     expect(dep.version).toEqual(rp.header.version);
   });
+
+  // Creator Tools flags a Resource Pack without these as CADDONIREQ170 and
+  // CADDONREQ168: it could be applied globally, or to a world without the
+  // Behavior Pack.
+  it("stays world-scoped and depends on the current Behavior Pack version", () => {
+    const rp = read(`${RP}/manifest.json`);
+    const bp = read("packs/yasu_ride_bp/manifest.json");
+    expect(rp.header.pack_scope).toBe("world");
+    const dep = rp.dependencies?.find(
+      (d: { uuid?: string }) => d.uuid === bp.header.uuid,
+    );
+    expect(dep).toBeDefined();
+    expect(dep.version).toEqual(bp.header.version);
+  });
 });
 
 describe("Resource Pack banking (ADR 0026)", () => {
