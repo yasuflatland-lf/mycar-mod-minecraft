@@ -77,7 +77,7 @@
       "category": "neutral",
       "min_distance": 4.0,
       "max_distance": 48.0,
-      "sounds": [{ "name": "sounds/mycar/sonar", "volume": 0.4 }]
+      "sounds": [{ "name": "sounds/mycar/sonar", "volume": 0.2 }]
     }
   }
 }

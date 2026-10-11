@@ -15,7 +15,7 @@ The submarine form (0039) is silent: the engine plays only in `car` form and the
   - A rumble of 120 sines with whole cycles in the loop between 30 and 120 Hz, swelling and ebbing by 30% once per loop
   - The ping is built two loops long and folded, so the tail that runs past the end comes back in at the start, and the loop repeats without a click
   - A first version started each ping with an envelope of 0 and stopped as soon as the envelope fell below 1e-4, so it wrote no ping at all and shipped only the rumble. The Resource Pack test now checks that the clip starts with energy at 1400 Hz
-- `sound_definitions.json` defines `mycar.sonar` in the `neutral` category at volume 0.4, heard up to 48 blocks, farther than the engine (24) and the air (32), as sonar carries in water
+- `sound_definitions.json` defines `mycar.sonar` in the `neutral` category at volume 0.2 (0.4 was too loud in a first listen), heard up to 48 blocks, farther than the engine (24) and the air (32), as sonar carries in water
 - The `submarine` state of the form controller plays `submarine_sound` while `query.has_rider`, a loop as long as the clip (4 s), as the engine plays only with a rider. The `dive` and `surface` transitions stay silent
 
 ## Consequences
