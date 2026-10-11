@@ -6,6 +6,8 @@
 [![domain and application coverage](https://codecov.io/gh/yasuflatland-lf/mycar-mod-minecraft/branch/main/graph/badge.svg?component=core)](https://app.codecov.io/gh/yasuflatland-lf/mycar-mod-minecraft/components)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
+![The SUV seen from its front-left corner](docs/images/suv-front-left.png)
+
 A vehicle add-on for Minecraft Bedrock Edition, inspired by [MrCrayfish's Vehicle Mod](https://www.curseforge.com/minecraft/mc-mods/mrcrayfishs-vehicle-mod). It is built as a Behavior Pack + Resource Pack driven by the stable Script API (`@minecraft/server` 2.x), with no experimental toggles required.
 
 The target setup is a Bedrock Dedicated Server on a home LAN, with players joining from PC (keyboard) and mobile (touch).
@@ -42,12 +44,13 @@ pnpm lint            # format and lint check with Biome
 pnpm test            # unit tests, property-based tests, and the layer dependency check
 pnpm build           # bundle the TypeScript into the Behavior Pack
 pnpm package         # zip the packs into dist/mycar-<version>.mcaddon (run after build)
-pnpm model           # generate the vehicle model and texture
+pnpm model           # generate the vehicle model, texture, and README preview
+pnpm model:check     # fail if the README preview is out of date with the model
 pnpm server:up       # start the dev BDS in Docker
 pnpm test:game       # in-game tests
 ```
 
-CI runs the Biome check, type checking, tests, the build, and packaging on every pull request.
+CI runs the Biome check, the README preview check, type checking, tests, the build, and packaging on every pull request.
 
 ## Releasing
 
