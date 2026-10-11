@@ -32,9 +32,11 @@ export const SPEC = {
   stepLookaheadMargin: 0.3,
   stepLaneOffset: 0.8,
   stepScanStep: 0.2,
-  // Input (ADR 0005)
+  // Input (ADR 0018)
   throttleDeadzone: 0.1,
   throttleFullAt: 0.5,
+  sidewaysAngle: 20, // degrees from horizontal within which the stick only steers and creeps
+  creepSpeed: 0.12, // Below ramMinSpeed, so creeping never rams (ADR 0006)
   // Collisions (ADR 0006)
   bodyFront: 1.65,
   bodyHalfWidth: 1.0,
