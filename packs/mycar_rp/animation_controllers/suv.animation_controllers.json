@@ -6,7 +6,10 @@
       "states": {
         "ground": {
           "animations": ["wheels"],
-          "transitions": [{ "deploy": "!query.property('mycar:gear_down')" }]
+          "transitions": [
+            { "dive": "query.property('mycar:form') == 'submarine'" },
+            { "deploy": "!query.property('mycar:gear_down')" }
+          ]
         },
         "deploy": {
           "animations": ["wheels_deploy"],
@@ -32,6 +35,20 @@
         },
         "retract": {
           "animations": ["wheels_retract"],
+          "transitions": [{ "ground": "query.all_animations_finished" }]
+        },
+        "dive": {
+          "animations": ["dive"],
+          "transitions": [{ "submarine": "query.all_animations_finished" }]
+        },
+        "submarine": {
+          "animations": ["submerged"],
+          "transitions": [
+            { "surface": "query.property('mycar:form') != 'submarine'" }
+          ]
+        },
+        "surface": {
+          "animations": ["surface"],
           "transitions": [{ "ground": "query.all_animations_finished" }]
         }
       }

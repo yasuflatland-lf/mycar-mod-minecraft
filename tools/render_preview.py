@@ -177,7 +177,11 @@ def cube_faces(cube):
 def folded_wheels(animations):
     """Bone name -> (z rotation, position) of the folded wheels, read from the hover animation (ADR 0022)."""
     bones = animations["animations"]["animation.mycar.suv.wheels_folded"]["bones"]
-    return {name: (pose["rotation"][2], pose["position"]) for name, pose in bones.items()}
+    return {
+        name: (pose["rotation"][2], pose["position"])
+        for name, pose in bones.items()
+        if name.startswith("wheel_")
+    }
 
 
 def sub(a, b):
