@@ -28,7 +28,7 @@ export class DriveVehicles {
           // The aggregate is lost after a reload: rebuild it with zero speed,
           // the entity's heading, the riders already seated (so the current
           // driver is not treated as newly mounted), and the vehicle form
-          // stored on the entity (ADR 0021).
+          // stored on the entity (ADR 0021, 0037).
           vehicle = Vehicle.rebuild(snap.id, snap.yaw, snap.riders, snap.form);
           this.repo.save(vehicle);
         }
