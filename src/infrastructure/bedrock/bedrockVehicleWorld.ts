@@ -59,6 +59,11 @@ export class BedrockVehicleWorld
     return e?.isValid ? e : undefined;
   }
 
+  private player(playerId: string): Player | undefined {
+    const player = world.getEntity(playerId);
+    return player && isPlayer(player) ? player : undefined;
+  }
+
   loadedVehicles(): VehicleSnapshot[] {
     this.current = new Map();
     const snapshots: VehicleSnapshot[] = [];
@@ -207,11 +212,6 @@ export class BedrockVehicleWorld
     }
   }
 
-  private player(playerId: string): Player | undefined {
-    const player = world.getEntity(playerId);
-    return player && isPlayer(player) ? player : undefined;
-  }
-
   receivedStarter(playerId: string): boolean | undefined {
     const player = this.player(playerId);
     if (!player) return undefined;
@@ -222,9 +222,8 @@ export class BedrockVehicleWorld
     const player = this.player(playerId);
     if (!player) return;
     const inv = player.getComponent("minecraft:inventory")?.container;
-    const leftover = inv
-      ? inv.addItem(new ItemStack(ITEM_TYPE, 1))
-      : new ItemStack(ITEM_TYPE, 1);
+    const item = new ItemStack(ITEM_TYPE, 1);
+    const leftover = inv ? inv.addItem(item) : item;
     if (leftover) player.dimension.spawnItem(leftover, player.location);
   }
 
