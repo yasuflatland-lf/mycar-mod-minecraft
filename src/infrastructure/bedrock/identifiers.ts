@@ -5,6 +5,8 @@ export const ITEM_TYPE = "mycar:suv_item";
 export const PLAYER_TYPE = "minecraft:player";
 /** Dynamic property on a player, set after they have been given their starter vehicle item (ADR 0023). */
 export const STARTER_RECEIVED_PROPERTY = "mycar:starter_received";
+/** World dynamic property holding the fleet as JSON (ADR 0038). */
+export const FLEET_PROPERTY = "mycar:fleet";
 /** Item a rider uses to switch the headlights (ADR 0020). */
 export const HEADLIGHT_SWITCH_TYPE = "mycar:headlight_switch";
 /** Entity property in packs/mycar_bp/entities/suv.json; the render controller makes the lamps glow by it. */
