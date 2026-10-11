@@ -50,7 +50,8 @@ This directory records design decisions and the reasons behind them. The format 
 | [0044](0044-bank-under-water.md) | Bank into turns under water | Accepted |
 | [0045](0045-submarine-preview.md) | Add a submarine pose to the README previews | Accepted |
 | [0046](0046-organize-each-layer-by-feature.md) | Organize each layer by feature | Accepted |
-| [0047](0047-rename-to-the-yasuflatland-add-on.md) | Rename to the Yasuflatland Add-on | Accepted |
+| [0047](0047-rename-to-yasuflatland-ride.md) | Rename to Yasuflatland Ride | Accepted |
+| [0048](0048-mutation-testing-and-unused-code-checks.md) | Mutation testing with Stryker, and unused code checks with knip | Accepted |
 
 The measurements and in-game tests behind these decisions are in [the driving-core spike findings](../spike-driving-core.md).
 

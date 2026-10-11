@@ -15,6 +15,12 @@
       "automerge": false
     },
     {
+      "description": "Stryker updates wait for review: the vitest runner patch is pinned to its version, and the core and checker get TypeScript 6 from .pnpmfile.cjs (ADR 0048)",
+      "matchPackageNames": ["@stryker-mutator/**"],
+      "groupName": "Stryker",
+      "automerge": false
+    },
+    {
       "description": "Keep pnpm in mise.toml and packageManager on the same version",
       "matchPackageNames": ["pnpm"],
       "groupName": "pnpm"

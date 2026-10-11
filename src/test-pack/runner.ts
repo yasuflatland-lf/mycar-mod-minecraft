@@ -26,7 +26,7 @@ const ARENA = { minX: 0, maxX: 120, minZ: 0, maxZ: 90 } as const;
 
 // Mirrors the SUV's minecraft:rideable but seats cows, because only players
 // can ride the SUV and a test has no players (ADR 0010).
-const SEAT_PROBE = "yasuflatland_test:seat_probe";
+const SEAT_PROBE = "yasuflatland_ride_test:seat_probe";
 
 interface Outcome {
   pass: boolean;
@@ -111,7 +111,7 @@ async function setupArena(): Promise<Arena> {
   // An existing area of the same name keeps its old bounds; withPool reports
   // the fill that then fails in the chunks left out.
   dim.runCommand(
-    `tickingarea add ${minX} -64 ${minZ} ${maxX} 0 ${maxZ} yasuflatland_arena true`,
+    `tickingarea add ${minX} -64 ${minZ} ${maxX} 0 ${maxZ} yasuflatland_ride_arena true`,
   );
   await wait(60);
   const top = dim.getTopmostBlock({ x: 5, z: 20 });
@@ -675,7 +675,7 @@ async function withPool<T>(
   // enteredAt=-1.
   if (fillPool("water").successCount === 0)
     throw new Error(
-      `the pool was not filled: check that "tickingarea list" shows yasuflatland_arena covering x ${ARENA.minX}-${ARENA.maxX}, z ${ARENA.minZ}-${ARENA.maxZ}`,
+      `the pool was not filled: check that "tickingarea list" shows yasuflatland_ride_arena covering x ${ARENA.minX}-${ARENA.maxX}, z ${ARENA.minZ}-${ARENA.maxZ}`,
     );
   try {
     await wait(5);

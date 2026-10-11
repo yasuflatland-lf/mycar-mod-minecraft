@@ -1,4 +1,4 @@
-"""Generate the model and textures for the Yasuflatland Add-on SUV.
+"""Generate the model and textures for the Yasuflatland Ride SUV.
 
 Coordinates are in pixels (16 px = 1 block). The definitions below use "forward +z, right +x",
 and are rotated 180° around the Y axis just before writing, because in Bedrock the front of an
@@ -15,9 +15,9 @@ import zlib
 from pathlib import Path
 
 RP = Path(sys.argv[1])
-MODELS = RP / "models/entity/yasuflatland"
-ENTITY_TEXTURES = RP / "textures/entity/yasuflatland"
-ITEM_TEXTURES = RP / "textures/items/yasuflatland"
+MODELS = RP / "models/entity/yasuflatland_ride"
+ENTITY_TEXTURES = RP / "textures/entity/yasuflatland_ride"
+ITEM_TEXTURES = RP / "textures/items/yasuflatland_ride"
 MODELS.mkdir(parents=True, exist_ok=True)
 
 # Color swatches. Each color fills a 4x4 cell, and each face's UV points at the cell's center 2x2
@@ -567,7 +567,7 @@ geo = {
     "minecraft:geometry": [
         {
             "description": {
-                "identifier": "geometry.yasuflatland.suv",
+                "identifier": "geometry.yasuflatland_ride.suv",
                 "texture_width": TEXTURE_WIDTH,
                 "texture_height": 16,
                 "visible_bounds_width": 5,

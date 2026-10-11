@@ -31,6 +31,9 @@ jobs:
       # Code, comments, and docs must be in English (AGENTS.md)
       - run: pnpm run lint:lang
 
+      # Unused files, exports, and dependencies (ADR 0048)
+      - run: pnpm run lint:unused
+
       # The README preview must be re-rendered whenever the model or its texture changes
       - run: pnpm run model:check
 
@@ -47,7 +50,7 @@ jobs:
       - if: steps.src.outputs.present == 'true'
         run: pnpm run build
 
-      # Catch a yasuflatland_bp -> yasuflatland_rp dependency version mismatch before a release tag does
+      # Catch a yasuflatland_ride_bp -> yasuflatland_ride_rp dependency version mismatch before a release tag does
       - if: steps.src.outputs.present == 'true'
         run: pnpm run package
 
