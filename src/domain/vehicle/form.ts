@@ -48,7 +48,7 @@ export function initialForm(form: Form = "car"): FormState {
   return { form, formTicks: 0, jumpHeld: false, lastTap: undefined };
 }
 
-/** A double tap toggles only in car or hover form; submarine uses held Jump to rise. */
+/** A double tap toggles only in car or hover form; takeoff and landing always run to the end, and submarine rises with held Jump instead. */
 function acceptsToggle(form: Form): boolean {
   return form === "car" || form === "hover";
 }
