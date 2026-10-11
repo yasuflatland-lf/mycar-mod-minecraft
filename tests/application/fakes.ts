@@ -53,6 +53,7 @@ export class FakeWorld
   itemInSlot = true;
   failOn: string | undefined;
   failCameraOn: string | undefined;
+  failBreathingOn: string | undefined;
   readonly calls: string[] = [];
   private nextId = 1;
 
@@ -75,6 +76,10 @@ export class FakeWorld
   setThirdPerson(id: string, on: boolean) {
     if (id === this.failCameraOn) throw new Error("camera");
     this.calls.push(`camera:${id}:${on ? "third" : "own"}`);
+  }
+  giveWaterBreathing(id: string, ticks: number) {
+    if (id === this.failBreathingOn) throw new Error("breathing");
+    this.calls.push(`breathing:${id}:${ticks}`);
   }
   setBank(id: string, degrees: number) {
     this.calls.push(`bank:${id}:${degrees}`);
@@ -149,6 +154,7 @@ export const snapshot = (
   velocity: { x: 0, z: 0 },
   velocityY: 0,
   onGround: true,
+  waterDepth: 0,
   riders: [],
   form: "car",
   headlights: false,

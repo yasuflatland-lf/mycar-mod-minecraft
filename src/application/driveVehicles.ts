@@ -1,5 +1,6 @@
 // Use case: every tick, move all loaded vehicles.
 import { headlightCells } from "../domain/vehicle/headlights";
+import { SPEC } from "../domain/vehicle/spec";
 import { Vehicle } from "../domain/vehicle/vehicle";
 import type { VehicleRepository } from "../domain/vehicle/vehicleRepository";
 import type { DriveWorld, Logger } from "./ports";
@@ -20,6 +21,7 @@ export class DriveVehicles {
     const seen = new Set<string>();
     // Riders of any form but car use third person (ADR 0028 + 0037).
     const offRoad = new Set<string>();
+    const underwater = new Set<string>();
     for (const snap of this.world.loadedVehicles()) {
       seen.add(snap.id);
       try {
@@ -39,6 +41,7 @@ export class DriveVehicles {
           velocity: snap.velocity,
           velocityY: snap.velocityY,
           onGround: snap.onGround,
+          waterDepth: snap.waterDepth,
           solidAt: (offset) => this.world.solidAt(snap.id, offset),
           targets: () => this.world.targetsNear(snap.id),
         });
@@ -50,6 +53,8 @@ export class DriveVehicles {
           this.world.setGearDown(snap.id, out.gearDown);
         if (vehicle.form !== "car")
           for (const rider of snap.riders) offRoad.add(rider.id);
+        if (vehicle.form === "submarine")
+          for (const rider of snap.riders) underwater.add(rider.id);
         this.world.applyMotion(snap.id, out.impulse, out.yaw);
         this.world.shineHeadlights(
           snap.id,
@@ -76,6 +81,15 @@ export class DriveVehicles {
       }
     }
     this.syncCameras(offRoad);
+    if (tick % SPEC.waterBreathingInterval === 0) {
+      for (const id of underwater) {
+        try {
+          this.world.giveWaterBreathing(id, SPEC.waterBreathingTicks);
+        } catch (e) {
+          this.log.warn(`[mycar] breathing ${id}: ${e}`);
+        }
+      }
+    }
   }
 
   /**

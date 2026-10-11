@@ -14,6 +14,7 @@ export interface VehicleSnapshot {
   velocity: Vec2;
   velocityY: number;
   onGround: boolean;
+  waterDepth: number;
   riders: RiderView[];
   form: Form;
   headlights: boolean;
@@ -28,6 +29,8 @@ export interface DriveWorld {
   setForm(vehicleId: string, form: Form): void;
   /** Switches a player's view to the third-person camera, or back to their own (ADR 0028). */
   setThirdPerson(playerId: string, on: boolean): void;
+  /** Refreshes water breathing; does nothing for a missing player (ADR 0038). */
+  giveWaterBreathing(playerId: string, ticks: number): void;
   /** Degrees; positive lowers the right side (ADR 0026). */
   setBank(vehicleId: string, degrees: number): void;
   /** Whether the wheels are in the driving pose (ADR 0033). */

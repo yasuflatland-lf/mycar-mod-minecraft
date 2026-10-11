@@ -24,6 +24,7 @@ import { PAINTS, type Paint } from "../../domain/vehicle/paint";
 import type { RamHit, RamTarget } from "../../domain/vehicle/ram";
 import { RAM_QUERY_RADIUS } from "../../domain/vehicle/ramQuery";
 import type { RiderView } from "../../domain/vehicle/vehicle";
+import { waterDepthFrom } from "../../domain/vehicle/water";
 import type { TestInputStore } from "../testInput/testInputStore";
 import { HeadlightBlocks, isLightBlock } from "./headlightBlocks";
 import {
@@ -81,13 +82,31 @@ export class BedrockVehicleWorld
         this.current.set(car.id, car);
         const v = car.getVelocity();
         const form = car.getProperty(FORM_PROPERTY);
+        const location = car.location;
         snapshots.push({
           id: car.id,
-          location: car.location,
+          location,
           yaw: car.getRotation().y,
           velocity: { x: v.x, z: v.z },
           velocityY: v.y,
           onGround: car.isOnGround,
+          waterDepth: waterDepthFrom(location.y, (cellY) => {
+            try {
+              const block = car.dimension.getBlock({
+                x: Math.floor(location.x),
+                y: cellY,
+                z: Math.floor(location.z),
+              });
+              return (
+                block !== undefined &&
+                (block.typeId === "minecraft:water" ||
+                  block.typeId === "minecraft:flowing_water" ||
+                  block.isWaterlogged)
+              );
+            } catch {
+              return false; // Unloaded chunk or outside the world
+            }
+          }),
           riders: this.riders(car),
           form: isForm(form) ? form : "car",
           headlights: car.getProperty(HEADLIGHTS_PROPERTY) === true,
@@ -201,6 +220,12 @@ export class BedrockVehicleWorld
     if (!camera) return;
     if (on) camera.setCamera(THIRD_PERSON_CAMERA);
     else camera.clear();
+  }
+
+  giveWaterBreathing(playerId: string, ticks: number): void {
+    this.player(playerId)?.addEffect("water_breathing", ticks, {
+      showParticles: false,
+    });
   }
 
   setBank(vehicleId: string, degrees: number): void {
