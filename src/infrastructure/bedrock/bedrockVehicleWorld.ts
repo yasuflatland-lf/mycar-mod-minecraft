@@ -11,21 +11,30 @@ import {
 import type {
   BreakWorld,
   DriveWorld,
+  PaintWorld,
   PlacementWorld,
   VehicleSnapshot,
 } from "../../application/ports";
 import type { Vec3 } from "../../domain/shared/vec";
+import { PAINTS, type Paint } from "../../domain/vehicle/paint";
 import type { RamHit, RamTarget } from "../../domain/vehicle/ram";
 import { RAM_QUERY_RADIUS } from "../../domain/vehicle/ramQuery";
 import type { RiderView } from "../../domain/vehicle/vehicle";
 import type { TestInputStore } from "../testInput/testInputStore";
-import { ITEM_TYPE, PLAYER_TYPE, VEHICLE_TYPE } from "./identifiers";
+import {
+  ITEM_TYPE,
+  PAINT_BY_DYE,
+  PAINT_VARIANT,
+  PLAYER_TYPE,
+  paintEvent,
+  VEHICLE_TYPE,
+} from "./identifiers";
 
 const DIMENSIONS = ["overworld", "nether", "the_end"] as const;
 const isPlayer = (e: Entity): e is Player => e.typeId === PLAYER_TYPE;
 
 export class BedrockVehicleWorld
-  implements DriveWorld, PlacementWorld, BreakWorld
+  implements DriveWorld, PlacementWorld, BreakWorld, PaintWorld
 {
   /** Vehicles collected by loadedVehicles() for this tick. The other methods look them up here by id. */
   private current = new Map<string, Entity>();
@@ -162,13 +171,18 @@ export class BedrockVehicleWorld
   }
 
   consumeVehicleItem(playerId: string): void {
+    this.consumeHeld(playerId, ITEM_TYPE);
+  }
+
+  /** Takes one item from the selected slot, but only if it still holds `typeId`. */
+  private consumeHeld(playerId: string, typeId: string): void {
     const player = world.getEntity(playerId);
     if (!player || !isPlayer(player)) return;
     const inv = player.getComponent("minecraft:inventory")?.container;
     if (!inv) return;
     const slot = player.selectedSlotIndex;
     const item = inv.getItem(slot);
-    if (!item || item.typeId !== ITEM_TYPE) return;
+    if (!item || item.typeId !== typeId) return;
     if (item.amount > 1) {
       item.amount -= 1;
       inv.setItem(slot, item);
@@ -185,5 +199,26 @@ export class BedrockVehicleWorld
 
   removeVehicle(vehicleId: string): void {
     this.entity(vehicleId)?.remove();
+  }
+
+  paintOf(vehicleId: string): Paint | undefined {
+    const car = this.entity(vehicleId);
+    if (!car) return undefined;
+    const variant = car.getComponent("minecraft:variant")?.value ?? 0;
+    return PAINTS.find((p) => PAINT_VARIANT[p] === variant);
+  }
+
+  paint(vehicleId: string, paint: Paint): void {
+    const car = this.entity(vehicleId);
+    if (!car) return;
+    car.triggerEvent(paintEvent(paint));
+    car.dimension.playSound("dye.use", car.location);
+  }
+
+  consumeDye(playerId: string, paint: Paint): void {
+    const dye = Object.keys(PAINT_BY_DYE).find(
+      (d) => PAINT_BY_DYE[d] === paint,
+    );
+    if (dye) this.consumeHeld(playerId, dye);
   }
 }

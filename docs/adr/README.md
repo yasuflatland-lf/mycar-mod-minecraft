@@ -20,6 +20,7 @@ This directory records design decisions and the reasons behind them. The format 
 | [0014](0014-opt-in-nethernet-dev-server.md) | Offer NetherNet on the dev server as an opt-in transport | Superseded by 0015 |
 | [0015](0015-dev-server-docker-nethernet.md) | Run the development server as BDS in Docker with NetherNet | Accepted |
 | [0016](0016-readme-preview-rendered-from-model.md) | Render the README preview from the model files | Accepted |
+| [0017](0017-repaint-vehicles-with-dye.md) | Repaint vehicles with dye | Accepted |
 | [0018](0018-sideways-stick-creeps-forward.md) | Treat a sideways stick as a slow forward turn | Accepted |
 
 The measurements and in-game tests behind these decisions are in [the driving-core spike findings](../spike-driving-core.md).

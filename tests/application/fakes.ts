@@ -1,10 +1,12 @@
 import type {
   BreakWorld,
   DriveWorld,
+  PaintWorld,
   PlacementWorld,
   VehicleSnapshot,
 } from "../../src/application/ports";
 import type { Vec3 } from "../../src/domain/shared/vec";
+import type { Paint } from "../../src/domain/vehicle/paint";
 import type { RamHit, RamTarget } from "../../src/domain/vehicle/ram";
 import type { Vehicle } from "../../src/domain/vehicle/vehicle";
 import type { VehicleRepository } from "../../src/domain/vehicle/vehicleRepository";
@@ -25,9 +27,12 @@ export class InMemoryRepo implements VehicleRepository {
   }
 }
 
-export class FakeWorld implements DriveWorld, PlacementWorld, BreakWorld {
+export class FakeWorld
+  implements DriveWorld, PlacementWorld, BreakWorld, PaintWorld
+{
   snapshots: VehicleSnapshot[] = [];
   targets: RamTarget[] = [];
+  readonly paints = new Map<string, Paint>();
   air = (_at: Vec3) => true;
   failOn: string | undefined;
   readonly calls: string[] = [];
@@ -68,6 +73,16 @@ export class FakeWorld implements DriveWorld, PlacementWorld, BreakWorld {
   }
   removeVehicle(id: string) {
     this.calls.push(`remove:${id}`);
+  }
+  paintOf(id: string) {
+    return this.paints.get(id);
+  }
+  paint(id: string, paint: Paint) {
+    this.paints.set(id, paint);
+    this.calls.push(`paint:${id}:${paint}`);
+  }
+  consumeDye(playerId: string, paint: Paint) {
+    this.calls.push(`dye:${playerId}:${paint}`);
   }
 }
 
