@@ -4,7 +4,8 @@ Coordinates are in pixels (16 px = 1 block). The definitions below use "forward 
 and are rotated 180° around the Y axis just before writing, because in Bedrock the front of an
 entity is on the -z side of the model.
 Bone names follow the convention (ADR 0009, 0022): root / body / wheel_fl / wheel_fr / wheel_rl / wheel_rr /
-glow_fl / glow_fr / glow_rl / glow_rr / rear_glass / door_fr / door_rr / door_fl / door_rl / seat_0..3.
+glow_fl / glow_fr / glow_rl / glow_rr / rear_glass / windows_sealed / prop_rl / prop_rr /
+door_fr / door_rr / door_fl / door_rl / seat_0..3.
 """
 import json
 import math
@@ -35,8 +36,11 @@ PALETTE = {
     "glow": (80, 170, 255),
     # Opaque tinted glass: in flight it hides the riders, who stay upright while the body banks (ADR 0026)
     "rear_glass": (38, 84, 160),
+    "prop": (190, 160, 100),  # brass
 }
 NAMES = list(PALETTE)
+# A power of two wide enough for a 4 px cell per swatch (16 swatches filled 64 px before "prop")
+TEXTURE_WIDTH = 128
 # Swatch alpha, 255 unless listed. Alpha 0 marks the headlight lenses as emissive for the
 # entity_emissive material; the materials the lenses use while the headlights are off ignore alpha
 # (ADR 0020). entity_emissive_alpha makes a texel glow when its alpha is low but not 0 (ADR 0022).
@@ -430,6 +434,36 @@ def wheel(name, x_out, z_center):
     }
 
 
+# The side windows and the windshield are open frames. Under water (ADR 0038) plates fill them, flush
+# with the outside of the pillars, in the same blue as the rear glass.
+WINDOWS_SEALED = [
+    box(-12, 18, 12.9, 12, 29, 13, "rear_glass"),
+    *[box(x0, 17, z0, x0 + 0.1, 29, z1, "rear_glass")
+      for x0 in (12.9, -13) for z0, z1 in ((-5, 12), (-22, -6))],
+]
+
+
+def prop(name, x_out, z_center):
+    """A hub and three blades in the wheel's plane, just outboard of the hub cap and inside the tire's
+    inner radius, so the turned rear wheel guards it like the ducted propeller of a Schwimmwagen."""
+    center = (14 * x_out, 6, z_center)
+    _, cy, cz = center
+    x0, x1 = (16.5, 17.1) if x_out > 0 else (-17.1, -16.5)
+    blades = []
+    for angle in (0, 120, 240):
+        blade = box(x0 + 0.1, cy + 0.8, cz - 0.7, x1 - 0.1, cy + 4.2, cz + 0.7, "prop")
+        if angle:
+            blade["rotation"] = [angle, 0, 0]
+            blade["pivot"] = list(center)
+        blades.append(blade)
+    return {
+        "name": name,
+        "parent": "root",
+        "pivot": list(center),
+        "cubes": [box(x0, cy - 1, cz - 1, x1, cy + 1, cz + 1, "prop"), *blades],
+    }
+
+
 def glow(name, x_out, z_center):
     # A disc under the folded wheel (ADR 0022). The render controller hides it on the ground.
     x = 14 * x_out
@@ -461,7 +495,7 @@ geo = {
         {
             "description": {
                 "identifier": "geometry.mycar.suv",
-                "texture_width": 64,
+                "texture_width": TEXTURE_WIDTH,
                 "texture_height": 16,
                 "visible_bounds_width": 5,
                 "visible_bounds_height": 3,
@@ -479,6 +513,10 @@ geo = {
                 wheel("wheel_fr", +1, 17),
                 wheel("wheel_rl", -1, -16),
                 wheel("wheel_rr", +1, -16),
+                # Hidden until the submarine form shows them (ADR 0038)
+                {"name": "windows_sealed", "parent": "body", "pivot": [0, 7, 0], "cubes": WINDOWS_SEALED},
+                prop("prop_rl", -1, -16),
+                prop("prop_rr", +1, -16),
                 glow("glow_fl", -1, 17),
                 glow("glow_fr", +1, 17),
                 glow("glow_rl", -1, -16),
@@ -547,7 +585,7 @@ def swatches(body_color):
 (RP / "textures/items").mkdir(parents=True, exist_ok=True)
 for paint, body_color in BODY_PAINTS.items():
     name = "suv" if paint == "khaki" else f"suv_{paint}"
-    png(RP / f"textures/entity/{name}.png", 64, 16, swatches(body_color))
+    png(RP / f"textures/entity/{name}.png", TEXTURE_WIDTH, 16, swatches(body_color))
 
 
 def icon(x, y):

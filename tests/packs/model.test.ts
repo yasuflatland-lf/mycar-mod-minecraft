@@ -4,11 +4,18 @@ import { DOOR_BY_SEAT, SEAT_POSITIONS } from "../../src/domain/vehicle/seats";
 
 type Vec3 = [number, number, number];
 
+interface Cube {
+  origin: Vec3;
+  size: Vec3;
+  pivot?: Vec3;
+  rotation?: Vec3;
+}
+
 interface Bone {
   name: string;
   parent?: string;
   pivot?: Vec3;
-  cubes?: { origin: Vec3; size: Vec3 }[];
+  cubes?: Cube[];
   locators?: Record<string, Vec3>;
 }
 
@@ -48,6 +55,9 @@ describe("SUV model (ADR 0009)", () => {
       "seat_2",
       "seat_3",
       "rear_glass",
+      "windows_sealed",
+      "prop_rl",
+      "prop_rr",
     ]) {
       expect(bones.has(name), name).toBe(true);
     }
@@ -126,5 +136,99 @@ describe("SUV model (ADR 0009)", () => {
     const cube = glass?.cubes?.[0];
     if (!cube) throw new Error("rear_glass has no cube");
     expect(cube.origin[2]).toBeGreaterThan(20);
+  });
+
+  // The window openings have no glass of their own (ADR 0026), so the plates
+  // fill them: each is thin, sits on the body's outer surface, and overlaps no
+  // body cube.
+  describe("windows_sealed", () => {
+    const sealed = bones.get("windows_sealed");
+    const plates = sealed?.cubes ?? [];
+    const bodyCubes = (bones.get("body")?.cubes ?? []).filter(
+      (c) => !c.rotation,
+    );
+
+    it("is a child of body with the pivot of rear_glass", () => {
+      expect(sealed?.parent).toBe("body");
+      expect(sealed?.pivot).toEqual(pivot("rear_glass"));
+    });
+
+    it("covers the windshield and the four side windows", () => {
+      expect(plates).toHaveLength(5);
+    });
+
+    it("has thin plates that overlap no body cube", () => {
+      for (const p of plates) {
+        expect(Math.min(...p.size)).toBeLessThanOrEqual(0.1);
+        for (const c of bodyCubes) {
+          const overlaps = [0, 1, 2].every(
+            (a) =>
+              (p.origin[a] ?? 0) < (c.origin[a] ?? 0) + (c.size[a] ?? 0) &&
+              (c.origin[a] ?? 0) < (p.origin[a] ?? 0) + (p.size[a] ?? 0),
+          );
+          expect(overlaps, JSON.stringify(c)).toBe(false);
+        }
+      }
+    });
+
+    // Each plate is flush with the outer face of a pillar it touches, so it
+    // reads as glass set in the window frame.
+    it("sits flush with the outside of the window frame", () => {
+      const span = (c: Cube, a: number): [number, number] => [
+        c.origin[a] ?? 0,
+        (c.origin[a] ?? 0) + (c.size[a] ?? 0),
+      ];
+      for (const p of plates) {
+        const thin = p.size.indexOf(Math.min(...p.size));
+        const [p0, p1] = span(p, thin);
+        const outer = Math.abs(p0) > Math.abs(p1) ? p0 : p1;
+        const flush = bodyCubes.some((c) => {
+          const touches = [0, 1, 2].every((a) => {
+            const [c0, c1] = span(c, a);
+            const [q0, q1] = span(p, a);
+            return q0 <= c1 && c0 <= q1;
+          });
+          return touches && span(c, thin).includes(outer);
+        });
+        expect(flush, JSON.stringify(p)).toBe(true);
+      }
+    });
+  });
+
+  describe.each(["rl", "rr"])("prop_%s", (side) => {
+    const prop = bones.get(`prop_${side}`);
+    const wheel = bones.get(`wheel_${side}`);
+    // The first tread block is unrotated, so its inner face gives the inner
+    // radius of the tire.
+    const tread = wheel?.cubes?.[0];
+    const innerRadius = (tread?.origin[1] ?? 0) - pivot(`wheel_${side}`)[1];
+
+    it("is a child of root on the axle of its wheel", () => {
+      expect(prop?.parent).toBe("root");
+      expect(prop?.pivot).toEqual(pivot(`wheel_${side}`));
+    });
+
+    it("has a hub and three blades 120 degrees apart", () => {
+      const angles = (prop?.cubes ?? [])
+        .map((c) => c.rotation?.[0])
+        .filter((a): a is number => a !== undefined && a !== 0)
+        .map((a) => ((a % 360) + 360) % 360)
+        .sort((a, b) => a - b);
+      expect(angles).toEqual([120, 240]);
+      expect(prop?.cubes?.length).toBeGreaterThanOrEqual(4);
+    });
+
+    // A rotation around x about the axle keeps every corner's distance from it,
+    // so the unrotated corners are enough.
+    it("fits inside the tire's inner radius in the wheel's plane", () => {
+      expect(innerRadius).toBeGreaterThan(0);
+      const [, py, pz] = pivot(`prop_${side}`);
+      for (const c of prop?.cubes ?? []) {
+        if (c.rotation) expect(c.pivot).toEqual(prop?.pivot);
+        for (const y of [c.origin[1], c.origin[1] + c.size[1]])
+          for (const z of [c.origin[2], c.origin[2] + c.size[2]])
+            expect(Math.hypot(y - py, z - pz)).toBeLessThan(innerRadius);
+      }
+    });
   });
 });

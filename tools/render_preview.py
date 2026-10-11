@@ -218,6 +218,9 @@ def collect(geo, texture, folds, pose):
         # The render controller hides the glow (ADR 0022) and the rear glass (ADR 0026) on the ground
         if (name.startswith("glow_") or name == "rear_glass") and not pose["hover"]:
             continue
+        # The submarine bones are hidden outside the submarine form, which the previews do not show (ADR 0038)
+        if name == "windows_sealed" or name.startswith("prop_"):
+            continue
         fold = folds.get(name) if pose["hover"] else None
         emissive = "lamp" if name == "headlights" and pose["lamps"] else "disc" if name.startswith("glow_") else None
         for cube in bone.get("cubes", []):
