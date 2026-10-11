@@ -7,7 +7,7 @@ type Vec3 = [number, number, number];
 interface Bone {
   name: string;
   pivot?: Vec3;
-  cubes?: { origin: Vec3 }[];
+  cubes?: { origin: Vec3; size: Vec3 }[];
   locators?: Record<string, Vec3>;
 }
 
@@ -84,5 +84,25 @@ describe("SUV model (ADR 0009)", () => {
   it("has an open/close animation for each door", () => {
     for (const d of DOOR_BY_SEAT)
       expect(anims[`animation.mycar.suv.${d}`].bones[d]).toBeDefined();
+  });
+
+  // A positive y rotation turns +z toward +x, as seen in game: +70 on the right
+  // doors (geometry x < 0, panel toward +z) swung them into the cabin.
+  it("swings each door outward from the body", () => {
+    for (const d of DOOR_BY_SEAT) {
+      const keys = Object.values<Vec3>(
+        anims[`animation.mycar.suv.${d}`].bones[d].rotation,
+      );
+      const openY = keys.reduce(
+        (a, k) => (Math.abs(k[1]) > Math.abs(a) ? k[1] : a),
+        0,
+      );
+      const [hingeX, , hingeZ] = pivot(d);
+      const cube = bones.get(d)?.cubes?.[0];
+      if (!cube) throw new Error(`${d} has no cube`);
+      const panelZ = cube.origin[2] + cube.size[2] / 2 - hingeZ;
+      const swungX = panelZ * Math.sin((openY * Math.PI) / 180);
+      expect(Math.sign(swungX), d).toBe(Math.sign(hingeX));
+    }
   });
 });
