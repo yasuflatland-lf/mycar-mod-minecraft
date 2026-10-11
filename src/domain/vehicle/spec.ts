@@ -71,6 +71,10 @@ export const SPEC = {
   waterDrag: 0.8, // Placeholder until the submarine in-game tests measure drag.
   waterVerticalDrag: 0.8, // Placeholder until the submarine in-game tests measure drag.
   floatDraft: 1.2, // Leaves 0.4 blocks of roof above the surface.
+  // A floating vehicle's feet sit between block tops, so a shore step can stand
+  // less than the half block above them where the ground probe looks
+  // (stepUp.ts). The in-game submarine_shore test stuck under such a step.
+  submarineStepProbeDrop: 0.5,
   surfaceRise: 0.05,
   floatGain: 0.25,
   waterBreathingInterval: 20,
