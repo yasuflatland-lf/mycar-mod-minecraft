@@ -41,6 +41,7 @@ PALETTE = {
 NAMES = list(PALETTE)
 # A power of two wide enough for a 4 px cell per swatch (16 swatches filled 64 px before "prop")
 TEXTURE_WIDTH = 128
+assert len(NAMES) * 4 <= TEXTURE_WIDTH, "the palette no longer fits in the texture"
 # Swatch alpha, 255 unless listed. Alpha 0 marks the headlight lenses as emissive for the
 # entity_emissive material; the materials the lenses use while the headlights are off ignore alpha
 # (ADR 0020). entity_emissive_alpha makes a texel glow when its alpha is low but not 0 (ADR 0022).
@@ -444,8 +445,8 @@ WINDOWS_SEALED = [
 
 
 def prop(name, x_out, z_center):
-    """A hub and three blades in the wheel's plane, just outboard of the hub cap and inside the tire's
-    inner radius, so the turned rear wheel guards it like the ducted propeller of a Schwimmwagen."""
+    """A hub and three blades mounted on the outer face of the rear wheel's hub cap, in the wheel's plane
+    and inside the tire's inner radius, so the tread ring frames the prop."""
     center = (14 * x_out, 6, z_center)
     _, cy, cz = center
     x0, x1 = (16.5, 17.1) if x_out > 0 else (-17.1, -16.5)

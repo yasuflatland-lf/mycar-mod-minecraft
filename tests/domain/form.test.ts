@@ -15,6 +15,7 @@ import {
   verticalSpeed,
 } from "../../src/domain/vehicle/form";
 import { SPEC } from "../../src/domain/vehicle/spec";
+import { shallowWaterDepth, waterDepth } from "../support/waterDepth";
 
 type Step = Omit<FormInput, "tick">;
 interface Frame {
@@ -57,7 +58,7 @@ const step = fc.record({
   jump: fc.boolean(),
   controlled: fc.boolean(),
   onGround: fc.boolean(),
-  waterDepth: fc.constant(0),
+  waterDepth: shallowWaterDepth,
 });
 const steps = fc.array(step, { maxLength: 300 });
 const form = fc.constantFrom(...FORMS);
@@ -330,18 +331,25 @@ describe("submarine form transitions", () => {
     jump: fc.boolean(),
     controlled: fc.boolean(),
     onGround: fc.boolean(),
-    waterDepth: fc.double(),
+    waterDepth: fc.oneof(waterDepth, fc.double()),
+  });
+  const submarine = fc.record({
+    form: fc.constant<Form>("submarine"),
+    formTicks: fc.nat(),
+    jumpHeld: fc.boolean(),
+    lastTap: fc.option(fc.nat(), { nil: undefined }),
   });
 
   it("detects submerged and dry depths, including non-finite values", () => {
     fc.assert(
-      fc.property(fc.double(), (depth) => {
+      fc.property(fc.oneof(waterDepth, fc.double()), (depth) => {
         expect(isSubmerged(depth)).toBe(depth >= SPEC.carHeight);
         expect(isDry(depth)).toBe(!(depth > 0));
       }),
     );
     expect(isDry(Number.NaN)).toBe(true);
     expect(isSubmerged(SPEC.carHeight)).toBe(true);
+    expect(isSubmerged(1)).toBe(false);
   });
 
   it("submergence wins over every other transition from every other form", () => {
@@ -368,8 +376,8 @@ describe("submarine form transitions", () => {
 
   it("breaches to hover exactly when dry, controlled, and Jump is held", () => {
     fc.assert(
-      fc.property(input, (i) => {
-        expect(stepForm(initialForm("submarine"), i).form === "hover").toBe(
+      fc.property(submarine, input, (s, i) => {
+        expect(stepForm(s, i).form === "hover").toBe(
           !(i.waterDepth > 0) && i.controlled && i.jump,
         );
       }),
@@ -378,10 +386,10 @@ describe("submarine form transitions", () => {
 
   it("returns to car on dry or shallow ground unless breaching to hover", () => {
     fc.assert(
-      fc.property(input, (i) => {
+      fc.property(submarine, input, (s, i) => {
         const dry = !(i.waterDepth > 0);
         const breach = dry && i.controlled && i.jump;
-        expect(stepForm(initialForm("submarine"), i).form === "car").toBe(
+        expect(stepForm(s, i).form === "car").toBe(
           !breach && (dry || (i.onGround && !(i.waterDepth >= SPEC.carHeight))),
         );
       }),
@@ -409,7 +417,7 @@ describe("submarine form transitions", () => {
     );
   });
 
-  it("leaves submarine vertical motion to submarineVerticalSpeed", () => {
+  it("is 0 in submarine form", () => {
     fc.assert(
       fc.property(fc.double(), (climb) => {
         expect(verticalSpeed("submarine", climb)).toBe(0);

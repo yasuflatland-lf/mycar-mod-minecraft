@@ -50,6 +50,7 @@ describe("BedrockVehicleWorld submarine wiring (ADR 0039)", () => {
   it.each([
     ["minecraft:water", false],
     ["minecraft:flowing_water", false],
+    ["minecraft:bubble_column", false],
     ["minecraft:kelp", true],
     ["minecraft:seagrass", true],
   ])(

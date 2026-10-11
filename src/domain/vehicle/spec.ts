@@ -67,20 +67,20 @@ export const SPEC = {
   flightDrag: 0.91,
   flightVerticalDrag: 0.98,
   // Submarine (ADR 0039)
-  maxWaterSpeed: 0.5,
+  maxWaterSpeed: 0.5, // blocks/tick
   // Engine drag per tick in water with gravity off, as the submarine_dive
   // in-game test measured it (0.833 horizontal, 0.836 vertical).
   waterDrag: 0.83,
   waterVerticalDrag: 0.84,
-  floatDraft: 1.2, // Leaves 0.4 blocks of roof above the surface.
-  // A floating vehicle's feet sit between block tops, so a shore step can stand
-  // less than the half block above them where the ground probe looks
-  // (stepUp.ts). The in-game submarine_shore test stuck under such a step.
-  submarineStepProbeDrop: 0.5,
-  surfaceRise: 0.05,
-  floatGain: 0.25,
-  waterBreathingInterval: 20,
-  waterBreathingTicks: 60,
+  floatDraft: 1.2, // blocks; leaves 0.4 blocks of roof above the surface.
+  // A floating submarine's feet sit fractionally into a shore step, so the
+  // step top can be less than the half block above the feet where stepUp.ts
+  // probes. Lowering the probe by this much starts it at the feet.
+  submarineStepProbeDrop: 0.5, // blocks
+  surfaceRise: 0.05, // blocks/tick; caps buoyancy both up and down
+  floatGain: 0.25, // blocks/tick of buoyancy per block of depth off the float line
+  waterBreathingInterval: 20, // ticks
+  waterBreathingTicks: 60, // ticks
   // Banking in flight (ADR 0026)
   maxBank: 30, // degrees at the full turn rate
   bankRate: 3, // degrees/tick; 10 ticks from level to full bank
