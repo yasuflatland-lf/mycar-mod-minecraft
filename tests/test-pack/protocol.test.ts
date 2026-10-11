@@ -7,6 +7,7 @@ import {
   runIdFrom,
   summaryOfRun,
   summaryPassed,
+  TEST_EVENT,
 } from "../../src/test-pack/protocol";
 
 const runId = fc.stringMatching(/^[A-Za-z0-9_-]{1,32}$/);
@@ -44,6 +45,16 @@ describe("runIdFrom", () => {
 });
 
 describe("a run reads only its own lines", () => {
+  it("ignores a line that names the run id without LOG_TAG", () => {
+    fc.assert(
+      fc.property(runId, (id) => {
+        const chat = `2026 INFO <Steve> ${id} SUMMARY pass=6 fail=0`;
+        expect(linesOfRun([chat], id)).toEqual([]);
+        expect(summaryOfRun([chat], id)).toBeUndefined();
+      }),
+    );
+  });
+
   it("ignores the SUMMARY and results of another run", () => {
     fc.assert(
       fc.property(twoRunIds, counts, counts, ([mine, other], f1, f2) => {
@@ -58,6 +69,13 @@ describe("a run reads only its own lines", () => {
         expect(summaryOfRun(logs.slice(0, 2), mine)).toBeUndefined();
       }),
     );
+  });
+});
+
+describe("TEST_EVENT", () => {
+  it("is a namespaced scriptevent id outside the minecraft namespace", () => {
+    expect(TEST_EVENT).toMatch(/^[a-z0-9_]+:[a-z0-9_]+$/);
+    expect(TEST_EVENT.startsWith("minecraft:")).toBe(false);
   });
 });
 
