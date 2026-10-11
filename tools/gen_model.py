@@ -435,7 +435,7 @@ def wheel(name, x_out, z_center):
     }
 
 
-# The side windows and the windshield are open frames. Under water (ADR 0039) plates fill them, flush
+# The side windows and the windshield are open frames. Under water (ADR 0040) plates fill them, flush
 # with the outside of the pillars, in the same blue as the rear glass.
 WINDOWS_SEALED = [
     box(-12, 18, 12.9, 12, 29, 13, "rear_glass"),
@@ -514,7 +514,7 @@ geo = {
                 wheel("wheel_fr", +1, 17),
                 wheel("wheel_rl", -1, -16),
                 wheel("wheel_rr", +1, -16),
-                # Hidden until the submarine form shows them (ADR 0039)
+                # Hidden until the submarine form shows them (ADR 0040)
                 {"name": "windows_sealed", "parent": "body", "pivot": [0, 7, 0], "cubes": WINDOWS_SEALED},
                 prop("prop_rl", -1, -16),
                 prop("prop_rr", +1, -16),

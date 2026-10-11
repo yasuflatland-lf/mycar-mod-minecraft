@@ -1,11 +1,11 @@
-# 0040. Sonar sound under water
+# 0041. Sonar sound under water
 
 - Status: Accepted
 - Date: 2026-10-11
 
 ## Context
 
-The submarine form (0039) is silent: the engine plays only in `car` form and the rushing air only in `hover` (0030). Under water it should sound like a submarine's sonar: a clear ping that rings out in the water, an echo from far away, and the low rumble of the deep, in the mood of long ambient recordings of sonar sounds. Such a recording cannot be shipped: the add-on is published, the recordings belong to their authors, and downloading audio from a video site breaks its terms of use. The sounds of 0030 are synthesized too, so the same generator can make this one. This is the eighth part of the submarine series (0039).
+The submarine form (0040) is silent: the engine plays only in `car` form and the rushing air only in `hover` (0030). Under water it should sound like a submarine's sonar: a clear ping that rings out in the water, an echo from far away, and the low rumble of the deep, in the mood of long ambient recordings of sonar sounds. Such a recording cannot be shipped: the add-on is published, the recordings belong to their authors, and downloading audio from a video site breaks its terms of use. The sounds of 0030 are synthesized too, so the same generator can make this one. This is the eighth part of the submarine series (0040).
 
 ## Decision
 

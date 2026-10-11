@@ -7,7 +7,7 @@ the vehicle's speed.
 hover_0 to hover_4: the "shhh" of rushing air, loops played while the vehicle is off the ground,
 rising in pitch with the speed. The client picks one by the vehicle's speed.
 hover_start: the air swelling in, played once when the wheels start to fold.
-sonar: the loop played while a ridden submarine is under water (ADR 0040): a clear sonar ping that rings
+sonar: the loop played while a ridden submarine is under water (ADR 0041): a clear sonar ping that rings
 out in the water, a faint return from far away, and the low rumble of the deep under both.
 
 Only the standard library is used, and the random generator is seeded, so the output is reproducible.

@@ -16,7 +16,7 @@ const particle = read(`${RP}/particles/hover_glow.json`).particle_effect;
 const WHEELS = ["wheel_fl", "wheel_fr", "wheel_rl", "wheel_rr"];
 
 describe("Resource Pack flight visuals (ADR 0022)", () => {
-  it("has no obsolete vehicle property references (ADR 0038)", () => {
+  it("has no obsolete vehicle property references (ADR 0039)", () => {
     // Split so that the issue's grep for the old name over src, tests, packs,
     // tools, docs, and manual-test.md does not match this test.
     for (const file of readdirSync(RP, {
@@ -121,7 +121,7 @@ describe("Resource Pack flight visuals (ADR 0022)", () => {
     const dep = bp.dependencies.find(
       (d: { uuid?: string }) => d.uuid === rp.header.uuid,
     );
-    // 0.1.26 first ships the sonar (0040); an older cached copy lacks it.
+    // 0.1.26 first ships the sonar (0041); an older cached copy lacks it.
     const [major, minor, patch] = rp.header.version;
     expect(major * 1e6 + minor * 1e3 + patch).toBeGreaterThanOrEqual(1026);
     expect(rp.modules[0].version).toEqual(rp.header.version);
@@ -240,7 +240,7 @@ describe("Resource Pack sounds (ADR 0030)", () => {
     return anim?.sound_effects ? effectsOf(client.animations[short ?? ""]) : [];
   };
 
-  it("loops the sonar only in the submarine form while someone rides (ADR 0040)", () => {
+  it("loops the sonar only in the submarine form while someone rides (ADR 0041)", () => {
     expect(controller.states.submarine.animations).toContainEqual({
       submarine_sound: "query.has_rider",
     });
@@ -259,7 +259,7 @@ describe("Resource Pack sounds (ADR 0030)", () => {
     );
   });
 
-  it("starts the sonar loop with a ping that fades before the loop ends (ADR 0040)", () => {
+  it("starts the sonar loop with a ping that fades before the loop ends (ADR 0041)", () => {
     const wav = readFileSync(`${RP}/sounds/mycar/sonar.wav`);
     const rate = wav.readUInt32LE(24);
     const samples = new Int16Array(
@@ -295,7 +295,7 @@ describe("Resource Pack sounds (ADR 0030)", () => {
   });
 });
 
-describe("Resource Pack submarine visuals (ADR 0039)", () => {
+describe("Resource Pack submarine visuals (ADR 0040)", () => {
   type Vec3 = [number, number, number];
   interface Cube {
     origin: Vec3;

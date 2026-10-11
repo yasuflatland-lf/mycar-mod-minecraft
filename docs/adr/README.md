@@ -24,7 +24,7 @@ This directory records design decisions and the reasons behind them. The format 
 | [0018](0018-sideways-stick-creeps-forward.md) | Treat a sideways stick as a slow forward turn | Accepted |
 | [0019](0019-passengers-move-up-to-the-driver-seat.md) | Passengers move up to the driver seat | Accepted |
 | [0020](0020-headlights.md) | Headlights that light up the road | Accepted |
-| [0021](0021-flight-mode.md) | Flight mode: toggle with a double tap, climb with the view pitch, and switch gravity with a component group | Superseded in part by 0032, 0034, and 0038 |
+| [0021](0021-flight-mode.md) | Flight mode: toggle with a double tap, climb with the view pitch, and switch gravity with a component group | Superseded in part by 0032, 0034, and 0039 |
 | [0022](0022-fold-wheels-and-glow-in-flight.md) | Fold the wheels and light their undersides in flight | Superseded in part by 0033 |
 | [0023](0023-starter-vehicle-on-first-join.md) | Give each player a vehicle item on their first join | Accepted |
 | [0024](0024-item-use-on-mobile-and-longer-headlights.md) | Make the vehicle item and the headlight switch work on mobile, and light the road three times farther | Accepted |
@@ -41,9 +41,9 @@ This directory records design decisions and the reasons behind them. The format 
 | [0035](0035-jump-one-block-steps-in-the-script.md) | Jump one-block steps in the script, and skip blocks without a collision box | Accepted |
 | [0036](0036-paint-by-hitting-with-a-dye.md) | Paint by hitting with a dye, and get in by interacting | Accepted |
 | [0037](0037-one-dye-per-repaint-within-a-tick.md) | Use one dye per repaint within a tick | Accepted |
-| [0038](0038-vehicle-forms.md) | Vehicle forms | Accepted |
-| [0039](0039-submarine.md) | Submarine form | Accepted |
-| [0040](0040-sonar-sound-under-water.md) | Sonar sound under water | Accepted |
+| [0039](0039-vehicle-forms.md) | Vehicle forms | Accepted |
+| [0040](0040-submarine.md) | Submarine form | Accepted |
+| [0041](0041-sonar-sound-under-water.md) | Sonar sound under water | Accepted |
 
 The measurements and in-game tests behind these decisions are in [the driving-core spike findings](../spike-driving-core.md).
 
