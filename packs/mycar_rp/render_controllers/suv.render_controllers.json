@@ -5,10 +5,18 @@
       "arrays": {
         "textures": {
           "Array.paints": ["Texture.default", "Texture.green", "Texture.red"]
+        },
+        "materials": {
+          "Array.lamps": ["Material.lamp", "Material.lamp_lit"]
         }
       },
       "geometry": "Geometry.default",
-      "materials": [{ "*": "Material.default" }],
+      "materials": [
+        { "*": "Material.default" },
+        {
+          "headlights": "Array.lamps[query.property('mycar:headlights') ? 1 : 0]"
+        }
+      ],
       "textures": ["Array.paints[query.variant]"]
     }
   }

@@ -1,2 +1,3 @@
 item.mycar:suv_item.name=SUV
 entity.mycar:suv.name=SUV
+item.mycar:headlight_switch.name=ヘッドライトスイッチ

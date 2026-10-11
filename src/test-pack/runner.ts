@@ -2,11 +2,14 @@
 // main Behavior Pack, so they drive the vehicle through script events.
 import { type Dimension, type Entity, system, world } from "@minecraft/server";
 import { forward } from "../domain/shared/vec";
+import { headlightCells } from "../domain/vehicle/headlights";
 import { PAINTS } from "../domain/vehicle/paint";
 import { nearestSeat, toLocal } from "../domain/vehicle/seats";
 import { SPEC } from "../domain/vehicle/spec";
 import {
+  HEADLIGHTS_PROPERTY,
   TEST_INPUT_EVENT as INPUT_EVENT,
+  LIGHT_BLOCK,
   PAINT_VARIANT,
   paintEvent,
   VEHICLE_TYPE as VEHICLE,
@@ -350,6 +353,47 @@ function paintEvents(a: Arena): Promise<Outcome> {
   });
 }
 
+// The switch item needs a player, so this sets the property the switch flips
+// and checks the light blocks the main pack keeps in front of the vehicle.
+function headlightsFollowAndClear(a: Arena): Promise<Outcome> {
+  return withCar(a, 5.5, 12.5, -90, async (car) => {
+    const lightAt = (c: { x: number; y: number; z: number }) =>
+      a.dim.getBlock(c)?.typeId === LIGHT_BLOCK;
+    const lightsAround = () => {
+      let n = 0;
+      for (let x = 0; x <= 60; x++)
+        for (let z = 9; z <= 16; z++)
+          for (let dy = 0; dy <= 2; dy++)
+            if (lightAt({ x, y: a.gy + dy, z })) n++;
+      return n;
+    };
+    car.setProperty(HEADLIGHTS_PROPERTY, true);
+    await wait(3);
+    const parked = headlightCells(car.location, car.getRotation().y);
+    const litParked = parked.filter(lightAt).length;
+    drive(car, 0, 1);
+    await wait(30);
+    drive(car, 0, 0);
+    await wait(20);
+    const moved = headlightCells(car.location, car.getRotation().y);
+    const litMoved = moved.filter(lightAt).length;
+    const whileOn = lightsAround();
+    const level = Math.abs(car.location.y - a.gy) < 0.1;
+    car.setProperty(HEADLIGHTS_PROPERTY, false);
+    await wait(3);
+    const afterOff = lightsAround();
+    return {
+      pass:
+        litParked === parked.length &&
+        litMoved === moved.length &&
+        whileOn === moved.length &&
+        level &&
+        afterOff === 0,
+      detail: `parked=${litParked}/${parked.length} moved=${litMoved}/${moved.length} whileOn=${whileOn} level=${level} afterOff=${afterOff}`,
+    };
+  });
+}
+
 async function runAll(runId: string): Promise<void> {
   const a = await setupArena();
   const tests: [string, () => Promise<Outcome>][] = [
@@ -361,6 +405,7 @@ async function runAll(runId: string): Promise<void> {
     ["step2_diagonal", () => step2(a, 30, -60, 100)],
     ["seats_after_driver_leaves", () => seatsAfterDriverLeaves(a)],
     ["paint_events", () => paintEvents(a)],
+    ["headlights_follow_and_clear", () => headlightsFollowAndClear(a)],
   ];
   let passed = 0;
   const lines: string[] = [];
