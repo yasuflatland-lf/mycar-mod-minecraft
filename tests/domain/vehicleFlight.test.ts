@@ -8,7 +8,7 @@ import { AIR_DRAG, GRAVITY, VERTICAL_DRAG } from "../support/engineModel";
 
 const GROUND_FRICTION = 0.688;
 const IDLE: RawInput = { moveX: 0, moveY: 0, jump: false };
-const FORWARD: RawInput = { moveX: 0, moveY: 1, jump: false, pitch: 0 };
+const FORWARD: RawInput = { moveX: 0, moveY: 1, jump: false };
 
 /**
  * One vehicle driven by test input over flat ground at y = 0. Gravity follows
@@ -22,6 +22,8 @@ class FlightSim {
   vel: Vec2 = { x: 0, z: 0 };
   gravity: boolean;
   readonly changes: FlightMode[] = [];
+  /** Each landing gear change with the height it happened at. */
+  readonly gearYs: [boolean, number][] = [];
 
   constructor(readonly vehicle: Vehicle = Vehicle.create("car", 0)) {
     this.gravity = vehicle.flightMode === "ground";
@@ -44,9 +46,11 @@ class FlightSim {
       velocity: this.vel,
       velocityY: this.vy,
       onGround: this.onGround,
-      solidAt: () => false,
+      // The ground is solid below y = 0.
+      solidAt: (offset) => this.y + offset.y < 0,
       targets: () => [],
     });
+    if (out.gearDown !== undefined) this.gearYs.push([out.gearDown, this.y]);
     if (out.flight) {
       this.changes.push(out.flight);
       this.gravity = out.flight === "ground";
@@ -122,15 +126,27 @@ describe("Vehicle in flight (ADR 0021)", () => {
     );
   });
 
-  it("climbs when the driver looks up and sinks when they look down", () => {
+  it("climbs while Jump is held and sinks while the stick is pulled back (ADR 0032)", () => {
     const sim = flyingSim();
     sim.run(FORWARD, 50);
     const y0 = sim.y;
-    sim.run({ ...FORWARD, pitch: -30 }, 20);
-    expect(sim.y).toBeGreaterThan(y0 + 3);
+    sim.run({ ...FORWARD, jump: true }, 20);
+    expect(sim.y).toBeGreaterThan(y0 + 5);
     const y1 = sim.y;
-    sim.run({ ...FORWARD, pitch: 30 }, 10);
+    const v1 = sim.vehicle.speed;
+    sim.run({ moveX: 0, moveY: -1, jump: false }, 10);
     expect(sim.y).toBeLessThan(y1 - 2);
+    // The car coasts under drag alone; read as a brake, the pulled-back stick
+    // would shed 10 * SPEC.brake instead.
+    expect(v1 - sim.vehicle.speed).toBeCloseTo(10 * SPEC.drag, 6);
+  });
+
+  it("climbs on held Jump while hovering in place (ADR 0032)", () => {
+    const sim = flyingSim();
+    const y0 = sim.y;
+    sim.run({ ...IDLE, jump: true }, 20);
+    expect(sim.y).toBeGreaterThan(y0 + 5);
+    expect(sim.vehicle.flightMode).toBe("flying");
   });
 
   it("lands on a second double tap and turns gravity back on when it touches down", () => {
@@ -141,6 +157,31 @@ describe("Vehicle in flight (ADR 0021)", () => {
     expect(sim.changes.slice(-2)).toEqual(["landing", "ground"]);
     expect(sim.y).toBe(0);
     expect(sim.gravity).toBe(true);
+  });
+
+  it("lowers the wheels before touchdown when landing from high up (ADR 0033)", () => {
+    const sim = flyingSim();
+    sim.run({ ...IDLE, jump: true }, 30);
+    sim.run(IDLE, 10);
+    expect(sim.vehicle.wheelsDown).toBe(false);
+    sim.doubleTap();
+    sim.run(IDLE, 100);
+    expect(sim.vehicle.flightMode).toBe("ground");
+    expect(sim.gearYs.map(([down]) => down)).toEqual([true, false, true]);
+    const [, y] = sim.gearYs.at(-1) ?? [true, 0];
+    expect(y).toBeGreaterThan(SPEC.gearDownHeight - 1);
+    expect(y).toBeLessThanOrEqual(SPEC.gearDownHeight);
+  });
+
+  it("returns to the ground when it sinks onto it in flight (ADR 0034)", () => {
+    const sim = flyingSim();
+    sim.run({ moveX: 0, moveY: -1, jump: false }, 20);
+    expect(sim.changes.slice(-1)).toEqual(["ground"]);
+    expect(sim.changes).not.toContain("landing");
+    expect(sim.gravity).toBe(true);
+    expect(sim.y).toBe(0);
+    expect(sim.vehicle.wheelsDown).toBe(true);
+    expect(sim.gearYs.at(-1)?.[0]).toBe(true);
   });
 
   it("starts landing as soon as the input goes away mid-flight", () => {

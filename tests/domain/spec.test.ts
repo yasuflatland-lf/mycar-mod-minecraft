@@ -23,6 +23,5 @@ describe("SPEC", () => {
     expect(SPEC.takeoffTicks * SPEC.takeoffClimb).toBeCloseTo(1.5);
     expect(SPEC.maxClimb).toBe(0.3);
     expect(SPEC.landingSink).toBe(0.15);
-    expect(SPEC.pitchDeadzone).toBe(10);
   });
 });

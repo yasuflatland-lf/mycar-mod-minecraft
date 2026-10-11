@@ -26,6 +26,7 @@ export const SPEC = {
   hitboxFront: 0.9,
   carHeight: 1.6,
   stepVelocity: 0.75,
+  oneStepVelocity: 0.45, // Peaks about 1.4 blocks up; 0.42, a player's jump, peaks at 1.25 (ADR 0035)
   stepTicks: 10,
   stepMinSpeed: 0.15,
   stepLookaheadTicks: 4,
@@ -60,8 +61,7 @@ export const SPEC = {
   takeoffTicks: 20,
   takeoffClimb: 0.075, // blocks/tick; 20 ticks lift the vehicle 1.5 blocks
   landingSink: 0.15, // blocks/tick
-  maxClimb: 0.3, // blocks/tick, up or down
-  pitchDeadzone: 10, // degrees of view pitch around level that hold altitude
+  maxClimb: 0.3, // blocks/tick, up or down, with Jump held or the stick pulled back (ADR 0032)
   // Engine drag per tick with gravity off. The flight_cruise in-game test
   // reports the measured horizontal value.
   flightDrag: 0.91,
@@ -69,5 +69,9 @@ export const SPEC = {
   // Banking in flight (ADR 0026)
   maxBank: 30, // degrees at the full turn rate
   bankRate: 3, // degrees/tick; 10 ticks from level to full bank
+  // Landing gear (ADR 0033). Unfolding takes 1 s (ADR 0022), 3 blocks of
+  // landing at landingSink, so the wheels come down a block above that.
+  gearDownHeight: 4, // blocks of air below the vehicle within which landing unfolds the wheels
+  gearProbeOffset: 0.8, // blocks from the center to the probed corners, inside the 1.8-block hitbox
   bankSink: 0.03, // blocks/tick of altitude lost at full bank
 } as const;

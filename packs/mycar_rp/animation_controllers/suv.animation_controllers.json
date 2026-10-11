@@ -6,9 +6,7 @@
       "states": {
         "ground": {
           "animations": ["wheels"],
-          "transitions": [
-            { "deploy": "query.property('mycar:flight') != 'ground'" }
-          ]
+          "transitions": [{ "deploy": "!query.property('mycar:gear_down')" }]
         },
         "deploy": {
           "animations": ["wheels_deploy"],
@@ -30,9 +28,7 @@
             },
             { "hover_sound_4": "query.ground_speed >= 14" }
           ],
-          "transitions": [
-            { "retract": "query.property('mycar:flight') == 'ground'" }
-          ]
+          "transitions": [{ "retract": "query.property('mycar:gear_down')" }]
         },
         "retract": {
           "animations": ["wheels_retract"],

@@ -38,11 +38,13 @@ describe("Resource Pack flight visuals (ADR 0022)", () => {
       "hover_glow",
     ]);
     expect(s.retract.animations).toEqual(["wheels_retract"]);
-    for (const state of [s.ground, s.hover]) {
-      expect(JSON.stringify(state.transitions)).toContain(
-        "query.property('mycar:flight')",
-      );
-    }
+    // The wheels follow the landing gear, so they unfold before touchdown (ADR 0033).
+    expect(s.ground.transitions).toEqual([
+      { deploy: "!query.property('mycar:gear_down')" },
+    ]);
+    expect(s.hover.transitions).toEqual([
+      { retract: "query.property('mycar:gear_down')" },
+    ]);
   });
 
   it("every animation a controller state plays resolves to an animation in the pack", () => {
@@ -93,10 +95,10 @@ describe("Resource Pack flight visuals (ADR 0022)", () => {
     ]);
   });
 
-  it("shows the glow bones and the rear glass only while the vehicle is not on the ground", () => {
+  it("shows the glow bones only while the wheels are up, and the rear glass while the vehicle is not on the ground", () => {
     expect(render.part_visibility).toEqual([
       { "*": true },
-      { "glow_*": "query.property('mycar:flight') != 'ground'" },
+      { "glow_*": "!query.property('mycar:gear_down')" },
       { rear_glass: "query.property('mycar:flight') != 'ground'" },
     ]);
   });

@@ -4,7 +4,7 @@ import { SPEC } from "../../src/domain/vehicle/spec";
 import {
   type SolidAt,
   STEP_LANES,
-  shouldStepUp,
+  stepHeight,
 } from "../../src/domain/vehicle/stepUp";
 
 interface Lane {
@@ -39,7 +39,7 @@ const startIn = (s: number) =>
   });
 const laneIndex = fc.integer({ min: 0, max: 2 });
 
-describe("shouldStepUp (ADR 0004)", () => {
+describe("stepHeight (ADR 0004, 0035)", () => {
   it("jumps for a step of height 2 within look-ahead range (on any ray)", () => {
     fc.assert(
       fc.property(
@@ -48,7 +48,7 @@ describe("shouldStepUp (ADR 0004)", () => {
         ([s, start], i) => {
           const lanes: (Lane | undefined)[] = [undefined, undefined, undefined];
           lanes[i] = { start, height: 2 };
-          expect(shouldStepUp(terrain(lanes), s)).toBe(true);
+          expect(stepHeight(terrain(lanes), s)).toBe(2);
         },
       ),
     );
@@ -64,7 +64,7 @@ describe("shouldStepUp (ADR 0004)", () => {
     );
     fc.assert(
       fc.property(fc.tuple(lane, lane, lane), speed, (lanes, s) => {
-        expect(shouldStepUp(terrain(lanes), s)).toBe(false);
+        expect(stepHeight(terrain(lanes), s)).toBe(0);
       }),
     );
   });
@@ -85,7 +85,7 @@ describe("shouldStepUp (ADR 0004)", () => {
             start: scanStart + (stepStart - scanStart) * frac,
             height: wallH,
           };
-          expect(shouldStepUp(terrain(lanes), s)).toBe(false);
+          expect(stepHeight(terrain(lanes), s)).toBe(0);
         },
       ),
     );
@@ -101,9 +101,9 @@ describe("shouldStepUp (ADR 0004)", () => {
         speed.chain((s) => fc.tuple(fc.constant(s), startIn(s))),
         fc.integer({ min: stepTop, max: firstFreeCeiling - 1 }),
         ([s, start], ceiling) => {
-          expect(
-            shouldStepUp(terrain([{ start, height: 2, ceiling }]), s),
-          ).toBe(false);
+          expect(stepHeight(terrain([{ start, height: 2, ceiling }]), s)).toBe(
+            0,
+          );
         },
       ),
     );
@@ -115,9 +115,9 @@ describe("shouldStepUp (ADR 0004)", () => {
         speed.chain((s) => fc.tuple(fc.constant(s), startIn(s))),
         fc.integer({ min: firstFreeCeiling, max: firstFreeCeiling + 3 }),
         ([s, start], ceiling) => {
-          expect(
-            shouldStepUp(terrain([{ start, height: 2, ceiling }]), s),
-          ).toBe(true);
+          expect(stepHeight(terrain([{ start, height: 2, ceiling }]), s)).toBe(
+            2,
+          );
         },
       ),
     );
@@ -125,30 +125,56 @@ describe("shouldStepUp (ADR 0004)", () => {
 
   it("does not jump if blocked overhead", () => {
     expect(
-      shouldStepUp(
+      stepHeight(
         terrain([{ start: SPEC.hitboxFront + 0.2, height: 2 }], true),
         0.5,
       ),
-    ).toBe(false);
+    ).toBe(0);
   });
 
-  it("does not jump when only height-1 steps are present, leaving them to the engine", () => {
+  it("jumps a height-1 step within look-ahead range, which a controlling rider keeps the engine from stepping (ADR 0035)", () => {
+    fc.assert(
+      fc.property(
+        speed.chain((s) => fc.tuple(fc.constant(s), startIn(s))),
+        laneIndex,
+        ([s, start], i) => {
+          const lanes: (Lane | undefined)[] = [undefined, undefined, undefined];
+          lanes[i] = { start, height: 1 };
+          expect(stepHeight(terrain(lanes), s)).toBe(1);
+        },
+      ),
+    );
+  });
+
+  it("jumps the higher step when rays at the same distance find heights 1 and 2", () => {
+    const start = SPEC.hitboxFront + 0.2;
     expect(
-      shouldStepUp(
-        terrain([{ start: SPEC.hitboxFront + 0.2, height: 1 }]),
+      stepHeight(
+        terrain([
+          { start, height: 1 },
+          { start, height: 2 },
+        ]),
         0.5,
       ),
-    ).toBe(false);
+    ).toBe(2);
+  });
+
+  it("does not jump a height-1 step without room (SPEC.carHeight) above it, but does with the room", () => {
+    const start = SPEC.hitboxFront + 0.2;
+    const ceilingFor = (c: number) =>
+      terrain([{ start, height: 1, ceiling: c }]);
+    expect(stepHeight(ceilingFor(2), 0.5)).toBe(0);
+    expect(stepHeight(ceilingFor(Math.ceil(1 + SPEC.carHeight)), 0.5)).toBe(1);
   });
 
   it("does not jump yet for a step beyond look-ahead range", () => {
     expect(
-      shouldStepUp(
+      stepHeight(
         terrain([
           { start: SPEC.hitboxFront + lookahead(0.2) + 0.5, height: 2 },
         ]),
         0.2,
       ),
-    ).toBe(false);
+    ).toBe(0);
   });
 });

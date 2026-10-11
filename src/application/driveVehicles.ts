@@ -46,10 +46,12 @@ export class DriveVehicles {
           solidAt: (offset) => this.world.solidAt(snap.id, offset),
           targets: () => this.world.targetsNear(snap.id),
         });
-        // The mode and the bank are sent only on the tick they change, so send
-        // them before anything else that could throw and skip them.
+        // The mode, the bank, and the gear are sent only on the tick they change, so
+        // send them before anything else that could throw and skip them.
         if (out.flight) this.world.setFlight(snap.id, out.flight);
         if (out.bank !== undefined) this.world.setBank(snap.id, out.bank);
+        if (out.gearDown !== undefined)
+          this.world.setGearDown(snap.id, out.gearDown);
         if (vehicle.flightMode !== "ground")
           for (const rider of snap.riders) airborne.add(rider.id);
         this.world.applyMotion(snap.id, out.impulse, out.yaw);

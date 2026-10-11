@@ -9,6 +9,7 @@ import { SPEC } from "../domain/vehicle/spec";
 import {
   BANK_PROPERTY,
   FLIGHT_PROPERTY,
+  GEAR_DOWN_PROPERTY,
   HEADLIGHTS_PROPERTY,
   TEST_INPUT_EVENT as INPUT_EVENT,
   LIGHT_BLOCK,
@@ -67,17 +68,8 @@ function insideArena(p: Horizontal): boolean {
   );
 }
 
-function drive(
-  car: Entity,
-  x: number,
-  y: number,
-  jump = false,
-  pitch = 0,
-): void {
-  system.sendScriptEvent(
-    INPUT_EVENT,
-    `${car.id},${x},${y},${jump ? 1 : 0},${pitch}`,
-  );
+function drive(car: Entity, x: number, y: number, jump = false): void {
+  system.sendScriptEvent(INPUT_EVENT, `${car.id},${x},${y},${jump ? 1 : 0}`);
 }
 
 function clearInput(car: Entity): void {
@@ -157,6 +149,27 @@ function accelAndStep1(a: Arena): Promise<Outcome> {
     return {
       pass: reach >= 0 && reach <= 46 && climbed,
       detail: `reach95=${reach} climbed=${climbed}`,
+    };
+  });
+}
+
+// Carpets and torches have no collision box, so the step look-ahead must not
+// jump for them (ADR 0035).
+function passableNoHop(a: Arena): Promise<Outcome> {
+  a.dim.runCommand(`fill 30 ${a.gy} 25 34 ${a.gy} 28 white_carpet`);
+  a.dim.runCommand(`fill 40 ${a.gy} 25 40 ${a.gy} 28 torch`);
+  return withCar(a, 5.5, 26.5, -90, async (car) => {
+    drive(car, 0, 1);
+    let maxRise = 0;
+    for (let t = 0; t < 120; t++) {
+      await wait(1);
+      maxRise = Math.max(maxRise, car.location.y - a.gy);
+      if (car.location.x > 45) break;
+    }
+    const passed = car.location.x > 45;
+    return {
+      pass: passed && maxRise < 0.2,
+      detail: `passed=${passed} maxRise=${maxRise.toFixed(2)}`,
     };
   });
 }
@@ -489,10 +502,10 @@ function flightCruise(a: Arena): Promise<Outcome> {
 
 function flightClimbDescend(a: Arena): Promise<Outcome> {
   return withAirborneCar(a, async (car) => {
-    drive(car, 0, 1, false, -30);
-    await wait(35);
+    drive(car, 0, 1, true);
+    await wait(20);
     const top = car.location.y;
-    drive(car, 0, 1, false, 30);
+    drive(car, 0, -1);
     await wait(10);
     const climbed = top - a.gy;
     const sank = top - car.location.y;
@@ -524,9 +537,24 @@ function flightBank(a: Arena): Promise<Outcome> {
 
 function flightLand(a: Arena): Promise<Outcome> {
   return withAirborneCar(a, async (car) => {
+    // Climb well above gearDownHeight so the wheels have to wait for the ground.
+    drive(car, 0, 0, true);
+    await wait(15);
+    drive(car, 0, 0, false);
+    await wait(2);
     await doubleTap(car);
     const afterTap = flightMode(car);
-    const landedAt = await ticksUntilGround(car, 60);
+    let gearY = Number.NaN;
+    let landedAt = -1;
+    for (let t = 0; t < 80; t++) {
+      await wait(1);
+      if (Number.isNaN(gearY) && car.getProperty(GEAR_DOWN_PROPERTY) === true)
+        gearY = car.location.y - a.gy;
+      if (flightMode(car) === "ground") {
+        landedAt = t;
+        break;
+      }
+    }
     const restY = car.location.y - a.gy;
     // Gravity must be back on: a hop up has to come down again.
     car.applyImpulse({ x: 0, y: 0.5, z: 0 });
@@ -536,9 +564,27 @@ function flightLand(a: Arena): Promise<Outcome> {
       pass:
         afterTap === "landing" &&
         landedAt >= 0 &&
+        gearY >= 2 &&
+        gearY <= SPEC.gearDownHeight + 0.5 &&
         Math.abs(restY) <= 0.1 &&
         Math.abs(afterHop) <= 0.1,
-      detail: `afterTap=${afterTap} landedAt=${landedAt} restY=${restY.toFixed(2)} afterHop=${afterHop.toFixed(2)}`,
+      detail: `afterTap=${afterTap} gearY=${gearY.toFixed(2)} landedAt=${landedAt} restY=${restY.toFixed(2)} afterHop=${afterHop.toFixed(2)}`,
+    };
+  });
+}
+
+function flightTouchdown(a: Arena): Promise<Outcome> {
+  return withAirborneCar(a, async (car) => {
+    drive(car, 0, -1);
+    const landedAt = await ticksUntilGround(car, 40);
+    // Release the stick, or it reverses the car once it is on the ground.
+    drive(car, 0, 0);
+    await wait(20);
+    const restY = car.location.y - a.gy;
+    const gearDown = car.getProperty(GEAR_DOWN_PROPERTY) === true;
+    return {
+      pass: landedAt >= 0 && Math.abs(restY) <= 0.1 && gearDown,
+      detail: `landedAt=${landedAt} restY=${restY.toFixed(2)} gearDown=${gearDown}`,
     };
   });
 }
@@ -560,6 +606,7 @@ async function runAll(runId: string): Promise<void> {
   const a = await setupArena();
   const tests: [string, () => Promise<Outcome>][] = [
     ["accel_and_step1", () => accelAndStep1(a)],
+    ["passable_no_hop", () => passableNoHop(a)],
     ["turn_and_handbrake", () => turnAndHandbrake(a)],
     ["ram_cow", () => ramCow(a)],
     ["wall_diagonal", () => wallDiagonal(a)],
@@ -573,6 +620,7 @@ async function runAll(runId: string): Promise<void> {
     ["flight_climb_descend", () => flightClimbDescend(a)],
     ["flight_bank", () => flightBank(a)],
     ["flight_land", () => flightLand(a)],
+    ["flight_touchdown", () => flightTouchdown(a)],
     ["flight_driverless", () => flightDriverless(a)],
   ];
   let passed = 0;

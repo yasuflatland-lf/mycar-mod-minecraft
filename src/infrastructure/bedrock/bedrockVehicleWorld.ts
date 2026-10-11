@@ -30,6 +30,7 @@ import {
   BANK_PROPERTY,
   dyeOf,
   FLIGHT_PROPERTY,
+  GEAR_DOWN_PROPERTY,
   HEADLIGHTS_PROPERTY,
   HOVER_EVENT,
   ITEM_TYPE,
@@ -103,21 +104,19 @@ export class BedrockVehicleWorld
       .filter(isPlayer)
       .map((p) => {
         const mv = p.inputInfo.getMovementVector();
-        const rotation = p.getRotation();
         return {
           id: p.id,
           offset: {
             x: p.location.x - car.location.x,
             z: p.location.z - car.location.z,
           },
-          yaw: rotation.y,
+          yaw: p.getRotation().y,
           raw: {
             moveX: mv.x,
             moveY: mv.y,
             jump:
               p.inputInfo.getButtonState(InputButton.Jump) ===
               ButtonState.Pressed,
-            pitch: rotation.x,
           },
         };
       });
@@ -127,12 +126,29 @@ export class BedrockVehicleWorld
     const car = this.entity(vehicleId);
     if (!car) return false;
     try {
-      const b = car.dimension.getBlock({
+      const at = {
         x: car.location.x + offset.x,
         y: car.location.y + offset.y,
         z: car.location.z + offset.z,
-      });
-      return b !== undefined && !b.isAir && !b.isLiquid && !isLightBlock(b);
+      };
+      const b = car.dimension.getBlock(at);
+      if (!b || b.isAir || b.isLiquid || isLightBlock(b)) return false;
+      // A ray that starts inside a block finds nothing, so a cell under
+      // another block counts as solid without one.
+      const above = b.above();
+      if (above && !above.isAir && !above.isLiquid) return true;
+      // Flowers, grass, carpets and torches have no collision box: a ray cast
+      // down from just above the cell passes through them (ADR 0035).
+      const hit = car.dimension.getBlockFromRay(
+        { x: at.x, y: b.location.y + 1.001, z: at.z },
+        { x: 0, y: -1, z: 0 },
+        {
+          includePassableBlocks: false,
+          includeLiquidBlocks: false,
+          maxDistance: 1,
+        },
+      );
+      return hit?.block.location.y === b.location.y;
     } catch {
       return false; // Unloaded chunk or outside the world
     }
@@ -189,6 +205,10 @@ export class BedrockVehicleWorld
 
   setBank(vehicleId: string, degrees: number): void {
     this.entity(vehicleId)?.setProperty(BANK_PROPERTY, degrees);
+  }
+
+  setGearDown(vehicleId: string, down: boolean): void {
+    this.entity(vehicleId)?.setProperty(GEAR_DOWN_PROPERTY, down);
   }
 
   damage(hit: RamHit, attackerId: string | undefined): void {

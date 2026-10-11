@@ -13,9 +13,8 @@ export const HEADLIGHTS_PROPERTY = "mycar:headlights";
 export const LIT_CELLS_PROPERTY = "mycar:lit_cells";
 export const LIGHT_BLOCK = "minecraft:light_block_15";
 /**
- * Test input messages have the form "<vehicleId>,<moveX>,<moveY>,<jump>[,<pitch>]"
- * (jump is 0 / 1, pitch in degrees with negative looking up). "<vehicleId>,clear"
- * clears the input.
+ * Test input messages have the form "<vehicleId>,<moveX>,<moveY>,<jump>"
+ * (jump is 0 / 1). "<vehicleId>,clear" clears the input.
  */
 export const TEST_INPUT_EVENT = "mycar:test_input";
 /** Client-synced flight mode. The script reads it back after /reload, and the Resource Pack draws the flight visuals from it (ADR 0021). */
@@ -24,6 +23,8 @@ export const FLIGHT_PROPERTY = "mycar:flight";
 export const THIRD_PERSON_CAMERA = "minecraft:third_person";
 /** Client-synced bank angle in degrees; the Resource Pack rolls the model by it (ADR 0026). */
 export const BANK_PROPERTY = "mycar:bank";
+/** Client-synced landing gear; the Resource Pack unfolds the wheels by it (ADR 0033). */
+export const GEAR_DOWN_PROPERTY = "mycar:gear_down";
 export const HOVER_EVENT = "mycar:hover";
 export const LAND_EVENT = "mycar:land";
 

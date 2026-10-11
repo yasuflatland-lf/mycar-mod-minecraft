@@ -1,6 +1,6 @@
 # 0004. Climb two-block steps by looking ahead in the script
 
-- Status: Accepted
+- Status: Superseded in part by 0035 (one-block steps)
 - Date: 2026-10-10
 
 ## Context

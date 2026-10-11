@@ -49,7 +49,7 @@ The manual test checklist is in [`docs/manual-test.md`](docs/manual-test.md).
 | Steer | A / D | Push the stick left / right |
 | Handbrake (slide) | Space (jump) | Jump button |
 | Take off / land | Double-tap Space | Double-tap the jump button |
-| Climb / descend while flying | Look up / down | Look up / down |
+| Climb / descend while flying | Hold Space / hold S | Hold the jump button / pull the stick back |
 | Headlights on / off | Right-click with the switch in hand (driver only) | Tap with the switch in hand (driver only) |
 | Repaint | Right-click the vehicle with a dye | Tap the vehicle with a dye |
 
@@ -60,7 +60,7 @@ The vehicle seats 4. The first player to get in drives and the others ride as pa
 - **Driving.** The vehicle speeds up and coasts like an arcade racer, up to 0.9 blocks per tick (18 blocks per second), and turns as soon as you steer. The handbrake makes it slide sideways. Pushing only sideways (A or D alone, or the stick held flat to one side) creeps forward slowly while turning, instead of backing up
 - **Terrain.** It climbs steps up to two blocks high without stopping, and the wheels spin as it rolls
 - **Ramming.** It damages and pushes away mobs it hits at speed. People inside never take damage, from crashes or from falls
-- **Flying.** A double-tap of jump folds the wheels flat under the body, lights them blue, and lifts the vehicle 1.5 blocks. In the air it keeps the same handling and holds its altitude while you look level; look up or down while moving forward to climb or sink. Another double-tap lands it slowly, and an empty vehicle in the air sinks to the ground by itself
+- **Flying.** A double-tap of jump folds the wheels flat under the body, lights them blue, and lifts the vehicle 1.5 blocks. In the air it keeps the same handling and holds its altitude; hold jump to climb and pull back to sink, while the view stays free to look around. Another double-tap lands it slowly, sinking onto the ground lands it at once, and an empty vehicle in the air sinks to the ground by itself
 - **Headlights.** At night they light the road up to 27 blocks ahead and follow the vehicle
 - **Paint.** A placed vehicle starts khaki. Each of the 16 dyes repaints it in that dye's color, except brown dye, which turns it back to khaki; each repaint uses one dye. Ink sacs, bone meal, cocoa beans, and lapis lazuli do not repaint. a broken vehicle drops a plain item, so the next one starts khaki again
 

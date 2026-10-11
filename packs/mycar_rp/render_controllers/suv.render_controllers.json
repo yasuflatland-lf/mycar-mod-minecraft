@@ -37,7 +37,7 @@
       "textures": ["Array.paints[query.variant]"],
       "part_visibility": [
         { "*": true },
-        { "glow_*": "query.property('mycar:flight') != 'ground'" },
+        { "glow_*": "!query.property('mycar:gear_down')" },
         { "rear_glass": "query.property('mycar:flight') != 'ground'" }
       ]
     }
