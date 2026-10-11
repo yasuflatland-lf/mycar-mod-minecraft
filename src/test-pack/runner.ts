@@ -2,6 +2,7 @@
 // main Behavior Pack, so they drive the vehicle through script events.
 import { type Dimension, type Entity, system, world } from "@minecraft/server";
 import { forward } from "../domain/shared/vec";
+import { type Form, isForm } from "../domain/vehicle/form";
 import { headlightCells } from "../domain/vehicle/headlights";
 import { PAINTS } from "../domain/vehicle/paint";
 import { nearestSeat, toLocal } from "../domain/vehicle/seats";
@@ -426,8 +427,9 @@ function headlightsFollowAndClear(a: Arena): Promise<Outcome> {
 
 const FLIGHT_LANE = { x: 5.5, z: 4.5 } as const;
 
-function vehicleForm(car: Entity): string {
-  return String(car.getProperty(FORM_PROPERTY));
+function vehicleForm(car: Entity): Form | undefined {
+  const form = car.getProperty(FORM_PROPERTY);
+  return isForm(form) ? form : undefined;
 }
 
 /** Two Jump presses 4 ticks apart (ADR 0021). */
@@ -452,13 +454,21 @@ function withAirborneCar<T>(
   });
 }
 
-/** Ticks until the vehicle form reads car, or -1 after `limit` ticks. */
-async function ticksUntilGround(car: Entity, limit: number): Promise<number> {
+/** Ticks until the vehicle form reads `form`, or -1 after `limit` ticks. */
+async function ticksUntilForm(
+  car: Entity,
+  form: Form,
+  limit: number,
+): Promise<number> {
   for (let t = 0; t < limit; t++) {
     await wait(1);
-    if (vehicleForm(car) === "car") return t;
+    if (vehicleForm(car) === form) return t;
   }
   return -1;
+}
+
+function ticksUntilGround(car: Entity, limit: number): Promise<number> {
+  return ticksUntilForm(car, "car", limit);
 }
 
 function flightTakeoff(a: Arena): Promise<Outcome> {
@@ -602,6 +612,295 @@ function flightDriverless(a: Arena): Promise<Outcome> {
   });
 }
 
+const POOL = { minX: 15, maxX: 85, minZ: 2, maxZ: 12, z: 7.5 } as const;
+// Deep enough for a full car height of water with a block under it. In the
+// flat dev world (gy = -60) this puts the pool's stone floor at -64, the
+// bottom of the world, so a carHeight above 2 no longer fits; withPool throws
+// instead of filling below the world.
+const DIVE_DEPTH = Math.ceil(SPEC.carHeight + 1);
+// The car holds depth exactly once it is a submarine (submarine_dive measured
+// a range of 0.000), so 0.1 only absorbs float noise in the reported position.
+// The same margin keeps the held depth clear of the bed and the float line, so
+// a car that sank onto the bed or rose to the surface fails the hold check.
+const DEPTH_HOLD_TOLERANCE = 0.1;
+
+function withinFivePercent(value: number, target: number): boolean {
+  return value >= target * 0.95 && value <= target * 1.05;
+}
+
+async function withPool<T>(
+  a: Arena,
+  depth: number,
+  run: () => Promise<T>,
+): Promise<T> {
+  const { minX, maxX, minZ, maxZ } = POOL;
+  const bottom = a.gy - depth;
+  const worldMin = a.dim.heightRange.min;
+  if (bottom - 1 < worldMin)
+    throw new Error(
+      `Pool of depth ${depth} needs a floor at y=${bottom - 1}, below the world's minimum y=${worldMin}`,
+    );
+  const fillPool = (block: string) =>
+    a.dim.runCommand(
+      `fill ${minX} ${bottom} ${minZ} ${maxX} ${a.gy - 1} ${maxZ} ${block}`,
+    );
+  a.dim.runCommand(
+    `fill ${minX} ${bottom - 1} ${minZ} ${maxX} ${bottom - 1} ${maxZ} stone`,
+  );
+  // Contain the water even when the arena's original terrain has caves.
+  for (const x of [minX - 1, maxX + 1])
+    a.dim.runCommand(
+      `fill ${x} ${bottom} ${minZ - 1} ${x} ${a.gy - 1} ${maxZ + 1} stone`,
+    );
+  for (const z of [minZ - 1, maxZ + 1])
+    a.dim.runCommand(
+      `fill ${minX} ${bottom} ${z} ${maxX} ${a.gy - 1} ${z} stone`,
+    );
+  fillPool("water");
+  try {
+    await wait(5);
+    return await run();
+  } finally {
+    fillPool("air");
+    a.dim.runCommand(
+      `fill ${minX} ${a.gy - 1} ${minZ} ${maxX} ${a.gy - 1} ${maxZ} stone`,
+    );
+  }
+}
+
+/** Runs `run` on a car heading +x along the pool, starting on dry ground. */
+function withPoolCar<T>(
+  a: Arena,
+  run: (car: Entity) => Promise<T>,
+): Promise<T> {
+  return withCar(a, 5.5, POOL.z, -90, run);
+}
+
+/** Runs `run` on a car that has driven into the pool and become a submarine. */
+function withDivingCar<T>(
+  a: Arena,
+  run: (car: Entity, enteredAt: number) => Promise<T>,
+): Promise<T> {
+  return withPoolCar(a, async (car) => {
+    drive(car, 0, 1);
+    const enteredAt = await ticksUntilForm(car, "submarine", 100);
+    drive(car, 0, 0);
+    await wait(5);
+    return run(car, enteredAt);
+  });
+}
+
+function submarineDive(a: Arena): Promise<Outcome> {
+  return withPool(a, DIVE_DEPTH, () =>
+    withDivingCar(a, async (car, enteredAt) => {
+      const y0 = car.location.y;
+      drive(car, 0, 1);
+      let minY = y0;
+      let maxY = y0;
+      let speed = 0;
+      let submerged = enteredAt >= 0;
+      for (let t = 0; t < 60; t++) {
+        await wait(1);
+        submerged &&= vehicleForm(car) === "submarine";
+        minY = Math.min(minY, car.location.y);
+        maxY = Math.max(maxY, car.location.y);
+        if (t >= 50) speed = Math.max(speed, hlen(car.getVelocity()));
+      }
+      const drift = Math.max(y0 - minY, maxY - y0);
+      const bed = a.gy - DIVE_DEPTH;
+      const floatLine = a.gy - SPEC.floatDraft;
+      const heldDepth =
+        drift <= DEPTH_HOLD_TOLERANCE &&
+        minY > bed + DEPTH_HOLD_TOLERANCE &&
+        maxY < floatLine - DEPTH_HOLD_TOLERANCE;
+      // Sink to the bed, then rise with Jump held. The flat world's floor is
+      // near the bottom of the world, so the pool is only a few blocks deep
+      // and the rise is sampled in its first ticks, while still submerged.
+      // The first ticks overshoot (the input lands a tick late and the
+      // impulse assumes SPEC's drag), so only the last two samples count.
+      drive(car, 0, -1);
+      await wait(20);
+      drive(car, 0, 0, true);
+      const rise: number[] = [];
+      for (let t = 0; t < 5; t++) {
+        await wait(1);
+        if (vehicleForm(car) !== "submarine") break;
+        rise.push(car.getVelocity().y);
+      }
+      const steady = rise.slice(3);
+      const riseSpeed =
+        steady.length === 2
+          ? steady.reduce((sum, v) => sum + v, 0) / steady.length
+          : Number.NaN;
+      // As in flight_cruise, the steady speed is target * engineDrag / SPEC drag,
+      // so the ratio reveals the engine's drag in water.
+      const measuredDrag = (SPEC.waterDrag * speed) / SPEC.maxWaterSpeed;
+      const measuredVerticalDrag =
+        (SPEC.waterVerticalDrag * riseSpeed) / SPEC.maxClimb;
+      return {
+        pass:
+          submerged &&
+          heldDepth &&
+          withinFivePercent(speed, SPEC.maxWaterSpeed) &&
+          withinFivePercent(riseSpeed, SPEC.maxClimb),
+        detail: `enteredAt=${enteredAt} submerged=${submerged} y0=${(y0 - a.gy).toFixed(3)} drift=${drift.toFixed(3)} speed=${speed.toFixed(3)} riseSpeed=${riseSpeed.toFixed(3)} measuredDrag=${measuredDrag.toFixed(3)} measuredVerticalDrag=${measuredVerticalDrag.toFixed(3)}`,
+      };
+    }),
+  );
+}
+
+function submarineBreach(a: Arena): Promise<Outcome> {
+  return withPool(a, DIVE_DEPTH, () =>
+    withDivingCar(a, async (car, enteredAt) => {
+      drive(car, 0, 0, true);
+      let hoverAt = -1;
+      let noCar = vehicleForm(car) === "submarine";
+      let dry = false;
+      for (let t = 0; t < 60; t++) {
+        await wait(1);
+        const form = vehicleForm(car);
+        noCar &&= form !== "car";
+        if (form === "hover") {
+          hoverAt = t;
+          dry = car.location.y >= a.gy;
+          break;
+        }
+      }
+      return {
+        pass: enteredAt >= 0 && hoverAt >= 0 && noCar && dry,
+        detail: `enteredAt=${enteredAt} hoverAt=${hoverAt} noCar=${noCar} dry=${dry} rise=${(car.location.y - a.gy).toFixed(2)}`,
+      };
+    }),
+  );
+}
+
+function submarineShore(a: Arena): Promise<Outcome> {
+  const depth = DIVE_DEPTH;
+  const shoreX = 40;
+  // Wide enough that the car, coasting after it becomes a car with the
+  // throttle off, settles on the last submerged step instead of reaching the
+  // dry one. It becomes a car near the submarine's top speed (0.5) and loses
+  // only SPEC.drag (0.02) per tick: with tread 8 it became a car 1.9 blocks
+  // past the riser and coasted 7.75 blocks up onto the dry step; with tread
+  // 14 it coasted 7.96 blocks and its front stopped 2.5 blocks short of the
+  // next riser.
+  const tread = 14;
+  const dryX = shoreX + (depth - 1) * tread;
+  return withPool(a, depth, () => {
+    // One-block steps up from the bed; the top one is level with the floor.
+    for (let step = 1; step <= depth; step++) {
+      a.dim.runCommand(
+        `fill ${shoreX + (step - 1) * tread} ${a.gy - depth} ${POOL.minZ} ${POOL.maxX} ${a.gy - depth + step - 1} ${POOL.maxZ} stone`,
+      );
+    }
+    return withDivingCar(a, async (car, enteredAt) => {
+      drive(car, 0, 1);
+      const landedAt = await ticksUntilGround(car, 200);
+      const landedX = car.location.x;
+      const landedY = car.location.y - a.gy;
+      // It becomes a car while the step climb lifts it over the last
+      // submerged step, once its roof clears the surface, and can still be in
+      // the air (landedY=0.66 in the first run). With the throttle off it
+      // drops onto that step, in water shallower than its roof, and must stay
+      // a car there without flipping back to a submarine.
+      drive(car, 0, 0);
+      const forms = new Set<Form | undefined>();
+      for (let t = 0; t < 40; t++) {
+        await wait(1);
+        forms.add(vehicleForm(car));
+      }
+      const parkedX = car.location.x;
+      const parkedY = car.location.y - a.gy;
+      // The submerged step's top is a block below the dry floor (gy - 1), so
+      // half a block separates parking in water from parking on dry land.
+      const parkedInWater = parkedX < dryX && parkedY < -0.5;
+      drive(car, 0, 1);
+      let climbedOut = false;
+      for (let t = 0; t < 100 && !climbedOut; t++) {
+        await wait(1);
+        climbedOut =
+          car.location.x >= dryX + 1 &&
+          Math.abs(car.location.y - a.gy) <= 0.1 &&
+          vehicleForm(car) === "car";
+      }
+      return {
+        pass:
+          enteredAt >= 0 &&
+          landedAt >= 0 &&
+          landedX >= shoreX &&
+          landedX < dryX &&
+          parkedInWater &&
+          forms.size === 1 &&
+          forms.has("car") &&
+          climbedOut,
+        detail: `enteredAt=${enteredAt} landedAt=${landedAt} landedX=${landedX.toFixed(2)} landedY=${landedY.toFixed(2)} parkedX=${parkedX.toFixed(2)} parkedY=${parkedY.toFixed(2)} parkedForms=${[...forms].join("/")} climbedOut=${climbedOut} x=${car.location.x.toFixed(2)} y=${(car.location.y - a.gy).toFixed(2)} form=${vehicleForm(car)}`,
+      };
+    });
+  });
+}
+
+function submarineUnmanned(a: Arena): Promise<Outcome> {
+  return withPool(a, DIVE_DEPTH, () =>
+    withDivingCar(a, async (car, enteredAt) => {
+      const startY = car.location.y;
+      clearInput(car);
+      let submarineOnly = vehicleForm(car) === "submarine";
+      for (let t = 0; t < 120; t++) {
+        await wait(1);
+        submarineOnly &&= vehicleForm(car) === "submarine";
+      }
+      let minY = car.location.y;
+      let maxY = minY;
+      let maxFloatError = 0;
+      for (let t = 0; t < 40; t++) {
+        await wait(1);
+        submarineOnly &&= vehicleForm(car) === "submarine";
+        minY = Math.min(minY, car.location.y);
+        maxY = Math.max(maxY, car.location.y);
+        maxFloatError = Math.max(
+          maxFloatError,
+          Math.abs(a.gy - car.location.y - SPEC.floatDraft),
+        );
+      }
+      const rise = car.location.y - startY;
+      return {
+        pass:
+          enteredAt >= 0 &&
+          submarineOnly &&
+          rise >= 0.2 &&
+          maxFloatError <= 0.1 &&
+          maxY - minY <= 0.1,
+        detail: `enteredAt=${enteredAt} submarineOnly=${submarineOnly} rise=${rise.toFixed(3)} maxFloatError=${maxFloatError.toFixed(3)} floatRange=${(maxY - minY).toFixed(3)}`,
+      };
+    }),
+  );
+}
+
+function submarineShallow(a: Arena): Promise<Outcome> {
+  return withPool(a, 1, () =>
+    withPoolCar(a, async (car) => {
+      drive(car, 0, 1);
+      let carOnly = true;
+      let crossed = false;
+      let enteredWater = false;
+      for (let t = 0; t < 240; t++) {
+        await wait(1);
+        carOnly &&= vehicleForm(car) === "car";
+        enteredWater ||=
+          car.location.x > POOL.minX + 2 && car.location.y < a.gy - 0.5;
+        if (car.location.x > POOL.maxX + 3) {
+          crossed = true;
+          break;
+        }
+      }
+      return {
+        pass: carOnly && enteredWater && crossed,
+        detail: `carOnly=${carOnly} enteredWater=${enteredWater} crossed=${crossed} x=${car.location.x.toFixed(2)}`,
+      };
+    }),
+  );
+}
+
 // Summons one more car than the limit; the first one summoned is the oldest
 // and must go (ADR 0038).
 async function vehicleLimit(a: Arena): Promise<Outcome> {
@@ -649,6 +948,11 @@ async function runAll(runId: string): Promise<void> {
     ["flight_land", () => flightLand(a)],
     ["flight_touchdown", () => flightTouchdown(a)],
     ["flight_driverless", () => flightDriverless(a)],
+    ["submarine_dive", () => submarineDive(a)],
+    ["submarine_breach", () => submarineBreach(a)],
+    ["submarine_shore", () => submarineShore(a)],
+    ["submarine_unmanned", () => submarineUnmanned(a)],
+    ["submarine_shallow", () => submarineShallow(a)],
     ["vehicle_limit", () => vehicleLimit(a)],
   ];
   let passed = 0;

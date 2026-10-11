@@ -68,9 +68,10 @@ export const SPEC = {
   flightVerticalDrag: 0.98,
   // Submarine (ADR 0040)
   maxWaterSpeed: 0.5, // blocks/tick
-  // Placeholders until the submarine in-game tests measure drag.
-  waterDrag: 0.8,
-  waterVerticalDrag: 0.8,
+  // Engine drag per tick in water with gravity off, as the submarine_dive
+  // in-game test measured it (0.833 horizontal, 0.836 vertical).
+  waterDrag: 0.83,
+  waterVerticalDrag: 0.84,
   floatDraft: 1.2, // blocks; leaves 0.4 blocks of roof above the surface.
   // A floating submarine's feet sit fractionally into a shore step, so the
   // step top can be less than the half block above the feet where stepUp.ts
