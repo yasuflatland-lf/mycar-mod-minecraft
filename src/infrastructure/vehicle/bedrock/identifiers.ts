@@ -1,5 +1,5 @@
 import { PAINTS, type Paint } from "../../../domain/vehicle/paint";
-import { id } from "../../shared/identifiers";
+import { id, NAMESPACE } from "../../shared/identifiers";
 
 export const VEHICLE_TYPE = id("suv");
 export const ITEM_TYPE = id("suv_item");
@@ -14,6 +14,9 @@ export const HEADLIGHT_SWITCH_TYPE = id("headlight_switch");
 export const HEADLIGHTS_PROPERTY = id("headlights");
 /** Dynamic property on a vehicle holding the cells it put light blocks in. */
 export const LIT_CELLS_PROPERTY = id("lit_cells");
+/** Resource Pack animation that swings a door bone (ADR 0009) open and shut. */
+export const doorAnimation = (door: string): string =>
+  `animation.${NAMESPACE}.suv.${door}`;
 export const LIGHT_BLOCK = "minecraft:light_block_15";
 /**
  * Test input messages have the form "<vehicleId>,<moveX>,<moveY>,<jump>"

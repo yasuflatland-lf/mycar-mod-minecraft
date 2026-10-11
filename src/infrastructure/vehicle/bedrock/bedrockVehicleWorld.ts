@@ -26,11 +26,11 @@ import type { RamHit, RamTarget } from "../../../domain/vehicle/ram";
 import { RAM_QUERY_RADIUS } from "../../../domain/vehicle/ramQuery";
 import type { RiderView } from "../../../domain/vehicle/vehicle";
 import { waterDepthFrom } from "../../../domain/vehicle/water";
-import { NAMESPACE } from "../../shared/identifiers";
 import type { TestInputStore } from "../testInput/testInputStore";
 import { HeadlightBlocks, isLightBlock } from "./headlightBlocks";
 import {
   BANK_PROPERTY,
+  doorAnimation,
   dyeOf,
   FORM_PROPERTY,
   GEAR_DOWN_PROPERTY,
@@ -269,7 +269,7 @@ export class BedrockVehicleWorld
   playDoor(vehicleId: string, door: string): void {
     const car = this.entity(vehicleId);
     if (!car) return;
-    car.playAnimation(`animation.${NAMESPACE}.suv.${door}`);
+    car.playAnimation(doorAnimation(door));
     car.dimension.playSound("random.door_open", car.location);
   }
 
