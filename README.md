@@ -60,7 +60,7 @@ Download `mycar-<version>.mcaddon` from the [latest release](https://github.com/
 
 | Action | PC (keyboard) | Mobile (touch) |
 |---|---|---|
-| Get in | Right-click the vehicle | Tap the vehicle |
+| Get in | Right-click the vehicle | Press the ride button |
 | Get out | Shift (sneak) | Sneak button |
 | Accelerate / brake and reverse | W / S | Push the stick forward / back |
 | Steer | A / D | Push the stick left / right |

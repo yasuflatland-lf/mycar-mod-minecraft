@@ -16,7 +16,7 @@ const particle = read(`${RP}/particles/hover_glow.json`).particle_effect;
 const WHEELS = ["wheel_fl", "wheel_fr", "wheel_rl", "wheel_rr"];
 
 describe("Resource Pack flight visuals (ADR 0022)", () => {
-  it("has no obsolete vehicle property references (ADR 0037)", () => {
+  it("has no obsolete vehicle property references (ADR 0038)", () => {
     // Split so that a repository-wide search for the old name finds nothing.
     for (const file of readdirSync(RP, {
       recursive: true,
@@ -250,7 +250,7 @@ describe("Resource Pack sounds (ADR 0030)", () => {
   });
 });
 
-describe("Resource Pack submarine visuals (ADR 0038)", () => {
+describe("Resource Pack submarine visuals (ADR 0039)", () => {
   it("registers the three submarine animations", () => {
     for (const name of ["dive", "submerged", "surface"]) {
       expect(client.animations[name]).toBe(`animation.mycar.suv.${name}`);

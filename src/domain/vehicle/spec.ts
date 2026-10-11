@@ -66,7 +66,7 @@ export const SPEC = {
   // reports the measured horizontal value.
   flightDrag: 0.91,
   flightVerticalDrag: 0.98,
-  // Submarine (ADR 0038)
+  // Submarine (ADR 0039)
   maxWaterSpeed: 0.5,
   // Engine drag per tick in water with gravity off, as the submarine_dive
   // in-game test measured it (0.833 horizontal, 0.836 vertical).
