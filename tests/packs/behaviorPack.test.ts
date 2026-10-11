@@ -7,6 +7,8 @@ import {
   BANK_PROPERTY,
   FORM_PROPERTY,
   GEAR_DOWN_PROPERTY,
+  GRAVITY_OFF_EVENT,
+  GRAVITY_ON_EVENT,
 } from "../../src/infrastructure/bedrock/identifiers";
 
 const read = (p: string) => JSON.parse(readFileSync(p, "utf8"));
@@ -78,11 +80,11 @@ describe("packs/mycar_bp", () => {
     expect(entity.component_groups["mycar:weighted"]).toEqual({
       "minecraft:physics": {},
     });
-    expect(entity.events["mycar:gravity_off"]).toEqual({
+    expect(entity.events[GRAVITY_OFF_EVENT]).toEqual({
       add: { component_groups: ["mycar:weightless"] },
       remove: { component_groups: ["mycar:weighted"] },
     });
-    expect(entity.events["mycar:gravity_on"]).toEqual({
+    expect(entity.events[GRAVITY_ON_EVENT]).toEqual({
       add: { component_groups: ["mycar:weighted"] },
       remove: { component_groups: ["mycar:weightless"] },
     });

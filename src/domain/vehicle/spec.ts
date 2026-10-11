@@ -67,15 +67,15 @@ export const SPEC = {
   flightDrag: 0.91,
   flightVerticalDrag: 0.98,
   // Submarine (ADR 0039)
-  maxWaterSpeed: 0.5,
+  maxWaterSpeed: 0.5, // blocks/tick
   // Placeholders until the submarine in-game tests measure drag.
   waterDrag: 0.8,
   waterVerticalDrag: 0.8,
-  floatDraft: 1.2, // Leaves 0.4 blocks of roof above the surface.
-  surfaceRise: 0.05,
-  floatGain: 0.25,
-  waterBreathingInterval: 20,
-  waterBreathingTicks: 60,
+  floatDraft: 1.2, // blocks; leaves 0.4 blocks of roof above the surface.
+  surfaceRise: 0.05, // blocks/tick; caps buoyancy both up and down
+  floatGain: 0.25, // blocks/tick of buoyancy per block of depth off the float line
+  waterBreathingInterval: 20, // ticks
+  waterBreathingTicks: 60, // ticks
   // Banking in flight (ADR 0026)
   maxBank: 30, // degrees at the full turn rate
   bankRate: 3, // degrees/tick; 10 ticks from level to full bank
