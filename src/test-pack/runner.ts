@@ -452,13 +452,21 @@ function withAirborneCar<T>(
   });
 }
 
-/** Ticks until the vehicle form reads car, or -1 after `limit` ticks. */
-async function ticksUntilGround(car: Entity, limit: number): Promise<number> {
+/** Ticks until the vehicle form reads `form`, or -1 after `limit` ticks. */
+async function ticksUntilForm(
+  car: Entity,
+  form: string,
+  limit: number,
+): Promise<number> {
   for (let t = 0; t < limit; t++) {
     await wait(1);
-    if (vehicleForm(car) === "car") return t;
+    if (vehicleForm(car) === form) return t;
   }
   return -1;
+}
+
+function ticksUntilGround(car: Entity, limit: number): Promise<number> {
+  return ticksUntilForm(car, "car", limit);
 }
 
 function flightTakeoff(a: Arena): Promise<Outcome> {
@@ -603,6 +611,11 @@ function flightDriverless(a: Arena): Promise<Outcome> {
 }
 
 const POOL = { minX: 15, maxX: 85, minZ: 2, maxZ: 12, z: 7.5 } as const;
+const DIVE_DEPTH = Math.ceil(SPEC.carHeight + 1);
+
+function withinFivePercent(value: number, target: number): boolean {
+  return value >= target * 0.95 && value <= target * 1.05;
+}
 
 async function withPool<T>(
   a: Arena,
@@ -611,6 +624,10 @@ async function withPool<T>(
 ): Promise<T> {
   const { minX, maxX, minZ, maxZ } = POOL;
   const bottom = a.gy - depth;
+  const fillPool = (block: string) =>
+    a.dim.runCommand(
+      `fill ${minX} ${bottom} ${minZ} ${maxX} ${a.gy - 1} ${maxZ} ${block}`,
+    );
   a.dim.runCommand(
     `fill ${minX} ${bottom - 1} ${minZ} ${maxX} ${bottom - 1} ${maxZ} stone`,
   );
@@ -623,36 +640,34 @@ async function withPool<T>(
     a.dim.runCommand(
       `fill ${minX} ${bottom} ${z} ${maxX} ${a.gy - 1} ${z} stone`,
     );
-  a.dim.runCommand(
-    `fill ${minX} ${bottom} ${minZ} ${maxX} ${a.gy - 1} ${maxZ} water`,
-  );
+  fillPool("water");
   try {
     await wait(5);
     return await run();
   } finally {
-    a.dim.runCommand(
-      `fill ${minX} ${bottom} ${minZ} ${maxX} ${a.gy - 1} ${maxZ} air`,
-    );
+    fillPool("air");
     a.dim.runCommand(
       `fill ${minX} ${a.gy - 1} ${minZ} ${maxX} ${a.gy - 1} ${maxZ} stone`,
     );
   }
 }
 
+/** Runs `run` on a car heading +x along the pool, starting on dry ground. */
+function withPoolCar<T>(
+  a: Arena,
+  run: (car: Entity) => Promise<T>,
+): Promise<T> {
+  return withCar(a, 5.5, POOL.z, -90, run);
+}
+
+/** Runs `run` on a car that has driven into the pool and become a submarine. */
 function withDivingCar<T>(
   a: Arena,
   run: (car: Entity, enteredAt: number) => Promise<T>,
 ): Promise<T> {
-  return withCar(a, 5.5, POOL.z, -90, async (car) => {
+  return withPoolCar(a, async (car) => {
     drive(car, 0, 1);
-    let enteredAt = -1;
-    for (let t = 0; t < 100; t++) {
-      await wait(1);
-      if (vehicleForm(car) === "submarine") {
-        enteredAt = t;
-        break;
-      }
-    }
+    const enteredAt = await ticksUntilForm(car, "submarine", 100);
     drive(car, 0, 0);
     await wait(5);
     return run(car, enteredAt);
@@ -660,7 +675,7 @@ function withDivingCar<T>(
 }
 
 function submarineDive(a: Arena): Promise<Outcome> {
-  return withPool(a, Math.ceil(SPEC.carHeight + 1), () =>
+  return withPool(a, DIVE_DEPTH, () =>
     withDivingCar(a, async (car, enteredAt) => {
       drive(car, 0, 1);
       let minY = Number.POSITIVE_INFINITY;
@@ -705,10 +720,8 @@ function submarineDive(a: Arena): Promise<Outcome> {
         pass:
           submerged &&
           altRange <= 0.5 &&
-          speed >= SPEC.maxWaterSpeed * 0.95 &&
-          speed <= SPEC.maxWaterSpeed * 1.05 &&
-          riseSpeed >= SPEC.maxClimb * 0.95 &&
-          riseSpeed <= SPEC.maxClimb * 1.05,
+          withinFivePercent(speed, SPEC.maxWaterSpeed) &&
+          withinFivePercent(riseSpeed, SPEC.maxClimb),
         detail: `enteredAt=${enteredAt} submerged=${submerged} altRange=${altRange.toFixed(3)} speed=${speed.toFixed(3)} riseSpeed=${riseSpeed.toFixed(3)} measuredDrag=${measuredDrag.toFixed(3)} measuredVerticalDrag=${measuredVerticalDrag.toFixed(3)}`,
       };
     }),
@@ -716,7 +729,7 @@ function submarineDive(a: Arena): Promise<Outcome> {
 }
 
 function submarineBreach(a: Arena): Promise<Outcome> {
-  return withPool(a, Math.ceil(SPEC.carHeight + 1), () =>
+  return withPool(a, DIVE_DEPTH, () =>
     withDivingCar(a, async (car, enteredAt) => {
       drive(car, 0, 0, true);
       let hoverAt = -1;
@@ -741,7 +754,7 @@ function submarineBreach(a: Arena): Promise<Outcome> {
 }
 
 function submarineShore(a: Arena): Promise<Outcome> {
-  const depth = Math.ceil(SPEC.carHeight + 1);
+  const depth = DIVE_DEPTH;
   const shoreX = 60;
   const tread = 4;
   return withPool(a, depth, () => {
@@ -753,14 +766,7 @@ function submarineShore(a: Arena): Promise<Outcome> {
     }
     return withDivingCar(a, async (car, enteredAt) => {
       drive(car, 0, 1);
-      let landedAt = -1;
-      for (let t = 0; t < 200; t++) {
-        await wait(1);
-        if (vehicleForm(car) === "car") {
-          landedAt = t;
-          break;
-        }
-      }
+      const landedAt = await ticksUntilGround(car, 200);
       const landedX = car.location.x;
       const landedY = car.location.y - a.gy;
       // Park where it became a car, which is the waterline: the form must not
@@ -795,7 +801,7 @@ function submarineShore(a: Arena): Promise<Outcome> {
 }
 
 function submarineUnmanned(a: Arena): Promise<Outcome> {
-  return withPool(a, Math.ceil(SPEC.carHeight + 1), () =>
+  return withPool(a, DIVE_DEPTH, () =>
     withDivingCar(a, async (car, enteredAt) => {
       const startY = car.location.y;
       clearInput(car);
@@ -833,7 +839,7 @@ function submarineUnmanned(a: Arena): Promise<Outcome> {
 
 function submarineShallow(a: Arena): Promise<Outcome> {
   return withPool(a, 1, () =>
-    withCar(a, 5.5, POOL.z, -90, async (car) => {
+    withPoolCar(a, async (car) => {
       drive(car, 0, 1);
       let carOnly = true;
       let crossed = false;
