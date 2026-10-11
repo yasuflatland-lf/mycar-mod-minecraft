@@ -149,3 +149,38 @@ export function stepMotion(
     impulse: { x: (given.x - v.x) * control, z: (given.z - v.z) * control },
   };
 }
+
+/**
+ * One tick of horizontal movement with gravity off (ADR 0020). There is no
+ * ground friction to estimate and no step to climb, so the impulse is
+ * pre-divided by the engine's flight drag and applied in full. The handbrake
+ * does not exist in the air.
+ */
+export function stepFlightMotion(
+  prev: MotionState,
+  input: DriveInput,
+  v: Vec2,
+): MotionResult {
+  const speed = updateSpeed(prev.speed, input.throttle, input.creep);
+  const yaw = steerYaw(prev.yaw, speed, input.steer);
+  const f = forward(yaw);
+  const vLong = dot(v, f);
+  const keepLat = 1 - SPEC.grip;
+  const target = clampLength(
+    {
+      x: f.x * speed + (v.x - f.x * vLong) * keepLat,
+      z: f.z * speed + (v.z - f.z * vLong) * keepLat,
+    },
+    SPEC.maxSpeed,
+  );
+  return {
+    state: { ...prev, speed, yaw, expected: undefined, stepTicks: 0 },
+    forward: f,
+    jumped: false,
+    blocked: false,
+    impulse: {
+      x: target.x / SPEC.flightDrag - v.x,
+      z: target.z / SPEC.flightDrag - v.z,
+    },
+  };
+}
