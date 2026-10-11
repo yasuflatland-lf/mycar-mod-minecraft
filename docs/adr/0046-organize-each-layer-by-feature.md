@@ -17,8 +17,8 @@ A pnpm workspace per feature would provide package boundaries, but adds package 
 - `shared/` holds code used by more than one feature. Today the shared modules are `domain/shared/vec.ts` and `infrastructure/shared/identifiers.ts`; the latter exports the namespace and an `id(name)` helper.
 - A feature must not import another feature in any layer. Shared code must not import a feature. Collect feature names from all three layers and enforce these boundaries by resolving relative imports in the architecture test. Keep the existing layer checks, and add example tests for the resolver alongside the import parser tests (0010).
 - Each feature exposes an infrastructure install function. `installVehicles()` constructs the repositories, world adapter, test input store, logger, and use cases, then registers subscriptions. `bootstrap()` calls the install functions and logs the existing loaded message.
-- Tests mirror the feature layout. `src/main.ts`, the in-game test pack, pack tests, and test support remain in their existing locations.
-- This reorganization changes no behavior, IDs, properties, events, pack files, or tuning values. The namespace remains `mycar`.
+- Tests mirror the feature layout. `src/main.ts`, the in-game test pack, pack tests (`tests/packs/`), and `tests/support/` remain in their existing locations.
+- This reorganization changes no behavior, IDs, properties, events, pack files, or tuning values; the namespace and IDs are unchanged by this reorganization.
 
 ## Consequences
 

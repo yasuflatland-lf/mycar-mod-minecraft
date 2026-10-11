@@ -49,8 +49,9 @@ function allowsFeatureImport(
 ): boolean {
   if (!specifier.startsWith(".")) return true;
   const resolved = resolve(dirname(file), specifier);
-  // An extensionless specifier may name a folder (`../building`), which
-  // resolves to its index file.
+  // Specifiers omit the extension. Adding a segment lets featureOf place a
+  // folder import such as `../building` in its feature; for a file import it
+  // does not change the feature.
   const target = featureOf(
     extname(resolved) ? resolved : join(resolved, "index.ts"),
   );

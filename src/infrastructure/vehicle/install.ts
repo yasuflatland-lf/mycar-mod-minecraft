@@ -1,5 +1,5 @@
-// Wires the vehicle feature's repository, port implementations, and use cases
-// together; bootstrap() calls it once.
+// Wires the vehicle feature's repositories, port implementations, and use cases
+// together.
 import { DriveVehicles } from "../../application/vehicle/driveVehicles";
 import { GiveStarterVehicle } from "../../application/vehicle/giveStarterVehicle";
 import { HitVehicle } from "../../application/vehicle/hitVehicle";
