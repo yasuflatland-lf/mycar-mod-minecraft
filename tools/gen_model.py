@@ -3,8 +3,8 @@
 Coordinates are in pixels (16 px = 1 block). The definitions below use "forward +z, right +x",
 and are rotated 180° around the Y axis just before writing, because in Bedrock the front of an
 entity is on the -z side of the model.
-Bone names follow the convention (ADR 0009): root / body / wheel_fl / wheel_fr / wheel_rl / wheel_rr /
-door_fr / door_rr / door_fl / door_rl / seat_0..3.
+Bone names follow the convention (ADR 0009, 0021): root / body / wheel_fl / wheel_fr / wheel_rl / wheel_rr /
+glow_fl / glow_fr / glow_rl / glow_rr / door_fr / door_rr / door_fl / door_rl / seat_0..3.
 """
 import json
 import math
@@ -31,9 +31,13 @@ PALETTE = {
     "amber": (235, 150, 30),
     "leather": (110, 68, 38),
     "spoke": (97, 97, 97),  # #616161
+    "glow": (80, 170, 255),
 }
 NAMES = list(PALETTE)
-EMISSIVE = {"light"}
+# Swatch alpha, 255 unless listed. Alpha 0 marks the headlight lenses as emissive for the
+# entity_emissive material; the materials the lenses use while the headlights are off ignore alpha
+# (ADR 0020). entity_emissive_alpha makes a texel glow when its alpha is low but not 0 (ADR 0021).
+ALPHA = {"light": 0, "glow": 40}
 
 # Body color of each paint (ADR 0017). Khaki writes suv.png; the others write suv_<paint>.png.
 # The red stays darker than the "tail" swatch so the tail lights still show on a red body.
@@ -320,6 +324,18 @@ def wheel(name, x_out, z_center):
     }
 
 
+def glow(name, x_out, z_center):
+    # A disc under the folded wheel (ADR 0021). The render controller hides it on the ground.
+    x = 14 * x_out
+    return {
+        "name": name,
+        "parent": "root",
+        "pivot": [x, 0, z_center],
+        "cubes": [box(x - 5, -0.5, z_center - 5, x + 5, 0, z_center + 5, "glow")],
+        "locators": {name.replace("glow", "hover"): [x, -0.5, z_center]},
+    }
+
+
 # Rear spare tire (on the tailgate, axle along z)
 SPARE = (0, 14, -27.5)
 body += round_tire("z", SPARE, 5, -29, -26)
@@ -354,6 +370,10 @@ geo = {
                 wheel("wheel_fr", +1, 17),
                 wheel("wheel_rl", -1, -16),
                 wheel("wheel_rr", +1, -16),
+                glow("glow_fl", -1, 17),
+                glow("glow_fr", +1, 17),
+                glow("glow_rl", -1, -16),
+                glow("glow_rr", +1, -16),
                 *[door(n) for n in DOORS],
                 {"name": "seat_0", "parent": "body", "pivot": [6, 10, 2]},
                 {"name": "seat_1", "parent": "body", "pivot": [-6, 10, 2]},
@@ -388,6 +408,7 @@ turn_around(geo["minecraft:geometry"][0]["bones"])
 
 
 def png(path, w, h, pixel):
+    # pixel returns (r, g, b) for an opaque texel or (r, g, b, a)
     rows = b""
     for y in range(h):
         rows += b"\x00" + b"".join(bytes((*pixel(x, y), 255)[:4]) for x in range(w))
@@ -407,9 +428,8 @@ def swatches(body_color):
         i = x // 4
         if y >= 4 or i >= len(NAMES):
             return (0, 0, 0)
-        # Alpha 0 marks the swatch as emissive for the entity_emissive material; the materials the
-        # lenses use while the headlights are off ignore alpha (ADR 0020)
-        return (*colors[NAMES[i]], 0) if NAMES[i] in EMISSIVE else colors[NAMES[i]]
+        name = NAMES[i]
+        return (*colors[name], ALPHA.get(name, 255))
 
     return swatch
 
