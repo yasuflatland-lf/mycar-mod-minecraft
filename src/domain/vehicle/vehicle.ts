@@ -1,12 +1,27 @@
 // Aggregate for one vehicle: motion, driver, seats, ram cooldowns, and the hit count.
 import { forward, rightOf, type Vec2, type Vec3 } from "../shared/vec";
-import { NEUTRAL_INPUT, type RawInput, toDriveInput } from "./driveInput";
+import {
+  type DriveInput,
+  NEUTRAL_INPUT,
+  type RawInput,
+  toDriveInput,
+} from "./driveInput";
 import type { VehicleEvent } from "./events";
+import {
+  type FlightMode,
+  type FlightState,
+  flightVerticalSpeed,
+  initialFlight,
+  stepFlight,
+  verticalImpulse,
+} from "./flight";
 import { EMPTY_COUNTER, type HitCounter, registerHit } from "./hitCounter";
 import {
   initialMotion,
+  type MotionResult,
   type MotionState,
   type StepProbe,
+  stepFlightMotion,
   stepMotion,
 } from "./motion";
 import { type RamHit, type RamTarget, selectHits } from "./ram";
@@ -28,6 +43,8 @@ export interface TickContext {
   testInput?: RawInput;
   velocity: Vec2;
   onGround: boolean;
+  /** Vertical velocity from the engine (blocks/tick). Read whenever the flight mode is not ground, including the tick takeoff starts. */
+  velocityY?: number;
   /** Whether the block at entity location + offset (world axes, y from the feet) is solid; air and liquids are not. */
   solidAt(offset: Vec3): boolean;
   /** Nearby targets. Called only when the speed exceeds the ram threshold. */
@@ -40,6 +57,8 @@ export interface TickOutcome {
   hits: RamHit[];
   driverId?: string;
   events: VehicleEvent[];
+  /** The new flight mode, only on the tick it changes (ADR 0021). */
+  flight?: FlightMode;
 }
 
 function stepProbe(ctx: TickContext): StepProbe {
@@ -57,8 +76,19 @@ function stepProbe(ctx: TickContext): StepProbe {
   };
 }
 
+/** Takeoff ignores the controls, and there is no handbrake in the air (ADR 0021). */
+function driveInputFor(
+  raw: RawInput | undefined,
+  mode: FlightMode,
+): DriveInput {
+  if (!raw || mode === "takeoff") return NEUTRAL_INPUT;
+  const input = toDriveInput(raw);
+  return mode === "ground" ? input : { ...input, handbrake: false };
+}
+
 export class Vehicle {
   private motion: MotionState;
+  private flight: FlightState;
   private driverId: string | undefined;
   private seats = new Map<string, number>();
   private readonly lastHit = new Map<string, number>();
@@ -68,8 +98,10 @@ export class Vehicle {
   private constructor(
     readonly id: string,
     yaw: number,
+    flight: FlightMode = "ground",
   ) {
     this.motion = initialMotion(yaw);
+    this.flight = initialFlight(flight);
   }
 
   static create(id: string, yaw: number): Vehicle {
@@ -80,14 +112,16 @@ export class Vehicle {
    * Rebuilds a vehicle whose aggregate was lost (e.g. after `/reload`) while
    * riders may already be seated. Seeding the seats and the driver keeps the
    * first tick from treating the current driver as newly mounted, which would
-   * snap the heading to the driver's view.
+   * snap the heading to the driver's view. The flight mode comes from the
+   * entity, so a vehicle in the air keeps flying (ADR 0021).
    */
   static rebuild(
     id: string,
     yaw: number,
     riders: readonly RiderView[],
+    flight: FlightMode = "ground",
   ): Vehicle {
-    const v = new Vehicle(id, yaw);
+    const v = new Vehicle(id, yaw, flight);
     v.seats = occupiedSeats(riders, forward(yaw));
     v.driverId = riders.find((r) => v.seats.get(r.id) === 0)?.id;
     return v;
@@ -101,30 +135,50 @@ export class Vehicle {
     return this.motion.yaw;
   }
 
+  get flightMode(): FlightMode {
+    return this.flight.mode;
+  }
+
   tick(ctx: TickContext): TickOutcome {
     const events = this.updateSeats(ctx.riders);
     const driver = this.updateDriver(ctx.riders);
 
     const raw = driver ? driver.raw : ctx.testInput;
-    const input = raw ? toDriveInput(raw) : NEUTRAL_INPUT;
-    const step = stepMotion(
-      this.motion,
-      input,
-      { velocity: ctx.velocity, onGround: ctx.onGround },
-      stepProbe(ctx),
-    );
+    const before = this.flight.mode;
+    this.flight = stepFlight(this.flight, {
+      tick: ctx.tick,
+      jump: raw?.jump ?? false,
+      controlled: raw !== undefined,
+      onGround: ctx.onGround,
+    });
+    const mode = this.flight.mode;
+    const input = driveInputFor(raw, mode);
+    let step: MotionResult;
+    let impulseY: number;
+    if (mode === "ground") {
+      step = stepMotion(
+        this.motion,
+        input,
+        { velocity: ctx.velocity, onGround: ctx.onGround },
+        stepProbe(ctx),
+      );
+      impulseY = step.jumped ? SPEC.stepVelocity : 0;
+    } else {
+      step = stepFlightMotion(this.motion, input, ctx.velocity);
+      impulseY = verticalImpulse(
+        flightVerticalSpeed(mode, raw?.pitch ?? 0, step.state.speed),
+        ctx.velocityY ?? 0,
+      );
+    }
     this.motion = step.state;
 
     return {
-      impulse: {
-        x: step.impulse.x,
-        y: step.jumped ? SPEC.stepVelocity : 0,
-        z: step.impulse.z,
-      },
+      impulse: { x: step.impulse.x, y: impulseY, z: step.impulse.z },
       yaw: step.state.yaw,
       hits: this.ram(ctx, step.forward),
       driverId: driver?.id,
       events,
+      flight: mode === before ? undefined : mode,
     };
   }
 
