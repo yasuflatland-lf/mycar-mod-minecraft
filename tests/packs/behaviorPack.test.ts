@@ -58,10 +58,18 @@ describe("packs/mycar_bp", () => {
     expect(entity.component_groups["mycar:hovering"]).toEqual({
       "minecraft:physics": { has_gravity: false },
     });
+    // Removing a group drops its components instead of restoring the base
+    // ones, so landing has to add a group that brings physics back. The
+    // in-game flight_land test caught a car that floated after landing.
+    expect(entity.component_groups["mycar:grounded"]).toEqual({
+      "minecraft:physics": {},
+    });
     expect(entity.events["mycar:hover"]).toEqual({
       add: { component_groups: ["mycar:hovering"] },
+      remove: { component_groups: ["mycar:grounded"] },
     });
     expect(entity.events["mycar:land"]).toEqual({
+      add: { component_groups: ["mycar:grounded"] },
       remove: { component_groups: ["mycar:hovering"] },
     });
   });
