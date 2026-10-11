@@ -218,6 +218,27 @@ describe("Vehicle as a submarine", () => {
     );
   });
 
+  it("never rises at full throttle over a flat floor at or less than half a block below its feet", () => {
+    fc.assert(
+      fc.property(
+        fc.double({ min: 0, max: 0.49, noNaN: true }),
+        yaw,
+        (gap, heading) => {
+          const sim = new DiveSim(
+            100,
+            Vehicle.rebuild("vehicle", heading, [], "submarine"),
+          );
+          sim.y = gap;
+          for (let i = 0; i < 60; i++) {
+            sim.step(FORWARD);
+            expect(sim.vy).toBeCloseTo(0, 12);
+            expect(sim.y).toBeCloseTo(gap, 12);
+          }
+        },
+      ),
+    );
+  });
+
   it("still rises while a shore step stops it, as a step jump does on the ground", () => {
     const sim = new DiveSim(100);
     sim.obstacle = stepAhead(1);
