@@ -25,13 +25,4 @@ describe("SPEC", () => {
     expect(SPEC.landingSink).toBe(0.15);
     expect(SPEC.pitchDeadzone).toBe(10);
   });
-
-  it("flight values match ADR 0020", () => {
-    expect(SPEC.doubleTapTicks).toBe(8);
-    expect(SPEC.takeoffTicks).toBe(20);
-    expect(SPEC.takeoffTicks * SPEC.takeoffClimb).toBeCloseTo(1.5);
-    expect(SPEC.maxClimb).toBe(0.3);
-    expect(SPEC.landingSink).toBe(0.15);
-    expect(SPEC.pitchDeadzone).toBe(10);
-  });
 });
