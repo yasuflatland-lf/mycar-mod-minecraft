@@ -1,6 +1,7 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import {
+  LOG_TAG,
   linePrefix,
   linesOfRun,
   MANUAL_RUN_ID,
@@ -48,6 +49,7 @@ describe("a run reads only its own lines", () => {
   it("ignores a line that names the run id without LOG_TAG", () => {
     fc.assert(
       fc.property(runId, (id) => {
+        expect(LOG_TAG.trim()).not.toBe("");
         const chat = `2026 INFO <Steve> ${id} SUMMARY pass=6 fail=0`;
         expect(linesOfRun([chat], id)).toEqual([]);
         expect(summaryOfRun([chat], id)).toBeUndefined();
