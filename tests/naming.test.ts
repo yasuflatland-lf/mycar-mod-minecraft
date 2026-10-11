@@ -12,9 +12,7 @@ const HISTORICAL_DOCS = /^docs\/(adr|releases|superpowers)\//;
 it("keeps the former namespace only in historical documents", () => {
   const oldName = ["my", "car"].join("");
   const oldNamespace = ["yasu", "flatland"].join("");
-  const staleNamespace = new RegExp(
-    `${oldNamespace}(?!_ride|-ride|-lf|_build)`,
-  );
+  const staleNamespace = new RegExp(`${oldNamespace}(?!-ride|-lf)`);
   const staleDisplayName = ["Yasuflatland", "Add-on"].join(" ");
   const currentAdrs = /^docs\/adr\/004[67]-/;
   // Untracked files that are not ignored count too, so a file added before its
