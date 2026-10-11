@@ -8941,6 +8941,166 @@
           ]
         },
         {
+          "name": "glow_fl",
+          "parent": "root",
+          "pivot": [14, 0, -17],
+          "cubes": [
+            {
+              "origin": [9, -0.5, -22],
+              "size": [10, 0.5, 10],
+              "uv": {
+                "north": {
+                  "uv": [53, 1],
+                  "uv_size": [2, 2]
+                },
+                "south": {
+                  "uv": [53, 1],
+                  "uv_size": [2, 2]
+                },
+                "east": {
+                  "uv": [53, 1],
+                  "uv_size": [2, 2]
+                },
+                "west": {
+                  "uv": [53, 1],
+                  "uv_size": [2, 2]
+                },
+                "up": {
+                  "uv": [53, 1],
+                  "uv_size": [2, 2]
+                },
+                "down": {
+                  "uv": [53, 1],
+                  "uv_size": [2, 2]
+                }
+              }
+            }
+          ],
+          "locators": {
+            "hover_fl": [14, -0.5, -17]
+          }
+        },
+        {
+          "name": "glow_fr",
+          "parent": "root",
+          "pivot": [-14, 0, -17],
+          "cubes": [
+            {
+              "origin": [-19, -0.5, -22],
+              "size": [10, 0.5, 10],
+              "uv": {
+                "north": {
+                  "uv": [53, 1],
+                  "uv_size": [2, 2]
+                },
+                "south": {
+                  "uv": [53, 1],
+                  "uv_size": [2, 2]
+                },
+                "east": {
+                  "uv": [53, 1],
+                  "uv_size": [2, 2]
+                },
+                "west": {
+                  "uv": [53, 1],
+                  "uv_size": [2, 2]
+                },
+                "up": {
+                  "uv": [53, 1],
+                  "uv_size": [2, 2]
+                },
+                "down": {
+                  "uv": [53, 1],
+                  "uv_size": [2, 2]
+                }
+              }
+            }
+          ],
+          "locators": {
+            "hover_fr": [-14, -0.5, -17]
+          }
+        },
+        {
+          "name": "glow_rl",
+          "parent": "root",
+          "pivot": [14, 0, 16],
+          "cubes": [
+            {
+              "origin": [9, -0.5, 11],
+              "size": [10, 0.5, 10],
+              "uv": {
+                "north": {
+                  "uv": [53, 1],
+                  "uv_size": [2, 2]
+                },
+                "south": {
+                  "uv": [53, 1],
+                  "uv_size": [2, 2]
+                },
+                "east": {
+                  "uv": [53, 1],
+                  "uv_size": [2, 2]
+                },
+                "west": {
+                  "uv": [53, 1],
+                  "uv_size": [2, 2]
+                },
+                "up": {
+                  "uv": [53, 1],
+                  "uv_size": [2, 2]
+                },
+                "down": {
+                  "uv": [53, 1],
+                  "uv_size": [2, 2]
+                }
+              }
+            }
+          ],
+          "locators": {
+            "hover_rl": [14, -0.5, 16]
+          }
+        },
+        {
+          "name": "glow_rr",
+          "parent": "root",
+          "pivot": [-14, 0, 16],
+          "cubes": [
+            {
+              "origin": [-19, -0.5, 11],
+              "size": [10, 0.5, 10],
+              "uv": {
+                "north": {
+                  "uv": [53, 1],
+                  "uv_size": [2, 2]
+                },
+                "south": {
+                  "uv": [53, 1],
+                  "uv_size": [2, 2]
+                },
+                "east": {
+                  "uv": [53, 1],
+                  "uv_size": [2, 2]
+                },
+                "west": {
+                  "uv": [53, 1],
+                  "uv_size": [2, 2]
+                },
+                "up": {
+                  "uv": [53, 1],
+                  "uv_size": [2, 2]
+                },
+                "down": {
+                  "uv": [53, 1],
+                  "uv_size": [2, 2]
+                }
+              }
+            }
+          ],
+          "locators": {
+            "hover_rr": [-14, -0.5, 16]
+          }
+        },
+        {
           "name": "door_fr",
           "parent": "body",
           "pivot": [-12.5, 12, -12],
