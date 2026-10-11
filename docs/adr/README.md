@@ -43,6 +43,7 @@ This directory records design decisions and the reasons behind them. The format 
 | [0037](0037-one-dye-per-repaint-within-a-tick.md) | Use one dye per repaint within a tick | Accepted |
 | [0038](0038-vehicle-forms.md) | Vehicle forms | Accepted |
 | [0039](0039-submarine.md) | Submarine form | Accepted |
+| [0040](0040-sonar-sound-under-water.md) | Sonar sound under water | Accepted |
 
 The measurements and in-game tests behind these decisions are in [the driving-core spike findings](../spike-driving-core.md).
 

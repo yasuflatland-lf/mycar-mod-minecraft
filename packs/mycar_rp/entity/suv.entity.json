@@ -49,6 +49,7 @@
         "hover_sound_2": "animation.mycar.suv.hover_sound_2",
         "hover_sound_3": "animation.mycar.suv.hover_sound_3",
         "hover_sound_4": "animation.mycar.suv.hover_sound_4",
+        "submarine_sound": "animation.mycar.suv.submarine_sound",
         "form": "controller.animation.mycar.suv.form"
       },
       "sound_effects": {
@@ -63,7 +64,8 @@
         "hover_2": "mycar.hover_2",
         "hover_3": "mycar.hover_3",
         "hover_4": "mycar.hover_4",
-        "hover_start": "mycar.hover_start"
+        "hover_start": "mycar.hover_start",
+        "sonar": "mycar.sonar"
       },
       "particle_effects": {
         "exhaust": "minecraft:basic_smoke_particle",

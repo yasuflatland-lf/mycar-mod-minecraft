@@ -34,3 +34,4 @@ To use commands, run `docker exec mycar-bds send-command op <player name>`.
 | 26 | In hover form in third person, pull the stick back until the vehicle touches the ground | On touchdown the wheels unfold, the camera returns to first person, and the vehicle drives on the ground again (ADR 0034) | | |
 | 27 | Standing outside, tap (mobile) / left-click (PC) a khaki vehicle with red dye, then do it 3 more times | The body turns red and one dye is used (not in Creative); the extra hits change nothing, use no dye, and do not break the vehicle (ADR 0036) | | |
 | 28 | Holding a dye, press the ride button (mobile) / right-click (PC) on a vehicle | You get in, the color does not change, and no dye is used (ADR 0036) | | |
+| 29 | Drive into water deep enough for the submarine form, then get out while it floats | Under water a sonar ping sounds every 4 seconds over a low rumble, and it stops when nobody rides (ADR 0040) | | |

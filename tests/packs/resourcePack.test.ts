@@ -232,6 +232,19 @@ describe("Resource Pack sounds (ADR 0030)", () => {
     });
   });
 
+  it("pings the sonar under water only while someone rides (ADR 0040)", () => {
+    expect(controller.states.submarine.animations).toContainEqual({
+      submarine_sound: "query.has_rider",
+    });
+    expect(effectsOf(client.animations.submarine_sound)).toEqual(["sonar"]);
+    for (const [state, def] of Object.entries<{ animations: unknown[] }>(
+      controller.states,
+    )) {
+      if (state === "submarine") continue;
+      expect(JSON.stringify(def.animations), state).not.toContain("sonar");
+    }
+  });
+
   // A loop shorter than its clip stacks copies; a longer one leaves gaps.
   it("loops each level animation exactly as long as its clip", () => {
     const seconds = (name: string) => {
@@ -269,7 +282,7 @@ describe("Resource Pack submarine visuals (ADR 0039)", () => {
       transitions: [{ submarine: "query.all_animations_finished" }],
     });
     expect(s.submarine).toEqual({
-      animations: ["submerged"],
+      animations: ["submerged", { submarine_sound: "query.has_rider" }],
       transitions: [{ surface: "query.property('mycar:form') != 'submarine'" }],
     });
     expect(s.surface).toEqual({
