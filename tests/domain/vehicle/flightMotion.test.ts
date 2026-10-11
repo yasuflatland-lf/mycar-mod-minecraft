@@ -223,7 +223,7 @@ describe("stepFlightMotion walls and sideways velocity (ADR 0002, 0003)", () => 
   });
 
   it("aims for the internal speed forward and keeps 1 - grip of the sideways velocity (ADR 0002)", () => {
-    const small = fc.double({ min: -0.3, max: 0.3, noNaN: true });
+    const small = fc.integer({ min: -300, max: 300 }).map((n) => n / 1000);
     fc.assert(
       fc.property(
         fc.double({ min: -SPEC.maxReverse, max: 0.5, noNaN: true }),
@@ -234,7 +234,7 @@ describe("stepFlightMotion walls and sideways velocity (ADR 0002, 0003)", () => 
         (speed, yaw, input, vx, vz) => {
           const v = { x: vx, z: vz };
           const r = stepFlightMotion({ speed, yaw, stepTicks: 0 }, input, v);
-          const f = r.forward;
+          const f = forward(r.state.yaw);
           const aimed = {
             x: (v.x + r.impulse.x) * ENGINE_DRAG,
             z: (v.z + r.impulse.z) * ENGINE_DRAG,

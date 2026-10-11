@@ -198,8 +198,8 @@ describe("updateSpeed / steerYaw", () => {
         );
       }),
     );
-    expect(updateSpeed(0, 0, true)).toBe(SPEC.accel); // observed 0.0225
-    expect(updateSpeed(-0.1, 0, true)).toBeCloseTo(-0.1 + SPEC.brake, 12); // observed -0.06
+    expect(updateSpeed(0, 0, true)).toBe(SPEC.accel);
+    expect(updateSpeed(-0.1, 0, true)).toBeCloseTo(-0.1 + SPEC.brake, 12);
   });
 
   it("forward throttle accelerates by accel times throttle from a standstill or moving forward, up to max speed (ADR 0002)", () => {
@@ -218,7 +218,7 @@ describe("updateSpeed / steerYaw", () => {
   });
 
   it("forward throttle while reversing brakes by brake times throttle (ADR 0002)", () => {
-    // A filter, because maxExcluded still yields -0, which is a standstill, not reversing.
+    // A filter, because max: 0 also yields 0 and -0, which are a standstill, not reversing.
     const speed = fc
       .double({ min: -SPEC.maxReverse, max: 0, noNaN: true })
       .filter((s) => s < 0);
@@ -275,7 +275,7 @@ describe("updateSpeed / steerYaw", () => {
     );
   });
 
-  it("below steerFullSpeed turns in proportion to speed", () => {
+  it("up to steerFullSpeed, turns forward in proportion to speed", () => {
     fc.assert(
       fc.property(
         fc.double({ min: 0, max: SPEC.steerFullSpeed, noNaN: true }),
@@ -386,7 +386,22 @@ describe("stepMotion (properties, ADR 0002/0003)", () => {
     );
   });
 
-  it("the step countdown never goes below zero", () => {
+  it("moves the friction estimate frictionEma of the way toward the measured ratio (ADR 0003)", () => {
+    const given = { x: 0.5, z: 1 };
+    const r = stepMotion(
+      { speed: 0.5, yaw: 0, stepTicks: 0, friction: 0.7, expected: given },
+      FULL_THROTTLE,
+      { velocity: { x: given.x * 0.6, z: given.z * 0.6 }, onGround: true },
+      () => 0,
+    );
+    expect(r.blocked).toBe(false);
+    expect(r.state.friction).toBeCloseTo(
+      (1 - SPEC.frictionEma) * 0.7 + SPEC.frictionEma * 0.6,
+      12,
+    );
+  });
+
+  it("the step countdown stays between 0 and stepTicks - 1", () => {
     fc.assert(
       fc.property(inputs, mu, terrain, (ins, m, ter) => {
         for (const fr of simulate(ins, { mu: m }, 0, ter)) {
@@ -422,8 +437,8 @@ describe("stepMotion (properties, ADR 0002/0003)", () => {
       { velocity: { x: 0, z: 0 }, onGround: true },
       () => 2,
     );
-    expect(r.jumpVelocity).toBe(SPEC.stepVelocity); // observed 0.75
-    expect(r.state.speed).toBe(SPEC.stepMinSpeed); // observed 0.15
+    expect(r.jumpVelocity).toBe(SPEC.stepVelocity);
+    expect(r.state.speed).toBe(SPEC.stepMinSpeed);
   });
 
   it("in the air without a step jump, applies only airControl of the correction toward the target", () => {
