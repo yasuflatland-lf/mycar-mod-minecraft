@@ -7,6 +7,8 @@ import type { DriveWorld, Logger } from "./ports";
 export class DriveVehicles {
   /** Players this use case switched to the third-person camera (ADR 0028). */
   private readonly thirdPerson = new Set<string>();
+  /** Players whose camera switch failed and was logged, so a retry every tick logs once. */
+  private readonly cameraFailed = new Set<string>();
 
   constructor(
     private readonly world: DriveWorld,
@@ -44,13 +46,13 @@ export class DriveVehicles {
           solidAt: (offset) => this.world.solidAt(snap.id, offset),
           targets: () => this.world.targetsNear(snap.id),
         });
-        // The mode is sent only on the tick it changes, so send it before
-        // anything else that could throw and skip it.
+        // The mode and the bank are sent only on the tick they change, so send
+        // them before anything else that could throw and skip them.
         if (out.flight) this.world.setFlight(snap.id, out.flight);
+        if (out.bank !== undefined) this.world.setBank(snap.id, out.bank);
         if (vehicle.flightMode !== "ground")
           for (const rider of snap.riders) airborne.add(rider.id);
         this.world.applyMotion(snap.id, out.impulse, out.yaw);
-        if (out.bank !== undefined) this.world.setBank(snap.id, out.bank);
         this.world.shineHeadlights(
           snap.id,
           snap.headlights ? headlightCells(snap.location, out.yaw) : [],
@@ -80,27 +82,29 @@ export class DriveVehicles {
 
   /**
    * Riders of a vehicle off the ground see it from behind; everyone this use
-   * case switched gets their own view back once they land or get off.
+   * case switched gets their own view back once they land or get off. A failed
+   * switch either way is retried on the next tick. A player who left needs no
+   * clearing: the world does nothing for a missing player, so they are dropped.
    */
   private syncCameras(airborne: ReadonlySet<string>): void {
-    for (const id of airborne) {
-      if (this.thirdPerson.has(id)) continue;
-      try {
-        this.world.setThirdPerson(id, true);
+    for (const id of airborne)
+      if (!this.thirdPerson.has(id) && this.switchCamera(id, true))
         this.thirdPerson.add(id);
-      } catch (e) {
+    for (const id of this.thirdPerson)
+      if (!airborne.has(id) && this.switchCamera(id, false))
+        this.thirdPerson.delete(id);
+  }
+
+  private switchCamera(id: string, thirdPerson: boolean): boolean {
+    try {
+      this.world.setThirdPerson(id, thirdPerson);
+      this.cameraFailed.delete(id);
+      return true;
+    } catch (e) {
+      if (!this.cameraFailed.has(id))
         this.log.warn(`[mycar] camera ${id}: ${e}`);
-      }
-    }
-    for (const id of this.thirdPerson) {
-      if (airborne.has(id)) continue;
-      // Forget the player even when clearing throws, or it would throw again every tick.
-      this.thirdPerson.delete(id);
-      try {
-        this.world.setThirdPerson(id, false);
-      } catch (e) {
-        this.log.warn(`[mycar] camera ${id}: ${e}`);
-      }
+      this.cameraFailed.add(id);
+      return false;
     }
   }
 }

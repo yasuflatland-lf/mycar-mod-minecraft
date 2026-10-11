@@ -6,6 +6,7 @@ type Vec3 = [number, number, number];
 
 interface Bone {
   name: string;
+  parent?: string;
   pivot?: Vec3;
   cubes?: { origin: Vec3; size: Vec3 }[];
   locators?: Record<string, Vec3>;
@@ -46,6 +47,7 @@ describe("SUV model (ADR 0009)", () => {
       "seat_1",
       "seat_2",
       "seat_3",
+      "rear_glass",
     ]) {
       expect(bones.has(name), name).toBe(true);
     }
@@ -114,5 +116,15 @@ describe("SUV model (ADR 0009)", () => {
       expect(glow[2], `glow_${w} z`).toBe(wheel[2]);
       expect(bones.get(`glow_${w}`)?.locators?.[`hover_${w}`]).toHaveLength(3);
     }
+  });
+
+  // The render controller shows the bone by name in flight, and it must roll
+  // with the body to hide the upright riders (ADR 0026). The front is -z.
+  it("has the rear glass as a child of body at the rear", () => {
+    const glass = bones.get("rear_glass");
+    expect(glass?.parent).toBe("body");
+    const cube = glass?.cubes?.[0];
+    if (!cube) throw new Error("rear_glass has no cube");
+    expect(cube.origin[2]).toBeGreaterThan(20);
   });
 });
