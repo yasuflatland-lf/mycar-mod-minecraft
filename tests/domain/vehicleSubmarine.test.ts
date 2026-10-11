@@ -218,6 +218,20 @@ describe("Vehicle as a submarine", () => {
     );
   });
 
+  it("climbs a shore step fixed in the world from any fractional float height", () => {
+    fc.assert(
+      fc.property(fc.double({ min: 0.05, max: 0.95, noNaN: true }), (below) => {
+        const stepTop = 51;
+        const sim = new DiveSim(100);
+        sim.y = stepTop - below;
+        sim.obstacle = (offset) =>
+          offset.z >= SPEC.hitboxFront && sim.y + offset.y < stepTop;
+        sim.run(FORWARD, 40);
+        expect(sim.y).toBeGreaterThanOrEqual(stepTop);
+      }),
+    );
+  });
+
   it("still rises while a shore step stops it, as a step jump does on the ground", () => {
     const sim = new DiveSim(100);
     sim.obstacle = stepAhead(1);
