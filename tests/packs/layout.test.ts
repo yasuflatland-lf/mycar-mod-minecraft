@@ -21,6 +21,7 @@ const PACKS = [
     resource: false,
   },
 ];
+const MAX_PATH_LENGTH = 80;
 const NAMESPACES = new Set(PACKS.map((pack) => pack.namespace));
 // Bedrock looks up these files at fixed paths rather than content paths (ADR 0047).
 const ENGINE_FIXED_FILES = new Set([
@@ -113,6 +114,15 @@ describe.each(PACKS)("$folder pack layout and identifiers", (pack) => {
         folders.slice(0, -1).some((folder) => NAMESPACES.has(folder))
       );
     });
+    expect(offenders).toEqual([]);
+  });
+
+  it("keeps every path within the console limit", () => {
+    // The Bedrock Wiki style guide caps a path at 80 characters for consoles,
+    // counting from the pack folder (ADR 0047).
+    const offenders = packFiles(root)
+      .map((path) => `${pack.folder}/${path}`)
+      .filter((path) => path.length > MAX_PATH_LENGTH);
     expect(offenders).toEqual([]);
   });
 
