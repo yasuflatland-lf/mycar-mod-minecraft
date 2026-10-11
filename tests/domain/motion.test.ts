@@ -19,6 +19,7 @@ import {
   updateSpeed,
 } from "../../src/domain/vehicle/motion";
 import { SPEC } from "../../src/domain/vehicle/spec";
+import { defined } from "../support/defined";
 import { type Body, type Engine, engineStep } from "../support/engineModel";
 
 const FULL_THROTTLE: DriveInput = {
@@ -385,11 +386,11 @@ describe("stepMotion (properties, ADR 0002/0003)", () => {
         );
         const first = frames.findIndex((f) => f.touching);
         expect(first).toBeGreaterThan(0);
-        const before = Math.abs(frames[first - 1]!.body.vel.z);
-        for (let i = first; i < frames.length; i++) {
-          expect(Math.abs(frames[i]!.body.vel.z)).toBeLessThanOrEqual(
-            before + 0.05,
-          );
+        const before = Math.abs(
+          defined(frames[first - 1], "frame before impact").body.vel.z,
+        );
+        for (const f of frames.slice(first)) {
+          expect(Math.abs(f.body.vel.z)).toBeLessThanOrEqual(before + 0.05);
         }
         expect(frames.slice(first + 2).some((f) => f.blocked)).toBe(true);
       }),
