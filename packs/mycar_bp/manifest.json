@@ -4,20 +4,20 @@
     "name": "MyCar",
     "description": "Drivable SUV",
     "uuid": "5ec4fadb-b148-4d62-8473-092b63e01270",
-    "version": [0, 1, 0],
+    "version": [0, 2, 0],
     "min_engine_version": [1, 21, 80]
   },
   "modules": [
     {
       "type": "data",
       "uuid": "e90fe07a-6c71-4cdf-9009-655e0c14d9a9",
-      "version": [0, 1, 0]
+      "version": [0, 2, 0]
     },
     {
       "type": "script",
       "language": "javascript",
       "uuid": "6c088792-ef86-4ee6-af11-1233db64c6fb",
-      "version": [0, 1, 0],
+      "version": [0, 2, 0],
       "entry": "scripts/main.js"
     }
   ],
