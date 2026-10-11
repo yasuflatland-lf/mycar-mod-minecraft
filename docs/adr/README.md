@@ -20,7 +20,7 @@ This directory records design decisions and the reasons behind them. The format 
 | [0014](0014-opt-in-nethernet-dev-server.md) | Offer NetherNet on the dev server as an opt-in transport | Superseded by 0015 |
 | [0015](0015-dev-server-docker-nethernet.md) | Run the development server as BDS in Docker with NetherNet | Accepted |
 | [0016](0016-readme-preview-rendered-from-model.md) | Render the README preview from the model files | Superseded by 0027 |
-| [0017](0017-repaint-vehicles-with-dye.md) | Repaint vehicles with dye | Accepted |
+| [0017](0017-repaint-vehicles-with-dye.md) | Repaint vehicles with dye | Superseded by 0031 |
 | [0018](0018-sideways-stick-creeps-forward.md) | Treat a sideways stick as a slow forward turn | Accepted |
 | [0019](0019-passengers-move-up-to-the-driver-seat.md) | Passengers move up to the driver seat | Accepted |
 | [0020](0020-headlights.md) | Headlights that light up the road | Accepted |
@@ -34,6 +34,7 @@ This directory records design decisions and the reasons behind them. The format 
 | [0028](0028-third-person-camera-in-flight.md) | Switch riders to the third-person camera in flight | Accepted |
 | [0029](0029-raise-the-seats.md) | Raise the seats so riders' legs stay inside the body | Accepted |
 | [0030](0030-engine-and-hover-sounds.md) | Engine and hover sounds from client animations, stepped by speed | Accepted |
+| [0031](0031-repaint-with-all-sixteen-dyes.md) | Repaint vehicles with all sixteen dyes | Accepted |
 
 The measurements and in-game tests behind these decisions are in [the driving-core spike findings](../spike-driving-core.md).
 

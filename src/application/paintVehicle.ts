@@ -1,4 +1,4 @@
-// Use case: a player uses a dye on a vehicle to repaint its body (ADR 0017).
+// Use case: a player uses a dye on a vehicle to repaint its body (ADR 0031).
 import type { Paint } from "../domain/vehicle/paint";
 import type { PaintWorld } from "./ports";
 

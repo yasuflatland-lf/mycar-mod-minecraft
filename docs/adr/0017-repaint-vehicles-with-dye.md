@@ -1,6 +1,6 @@
 # 0017. Repaint vehicles with dye
 
-- Status: Accepted
+- Status: Superseded by 0031
 - Date: 2026-10-11
 
 ## Context
