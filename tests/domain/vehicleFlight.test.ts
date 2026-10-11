@@ -12,7 +12,7 @@ const FORWARD: RawInput = { moveX: 0, moveY: 1, jump: false };
 
 /**
  * One vehicle driven by test input over flat ground at y = 0. Gravity follows
- * the vehicle form the vehicle reports, as the mycar:weightless component group
+ * the form the vehicle reports, as the mycar:weightless component group
  * does in game.
  */
 class FlightSim {
