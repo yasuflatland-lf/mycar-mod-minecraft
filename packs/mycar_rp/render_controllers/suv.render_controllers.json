@@ -39,8 +39,8 @@
         { "*": true },
         { "glow_*": "!query.property('mycar:gear_down')" },
         { "rear_glass": "query.property('mycar:form') != 'car'" },
-        { "windows_sealed": false },
-        { "prop_*": false }
+        { "windows_sealed": "query.property('mycar:form') == 'submarine'" },
+        { "prop_*": "query.property('mycar:form') == 'submarine'" }
       ]
     }
   }

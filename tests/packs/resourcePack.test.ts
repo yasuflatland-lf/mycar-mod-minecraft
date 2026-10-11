@@ -49,9 +49,9 @@ describe("Resource Pack flight visuals (ADR 0022)", () => {
     ]);
     expect(s.retract.animations).toEqual(["wheels_retract"]);
     // The wheels follow the landing gear, so they unfold before touchdown (ADR 0033).
-    expect(s.ground.transitions).toEqual([
-      { deploy: "!query.property('mycar:gear_down')" },
-    ]);
+    expect(s.ground.transitions).toContainEqual({
+      deploy: "!query.property('mycar:gear_down')",
+    });
     expect(s.hover.transitions).toEqual([
       { retract: "query.property('mycar:gear_down')" },
     ]);
@@ -105,13 +105,13 @@ describe("Resource Pack flight visuals (ADR 0022)", () => {
     ]);
   });
 
-  it("shows the glow bones only while the wheels are up, and the rear glass while the vehicle is not on the ground, and hides the submarine bones", () => {
+  it("selects glow, rear glass and submarine visibility from gear and form", () => {
     expect(render.part_visibility).toEqual([
       { "*": true },
       { "glow_*": "!query.property('mycar:gear_down')" },
       { rear_glass: "query.property('mycar:form') != 'car'" },
-      { windows_sealed: false },
-      { "prop_*": false },
+      { windows_sealed: "query.property('mycar:form') == 'submarine'" },
+      { "prop_*": "query.property('mycar:form') == 'submarine'" },
     ]);
   });
 
@@ -243,6 +243,109 @@ describe("Resource Pack sounds (ADR 0030)", () => {
       const event = client.sound_effects[defined(effect, short).effect];
       const [sound] = defs[event].sounds;
       expect(anim.animation_length, short).toBeCloseTo(seconds(sound.name), 3);
+    }
+  });
+});
+
+describe("Resource Pack submarine visuals (ADR 0038)", () => {
+  it("registers the three submarine animations", () => {
+    for (const name of ["dive", "submerged", "surface"]) {
+      expect(client.animations[name]).toBe(`animation.mycar.suv.${name}`);
+      expect(anims[client.animations[name]]).toBeDefined();
+    }
+  });
+
+  it("serializes diving and surfacing with the gear transforms through ground", () => {
+    const s = controller.states;
+    expect(s.ground.transitions).toEqual([
+      { dive: "query.property('mycar:form') == 'submarine'" },
+      { deploy: "!query.property('mycar:gear_down')" },
+    ]);
+    expect(s.dive).toEqual({
+      animations: ["dive"],
+      transitions: [{ submarine: "query.all_animations_finished" }],
+    });
+    expect(s.submarine).toEqual({
+      animations: ["submerged"],
+      transitions: [{ surface: "query.property('mycar:form') != 'submarine'" }],
+    });
+    expect(s.surface).toEqual({
+      animations: ["surface"],
+      transitions: [{ ground: "query.all_animations_finished" }],
+    });
+    expect(s.deploy.transitions).toEqual([
+      { hover: "query.all_animations_finished" },
+    ]);
+    expect(s.retract.transitions).toEqual([
+      { ground: "query.all_animations_finished" },
+    ]);
+    for (const [name, state] of Object.entries<{
+      animations: unknown[];
+      blend_transition?: number;
+    }>(s)) {
+      if (name !== "ground") expect(state.animations).not.toContain("wheels");
+      expect(state.blend_transition ?? 0).toBe(0);
+    }
+  });
+
+  it("turns only the rear wheels and props backward, then reverses the one-second dive", () => {
+    const dive = anims["animation.mycar.suv.dive"];
+    const submerged = anims["animation.mycar.suv.submerged"];
+    const surface = anims["animation.mycar.suv.surface"];
+    expect(dive.animation_length).toBe(1);
+    expect(dive.loop).toBe("hold_on_last_frame");
+    expect(surface.animation_length).toBe(1);
+    expect(surface.loop ?? false).toBe(false);
+    expect(submerged.loop).toBe(true);
+    for (const anim of [dive, submerged, surface]) {
+      expect(Object.keys(anim.bones).sort()).toEqual([
+        "prop_rl",
+        "prop_rr",
+        "wheel_rl",
+        "wheel_rr",
+      ]);
+    }
+    // The generated model's left hub points +x. Bedrock animation +y turns it
+    // toward +z (the rear); the right hub needs the opposite turn.
+    for (const [side, yaw] of [
+      ["rl", 90],
+      ["rr", -90],
+    ] as const) {
+      for (const prefix of ["wheel", "prop"]) {
+        const name = `${prefix}_${side}`;
+        expect(dive.bones[name].rotation).toEqual({
+          "0.0": [0, 0, 0],
+          "1.0": [0, yaw, 0],
+        });
+        expect(surface.bones[name].rotation).toEqual({
+          "0.0": [0, yaw, 0],
+          "1.0": [0, 0, 0],
+        });
+      }
+      expect(submerged.bones[`wheel_${side}`].rotation).toEqual([0, yaw, 0]);
+      // Z is the turned axle: one block advances the propeller by 360 degrees.
+      expect(submerged.bones[`prop_${side}`]).toEqual({
+        rotation: [0, yaw, "query.modified_distance_moved * 360"],
+        scale: 1,
+      });
+      expect(dive.bones[`prop_${side}`].scale).toEqual({ "0.0": 0, "1.0": 1 });
+      expect(surface.bones[`prop_${side}`].scale).toEqual({
+        "0.0": 1,
+        "1.0": 0,
+      });
+    }
+  });
+
+  it("keeps props at scale zero in every ground and flight pose", () => {
+    for (const name of [
+      "wheels",
+      "wheels_deploy",
+      "wheels_folded",
+      "wheels_retract",
+    ]) {
+      const bones = anims[`animation.mycar.suv.${name}`].bones;
+      for (const side of ["rl", "rr"])
+        expect(bones[`prop_${side}`]).toEqual({ scale: 0 });
     }
   });
 });

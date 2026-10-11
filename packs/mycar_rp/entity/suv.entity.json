@@ -28,6 +28,9 @@
       },
       "geometry": { "default": "geometry.mycar.suv" },
       "animations": {
+        "dive": "animation.mycar.suv.dive",
+        "submerged": "animation.mycar.suv.submerged",
+        "surface": "animation.mycar.suv.surface",
         "wheels": "animation.mycar.suv.wheels",
         "wheels_deploy": "animation.mycar.suv.wheels_deploy",
         "wheels_folded": "animation.mycar.suv.wheels_folded",
