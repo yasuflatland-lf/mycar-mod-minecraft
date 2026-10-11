@@ -12,11 +12,42 @@ import {
 const CONTAINER = "mycar-bds";
 const runId = randomBytes(4).toString("hex");
 const since = new Date().toISOString();
+// Write the command to bedrock_server's stdin ourselves, as Mojang's Creator
+// Tools does with the process it spawns. The image's send-command cannot be
+// used on Linux CI: there bedrock_server runs as the runner's UID under a root
+// PID 1, and send-command's `find /proc` fails on whichever of them the exec
+// user may not inspect. cmdline and the owner of /proc/<pid> are readable by
+// anyone, so find the process that way, then write as its owner. The pattern
+// skips this shell and mc-server-runner, whose arguments also name the binary.
+const FIND_SERVER = `
+for d in /proc/[0-9]*; do
+  [ "\${d#/proc/}" = "$$" ] && continue
+  case " $(tr '\\0' ' ' < "$d/cmdline" 2>/dev/null)" in
+    *mc-server-runner*) ;;
+    *" ./bedrock_server-"*) stat -c "\${d#/proc/} %u:%g" "$d"; exit 0 ;;
+  esac
+done
+echo "bedrock_server process not found" >&2
+exit 1
+`;
+const [serverPid, serverUser] = execFileSync(
+  "docker",
+  ["exec", CONTAINER, "sh", "-c", FIND_SERVER],
+  { encoding: "utf8" },
+)
+  .trim()
+  .split(" ");
 execFileSync("docker", [
   "exec",
+  "--user",
+  serverUser,
   CONTAINER,
-  "send-command",
+  "sh",
+  "-c",
+  'echo "$1" > "/proc/$2/fd/0"',
+  "sh",
   `scriptevent ${TEST_EVENT} ${runId}`,
+  serverPid,
 ]);
 const deadline = Date.now() + 5 * 60_000;
 let summary;

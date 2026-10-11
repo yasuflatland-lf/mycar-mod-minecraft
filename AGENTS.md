@@ -19,14 +19,16 @@ pnpm lint:fix      # apply Biome fixes
 pnpm lint:lang     # fail on Japanese/CJK text in tracked and unignored files
 pnpm typecheck     # tsc --noEmit
 pnpm test          # vitest + fast-check
+pnpm test:coverage # same, with a coverage report in coverage/ (CI uploads it to Codecov)
 pnpm build         # esbuild bundle into the Behavior Pack and the test pack
+pnpm package       # zip the packs into dist/mycar-<version>.mcaddon (after build)
 pnpm model         # regenerate the Resource Pack model (Python 3)
 pnpm server:up     # register the packs and start the dev BDS (Docker)
 pnpm server:down   # stop the dev BDS
 pnpm test:game     # run the in-game tests on the running dev BDS
 ```
 
-Before you say a change is done, run `pnpm lint`, `pnpm lint:lang`, `pnpm typecheck`, and `pnpm test`. When you change `src/infrastructure`, `src/test-pack`, or the packs, also run `pnpm build`, restart the dev BDS, and run `pnpm test:game` if Docker is available. CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs the lint, typecheck, test, and build checks on every pull request, but not `pnpm test:game`.
+Before you say a change is done, run `pnpm lint`, `pnpm lint:lang`, `pnpm typecheck`, and `pnpm test`. When you change `src/infrastructure`, `src/test-pack`, or the packs, also run `pnpm build`, restart the dev BDS, and run `pnpm test:game` if Docker is available. CI runs the lint, typecheck, test, build, and package checks on every pull request ([unit-test.yml](.github/workflows/unit-test.yml), which also uploads coverage to Codecov) and runs the in-game tests against a BDS container ([integration-test.yml](.github/workflows/integration-test.yml)).
 
 ## Language and comments
 
