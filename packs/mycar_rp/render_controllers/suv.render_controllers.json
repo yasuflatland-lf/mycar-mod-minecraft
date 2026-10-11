@@ -38,7 +38,7 @@
       "part_visibility": [
         { "*": true },
         { "glow_*": "!query.property('mycar:gear_down')" },
-        { "rear_glass": "query.property('mycar:flight') != 'ground'" }
+        { "rear_glass": "query.property('mycar:form') != 'car'" }
       ]
     }
   }

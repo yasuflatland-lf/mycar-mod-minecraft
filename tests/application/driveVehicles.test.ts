@@ -123,22 +123,22 @@ describe("DriveVehicles", () => {
     expect(world.calls).toContain("door:a:door_fr");
   });
 
-  it("rebuilds a vehicle lost in a reload in the flight mode stored on the entity (ADR 0021)", () => {
+  it("rebuilds a vehicle lost in a reload in the vehicle form stored on the entity (ADR 0021)", () => {
     const world = new FakeWorld();
     const repo = new InMemoryRepo();
     world.snapshots = [
       snapshot("a", {
-        flight: "flying",
+        form: "hover",
         onGround: false,
         testInput: FULL_THROTTLE,
       }),
     ];
     new DriveVehicles(world, repo, logger()).execute(0);
-    expect(repo.get("a")?.flightMode).toBe("flying");
-    expect(world.calls.some((c) => c.startsWith("flight:"))).toBe(false);
+    expect(repo.get("a")?.form).toBe("hover");
+    expect(world.calls.some((c) => c.startsWith("form:"))).toBe(false);
   });
 
-  it("writes the flight mode to the world only on the tick it changes (ADR 0021)", () => {
+  it("writes the vehicle form to the world only on the tick it changes (ADR 0021)", () => {
     const world = new FakeWorld();
     const uc = new DriveVehicles(world, new InMemoryRepo(), logger());
     const idle = { moveX: 0, moveY: 0, jump: false };
@@ -147,8 +147,8 @@ describe("DriveVehicles", () => {
       world.snapshots = [snapshot("a", { testInput: input })];
       uc.execute(tick);
     });
-    expect(world.calls.filter((c) => c.startsWith("flight:"))).toEqual([
-      "flight:a:takeoff",
+    expect(world.calls.filter((c) => c.startsWith("form:"))).toEqual([
+      "form:a:takeoff",
     ]);
   });
 
@@ -179,7 +179,7 @@ describe("DriveVehicles", () => {
     ]);
   });
 
-  it("still writes a flight mode change when moving the vehicle throws on that tick", () => {
+  it("still writes a vehicle form change when moving the vehicle throws on that tick", () => {
     const world = new FakeWorld();
     const uc = new DriveVehicles(world, new InMemoryRepo(), logger());
     const idle = { moveX: 0, moveY: 0, jump: false };
@@ -189,7 +189,7 @@ describe("DriveVehicles", () => {
       world.snapshots = [snapshot("a", { testInput: input })];
       uc.execute(tick);
     });
-    expect(world.calls).toContain("flight:a:takeoff");
+    expect(world.calls).toContain("form:a:takeoff");
   });
 
   it("still writes the bank angle when moving the vehicle throws on that tick (ADR 0026)", () => {
@@ -215,7 +215,7 @@ describe("DriveVehicles", () => {
         const speed = (v?.speed ?? 0) * SPEC.flightDrag;
         world.snapshots = [
           snapshot("a", {
-            flight: "flying",
+            form: "hover",
             onGround: false,
             yaw: v?.yaw ?? 0,
             velocity: { x: f.x * speed, z: f.z * speed },
@@ -269,7 +269,7 @@ describe("DriveVehicles third-person camera in flight (ADR 0028)", () => {
   it("switches riders of a flying vehicle to third person once, and back when they get off", () => {
     const world = new FakeWorld();
     const uc = new DriveVehicles(world, new InMemoryRepo(), logger());
-    const flying = { flight: "flying" as const, onGround: false };
+    const flying = { form: "hover" as const, onGround: false };
     world.snapshots = [snapshot("a", { ...flying, riders: [rider("p")] })];
     uc.execute(0);
     uc.execute(1);
@@ -297,15 +297,15 @@ describe("DriveVehicles third-person camera in flight (ADR 0028)", () => {
       uc.execute(tick++);
     };
     for (const input of tapTwice) drive(input, true);
-    expect(repo.get("a")?.flightMode).toBe("takeoff");
+    expect(repo.get("a")?.form).toBe("takeoff");
     // Takeoff and landing count as off the ground (ADR 0028).
     expect(cameraCalls(world)).toEqual(["camera:p:third"]);
-    while (repo.get("a")?.flightMode !== "flying") drive(idle, false);
+    while (repo.get("a")?.form !== "hover") drive(idle, false);
     for (const input of tapTwice) drive(input, false);
-    expect(repo.get("a")?.flightMode).toBe("landing");
+    expect(repo.get("a")?.form).toBe("landing");
     expect(cameraCalls(world)).toEqual(["camera:p:third"]);
     drive(idle, true);
-    expect(repo.get("a")?.flightMode).toBe("ground");
+    expect(repo.get("a")?.form).toBe("car");
     expect(cameraCalls(world)).toEqual(["camera:p:third", "camera:p:own"]);
   });
 
@@ -324,7 +324,7 @@ describe("DriveVehicles third-person camera in flight (ADR 0028)", () => {
     world.failCameraOn = "p";
     world.snapshots = [
       snapshot("a", {
-        flight: "flying",
+        form: "hover",
         onGround: false,
         riders: [rider("p")],
       }),
@@ -344,7 +344,7 @@ describe("DriveVehicles third-person camera in flight (ADR 0028)", () => {
     world.failCameraOn = "p";
     world.snapshots = [
       snapshot("a", {
-        flight: "flying",
+        form: "hover",
         onGround: false,
         riders: [rider("p")],
       }),
@@ -358,13 +358,13 @@ describe("DriveVehicles third-person camera in flight (ADR 0028)", () => {
     const uc = new DriveVehicles(world, new InMemoryRepo(), logger());
     world.snapshots = [
       snapshot("a", {
-        flight: "flying",
+        form: "hover",
         onGround: false,
         riders: [rider("p")],
       }),
     ];
     uc.execute(0);
-    world.snapshots = [snapshot("a", { flight: "flying", onGround: false })];
+    world.snapshots = [snapshot("a", { form: "hover", onGround: false })];
     world.failCameraOn = "p";
     uc.execute(1);
     world.failCameraOn = undefined;

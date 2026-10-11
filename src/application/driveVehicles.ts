@@ -18,7 +18,8 @@ export class DriveVehicles {
 
   execute(tick: number): void {
     const seen = new Set<string>();
-    const airborne = new Set<string>();
+    // Riders of any form but car use third person (ADR 0028 + 0037).
+    const offRoad = new Set<string>();
     for (const snap of this.world.loadedVehicles()) {
       seen.add(snap.id);
       try {
@@ -26,14 +27,9 @@ export class DriveVehicles {
         if (!vehicle) {
           // The aggregate is lost after a reload: rebuild it with zero speed,
           // the entity's heading, the riders already seated (so the current
-          // driver is not treated as newly mounted), and the flight mode
+          // driver is not treated as newly mounted), and the vehicle form
           // stored on the entity (ADR 0021).
-          vehicle = Vehicle.rebuild(
-            snap.id,
-            snap.yaw,
-            snap.riders,
-            snap.flight,
-          );
+          vehicle = Vehicle.rebuild(snap.id, snap.yaw, snap.riders, snap.form);
           this.repo.save(vehicle);
         }
         const out = vehicle.tick({
@@ -46,14 +42,14 @@ export class DriveVehicles {
           solidAt: (offset) => this.world.solidAt(snap.id, offset),
           targets: () => this.world.targetsNear(snap.id),
         });
-        // The mode, the bank, and the gear are sent only on the tick they change, so
+        // The form, the bank, and the gear are sent only on the tick they change, so
         // send them before anything else that could throw and skip them.
-        if (out.flight) this.world.setFlight(snap.id, out.flight);
+        if (out.form) this.world.setForm(snap.id, out.form);
         if (out.bank !== undefined) this.world.setBank(snap.id, out.bank);
         if (out.gearDown !== undefined)
           this.world.setGearDown(snap.id, out.gearDown);
-        if (vehicle.flightMode !== "ground")
-          for (const rider of snap.riders) airborne.add(rider.id);
+        if (vehicle.form !== "car")
+          for (const rider of snap.riders) offRoad.add(rider.id);
         this.world.applyMotion(snap.id, out.impulse, out.yaw);
         this.world.shineHeadlights(
           snap.id,
@@ -79,21 +75,21 @@ export class DriveVehicles {
         this.log.warn(`[mycar] ${id}: ${e}`);
       }
     }
-    this.syncCameras(airborne);
+    this.syncCameras(offRoad);
   }
 
   /**
-   * Riders of a vehicle off the ground see it from behind; everyone this use
+   * Riders of any form but car see the vehicle from behind; everyone this use
    * case switched gets their own view back once they land or get off. A failed
    * switch either way is retried on the next tick. A player who left needs no
    * clearing: the world does nothing for a missing player, so they are dropped.
    */
-  private syncCameras(airborne: ReadonlySet<string>): void {
-    for (const id of airborne)
+  private syncCameras(offRoad: ReadonlySet<string>): void {
+    for (const id of offRoad)
       if (!this.thirdPerson.has(id) && this.switchCamera(id, true))
         this.thirdPerson.add(id);
     for (const id of this.thirdPerson)
-      if (!airborne.has(id) && this.switchCamera(id, false))
+      if (!offRoad.has(id) && this.switchCamera(id, false))
         this.thirdPerson.delete(id);
   }
 

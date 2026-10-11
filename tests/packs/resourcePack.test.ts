@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { defined } from "../support/defined";
 
@@ -9,18 +9,28 @@ const client = read(`${RP}/entity/suv.entity.json`)["minecraft:client_entity"]
 const anims = read(`${RP}/animations/suv.animation.json`).animations;
 const controller = read(
   `${RP}/animation_controllers/suv.animation_controllers.json`,
-).animation_controllers["controller.animation.mycar.suv.flight"];
+).animation_controllers["controller.animation.mycar.suv.form"];
 const render = read(`${RP}/render_controllers/suv.render_controllers.json`)
   .render_controllers["controller.render.mycar.suv"];
 const particle = read(`${RP}/particles/hover_glow.json`).particle_effect;
 const WHEELS = ["wheel_fl", "wheel_fr", "wheel_rl", "wheel_rr"];
 
 describe("Resource Pack flight visuals (ADR 0022)", () => {
-  it("runs the flight controller and the custom render controller with an emissive material", () => {
-    expect(client.scripts.animate).toContain("flight");
-    expect(client.animations.flight).toBe(
-      "controller.animation.mycar.suv.flight",
-    );
+  it("has no obsolete vehicle property references (ADR 0037)", () => {
+    // Split so that a repository-wide search for the old name finds nothing.
+    for (const file of readdirSync(RP, {
+      recursive: true,
+      withFileTypes: true,
+    })) {
+      if (file.isFile() && file.name.endsWith(".json"))
+        expect(
+          readFileSync(`${file.parentPath}/${file.name}`, "utf8"),
+        ).not.toContain("mycar:" + "flight");
+    }
+  });
+  it("runs the form controller and the custom render controller with an emissive material", () => {
+    expect(client.scripts.animate).toContain("form");
+    expect(client.animations.form).toBe("controller.animation.mycar.suv.form");
     expect(client.render_controllers).toEqual(["controller.render.mycar.suv"]);
     expect(client.materials.default).toBe("entity_emissive_alpha");
     expect(client.particle_effects.hover_glow).toBe(
@@ -99,7 +109,7 @@ describe("Resource Pack flight visuals (ADR 0022)", () => {
     expect(render.part_visibility).toEqual([
       { "*": true },
       { "glow_*": "!query.property('mycar:gear_down')" },
-      { rear_glass: "query.property('mycar:flight') != 'ground'" },
+      { rear_glass: "query.property('mycar:form') != 'car'" },
     ]);
   });
 
@@ -151,8 +161,7 @@ describe("Resource Pack sounds (ADR 0030)", () => {
     }
   });
 
-  const GROUND =
-    "query.has_rider && query.property('mycar:flight') == 'ground'";
+  const GROUND = "query.has_rider && query.property('mycar:form') == 'car'";
 
   /** The [lo, hi) range of query.ground_speed each level plays in, in level order. */
   function speedRanges(

@@ -46,7 +46,7 @@
         "hover_sound_2": "animation.mycar.suv.hover_sound_2",
         "hover_sound_3": "animation.mycar.suv.hover_sound_3",
         "hover_sound_4": "animation.mycar.suv.hover_sound_4",
-        "flight": "controller.animation.mycar.suv.flight"
+        "form": "controller.animation.mycar.suv.form"
       },
       "sound_effects": {
         "engine_0": "mycar.engine_0",
@@ -68,26 +68,26 @@
       },
       "scripts": {
         "animate": [
-          "flight",
+          "form",
           "bank",
           { "exhaust": "query.has_rider" },
           {
-            "engine_sound_0": "query.has_rider && query.property('mycar:flight') == 'ground' && query.ground_speed < 1"
+            "engine_sound_0": "query.has_rider && query.property('mycar:form') == 'car' && query.ground_speed < 1"
           },
           {
-            "engine_sound_1": "query.has_rider && query.property('mycar:flight') == 'ground' && query.ground_speed >= 1 && query.ground_speed < 4.5"
+            "engine_sound_1": "query.has_rider && query.property('mycar:form') == 'car' && query.ground_speed >= 1 && query.ground_speed < 4.5"
           },
           {
-            "engine_sound_2": "query.has_rider && query.property('mycar:flight') == 'ground' && query.ground_speed >= 4.5 && query.ground_speed < 8"
+            "engine_sound_2": "query.has_rider && query.property('mycar:form') == 'car' && query.ground_speed >= 4.5 && query.ground_speed < 8"
           },
           {
-            "engine_sound_3": "query.has_rider && query.property('mycar:flight') == 'ground' && query.ground_speed >= 8 && query.ground_speed < 11.5"
+            "engine_sound_3": "query.has_rider && query.property('mycar:form') == 'car' && query.ground_speed >= 8 && query.ground_speed < 11.5"
           },
           {
-            "engine_sound_4": "query.has_rider && query.property('mycar:flight') == 'ground' && query.ground_speed >= 11.5 && query.ground_speed < 15"
+            "engine_sound_4": "query.has_rider && query.property('mycar:form') == 'car' && query.ground_speed >= 11.5 && query.ground_speed < 15"
           },
           {
-            "engine_sound_5": "query.has_rider && query.property('mycar:flight') == 'ground' && query.ground_speed >= 15"
+            "engine_sound_5": "query.has_rider && query.property('mycar:form') == 'car' && query.ground_speed >= 15"
           }
         ]
       },

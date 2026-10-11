@@ -10,13 +10,13 @@ import {
 import type { VehicleEvent } from "./events";
 import {
   climbInput,
-  type FlightMode,
-  type FlightState,
-  flightVerticalSpeed,
-  initialFlight,
-  stepFlight,
+  type Form,
+  type FormState,
+  initialForm,
+  stepForm,
   verticalImpulse,
-} from "./flight";
+  verticalSpeed,
+} from "./form";
 import { EMPTY_COUNTER, type HitCounter, registerHit } from "./hitCounter";
 import { nextGearDown } from "./landingGear";
 import {
@@ -46,7 +46,7 @@ export interface TickContext {
   testInput?: RawInput;
   velocity: Vec2;
   onGround: boolean;
-  /** Vertical velocity from the engine (blocks/tick). Read whenever the flight mode is not ground, including the tick takeoff starts. */
+  /** Vertical velocity from the engine (blocks/tick). Read whenever the vehicle form is not car, including the tick takeoff starts. */
   velocityY?: number;
   /** Whether the block at entity location + offset (world axes, y from the feet) is solid; air, liquids and blocks without a collision box (flowers, grass, carpets) are not (ADR 0035). */
   solidAt(offset: Vec3): boolean;
@@ -60,8 +60,8 @@ export interface TickOutcome {
   hits: RamHit[];
   driverId?: string;
   events: VehicleEvent[];
-  /** The new flight mode, only on the tick it changes (ADR 0021). */
-  flight?: FlightMode;
+  /** The new vehicle form, only on the tick it changes (ADR 0021). */
+  form?: Form;
   /** The new bank angle in degrees, only on the tick it changes and on the first tick (ADR 0026). */
   bank?: number;
   /** Whether the wheels are in the driving pose, only on the tick it changes and on the first tick (ADR 0033). */
@@ -111,19 +111,16 @@ function groundNear(ctx: TickContext, f: Vec2): boolean {
  * Takeoff ignores the controls, and there is no handbrake in the air (ADR
  * 0021). In the air the stick pulled back sinks instead of reversing (ADR 0032).
  */
-function driveInputFor(
-  raw: RawInput | undefined,
-  mode: FlightMode,
-): DriveInput {
-  if (!raw || mode === "takeoff") return NEUTRAL_INPUT;
+function driveInputFor(raw: RawInput | undefined, form: Form): DriveInput {
+  if (!raw || form === "takeoff") return NEUTRAL_INPUT;
   const input = toDriveInput(raw);
-  if (mode === "ground") return input;
+  if (form === "car") return input;
   return { ...input, throttle: Math.max(0, input.throttle), handbrake: false };
 }
 
 export class Vehicle {
   private motion: MotionState;
-  private flight: FlightState;
+  private formState: FormState;
   private bank = 0;
   // Undefined until the first tick, so a rebuilt vehicle clears a bank the
   // entity kept from before /reload.
@@ -140,11 +137,11 @@ export class Vehicle {
   private constructor(
     readonly id: string,
     yaw: number,
-    flight: FlightMode = "ground",
+    form: Form = "car",
   ) {
     this.motion = initialMotion(yaw);
-    this.flight = initialFlight(flight);
-    this.gearDown = flight === "ground";
+    this.formState = initialForm(form);
+    this.gearDown = form === "car";
   }
 
   static create(id: string, yaw: number): Vehicle {
@@ -155,16 +152,16 @@ export class Vehicle {
    * Rebuilds a vehicle whose aggregate was lost (e.g. after `/reload`) while
    * riders may already be seated. Seeding the seats and the driver keeps the
    * first tick from treating the current driver as newly mounted, which would
-   * snap the heading to the driver's view. The flight mode comes from the
+   * snap the heading to the driver's view. The vehicle form comes from the
    * entity, so a vehicle in the air keeps flying (ADR 0021).
    */
   static rebuild(
     id: string,
     yaw: number,
     riders: readonly RiderView[],
-    flight: FlightMode = "ground",
+    form: Form = "car",
   ): Vehicle {
-    const v = new Vehicle(id, yaw, flight);
+    const v = new Vehicle(id, yaw, form);
     v.seats = occupiedSeats(riders, forward(yaw));
     v.driverId = riders.find((r) => v.seats.get(r.id) === 0)?.id;
     return v;
@@ -178,8 +175,8 @@ export class Vehicle {
     return this.motion.yaw;
   }
 
-  get flightMode(): FlightMode {
-    return this.flight.mode;
+  get form(): Form {
+    return this.formState.form;
   }
 
   /** Whether the wheels are in the driving pose (ADR 0033). */
@@ -197,18 +194,18 @@ export class Vehicle {
     const driver = this.updateDriver(ctx.riders);
 
     const raw = driver ? driver.raw : ctx.testInput;
-    const before = this.flight.mode;
-    this.flight = stepFlight(this.flight, {
+    const before = this.formState.form;
+    this.formState = stepForm(this.formState, {
       tick: ctx.tick,
       jump: raw?.jump ?? false,
       controlled: raw !== undefined,
       onGround: ctx.onGround,
     });
-    const mode = this.flight.mode;
-    const input = driveInputFor(raw, mode);
+    const form = this.formState.form;
+    const input = driveInputFor(raw, form);
     const yawBefore = this.motion.yaw;
     const step: MotionResult =
-      mode === "ground"
+      form === "car"
         ? stepMotion(
             this.motion,
             input,
@@ -217,13 +214,13 @@ export class Vehicle {
           )
         : stepFlightMotion(this.motion, input, ctx.velocity);
     this.motion = step.state;
-    this.bank = stepBank(this.bank, mode, yawBefore, this.motion.yaw);
+    this.bank = stepBank(this.bank, form, yawBefore, this.motion.yaw);
     let impulseY: number;
-    if (mode === "ground") {
+    if (form === "car") {
       impulseY = step.jumpVelocity;
     } else {
       const targetVy = clamp(
-        flightVerticalSpeed(mode, climbInput(raw)) - bankSink(mode, this.bank),
+        verticalSpeed(form, climbInput(raw)) - bankSink(form, this.bank),
         -SPEC.maxClimb,
         SPEC.maxClimb,
       );
@@ -231,7 +228,7 @@ export class Vehicle {
     }
     const bank = this.bank === this.sentBank ? undefined : this.bank;
     this.sentBank = this.bank;
-    this.gearDown = nextGearDown(this.gearDown, mode, () =>
+    this.gearDown = nextGearDown(this.gearDown, form, () =>
       groundNear(ctx, step.forward),
     );
     const gearDown =
@@ -244,7 +241,7 @@ export class Vehicle {
       hits: this.ram(ctx, step.forward),
       driverId: driver?.id,
       events,
-      flight: mode === before ? undefined : mode,
+      form: form === before ? undefined : form,
       bank,
       gearDown,
     };

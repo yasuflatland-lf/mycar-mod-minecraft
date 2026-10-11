@@ -64,9 +64,9 @@ BLOOM_PASSES = 3
 BLOOM = {"lamp": {"strength": 1.6, "through_body": False}, "disc": {"strength": 2.2, "through_body": True}}
 
 POSES = {
-    "suv-front-left.png": {"lamps": False, "flying": False},
-    "suv-headlights.png": {"lamps": True, "flying": False},
-    "suv-flying.png": {"lamps": False, "flying": True},
+    "suv-front-left.png": {"lamps": False, "hover": False},
+    "suv-headlights.png": {"lamps": True, "hover": False},
+    "suv-flying.png": {"lamps": False, "hover": True},
 }
 
 
@@ -211,14 +211,14 @@ def mirror(quad):
 def collect(geo, texture, folds, pose):
     """Return the vehicle's faces as (quad, rgb, bloom group or None)."""
     desc = geo["description"]
-    lift = FLIGHT_LIFT if pose["flying"] else 0.0
+    lift = FLIGHT_LIFT if pose["hover"] else 0.0
     polygons = []
     for bone in geo["bones"]:
         name = bone["name"]
         # The render controller hides the glow (ADR 0022) and the rear glass (ADR 0026) on the ground
-        if (name.startswith("glow_") or name == "rear_glass") and not pose["flying"]:
+        if (name.startswith("glow_") or name == "rear_glass") and not pose["hover"]:
             continue
-        fold = folds.get(name) if pose["flying"] else None
+        fold = folds.get(name) if pose["hover"] else None
         emissive = "lamp" if name == "headlights" and pose["lamps"] else "disc" if name.startswith("glow_") else None
         for cube in bone.get("cubes", []):
             for face, quad in cube_faces(cube):
@@ -247,7 +247,7 @@ def ground_layers(polygons, pose, ground_y):
     points = [p for quad, _, emissive in polygons if not emissive for p in quad]
     x_lo, x_hi = min(p[0] for p in points), max(p[0] for p in points)
     z_lo, z_hi = min(p[2] for p in points), max(p[2] for p in points)
-    shadow_alpha = FLIGHT_SHADOW_ALPHA if pose["flying"] else SHADOW_ALPHA
+    shadow_alpha = FLIGHT_SHADOW_ALPHA if pose["hover"] else SHADOW_ALPHA
     layers = []
     for layer in range(SHADOW_LAYERS):
         g = layer * SHADOW_GROWTH
@@ -261,7 +261,7 @@ def ground_layers(polygons, pose, ground_y):
             spread = half + length * BEAM_SPREAD
             quad = [(-half, ground_y, z_lo), (-spread, ground_y, z_lo - length), (spread, ground_y, z_lo - length), (half, ground_y, z_lo)]
             layers.append((quad, BEAM_ALPHA, BEAM_COLOR))
-    if pose["flying"]:
+    if pose["hover"]:
         for quad, _, emissive in polygons:
             if emissive != "disc" or quad[0][1] != min(p[1] for p in quad):
                 continue
