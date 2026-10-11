@@ -180,8 +180,9 @@ export function stepMotion(
 /**
  * One tick of horizontal movement with gravity off (ADR 0021). There is no
  * ground friction to estimate, so the impulse is pre-divided by the medium's
- * drag and applied in full. Walls are detected per axis as on the ground
- * (ADR 0003), against the medium's drag. Step rise is handled by the aggregate.
+ * drag and applied in full. The handbrake does not exist in the air or under
+ * water. Walls are detected per axis as on the ground (ADR 0003), against the
+ * medium's drag. Step rise is handled by the aggregate.
  */
 export function stepFlightMotion(
   prev: MotionState,
@@ -189,7 +190,13 @@ export function stepFlightMotion(
   v: Vec2,
   medium: Medium = AIR,
 ): MotionResult {
-  let speed = updateSpeed(prev.speed, input.throttle, input.creep);
+  // Without the cap, speed keeps climbing toward SPEC.maxSpeed under water
+  // while clampLength hides it, and a released throttle coasts at full water
+  // speed until speed falls back below maxWaterSpeed.
+  let speed = Math.min(
+    updateSpeed(prev.speed, input.throttle, input.creep),
+    medium.maxSpeed,
+  );
   const yaw = steerYaw(prev.yaw, speed, input.steer);
   const f = forward(yaw);
   const vLong = dot(v, f);

@@ -113,8 +113,9 @@ function groundNear(ctx: TickContext, f: Vec2): boolean {
 }
 
 /**
- * Takeoff ignores the controls, and there is no handbrake in the air (ADR
- * 0021). In the air the stick pulled back sinks instead of reversing (ADR 0032).
+ * Takeoff ignores the controls, and there is no handbrake in the air or as a
+ * submarine (ADR 0021). Out of car form the stick pulled back sinks instead of
+ * reversing, in the air (ADR 0032) and under water (ADR 0039).
  */
 function driveInputFor(raw: RawInput | undefined, form: Form): DriveInput {
   if (!raw || form === "takeoff") return NEUTRAL_INPUT;
@@ -230,10 +231,11 @@ export class Vehicle {
     if (form === "car") {
       impulseY = step.jumpVelocity;
     } else if (form === "submarine") {
-      // Gated like a step jump in stepMotion (speed >= 0), which only raises
-      // speed to stepMinSpeed after deciding to jump. Pressed against a shore
-      // step the wall check drops speed to about 0, so gating on stepMinSpeed
-      // would leave the vehicle stuck under the step.
+      // Gated like a step jump in stepMotion (speed >= 0). The stepMinSpeed
+      // floor only sets how far ahead the probe looks, not whether it rises:
+      // pressed against a shore step the wall check drops speed to about 0,
+      // and the bare look-ahead margin would miss a step face just beyond it
+      // (ADR 0035).
       const rising =
         input.throttle > 0 &&
         step.state.speed >= 0 &&

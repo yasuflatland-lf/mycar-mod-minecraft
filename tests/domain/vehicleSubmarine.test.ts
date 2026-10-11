@@ -218,6 +218,104 @@ describe("Vehicle as a submarine", () => {
     );
   });
 
+  it("never rises at full throttle over a flat floor at or less than half a block below its feet", () => {
+    fc.assert(
+      fc.property(
+        fc.double({ min: 0, max: 0.49, noNaN: true }),
+        yaw,
+        (gap, heading) => {
+          const sim = new DiveSim(
+            100,
+            Vehicle.rebuild("vehicle", heading, [], "submarine"),
+          );
+          sim.y = gap;
+          for (let i = 0; i < 60; i++) {
+            sim.step(FORWARD);
+            expect(sim.vy).toBeCloseTo(0, 12);
+            expect(sim.y).toBeCloseTo(gap, 12);
+          }
+        },
+      ),
+    );
+  });
+
+  it("climbs a shore step fixed in the world from any fractional float height", () => {
+    fc.assert(
+      fc.property(fc.double({ min: 0.05, max: 0.95, noNaN: true }), (below) => {
+        const stepTop = 51;
+        const sim = new DiveSim(100);
+        sim.y = stepTop - below;
+        sim.obstacle = (offset) =>
+          offset.z >= SPEC.hitboxFront && sim.y + offset.y < stepTop;
+        sim.run(FORWARD, 40);
+        expect(sim.y).toBeGreaterThanOrEqual(stepTop);
+      }),
+    );
+  });
+
+  it("looks ahead at least stepMinSpeed's distance when rising from a near stop", () => {
+    fc.assert(
+      fc.property(fc.double({ min: 0.4, max: 0.85, noNaN: true }), (face) => {
+        const sim = new DiveSim(100);
+        sim.y = 50;
+        sim.obstacle = (offset) =>
+          offset.z >= SPEC.hitboxFront + face && offset.y >= 0 && offset.y < 1;
+        sim.step(IDLE);
+        sim.step(FORWARD);
+        expect(sim.vehicle.speed).toBeLessThan(SPEC.stepMinSpeed);
+        expect(sim.vy).toBeCloseTo(SPEC.maxClimb, 6);
+      }),
+    );
+  });
+
+  it("does not rise for a step while still rolling backward from reverse", () => {
+    const land = new DiveSim(0);
+    land.run({ ...IDLE, moveY: -1 }, 30);
+    expect(land.vehicle.speed).toBeLessThan(0);
+    const sim = new DiveSim(100, land.vehicle);
+    sim.body = land.body;
+    sim.obstacle = stepAhead(1);
+    let reversingTicks = 0;
+    for (let i = 0; i < 100 && sim.vy === 0; i++) {
+      sim.step(FORWARD);
+      if (sim.vehicle.speed < 0) {
+        reversingTicks++;
+        expect(sim.vy).toBe(0);
+      }
+    }
+    expect(reversingTicks).toBeGreaterThan(0);
+    expect(sim.vehicle.speed).toBeGreaterThanOrEqual(0);
+    expect(sim.vy).toBeCloseTo(SPEC.maxClimb, 6);
+  });
+
+  it("caps speed at water speed so a released throttle slows down at once", () => {
+    fc.assert(
+      fc.property(
+        fc.array(fc.double({ min: 0, max: 1, noNaN: true }), {
+          minLength: 1,
+          maxLength: 150,
+        }),
+        (throttles) => {
+          const sim = new DiveSim(1000);
+          sim.y = 500;
+          for (const moveY of throttles) {
+            sim.step({ ...IDLE, moveY });
+            expect(sim.vehicle.speed).toBeLessThanOrEqual(SPEC.maxWaterSpeed);
+          }
+          sim.run(FORWARD, 100);
+          expect(sim.vehicle.speed).toBe(SPEC.maxWaterSpeed);
+          let previous = length(sim.body.vel);
+          for (let i = 0; i < 5; i++) {
+            sim.step(IDLE);
+            const now = length(sim.body.vel);
+            expect(now).toBeLessThan(previous);
+            previous = now;
+          }
+        },
+      ),
+    );
+  });
+
   it("still rises while a shore step stops it, as a step jump does on the ground", () => {
     const sim = new DiveSim(100);
     sim.obstacle = stepAhead(1);
