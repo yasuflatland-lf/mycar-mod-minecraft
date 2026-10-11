@@ -20,17 +20,20 @@ import {
 import { EMPTY_COUNTER, type HitCounter, registerHit } from "./hitCounter";
 import { nextGearDown } from "./landingGear";
 import {
+  AIR,
   initialMotion,
   type MotionResult,
   type MotionState,
   type StepProbe,
   stepFlightMotion,
   stepMotion,
+  WATER,
 } from "./motion";
 import { type RamHit, type RamTarget, selectHits } from "./ram";
 import { doorOf, occupiedSeats, vacatedSeats } from "./seats";
 import { SPEC } from "./spec";
 import { stepHeight } from "./stepUp";
+import { submarineVerticalSpeed } from "./submarine";
 
 export interface RiderView {
   id: string;
@@ -48,7 +51,7 @@ export interface TickContext {
   onGround: boolean;
   /** Blocks of water above the feet; absent or 0 out of water. */
   waterDepth?: number;
-  /** Vertical velocity from the engine (blocks/tick). Read whenever the vehicle form is not car, including the tick takeoff starts. */
+  /** Vertical velocity from the engine (blocks/tick). Read whenever the form is not car, including the tick takeoff starts. */
   velocityY?: number;
   /** Whether the block at entity location + offset (world axes, y from the feet) is solid; air, liquids and blocks without a collision box (flowers, grass, carpets) are not (ADR 0035). */
   solidAt(offset: Vec3): boolean;
@@ -70,14 +73,14 @@ export interface TickOutcome {
   gearDown?: boolean;
 }
 
-function stepProbe(ctx: TickContext): StepProbe {
+function stepProbe(ctx: TickContext, drop = 0): StepProbe {
   return (f, speed) => {
     const r = rightOf(f);
     return stepHeight(
       (ahead, side, dy) =>
         ctx.solidAt({
           x: f.x * ahead + r.x * side,
-          y: dy,
+          y: dy - drop,
           z: f.z * ahead + r.z * side,
         }),
       speed,
@@ -110,8 +113,9 @@ function groundNear(ctx: TickContext, f: Vec2): boolean {
 }
 
 /**
- * Takeoff ignores the controls, and there is no handbrake in the air (ADR
- * 0021). In the air the stick pulled back sinks instead of reversing (ADR 0032).
+ * Takeoff ignores the controls, and there is no handbrake in the air or as a
+ * submarine (ADR 0021). Out of car form the stick pulled back sinks instead of
+ * reversing, in the air (ADR 0032) and under water (ADR 0040).
  */
 function driveInputFor(raw: RawInput | undefined, form: Form): DriveInput {
   if (!raw || form === "takeoff") return NEUTRAL_INPUT;
@@ -215,12 +219,41 @@ export class Vehicle {
             { velocity: ctx.velocity, onGround: ctx.onGround },
             stepProbe(ctx),
           )
-        : stepFlightMotion(this.motion, input, ctx.velocity);
+        : stepFlightMotion(
+            this.motion,
+            input,
+            ctx.velocity,
+            form === "submarine" ? WATER : AIR,
+          );
     this.motion = step.state;
     this.bank = stepBank(this.bank, form, yawBefore, this.motion.yaw);
     let impulseY: number;
     if (form === "car") {
       impulseY = step.jumpVelocity;
+    } else if (form === "submarine") {
+      // Gated like a step jump in stepMotion (speed >= 0). The stepMinSpeed
+      // floor only sets how far ahead the probe looks, not whether it rises:
+      // pressed against a shore step the wall check drops speed to about 0,
+      // and the bare look-ahead margin would miss a step face just beyond it
+      // (ADR 0035).
+      const rising =
+        input.throttle > 0 &&
+        step.state.speed >= 0 &&
+        stepProbe(ctx, SPEC.submarineStepProbeDrop)(
+          step.forward,
+          Math.max(step.state.speed, SPEC.stepMinSpeed),
+        ) > 0;
+      const targetVy = submarineVerticalSpeed({
+        climb: climbInput(raw),
+        controlled: raw !== undefined,
+        rising,
+        waterDepth: ctx.waterDepth ?? 0,
+      });
+      impulseY = verticalImpulse(
+        targetVy,
+        ctx.velocityY ?? 0,
+        SPEC.waterVerticalDrag,
+      );
     } else {
       const targetVy = clamp(
         verticalSpeed(form, climbInput(raw)) - bankSink(form, this.bank),

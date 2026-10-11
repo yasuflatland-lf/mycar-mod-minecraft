@@ -72,6 +72,10 @@ export const SPEC = {
   waterDrag: 0.8,
   waterVerticalDrag: 0.8,
   floatDraft: 1.2, // blocks; leaves 0.4 blocks of roof above the surface.
+  // A floating submarine's feet sit fractionally into a shore step, so the
+  // step top can be less than the half block above the feet where stepUp.ts
+  // probes. Lowering the probe by this much starts it at the feet.
+  submarineStepProbeDrop: 0.5, // blocks
   surfaceRise: 0.05, // blocks/tick; caps buoyancy both up and down
   floatGain: 0.25, // blocks/tick of buoyancy per block of depth off the float line
   waterBreathingInterval: 20, // ticks

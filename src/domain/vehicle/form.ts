@@ -132,6 +132,10 @@ export function verticalSpeed(form: Form, climb: number): number {
 }
 
 /** Pre-divides by the vertical drag so the velocity left after this tick is the target (as ADR 0003 does for friction). */
-export function verticalImpulse(targetVy: number, vy: number): number {
-  return targetVy / SPEC.flightVerticalDrag - vy;
+export function verticalImpulse(
+  targetVy: number,
+  vy: number,
+  drag: number = SPEC.flightVerticalDrag,
+): number {
+  return targetVy / drag - vy;
 }
