@@ -33,7 +33,7 @@ Before you say a change is done, run `pnpm lint`, `pnpm lint:lang`, `pnpm typech
 
 ## Language and comments
 
-- Write everything committed to the repository in English: code, identifiers, comments, test names, commit messages, and docs. PR descriptions and issues are not covered. `pnpm lint:lang` enforces this in CI. Resource Pack translations for other locales (`texts/<locale>.lang`) are the only exception.
+- Write everything committed to the repository in English: code, identifiers, comments, test names, commit messages, and docs. Pull request titles and descriptions must be in English too; issues are not covered. `pnpm lint:lang` enforces this for files in CI, and [pr-language.yml](.github/workflows/pr-language.yml) checks the title and description of every pull request. Resource Pack translations for other locales (`texts/<locale>.lang`) are the only exception.
 - Talking to the user in their own language is fine. Only what lands in the repository has to be English.
 - A comment must add something the code cannot say: why it is done this way, a constraint the engine imposes, a measured value, or a link to the ADR behind it. Do not write comments that repeat what the code already says. Prefer a clearer name over a comment.
 

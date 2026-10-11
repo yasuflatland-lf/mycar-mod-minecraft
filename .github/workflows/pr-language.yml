@@ -1,0 +1,30 @@
+name: PR Language
+
+on:
+  pull_request:
+    # "edited" re-runs the check when only the title or description changes
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  # PR titles and descriptions must be in English (AGENTS.md)
+  pr-language:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      # Install Node as pinned in mise.toml
+      - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+
+      # Passed through env, not interpolated into the script, so a crafted title cannot inject shell
+      - run: node scripts/check-language.mjs --pr
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
