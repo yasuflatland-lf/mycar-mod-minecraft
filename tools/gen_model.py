@@ -3,7 +3,7 @@
 Coordinates are in pixels (16 px = 1 block). The definitions below use "forward +z, right +x",
 and are rotated 180° around the Y axis just before writing, because in Bedrock the front of an
 entity is on the -z side of the model.
-Bone names follow the convention (ADR 0009, 0021): root / body / wheel_fl / wheel_fr / wheel_rl / wheel_rr /
+Bone names follow the convention (ADR 0009, 0022): root / body / wheel_fl / wheel_fr / wheel_rl / wheel_rr /
 glow_fl / glow_fr / glow_rl / glow_rr / door_fr / door_rr / door_fl / door_rl / seat_0..3.
 """
 import json
@@ -34,7 +34,7 @@ PALETTE = {
     "glow": (80, 170, 255),
 }
 NAMES = list(PALETTE)
-# entity_emissive_alpha (ADR 0021) makes a texel glow when its alpha is low but not 0
+# entity_emissive_alpha (ADR 0022) makes a texel glow when its alpha is low but not 0
 ALPHA = {"glow": 40}
 EMISSIVE = {"light"}
 
@@ -324,7 +324,7 @@ def wheel(name, x_out, z_center):
 
 
 def glow(name, x_out, z_center):
-    # A disc under the folded wheel (ADR 0021). The render controller hides it on the ground.
+    # A disc under the folded wheel (ADR 0022). The render controller hides it on the ground.
     x = 14 * x_out
     return {
         "name": name,

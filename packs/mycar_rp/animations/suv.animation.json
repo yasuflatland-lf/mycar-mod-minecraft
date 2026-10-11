@@ -25,6 +25,69 @@
         "0.0": { "effect": "exhaust", "locator": "exhaust" }
       }
     },
+    "animation.mycar.suv.wheels_deploy": {
+      "animation_length": 1.0,
+      "bones": {
+        "wheel_fl": {
+          "rotation": { "0.0": [0, 0, 0], "1.0": [0, 0, 90] },
+          "position": { "0.0": [0, 0, 0], "1.0": [0, -4, 0] }
+        },
+        "wheel_rl": {
+          "rotation": { "0.0": [0, 0, 0], "1.0": [0, 0, 90] },
+          "position": { "0.0": [0, 0, 0], "1.0": [0, -4, 0] }
+        },
+        "wheel_fr": {
+          "rotation": { "0.0": [0, 0, 0], "1.0": [0, 0, -90] },
+          "position": { "0.0": [0, 0, 0], "1.0": [0, -4, 0] }
+        },
+        "wheel_rr": {
+          "rotation": { "0.0": [0, 0, 0], "1.0": [0, 0, -90] },
+          "position": { "0.0": [0, 0, 0], "1.0": [0, -4, 0] }
+        }
+      }
+    },
+    "animation.mycar.suv.wheels_folded": {
+      "loop": true,
+      "bones": {
+        "wheel_fl": { "rotation": [0, 0, 90], "position": [0, -4, 0] },
+        "wheel_rl": { "rotation": [0, 0, 90], "position": [0, -4, 0] },
+        "wheel_fr": { "rotation": [0, 0, -90], "position": [0, -4, 0] },
+        "wheel_rr": { "rotation": [0, 0, -90], "position": [0, -4, 0] }
+      }
+    },
+    "animation.mycar.suv.wheels_retract": {
+      "animation_length": 1.0,
+      "bones": {
+        "wheel_fl": {
+          "rotation": { "0.0": [0, 0, 90], "1.0": [0, 0, 0] },
+          "position": { "0.0": [0, -4, 0], "1.0": [0, 0, 0] }
+        },
+        "wheel_rl": {
+          "rotation": { "0.0": [0, 0, 90], "1.0": [0, 0, 0] },
+          "position": { "0.0": [0, -4, 0], "1.0": [0, 0, 0] }
+        },
+        "wheel_fr": {
+          "rotation": { "0.0": [0, 0, -90], "1.0": [0, 0, 0] },
+          "position": { "0.0": [0, -4, 0], "1.0": [0, 0, 0] }
+        },
+        "wheel_rr": {
+          "rotation": { "0.0": [0, 0, -90], "1.0": [0, 0, 0] },
+          "position": { "0.0": [0, -4, 0], "1.0": [0, 0, 0] }
+        }
+      }
+    },
+    "animation.mycar.suv.hover_glow": {
+      "loop": true,
+      "animation_length": 0.1,
+      "particle_effects": {
+        "0.0": [
+          { "effect": "hover_glow", "locator": "hover_fl" },
+          { "effect": "hover_glow", "locator": "hover_fr" },
+          { "effect": "hover_glow", "locator": "hover_rl" },
+          { "effect": "hover_glow", "locator": "hover_rr" }
+        ]
+      }
+    },
     "animation.mycar.suv.door_fr": {
       "animation_length": 1.2,
       "bones": {

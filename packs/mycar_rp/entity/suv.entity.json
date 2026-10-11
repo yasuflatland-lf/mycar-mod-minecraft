@@ -4,7 +4,7 @@
     "description": {
       "identifier": "mycar:suv",
       "materials": {
-        "default": "entity_alphatest",
+        "default": "entity_emissive_alpha",
         "lamp": "entity",
         "lamp_lit": "entity_emissive"
       },
@@ -16,10 +16,18 @@
       "geometry": { "default": "geometry.mycar.suv" },
       "animations": {
         "wheels": "animation.mycar.suv.wheels",
-        "exhaust": "animation.mycar.suv.exhaust"
+        "wheels_deploy": "animation.mycar.suv.wheels_deploy",
+        "wheels_folded": "animation.mycar.suv.wheels_folded",
+        "wheels_retract": "animation.mycar.suv.wheels_retract",
+        "hover_glow": "animation.mycar.suv.hover_glow",
+        "exhaust": "animation.mycar.suv.exhaust",
+        "flight": "controller.animation.mycar.suv.flight"
       },
-      "particle_effects": { "exhaust": "minecraft:basic_smoke_particle" },
-      "scripts": { "animate": ["wheels", { "exhaust": "query.has_rider" }] },
+      "particle_effects": {
+        "exhaust": "minecraft:basic_smoke_particle",
+        "hover_glow": "mycar:hover_glow"
+      },
+      "scripts": { "animate": ["flight", { "exhaust": "query.has_rider" }] },
       "render_controllers": ["controller.render.mycar.suv"]
     }
   }

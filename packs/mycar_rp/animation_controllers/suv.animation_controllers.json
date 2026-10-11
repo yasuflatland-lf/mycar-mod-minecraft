@@ -1,0 +1,30 @@
+{
+  "format_version": "1.10.0",
+  "animation_controllers": {
+    "controller.animation.mycar.suv.flight": {
+      "initial_state": "ground",
+      "states": {
+        "ground": {
+          "animations": ["wheels"],
+          "transitions": [
+            { "deploy": "query.property('mycar:flight') != 'ground'" }
+          ]
+        },
+        "deploy": {
+          "animations": ["wheels_deploy"],
+          "transitions": [{ "hover": "query.all_animations_finished" }]
+        },
+        "hover": {
+          "animations": ["wheels_folded", "hover_glow"],
+          "transitions": [
+            { "retract": "query.property('mycar:flight') == 'ground'" }
+          ]
+        },
+        "retract": {
+          "animations": ["wheels_retract"],
+          "transitions": [{ "ground": "query.all_animations_finished" }]
+        }
+      }
+    }
+  }
+}
