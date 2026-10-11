@@ -62,7 +62,7 @@ export function stepFlight(prev: FlightState, input: FlightInput): FlightState {
     prev.lastTap !== undefined &&
     input.tick - prev.lastTap <= SPEC.doubleTapTicks;
   let lastTap = prev.lastTap;
-  if (tap) lastTap = toggle || !accepts ? undefined : input.tick;
+  if (tap) lastTap = accepts && !toggle ? input.tick : undefined;
   const mode = nextMode(prev, input, toggle);
   return {
     mode,
@@ -91,7 +91,7 @@ export function flightVerticalSpeed(
       return -SPEC.landingSink;
     case "flying": {
       const tilt = Math.abs(pitch) - SPEC.pitchDeadzone;
-      if (!Number.isFinite(pitch) || !(tilt > 0) || !(speed > 0)) return 0;
+      if (!Number.isFinite(pitch) || tilt <= 0 || !(speed > 0)) return 0;
       const climb =
         -Math.sign(pitch) * Math.sin((tilt * Math.PI) / 180) * speed;
       return clamp(climb, -SPEC.maxClimb, SPEC.maxClimb);
