@@ -2,6 +2,7 @@ import fc from "fast-check";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { FORMS } from "../../../../src/domain/vehicle/form";
 import { SPEC } from "../../../../src/domain/vehicle/spec";
+import { NAMESPACE } from "../../../../src/infrastructure/shared/identifiers";
 import { BedrockVehicleWorld } from "../../../../src/infrastructure/vehicle/bedrock/bedrockVehicleWorld";
 import {
   HEADLIGHTS_PROPERTY,
@@ -113,9 +114,9 @@ describe("BedrockVehicleWorld submarine wiring (ADR 0040)", () => {
   it("switches gravity off for submarine and writes its form on the same call", () => {
     const { car, world } = fixture();
     world.setForm(car.id, "submarine");
-    expect(car.triggerEvent).toHaveBeenCalledWith("yasuflatland:gravity_off");
+    expect(car.triggerEvent).toHaveBeenCalledWith(`${NAMESPACE}:gravity_off`);
     expect(car.setProperty).toHaveBeenCalledWith(
-      "yasuflatland:form",
+      `${NAMESPACE}:form`,
       "submarine",
     );
     expect(car.triggerEvent.mock.invocationCallOrder[0]).toBeLessThan(
@@ -223,8 +224,8 @@ describe("BedrockVehicleWorld flight wiring", () => {
         expect(car.triggerEvent.mock.calls).toEqual([
           [
             form === "car"
-              ? "yasuflatland:gravity_on"
-              : "yasuflatland:gravity_off",
+              ? `${NAMESPACE}:gravity_on`
+              : `${NAMESPACE}:gravity_off`,
           ],
         ]);
       }),
