@@ -8,11 +8,13 @@ import {
 } from "@minecraft/server";
 import type { DriveVehicles } from "../../application/driveVehicles";
 import type { HitVehicle } from "../../application/hitVehicle";
+import type { PaintVehicle } from "../../application/paintVehicle";
 import type { PlaceVehicle } from "../../application/placeVehicle";
 import { parseTestInputMessage } from "../testInput/testInputMessage";
 import type { TestInputStore } from "../testInput/testInputStore";
 import {
   ITEM_TYPE,
+  PAINT_BY_DYE,
   PLAYER_TYPE,
   TEST_INPUT_EVENT,
   VEHICLE_TYPE,
@@ -23,6 +25,7 @@ export function registerSubscriptions(
     drive: DriveVehicles;
     place: PlaceVehicle;
     hit: HitVehicle;
+    paint: PaintVehicle;
   },
   testInputs: TestInputStore,
 ): void {
@@ -75,5 +78,21 @@ export function registerSubscriptions(
       vehicleId: ev.hitEntity.id,
       tick: system.currentTick,
     });
+  });
+
+  world.beforeEvents.playerInteractWithEntity.subscribe((ev) => {
+    if (ev.target.typeId !== VEHICLE_TYPE) return;
+    const paint = PAINT_BY_DYE[ev.itemStack?.typeId ?? ""];
+    if (!paint) return;
+    // Cancelling keeps the player from getting in. Before-events cannot change
+    // the world, so the repaint runs on the next tick.
+    ev.cancel = true;
+    const cmd = {
+      playerId: ev.player.id,
+      vehicleId: ev.target.id,
+      paint,
+      creative: ev.player.getGameMode() === GameMode.Creative,
+    };
+    system.run(() => useCases.paint.execute(cmd));
   });
 }

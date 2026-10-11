@@ -1,0 +1,57 @@
+import { existsSync, readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
+import { PAINTS } from "../../src/domain/vehicle/paint";
+import {
+  PAINT_BY_DYE,
+  PAINT_VARIANT,
+  paintEvent,
+} from "../../src/infrastructure/bedrock/identifiers";
+
+const read = (p: string) => JSON.parse(readFileSync(p, "utf8"));
+const entity = read("packs/mycar_bp/entities/suv.json")["minecraft:entity"];
+const client = read("packs/mycar_rp/entity/suv.entity.json")[
+  "minecraft:client_entity"
+].description;
+const controller = read(
+  "packs/mycar_rp/render_controllers/suv.render_controllers.json",
+).render_controllers["controller.render.mycar.suv"];
+
+describe("vehicle paints (ADR 0017)", () => {
+  it("a new vehicle starts khaki", () => {
+    expect(entity.components["minecraft:variant"].value).toBe(
+      PAINT_VARIANT.khaki,
+    );
+  });
+
+  it("each paint event sets that paint's variant and drops the other paints", () => {
+    for (const paint of PAINTS) {
+      const event = entity.events[paintEvent(paint)];
+      const [group] = event.add.component_groups;
+      expect(
+        entity.component_groups[group]["minecraft:variant"].value,
+        paint,
+      ).toBe(PAINT_VARIANT[paint]);
+      expect(new Set([group, ...event.remove.component_groups])).toEqual(
+        new Set(PAINTS.map((p) => `mycar:paint_${p}`)),
+      );
+    }
+  });
+
+  it("the render controller picks each paint's texture by its variant, and the texture exists", () => {
+    expect(client.render_controllers).toEqual(["controller.render.mycar.suv"]);
+    expect(controller.textures).toEqual(["Array.paints[query.variant]"]);
+    const slots: string[] = controller.arrays.textures["Array.paints"];
+    for (const paint of PAINTS) {
+      const key = slots[PAINT_VARIANT[paint]]?.replace("Texture.", "") ?? "";
+      const path = client.textures[key];
+      expect(path, paint).toMatch(
+        paint === "khaki" ? /\/suv$/ : new RegExp(`/suv_${paint}$`),
+      );
+      expect(existsSync(`packs/mycar_rp/${path}.png`), path).toBe(true);
+    }
+  });
+
+  it("every dye maps to a paint other than the starting khaki", () => {
+    expect(Object.values(PAINT_BY_DYE).sort()).toEqual(["green", "red"]);
+  });
+});

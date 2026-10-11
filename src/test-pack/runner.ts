@@ -2,10 +2,13 @@
 // main Behavior Pack, so they drive the vehicle through script events.
 import { type Dimension, type Entity, system, world } from "@minecraft/server";
 import { forward } from "../domain/shared/vec";
+import { PAINTS } from "../domain/vehicle/paint";
 import { nearestSeat, toLocal } from "../domain/vehicle/seats";
 import { SPEC } from "../domain/vehicle/spec";
 import {
   TEST_INPUT_EVENT as INPUT_EVENT,
+  PAINT_VARIANT,
+  paintEvent,
   VEHICLE_TYPE as VEHICLE,
 } from "../infrastructure/bedrock/identifiers";
 import { LOG_TAG, linePrefix, runIdFrom, TEST_EVENT } from "./protocol";
@@ -330,6 +333,23 @@ async function seatsAfterDriverLeaves(a: Arena): Promise<Outcome> {
   }
 }
 
+// Players cannot be simulated, so this drives the entity events that the dye
+// interaction triggers and reads back the variant the texture is chosen by.
+function paintEvents(a: Arena): Promise<Outcome> {
+  return withCar(a, 5.5, 35.5, 0, async (car) => {
+    const variant = () => car.getComponent("minecraft:variant")?.value;
+    const seen = [`start=${variant()}`];
+    let pass = variant() === PAINT_VARIANT.khaki;
+    for (const paint of [...PAINTS.slice(1), PAINTS[0]]) {
+      car.triggerEvent(paintEvent(paint));
+      await wait(1);
+      seen.push(`${paint}=${variant()}`);
+      pass &&= variant() === PAINT_VARIANT[paint];
+    }
+    return { pass, detail: seen.join(" ") };
+  });
+}
+
 async function runAll(runId: string): Promise<void> {
   const a = await setupArena();
   const tests: [string, () => Promise<Outcome>][] = [
@@ -340,6 +360,7 @@ async function runAll(runId: string): Promise<void> {
     ["step2_front", () => step2(a, 8, -90, 100)],
     ["step2_diagonal", () => step2(a, 30, -60, 100)],
     ["seats_after_driver_leaves", () => seatsAfterDriverLeaves(a)],
+    ["paint_events", () => paintEvents(a)],
   ];
   let passed = 0;
   const lines: string[] = [];

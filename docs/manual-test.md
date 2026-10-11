@@ -20,3 +20,4 @@ To use commands, run `docker exec mycar-bds send-command op <player name>`.
 | 12 | The moving vehicle as seen by a passenger | 3 or higher on a 5-point scale | | |
 | 13 | Appearance (SUV shape, khaki, interior and exterior) | As intended | | |
 | 14 | Stop, then hold the stick straight right (mobile) / hold only D (PC) | The vehicle moves slowly forward and turns right; it does not back up | | |
+| 15 | Use green dye, then red dye, on a placed vehicle / use red dye again | The body turns green, then red, one dye is used each time (not in Creative), and nobody gets in / nothing changes and the dye stays | | |
