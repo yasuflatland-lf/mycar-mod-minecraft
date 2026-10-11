@@ -29,7 +29,7 @@ export interface DriveWorld {
   setForm(vehicleId: string, form: Form): void;
   /** Switches a player's view to the third-person camera, or back to their own (ADR 0028). */
   setThirdPerson(playerId: string, on: boolean): void;
-  /** Refreshes water breathing; does nothing for a missing player (ADR 0039). */
+  /** Refreshes water breathing; does nothing for a missing player (ADR 0040). */
   giveWaterBreathing(playerId: string, ticks: number): void;
   /** Degrees; positive lowers the right side (ADR 0026). */
   setBank(vehicleId: string, degrees: number): void;
