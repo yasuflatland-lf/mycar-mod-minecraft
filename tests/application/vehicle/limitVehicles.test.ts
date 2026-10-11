@@ -86,6 +86,7 @@ describe("LimitVehicles (ADR 0038)", () => {
     expect(world.calls).toEqual(["remove:v1"]);
     expect(fleets.state.evicted).toEqual(["v0"]);
     expect(warnings.some((w) => w.includes("v0"))).toBe(true);
+    expect(warnings.some((w) => w.includes("v1"))).toBe(true);
   });
 
   it("counts a vehicle it never saw spawn as older than the ones it did", () => {

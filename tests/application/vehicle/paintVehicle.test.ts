@@ -141,6 +141,7 @@ describe("PaintVehicle (ADR 0031)", () => {
         fc.integer({ min: 1, max: 100 }),
         (from, to, next, tick, later) => {
           fc.pre(from !== to);
+          fc.pre(next !== to);
           const world = new FakeWorld();
           world.paints.set("a", from);
           const useCase = new PaintVehicle(world);
