@@ -214,53 +214,27 @@
       "animation_length": 1.0,
       "loop": "hold_on_last_frame",
       "bones": {
-        "wheel_rl": {
-          "rotation": {
-            "0.0": [0, 0, 0],
-            "1.0": [0, 90, 0]
-          }
-        },
+        "wheel_rl": { "rotation": { "0.0": [0, 0, 0], "1.0": [0, 90, 0] } },
         "prop_rl": {
-          "rotation": {
-            "0.0": [0, 0, 0],
-            "1.0": [0, 90, 0]
-          },
-          "scale": {
-            "0.0": 0,
-            "1.0": 1
-          }
+          "rotation": { "0.0": [0, 0, 0], "1.0": [0, 90, 0] },
+          "scale": { "0.0": 0, "1.0": 1 }
         },
-        "wheel_rr": {
-          "rotation": {
-            "0.0": [0, 0, 0],
-            "1.0": [0, -90, 0]
-          }
-        },
+        "wheel_rr": { "rotation": { "0.0": [0, 0, 0], "1.0": [0, -90, 0] } },
         "prop_rr": {
-          "rotation": {
-            "0.0": [0, 0, 0],
-            "1.0": [0, -90, 0]
-          },
-          "scale": {
-            "0.0": 0,
-            "1.0": 1
-          }
+          "rotation": { "0.0": [0, 0, 0], "1.0": [0, -90, 0] },
+          "scale": { "0.0": 0, "1.0": 1 }
         }
       }
     },
     "animation.mycar.suv.submerged": {
       "loop": true,
       "bones": {
-        "wheel_rl": {
-          "rotation": [0, 90, 0]
-        },
+        "wheel_rl": { "rotation": [0, 90, 0] },
         "prop_rl": {
           "rotation": [0, 90, "query.modified_distance_moved * 360"],
           "scale": 1
         },
-        "wheel_rr": {
-          "rotation": [0, -90, 0]
-        },
+        "wheel_rr": { "rotation": [0, -90, 0] },
         "prop_rr": {
           "rotation": [0, -90, "query.modified_distance_moved * 360"],
           "scale": 1
@@ -270,37 +244,15 @@
     "animation.mycar.suv.surface": {
       "animation_length": 1.0,
       "bones": {
-        "wheel_rl": {
-          "rotation": {
-            "0.0": [0, 90, 0],
-            "1.0": [0, 0, 0]
-          }
-        },
+        "wheel_rl": { "rotation": { "0.0": [0, 90, 0], "1.0": [0, 0, 0] } },
         "prop_rl": {
-          "rotation": {
-            "0.0": [0, 90, 0],
-            "1.0": [0, 0, 0]
-          },
-          "scale": {
-            "0.0": 1,
-            "1.0": 0
-          }
+          "rotation": { "0.0": [0, 90, 0], "1.0": [0, 0, 0] },
+          "scale": { "0.0": 1, "1.0": 0 }
         },
-        "wheel_rr": {
-          "rotation": {
-            "0.0": [0, -90, 0],
-            "1.0": [0, 0, 0]
-          }
-        },
+        "wheel_rr": { "rotation": { "0.0": [0, -90, 0], "1.0": [0, 0, 0] } },
         "prop_rr": {
-          "rotation": {
-            "0.0": [0, -90, 0],
-            "1.0": [0, 0, 0]
-          },
-          "scale": {
-            "0.0": 1,
-            "1.0": 0
-          }
+          "rotation": { "0.0": [0, -90, 0], "1.0": [0, 0, 0] },
+          "scale": { "0.0": 1, "1.0": 0 }
         }
       }
     }
