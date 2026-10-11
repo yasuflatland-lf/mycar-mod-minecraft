@@ -1,6 +1,6 @@
 // Use case: a player hit a vehicle (ADR 0008).
 import type { VehicleRepository } from "../domain/vehicle/vehicleRepository";
-import type { BreakWorld } from "./ports";
+import type { BreakWorld, FleetStore } from "./ports";
 
 export interface HitVehicleCommand {
   vehicleId: string;
@@ -11,6 +11,7 @@ export class HitVehicle {
   constructor(
     private readonly world: BreakWorld,
     private readonly repo: VehicleRepository,
+    private readonly fleets: FleetStore,
   ) {}
 
   execute(cmd: HitVehicleCommand): boolean {
@@ -23,6 +24,9 @@ export class HitVehicle {
     this.world.dropVehicleItem(cmd.vehicleId);
     this.world.removeVehicle(cmd.vehicleId);
     this.repo.remove(cmd.vehicleId);
+    const fleet = this.fleets.load();
+    fleet.forget(cmd.vehicleId);
+    this.fleets.save(fleet);
     return true;
   }
 }

@@ -1,6 +1,7 @@
 // Capabilities the application layer requires from the game (ports). Implementations live in the infrastructure layer (ADR 0012).
 import type { Vec2, Vec3 } from "../domain/shared/vec";
 import type { RawInput } from "../domain/vehicle/driveInput";
+import type { Fleet } from "../domain/vehicle/fleet";
 import type { FlightMode } from "../domain/vehicle/flight";
 import type { Cell } from "../domain/vehicle/headlights";
 import type { Paint } from "../domain/vehicle/paint";
@@ -59,6 +60,18 @@ export interface StarterWorld {
 export interface BreakWorld {
   dropVehicleItem(vehicleId: string): void;
   removeVehicle(vehicleId: string): void;
+}
+
+export interface LimitWorld {
+  /** Vehicles in loaded chunks, in every dimension. */
+  loadedVehicleIds(): string[];
+  removeVehicle(vehicleId: string): void;
+}
+
+/** Keeps the fleet across script reloads and server restarts (ADR 0038). */
+export interface FleetStore {
+  load(): Fleet;
+  save(fleet: Fleet): void;
 }
 
 export interface PaintWorld {

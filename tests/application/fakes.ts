@@ -1,13 +1,16 @@
 import type {
   BreakWorld,
   DriveWorld,
+  FleetStore,
   HeadlightWorld,
+  LimitWorld,
   PaintWorld,
   PlacementWorld,
   StarterWorld,
   VehicleSnapshot,
 } from "../../src/application/ports";
 import type { Vec3 } from "../../src/domain/shared/vec";
+import { Fleet, type FleetState } from "../../src/domain/vehicle/fleet";
 import type { FlightMode } from "../../src/domain/vehicle/flight";
 import type { Cell } from "../../src/domain/vehicle/headlights";
 import type { Paint } from "../../src/domain/vehicle/paint";
@@ -31,6 +34,18 @@ export class InMemoryRepo implements VehicleRepository {
   }
 }
 
+export class FakeFleetStore implements FleetStore {
+  state: FleetState = Fleet.empty().state();
+  saves = 0;
+  load() {
+    return Fleet.restore(this.state);
+  }
+  save(fleet: Fleet) {
+    this.state = fleet.state();
+    this.saves++;
+  }
+}
+
 export class FakeWorld
   implements
     DriveWorld,
@@ -38,9 +53,12 @@ export class FakeWorld
     StarterWorld,
     BreakWorld,
     PaintWorld,
-    HeadlightWorld
+    HeadlightWorld,
+    LimitWorld
 {
   snapshots: VehicleSnapshot[] = [];
+  /** Vehicles in loaded chunks, for LimitVehicles. */
+  loadedIds: string[] = [];
   targets: RamTarget[] = [];
   readonly paints = new Map<string, Paint>();
   readonly headlights = new Map<string, boolean>();
@@ -58,6 +76,9 @@ export class FakeWorld
 
   loadedVehicles() {
     return this.snapshots;
+  }
+  loadedVehicleIds() {
+    return this.loadedIds;
   }
   solidAt() {
     return false;
