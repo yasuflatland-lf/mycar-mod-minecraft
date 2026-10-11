@@ -9,6 +9,7 @@ import {
 } from "./driveInput";
 import type { VehicleEvent } from "./events";
 import {
+  climbInput,
   type FlightMode,
   type FlightState,
   flightVerticalSpeed,
@@ -17,6 +18,7 @@ import {
   verticalImpulse,
 } from "./flight";
 import { EMPTY_COUNTER, type HitCounter, registerHit } from "./hitCounter";
+import { nextGearDown } from "./landingGear";
 import {
   initialMotion,
   type MotionResult,
@@ -62,6 +64,8 @@ export interface TickOutcome {
   flight?: FlightMode;
   /** The new bank angle in degrees, only on the tick it changes and on the first tick (ADR 0026). */
   bank?: number;
+  /** Whether the wheels are in the driving pose, only on the tick it changes and on the first tick (ADR 0032). */
+  gearDown?: boolean;
 }
 
 function stepProbe(ctx: TickContext): StepProbe {
@@ -79,14 +83,42 @@ function stepProbe(ctx: TickContext): StepProbe {
   };
 }
 
-/** Takeoff ignores the controls, and there is no handbrake in the air (ADR 0021). */
+/** Whether there is a solid block within gearDownHeight below the center or a corner of the vehicle. */
+function groundNear(ctx: TickContext, f: Vec2): boolean {
+  const r = rightOf(f);
+  const d = SPEC.gearProbeOffset;
+  const spots = [
+    [0, 0],
+    [d, d],
+    [d, -d],
+    [-d, d],
+    [-d, -d],
+  ] as const;
+  for (let dy = 1; dy <= SPEC.gearDownHeight; dy++)
+    for (const [ahead, side] of spots)
+      if (
+        ctx.solidAt({
+          x: f.x * ahead + r.x * side,
+          y: -dy,
+          z: f.z * ahead + r.z * side,
+        })
+      )
+        return true;
+  return false;
+}
+
+/**
+ * Takeoff ignores the controls, and there is no handbrake in the air (ADR
+ * 0021). In the air the stick pulled back sinks instead of reversing (ADR 0031).
+ */
 function driveInputFor(
   raw: RawInput | undefined,
   mode: FlightMode,
 ): DriveInput {
   if (!raw || mode === "takeoff") return NEUTRAL_INPUT;
   const input = toDriveInput(raw);
-  return mode === "ground" ? input : { ...input, handbrake: false };
+  if (mode === "ground") return input;
+  return { ...input, throttle: Math.max(0, input.throttle), handbrake: false };
 }
 
 export class Vehicle {
@@ -96,6 +128,9 @@ export class Vehicle {
   // Undefined until the first tick, so a rebuilt vehicle clears a bank the
   // entity kept from before /reload.
   private sentBank: number | undefined;
+  private gearDown: boolean;
+  // Undefined until the first tick, like sentBank.
+  private sentGearDown: boolean | undefined;
   private driverId: string | undefined;
   private seats = new Map<string, number>();
   private readonly lastHit = new Map<string, number>();
@@ -109,6 +144,7 @@ export class Vehicle {
   ) {
     this.motion = initialMotion(yaw);
     this.flight = initialFlight(flight);
+    this.gearDown = flight === "ground";
   }
 
   static create(id: string, yaw: number): Vehicle {
@@ -144,6 +180,11 @@ export class Vehicle {
 
   get flightMode(): FlightMode {
     return this.flight.mode;
+  }
+
+  /** Whether the wheels are in the driving pose (ADR 0032). */
+  get wheelsDown(): boolean {
+    return this.gearDown;
   }
 
   /** Bank angle in degrees; positive lowers the right side (ADR 0026). */
@@ -182,8 +223,7 @@ export class Vehicle {
       impulseY = step.jumped ? SPEC.stepVelocity : 0;
     } else {
       const targetVy = clamp(
-        flightVerticalSpeed(mode, raw?.pitch ?? 0, step.state.speed) -
-          bankSink(mode, this.bank),
+        flightVerticalSpeed(mode, climbInput(raw)) - bankSink(mode, this.bank),
         -SPEC.maxClimb,
         SPEC.maxClimb,
       );
@@ -191,6 +231,12 @@ export class Vehicle {
     }
     const bank = this.bank === this.sentBank ? undefined : this.bank;
     this.sentBank = this.bank;
+    this.gearDown = nextGearDown(this.gearDown, mode, () =>
+      groundNear(ctx, step.forward),
+    );
+    const gearDown =
+      this.gearDown === this.sentGearDown ? undefined : this.gearDown;
+    this.sentGearDown = this.gearDown;
 
     return {
       impulse: { x: step.impulse.x, y: impulseY, z: step.impulse.z },
@@ -200,6 +246,7 @@ export class Vehicle {
       events,
       flight: mode === before ? undefined : mode,
       bank,
+      gearDown,
     };
   }
 

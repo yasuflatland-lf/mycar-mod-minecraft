@@ -164,6 +164,21 @@ describe("DriveVehicles", () => {
     ]);
   });
 
+  it("writes the landing gear on the first tick and then only when it changes (ADR 0032)", () => {
+    const world = new FakeWorld();
+    const uc = new DriveVehicles(world, new InMemoryRepo(), logger());
+    const idle = { moveX: 0, moveY: 0, jump: false };
+    const pressed = { ...idle, jump: true };
+    [idle, idle, pressed, idle, pressed, idle].forEach((input, tick) => {
+      world.snapshots = [snapshot("a", { testInput: input })];
+      uc.execute(tick);
+    });
+    expect(world.calls.filter((c) => c.startsWith("gear:"))).toEqual([
+      "gear:a:down",
+      "gear:a:up",
+    ]);
+  });
+
   it("still writes a flight mode change when moving the vehicle throws on that tick", () => {
     const world = new FakeWorld();
     const uc = new DriveVehicles(world, new InMemoryRepo(), logger());

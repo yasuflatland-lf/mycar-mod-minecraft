@@ -5,8 +5,6 @@ export interface RawInput {
   moveX: number;
   moveY: number;
   jump: boolean;
-  /** View pitch in degrees, Minecraft convention: negative looks up. Missing means level. */
-  pitch?: number;
 }
 export interface DriveInput {
   throttle: number;

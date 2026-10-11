@@ -1,6 +1,6 @@
 # 0021. Flight mode: toggle with a double tap, climb with the view pitch, and switch gravity with a component group
 
-- Status: Accepted
+- Status: Superseded in part by 0031 (climbing and sinking) and 0033 (how flight ends)
 - Date: 2026-10-11
 
 ## Context

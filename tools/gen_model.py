@@ -23,7 +23,8 @@ PALETTE = {
     "grille": (14, 14, 14),
     "tire": (20, 20, 20),
     "rim": (176, 176, 180),
-    "seat": (45, 43, 42),
+    "seat": (24, 24, 26),  # black leather
+    "seat_pleat": (58, 58, 63),  # the lit tops of the pleats
     "light": (232, 232, 208),
     "tail": (170, 30, 30),
     "glass": (40, 52, 60),
@@ -121,14 +122,45 @@ body = [
     # Side steps
     box(13, 4, -9, 15, 6, 10, "trim"),
     box(-15, 4, -9, -13, 6, 10, "trim"),
-    # Seats (2 in front + a rear bench)
-    box(2, 7, 1, 11, 10, 9, "seat"),
-    box(2, 10, 0, 11, 19, 1, "seat"),
-    box(-11, 7, 1, -2, 10, 9, "seat"),
-    box(-11, 10, 0, -2, 19, 1, "seat"),
-    box(-11, 7, -17, 11, 10, -9, "seat"),
-    box(-11, 10, -18, 11, 19, -17, "seat"),
 ]
+
+
+def pleated_seat(x0, x1, z_back):
+    """A black leather bucket seat: pleats running front to back on the cushion and stacked
+    across the backrest, between raised side bolsters. The gaps between the pleats show the
+    darker base, so the pleats read as stripes like a tuck-and-roll seat."""
+    z_front = z_back + 9
+    bolster = 1.5
+    rib, gap = 0.7, 0.35
+    inner0, inner1 = x0 + bolster, x1 - bolster
+    count = int((inner1 - inner0 + gap) // (rib + gap))
+    margin = (inner1 - inner0 - (count * rib + (count - 1) * gap)) / 2
+    cubes = [
+        # Cushion and backrest
+        box(x0, 7, z_back + 1, x1, 10, z_front, "seat"),
+        box(x0, 10, z_back, x1, 19, z_back + 1, "seat"),
+        # Side bolsters of the cushion and the backrest
+        box(x0, 10, z_back + 1, inner0, 10.8, z_front, "seat"),
+        box(inner1, 10, z_back + 1, x1, 10.8, z_front, "seat"),
+        box(x0, 10.8, z_back + 1, inner0, 19, z_back + 1.8, "seat"),
+        box(inner1, 10.8, z_back + 1, x1, 19, z_back + 1.8, "seat"),
+        # Rolled front edge of the cushion
+        box(x0, 9.4, z_front, x1, 10.4, z_front + 0.4, "seat_pleat"),
+    ]
+    for i in range(count):
+        a = inner0 + margin + i * (rib + gap)
+        cubes.append(box(a, 10, z_back + 1.5, a + rib, 10.4, z_front - 0.5, "seat_pleat"))
+    for i in range(7):
+        y = 11.2 + i * (rib + gap)
+        cubes.append(box(inner0, y, z_back + 1, inner1, y + rib, z_back + 1.4, "seat_pleat"))
+    return cubes
+
+
+# Seats: 2 in front and a rear bench made of two halves
+body += pleated_seat(2, 11, 0)
+body += pleated_seat(-11, -2, 0)
+body += pleated_seat(-11, 0, -18)
+body += pleated_seat(0, 11, -18)
 
 # Steering wheel (+x side; shown in game as right-hand drive), tilted 20° toward the driver. Like the
 # tires, the rim is a ring of thin blocks turned around the column. Brown leather rim, gray spokes,
@@ -246,21 +278,78 @@ def round_face(center, radius, z0, z1, color, segments=12):
     return cubes
 
 
-# Gauges (behind the steering wheel, on the driver's side of the dashboard). Two round dials with red
-# needles, each in a round black bezel
-for dial_x in (4.3, 7.7):  # speedometer, tachometer
-    center = (dial_x, 18.3, 10)
-    body += round_face(center, 1.6, 10, 10.6, "grille")  # bezel
-    body += round_face(center, 1.25, 9.9, 10, "gauge")  # dial
-    body.append(box(dial_x - 0.1, 18.3, 9.8, dial_x + 0.1, 19.3, 9.9, "tail"))  # needle
+# Gauges (behind the steering wheel, on the driver's side of the dashboard), like an old utility
+# 4x4: a black instrument panel with a large speedometer in the middle, two small gauges on each
+# side, and a row of warning lamps above. Every dial has a black face, white ticks and a white
+# needle, in a chrome bezel. No logo or lettering (ADR 0009).
+def dial(cx, cy, radius, ticks, needle_angle):
+    center = (cx, cy, 10)
+    cubes = round_face(center, radius + 0.25, 10, 10.5, "rim")  # bezel
+    cubes += round_face(center, radius, 9.9, 10, "grille")  # face
+    # Ticks on a 270° sweep that leaves the bottom open, as on a speedometer
+    for i in range(ticks):
+        angle = math.radians(225 - i * 270 / (ticks - 1))
+        tx, ty = cx + radius * 0.78 * math.cos(angle), cy + radius * 0.78 * math.sin(angle)
+        cubes.append(box(tx - 0.08, ty - 0.08, 9.85, tx + 0.08, ty + 0.08, 9.9, "gauge"))
+    needle = box(cx - 0.06, cy, 9.8, cx + 0.06, cy + radius * 0.7, 9.85, "gauge")
+    needle["pivot"] = list(center)
+    needle["rotation"] = [0, 0, needle_angle]
+    cubes.append(needle)
+    cubes.append(box(cx - 0.15, cy - 0.15, 9.78, cx + 0.15, cy + 0.15, 9.85, "trim"))  # needle hub
+    return cubes
 
-# Center console and shift lever (between the front seats)
-body += [
-    box(-1.5, 7, 1, 1.5, 11, 10, "trim"),  # console
-    box(-0.75, 11, 5, 0.75, 11.5, 6.5, "grille"),  # boot
-    box(-0.25, 11.5, 5.5, 0.25, 14, 6, "rim"),  # lever
-    box(-0.75, 14, 5.25, 0.75, 15, 6.25, "grille"),  # knob
-]
+
+body.append(box(1.6, 15.6, 10.5, 10.4, 20.9, 10.9, "grille"))  # instrument panel
+body += dial(6, 18.2, 1.8, 9, 40)  # speedometer
+for gx in (3.3, 8.7):
+    body += dial(gx, 19.3, 0.85, 5, 30)
+    body += dial(gx, 17.2, 0.85, 5, -30)
+for lx, lamp in ((4.6, "amber"), (5.4, "tail"), (6.6, "glow"), (7.4, "tail")):  # warning lamps
+    body.append(box(lx - 0.22, 20.25, 10.3, lx + 0.22, 20.65, 10.5, lamp))
+
+# Floor shifters between the front seats, like an old utility 4x4: a tall shift lever in an
+# accordion rubber boot, and two shorter transfer levers behind it. Each lever leans back toward
+# the seats like the steering wheel (a negative x rotation tips +y toward -z) and ends in a ball knob.
+def floor_lever(x, z, height, knob, lean=-15):
+    pivot = [x, 7, z]
+
+    def leaned(cube):
+        cube["pivot"] = pivot
+        cube["rotation"] = [lean, 0, 0]
+        return cube
+
+    top = 7 + height
+    return [
+        leaned(box(x - 0.2, 7, z - 0.2, x + 0.2, top, z + 0.2, "trim")),  # rod
+        leaned(box(x - knob, top - knob * 0.8, z - knob * 0.8, x + knob, top + knob * 0.8, z + knob * 0.8, "grille")),
+        leaned(box(x - knob * 0.8, top - knob, z - knob * 0.8, x + knob * 0.8, top + knob, z + knob * 0.8, "grille")),
+        leaned(box(x - knob * 0.8, top - knob * 0.8, z - knob, x + knob * 0.8, top + knob * 0.8, z + knob, "grille")),
+    ]
+
+
+SHIFT_X, SHIFT_Z = 0, 8.5
+body.append(box(-1.8, 7, 4, 1.8, 7.6, 11, "trim"))  # transmission tunnel
+for i, (half, height) in enumerate(((1.0, 0.5), (0.75, 0.4), (0.85, 0.4), (0.6, 0.4), (0.7, 0.35), (0.45, 0.4))):
+    y = 7.6 + sum(h for _, h in ((1.0, 0.5), (0.75, 0.4), (0.85, 0.4), (0.6, 0.4), (0.7, 0.35))[:i])
+    body.append(box(SHIFT_X - half, y, SHIFT_Z - half, SHIFT_X + half, y + height, SHIFT_Z + half, "tire"))  # boot
+body += floor_lever(SHIFT_X, SHIFT_Z, 7.2, 0.55)
+for x in (-1.1, 1.1):
+    body.append(box(x - 0.4, 7.6, 6.1, x + 0.4, 8.1, 6.9, "tire"))  # boot
+    body += floor_lever(x, 6.5, 4.6, 0.4)
+
+# Pedals in the driver's footwell (+x side): clutch and brake are square rubber pads with ribs on
+# arms hanging from under the dashboard, and the accelerator is a long, narrow pad hinged at the
+# floor, its rear end raised (a positive x rotation lifts -z toward +y).
+for px in (4.4, 6.6):  # clutch, brake
+    body += [
+        box(px - 0.15, 9.4, 11.7, px + 0.15, 13, 12, "trim"),  # arm
+        box(px - 0.9, 8.2, 11.4, px + 0.9, 9.6, 11.7, "grille"),  # pad
+    ]
+    body += [box(px - 0.8, y, 11.3, px + 0.8, y + 0.2, 11.4, "trim") for y in (8.45, 8.8, 9.15)]  # ribs
+accelerator = box(8.3, 7, 10.2, 9.3, 7.3, 12.8, "grille")
+accelerator["pivot"] = [8.8, 7, 12.8]
+accelerator["rotation"] = [25, 0, 0]
+body.append(accelerator)
 
 
 # Doors (ADR 0009). The +x side of this definition becomes the right side in game. The pivot sits on the hinge (front edge)

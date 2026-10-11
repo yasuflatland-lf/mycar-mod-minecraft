@@ -79,6 +79,9 @@ export class FakeWorld
   setBank(id: string, degrees: number) {
     this.calls.push(`bank:${id}:${degrees}`);
   }
+  setGearDown(id: string, down: boolean) {
+    this.calls.push(`gear:${id}:${down ? "down" : "up"}`);
+  }
   damage(hit: RamHit, attackerId: string | undefined) {
     this.calls.push(`damage:${hit.id}:${attackerId ?? "-"}`);
   }

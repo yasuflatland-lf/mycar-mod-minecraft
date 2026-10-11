@@ -30,6 +30,8 @@ export interface DriveWorld {
   setThirdPerson(playerId: string, on: boolean): void;
   /** Degrees; positive lowers the right side (ADR 0026). */
   setBank(vehicleId: string, degrees: number): void;
+  /** Whether the wheels are in the driving pose (ADR 0032). */
+  setGearDown(vehicleId: string, down: boolean): void;
   damage(hit: RamHit, attackerId: string | undefined): void;
   playDoor(vehicleId: string, door: string): void;
   /**

@@ -6,6 +6,7 @@ import { SPEC } from "../../src/domain/vehicle/spec";
 import {
   BANK_PROPERTY,
   FLIGHT_PROPERTY,
+  GEAR_DOWN_PROPERTY,
 } from "../../src/infrastructure/bedrock/identifiers";
 
 const read = (p: string) => JSON.parse(readFileSync(p, "utf8"));
@@ -90,6 +91,16 @@ describe("packs/mycar_bp", () => {
       type: "float",
       range: [-SPEC.maxBank, SPEC.maxBank],
       default: 0,
+      client_sync: true,
+    });
+  });
+});
+
+describe("packs/mycar_bp landing gear (ADR 0032)", () => {
+  it("syncs whether the wheels are down, down by default for a vehicle on the ground", () => {
+    expect(entity.description.properties[GEAR_DOWN_PROPERTY]).toEqual({
+      type: "bool",
+      default: true,
       client_sync: true,
     });
   });

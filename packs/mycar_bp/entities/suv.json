@@ -18,6 +18,11 @@
           "default": 0.0,
           "client_sync": true
         },
+        "mycar:gear_down": {
+          "type": "bool",
+          "default": true,
+          "client_sync": true
+        },
         "mycar:headlights": {
           "type": "bool",
           "default": false,

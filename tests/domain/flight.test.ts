@@ -1,6 +1,7 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import {
+  climbInput,
   FLIGHT_MODES,
   type FlightInput,
   type FlightMode,
@@ -20,11 +21,12 @@ interface Frame {
   after: FlightState;
 }
 
-const NEXT: Record<FlightMode, FlightMode> = {
-  ground: "takeoff",
-  takeoff: "flying",
-  flying: "landing",
-  landing: "ground",
+// A flying vehicle that sinks onto the ground skips landing (ADR 0033).
+const NEXT: Record<FlightMode, readonly FlightMode[]> = {
+  ground: ["takeoff"],
+  takeoff: ["flying"],
+  flying: ["landing", "ground"],
+  landing: ["ground"],
 };
 
 function run(steps: readonly Step[], start = initialFlight()): Frame[] {
@@ -56,12 +58,12 @@ const steps = fc.array(step, { maxLength: 300 });
 const mode = fc.constantFrom(...FLIGHT_MODES);
 
 describe("stepFlight (ADR 0021)", () => {
-  it("only moves on in the cycle ground -> takeoff -> flying -> landing -> ground", () => {
+  it("only moves on in the cycle ground -> takeoff -> flying -> (landing ->) ground", () => {
     fc.assert(
       fc.property(mode, steps, (m, seq) => {
         for (const f of run(seq, initialFlight(m)))
           if (f.after.mode !== f.before.mode)
-            expect(f.after.mode).toBe(NEXT[f.before.mode]);
+            expect(NEXT[f.before.mode]).toContain(f.after.mode);
       }),
     );
   });
@@ -124,12 +126,26 @@ describe("stepFlight (ADR 0021)", () => {
     );
   });
 
-  it("starts landing on the tick nothing controls a flying vehicle", () => {
+  it("starts landing on the tick nothing controls a flying vehicle in the air", () => {
     fc.assert(
       fc.property(steps, (seq) => {
         for (const f of run(seq, initialFlight("flying")))
-          if (f.before.mode === "flying" && !f.input.controlled)
+          if (
+            f.before.mode === "flying" &&
+            !f.input.controlled &&
+            !f.input.onGround
+          )
             expect(f.after.mode).toBe("landing");
+      }),
+    );
+  });
+
+  it("returns to the ground on the tick a flying vehicle touches it (ADR 0033)", () => {
+    fc.assert(
+      fc.property(steps, (seq) => {
+        for (const f of run(seq, initialFlight("flying")))
+          if (f.before.mode === "flying")
+            expect(f.after.mode === "ground").toBe(f.input.onGround);
       }),
     );
   });
@@ -157,8 +173,8 @@ describe("stepFlight (ADR 0021)", () => {
   it("a single tap before a driverless landing does not pair with the next tap on the ground", () => {
     const frames = run(
       [
-        { jump: true, controlled: true, onGround: true },
-        { jump: false, controlled: false, onGround: true },
+        { jump: true, controlled: true, onGround: false },
+        { jump: false, controlled: false, onGround: false },
         { jump: false, controlled: true, onGround: true },
         { jump: true, controlled: true, onGround: true },
       ],
@@ -209,77 +225,89 @@ describe("isFlightMode", () => {
   });
 });
 
-describe("flightVerticalSpeed (ADR 0021)", () => {
-  const pitch = fc.double({ min: -90, max: 90, noNaN: true });
-  const speed = fc.double({
-    min: -SPEC.maxReverse,
-    max: SPEC.maxSpeed,
-    noNaN: true,
-  });
+describe("climbInput (ADR 0031)", () => {
+  const axis = fc.double({ min: -1, max: 1, noNaN: true });
 
-  it("never exceeds maxClimb up or down while flying", () => {
+  it("stays within -1 to 1", () => {
     fc.assert(
-      fc.property(pitch, speed, (p, s) => {
-        expect(
-          Math.abs(flightVerticalSpeed("flying", p, s)),
-        ).toBeLessThanOrEqual(SPEC.maxClimb);
+      fc.property(axis, axis, fc.boolean(), (x, y, jump) => {
+        const c = climbInput({ moveX: x, moveY: y, jump });
+        expect(c).toBeGreaterThanOrEqual(-1);
+        expect(c).toBeLessThanOrEqual(1);
       }),
     );
   });
 
-  it("holds altitude within the pitch dead zone, when stopped, and in reverse", () => {
+  it("climbs fully with Jump held and the stick centered or pushed forward", () => {
     fc.assert(
-      fc.property(
-        fc.double({
-          min: -SPEC.pitchDeadzone,
-          max: SPEC.pitchDeadzone,
-          noNaN: true,
-        }),
-        speed,
-        (p, s) => {
-          expect(flightVerticalSpeed("flying", p, s)).toBe(0);
-        },
-      ),
-    );
-    fc.assert(
-      fc.property(
-        pitch,
-        fc.double({ min: -SPEC.maxReverse, max: 0, noNaN: true }),
-        (p, s) => {
-          expect(flightVerticalSpeed("flying", p, s)).toBe(0);
-        },
-      ),
+      fc.property(fc.double({ min: 0, max: 1, noNaN: true }), (y) => {
+        expect(climbInput({ moveX: 0, moveY: y, jump: true })).toBe(1);
+      }),
     );
   });
 
-  it("climbs when looking up and sinks when looking down while moving forward", () => {
-    const tilt = fc.double({
-      min: SPEC.pitchDeadzone + 1,
-      max: 90,
-      noNaN: true,
-    });
-    const forward = fc.double({ min: 0.01, max: SPEC.maxSpeed, noNaN: true });
+  it("sinks with the stick pulled back past the dead zone and never climbs without Jump", () => {
     fc.assert(
-      fc.property(tilt, forward, (t, s) => {
-        expect(flightVerticalSpeed("flying", -t, s)).toBeGreaterThan(0);
-        expect(flightVerticalSpeed("flying", t, s)).toBeLessThan(0);
+      fc.property(
+        fc.double({ min: -1, max: -SPEC.throttleDeadzone - 0.01, noNaN: true }),
+        (y) => {
+          expect(climbInput({ moveX: 0, moveY: y, jump: false })).toBeLessThan(
+            0,
+          );
+        },
+      ),
+    );
+    fc.assert(
+      fc.property(axis, axis, (x, y) => {
+        expect(
+          climbInput({ moveX: x, moveY: y, jump: false }),
+        ).toBeLessThanOrEqual(0);
+      }),
+    );
+  });
+
+  it("is 0 without input", () => {
+    expect(climbInput(undefined)).toBe(0);
+  });
+});
+
+describe("flightVerticalSpeed (ADR 0021, 0031)", () => {
+  const climb = fc.double({ min: -1, max: 1, noNaN: true });
+
+  it("never exceeds maxClimb up or down while flying", () => {
+    fc.assert(
+      fc.property(fc.double(), (c) => {
+        expect(Math.abs(flightVerticalSpeed("flying", c))).toBeLessThanOrEqual(
+          SPEC.maxClimb,
+        );
+      }),
+    );
+  });
+
+  it("follows the climb command while flying", () => {
+    fc.assert(
+      fc.property(climb, (c) => {
+        expect(flightVerticalSpeed("flying", c)).toBeCloseTo(
+          c * SPEC.maxClimb,
+          12,
+        );
       }),
     );
   });
 
   it("rises at takeoffClimb in takeoff, sinks at landingSink while landing, and is 0 on the ground", () => {
     fc.assert(
-      fc.property(pitch, speed, (p, s) => {
-        expect(flightVerticalSpeed("takeoff", p, s)).toBe(SPEC.takeoffClimb);
-        expect(flightVerticalSpeed("landing", p, s)).toBe(-SPEC.landingSink);
-        expect(flightVerticalSpeed("ground", p, s)).toBe(0);
+      fc.property(climb, (c) => {
+        expect(flightVerticalSpeed("takeoff", c)).toBe(SPEC.takeoffClimb);
+        expect(flightVerticalSpeed("landing", c)).toBe(-SPEC.landingSink);
+        expect(flightVerticalSpeed("ground", c)).toBe(0);
       }),
     );
   });
 
-  it("holds altitude for a pitch that is not a finite number", () => {
-    for (const p of [Number.NaN, Infinity, -Infinity])
-      expect(flightVerticalSpeed("flying", p, SPEC.maxSpeed)).toBe(0);
+  it("holds altitude for a climb command that is not a finite number", () => {
+    for (const v of [Number.NaN, Infinity, -Infinity])
+      expect(flightVerticalSpeed("flying", v)).toBe(0);
   });
 });
 

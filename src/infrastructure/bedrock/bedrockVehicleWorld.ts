@@ -29,6 +29,7 @@ import { HeadlightBlocks, isLightBlock } from "./headlightBlocks";
 import {
   BANK_PROPERTY,
   FLIGHT_PROPERTY,
+  GEAR_DOWN_PROPERTY,
   HEADLIGHTS_PROPERTY,
   HOVER_EVENT,
   ITEM_TYPE,
@@ -103,21 +104,19 @@ export class BedrockVehicleWorld
       .filter(isPlayer)
       .map((p) => {
         const mv = p.inputInfo.getMovementVector();
-        const rotation = p.getRotation();
         return {
           id: p.id,
           offset: {
             x: p.location.x - car.location.x,
             z: p.location.z - car.location.z,
           },
-          yaw: rotation.y,
+          yaw: p.getRotation().y,
           raw: {
             moveX: mv.x,
             moveY: mv.y,
             jump:
               p.inputInfo.getButtonState(InputButton.Jump) ===
               ButtonState.Pressed,
-            pitch: rotation.x,
           },
         };
       });
@@ -189,6 +188,10 @@ export class BedrockVehicleWorld
 
   setBank(vehicleId: string, degrees: number): void {
     this.entity(vehicleId)?.setProperty(BANK_PROPERTY, degrees);
+  }
+
+  setGearDown(vehicleId: string, down: boolean): void {
+    this.entity(vehicleId)?.setProperty(GEAR_DOWN_PROPERTY, down);
   }
 
   damage(hit: RamHit, attackerId: string | undefined): void {
