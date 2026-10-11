@@ -9,9 +9,9 @@ export function waterDepthFrom(
   isWater: (cellY: number) => boolean,
 ): number {
   const bottom = Math.floor(feetY);
+  const maxCells = Math.ceil(SPEC.carHeight) + 1;
   let cells = 0;
-  const limit = Math.ceil(SPEC.carHeight) + 1;
-  while (cells < limit && isWater(bottom + cells)) cells++;
+  while (cells < maxCells && isWater(bottom + cells)) cells++;
   if (cells === 0) return 0;
-  return Math.max(0, Math.min(bottom + cells - feetY, SPEC.carHeight + 1));
+  return Math.min(bottom + cells - feetY, SPEC.carHeight + 1);
 }

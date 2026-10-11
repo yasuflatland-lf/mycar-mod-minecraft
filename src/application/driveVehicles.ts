@@ -81,13 +81,17 @@ export class DriveVehicles {
       }
     }
     this.syncCameras(offRoad);
-    if (tick % SPEC.waterBreathingInterval === 0) {
-      for (const id of underwater) {
-        try {
-          this.world.giveWaterBreathing(id, SPEC.waterBreathingTicks);
-        } catch (e) {
-          this.log.warn(`[mycar] breathing ${id}: ${e}`);
-        }
+    if (tick % SPEC.waterBreathingInterval === 0)
+      this.refreshWaterBreathing(underwater);
+  }
+
+  private refreshWaterBreathing(underwater: ReadonlySet<string>): void {
+    for (const id of underwater) {
+      try {
+        this.world.giveWaterBreathing(id, SPEC.waterBreathingTicks);
+      } catch (e) {
+        // One failed refresh must not skip the other riders.
+        this.log.warn(`[mycar] breathing ${id}: ${e}`);
       }
     }
   }
