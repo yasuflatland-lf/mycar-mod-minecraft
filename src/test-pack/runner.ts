@@ -670,8 +670,9 @@ async function withPool<T>(
       `fill ${minX} ${bottom} ${z} ${maxX} ${a.gy - 1} ${z} stone`,
     );
   // runCommand reports a fill into unloaded chunks as successCount 0 instead
-  // of throwing. Seen in game with a yasuflatland_arena area kept from a smaller
-  // arena: every submarine test then failed with enteredAt=-1.
+  // of throwing. Seen in game with an arena ticking area kept from a smaller
+  // arena under the same name: every submarine test then failed with
+  // enteredAt=-1.
   if (fillPool("water").successCount === 0)
     throw new Error(
       `the pool was not filled: check that "tickingarea list" shows yasuflatland_arena covering x ${ARENA.minX}-${ARENA.maxX}, z ${ARENA.minZ}-${ARENA.maxZ}`,
