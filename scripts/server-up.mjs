@@ -1,12 +1,12 @@
-// Start the dev BDS (ADR 0011, 0014). The transport defaults to raknet;
-// BDS_TRANSPORT=nethernet switches to NetherNet, which needs the LAN address
-// the phone and PC reach the Mac on (BDS_LAN_IP, detected when unset).
+// Start the dev BDS (ADR 0015). NetherNet needs the LAN address the phone and
+// PC reach the Mac on (BDS_LAN_IP, detected when unset); BDS_TRANSPORT=raknet
+// falls back to the old transport while BDS still ships it.
 import { execFileSync } from "node:child_process";
 import { networkInterfaces } from "node:os";
 
 const UDP_RANGE = "19140-19155";
 
-const transport = process.env.BDS_TRANSPORT ?? "raknet";
+const transport = process.env.BDS_TRANSPORT ?? "nethernet";
 if (transport !== "raknet" && transport !== "nethernet") {
   console.error(`BDS_TRANSPORT must be raknet or nethernet, not ${transport}`);
   process.exit(1);

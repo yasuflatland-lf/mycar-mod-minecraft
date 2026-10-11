@@ -1,6 +1,6 @@
 # 0014. Offer NetherNet on the dev server as an opt-in transport
 
-- Status: Accepted
+- Status: Superseded by 0015
 - Date: 2026-10-11
 
 ## Context
