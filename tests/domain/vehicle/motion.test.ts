@@ -119,6 +119,17 @@ const terrain = fc
   );
 
 describe("updateSpeed / steerYaw", () => {
+  const forwardThrottle = fc.double({
+    min: 0,
+    max: 1,
+    minExcluded: true,
+    noNaN: true,
+  });
+  // maxExcluded still yields -0, which coasts instead of applying reverse throttle.
+  const reverseThrottle = fc
+    .double({ min: -1, max: 0, maxExcluded: true, noNaN: true })
+    .filter((t) => t < 0);
+
   it("reaches 95% of max speed in about 40 ticks at full throttle", () => {
     let s = 0;
     let t = 0;
@@ -196,14 +207,8 @@ describe("updateSpeed / steerYaw", () => {
       fc.constant(0),
       fc.double({ min: 0, max: SPEC.maxSpeed, noNaN: true }),
     );
-    const throttle = fc.double({
-      min: 0,
-      max: 1,
-      minExcluded: true,
-      noNaN: true,
-    });
     fc.assert(
-      fc.property(speed, throttle, (s, t) => {
+      fc.property(speed, forwardThrottle, (s, t) => {
         expect(updateSpeed(s, t)).toBeCloseTo(
           Math.min(SPEC.maxSpeed, s + SPEC.accel * t),
           12,
@@ -213,18 +218,12 @@ describe("updateSpeed / steerYaw", () => {
   });
 
   it("forward throttle while reversing brakes by brake times throttle (ADR 0002)", () => {
-    // maxExcluded still yields -0, which is a standstill, not reversing.
+    // A filter, because maxExcluded still yields -0, which is a standstill, not reversing.
     const speed = fc
       .double({ min: -SPEC.maxReverse, max: 0, noNaN: true })
       .filter((s) => s < 0);
-    const throttle = fc.double({
-      min: 0,
-      max: 1,
-      minExcluded: true,
-      noNaN: true,
-    });
     fc.assert(
-      fc.property(speed, throttle, (s, t) => {
+      fc.property(speed, forwardThrottle, (s, t) => {
         expect(updateSpeed(s, t)).toBeCloseTo(s + SPEC.brake * t, 12);
       }),
     );
@@ -234,12 +233,8 @@ describe("updateSpeed / steerYaw", () => {
     const speed = fc
       .double({ min: 0, max: SPEC.maxSpeed, noNaN: true })
       .filter((s) => s > 0);
-    // maxExcluded still yields -0, which coasts instead of applying reverse throttle.
-    const throttle = fc
-      .double({ min: -1, max: 0, maxExcluded: true, noNaN: true })
-      .filter((t) => t < 0);
     fc.assert(
-      fc.property(speed, throttle, (s, t) => {
+      fc.property(speed, reverseThrottle, (s, t) => {
         expect(updateSpeed(s, t)).toBeCloseTo(s + SPEC.brake * t, 12);
       }),
     );
@@ -250,12 +245,8 @@ describe("updateSpeed / steerYaw", () => {
       fc.constant(0),
       fc.double({ min: -SPEC.maxReverse, max: 0, noNaN: true }),
     );
-    // maxExcluded still yields -0, which coasts instead of applying reverse throttle.
-    const throttle = fc
-      .double({ min: -1, max: 0, maxExcluded: true, noNaN: true })
-      .filter((t) => t < 0);
     fc.assert(
-      fc.property(speed, throttle, (s, t) => {
+      fc.property(speed, reverseThrottle, (s, t) => {
         expect(updateSpeed(s, t)).toBeCloseTo(
           Math.max(-SPEC.maxReverse, s + SPEC.reverseAccel * t),
           12,
