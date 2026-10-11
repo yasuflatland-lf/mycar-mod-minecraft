@@ -39,17 +39,18 @@ export function registerSubscriptions(
   testInputs: TestInputStore,
 ): void {
   system.runInterval(() => useCases.drive.execute(system.currentTick), 1);
-  // The fleet never sees a vehicle spawn while the script is not running, so
-  // on start it reads back the loaded ones, and later the ones that load with
-  // their chunk (ADR 0038). Deciding by event rather than by scanning keeps a
-  // vehicle that spawned this tick, whose event has not arrived yet, from
-  // being taken for one that was already there.
+  // The fleet never sees a vehicle spawn while the script is not running, so it
+  // reads back the loaded ones once on start. After that only events add
+  // vehicles: a scan would take a vehicle summoned this tick, whose spawn event
+  // has not arrived yet, for one that was already there (ADR 0038). A vehicle
+  // that is no longer valid was removed by an earlier event for the same load.
   system.run(() => useCases.limit.start());
   world.afterEvents.entityLoad.subscribe((ev) => {
-    if (ev.entity.typeId === VEHICLE_TYPE) useCases.limit.found([ev.entity.id]);
+    if (ev.entity.typeId === VEHICLE_TYPE && ev.entity.isValid)
+      useCases.limit.found([ev.entity.id]);
   });
   world.afterEvents.entitySpawn.subscribe((ev) => {
-    if (ev.entity.typeId !== VEHICLE_TYPE) return;
+    if (ev.entity.typeId !== VEHICLE_TYPE || !ev.entity.isValid) return;
     if (ev.cause === EntityInitializationCause.Loaded) {
       useCases.limit.found([ev.entity.id]);
     } else {

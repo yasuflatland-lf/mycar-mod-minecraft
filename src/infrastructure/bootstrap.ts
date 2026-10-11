@@ -8,7 +8,7 @@ import { PlaceVehicle } from "../application/placeVehicle";
 import { SwitchHeadlights } from "../application/switchHeadlights";
 import { BedrockVehicleWorld } from "./bedrock/bedrockVehicleWorld";
 import { registerSubscriptions } from "./bedrock/subscriptions";
-import { DynamicPropertyFleetStore } from "./persistence/dynamicPropertyFleetStore";
+import { DynamicPropertyFleetRepository } from "./persistence/dynamicPropertyFleetRepository";
 import { InMemoryVehicleRepository } from "./persistence/inMemoryVehicleRepository";
 import { TestInputStore } from "./testInput/testInputStore";
 
@@ -17,14 +17,14 @@ export function bootstrap(): void {
   const store = new TestInputStore();
   const bedrock = new BedrockVehicleWorld(store);
   const log = { warn: (m: string) => console.warn(m) };
-  const fleets = new DynamicPropertyFleetStore(log);
+  const fleets = new DynamicPropertyFleetRepository(log);
   registerSubscriptions(
     {
       drive: new DriveVehicles(bedrock, repo, log),
       place: new PlaceVehicle(bedrock, repo),
       starter: new GiveStarterVehicle(bedrock),
       hit: new HitVehicle(bedrock, repo, fleets),
-      limit: new LimitVehicles(bedrock, repo, fleets),
+      limit: new LimitVehicles(bedrock, repo, fleets, log),
       paint: new PaintVehicle(bedrock),
       headlights: new SwitchHeadlights(bedrock, repo),
     },

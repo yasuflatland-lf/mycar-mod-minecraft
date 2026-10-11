@@ -106,7 +106,9 @@ export class BedrockVehicleWorld
         });
       }
     }
-    this.testInputs.retain(new Set(this.current.keys()));
+    const live = new Set(this.current.keys());
+    this.testInputs.retain(live);
+    this.headlightBlocks.clearGone(live);
     return snapshots;
   }
 

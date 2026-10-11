@@ -45,7 +45,7 @@ describe("Fleet (ADR 0038)", () => {
     fc.assert(
       fc.property(ops, (steps) => {
         const fleet = Fleet.empty();
-        // Model: every id still tracked, in arrival order.
+        // Model: tracked ids, oldest first, where a found vehicle goes to the front.
         let model: string[] = [];
         let evicted: string[] = [];
         for (const { op, id: n } of steps) {
@@ -71,6 +71,29 @@ describe("Fleet (ADR 0038)", () => {
           expect(state.order).toEqual(model);
           expect(state.evicted).toEqual(evicted);
         }
+      }),
+    );
+  });
+
+  it("keeps only the latest evictions once the evicted list is full", () => {
+    const fleet = Fleet.empty();
+    const all = ids(SPEC.maxVehicles + SPEC.maxEvicted + 5);
+    for (const id of all) fleet.admit(id);
+    expect(fleet.state().evicted).toEqual(all.slice(5, 5 + SPEC.maxEvicted));
+  });
+
+  it("restores any stored state with no repeated id and within the limits", () => {
+    const idList = fc.array(
+      fc.nat(SPEC.maxVehicles + SPEC.maxEvicted).map((n) => `v${n}`),
+      { maxLength: 120 },
+    );
+    fc.assert(
+      fc.property(idList, idList, (order, evicted) => {
+        const state = Fleet.restore({ order, evicted }).state();
+        const all = [...state.order, ...state.evicted];
+        expect(new Set(all).size).toBe(all.length);
+        expect(state.order.length).toBeLessThanOrEqual(SPEC.maxVehicles);
+        expect(state.evicted.length).toBeLessThanOrEqual(SPEC.maxEvicted);
       }),
     );
   });

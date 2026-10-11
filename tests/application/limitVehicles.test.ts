@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { LimitVehicles } from "../../src/application/limitVehicles";
 import { SPEC } from "../../src/domain/vehicle/spec";
 import { Vehicle } from "../../src/domain/vehicle/vehicle";
-import { FakeFleetStore, FakeWorld, InMemoryRepo } from "./fakes";
+import { FakeFleetRepository, FakeWorld, InMemoryRepo } from "./fakes";
 
 const ids = (n: number) => Array.from({ length: n }, (_, i) => `v${i}`);
 const full = ids(SPEC.maxVehicles);
@@ -10,8 +10,16 @@ const full = ids(SPEC.maxVehicles);
 function setup() {
   const world = new FakeWorld();
   const repo = new InMemoryRepo();
-  const fleets = new FakeFleetStore();
-  return { world, repo, fleets, uc: new LimitVehicles(world, repo, fleets) };
+  const fleets = new FakeFleetRepository();
+  const warnings: string[] = [];
+  const log = { warn: (m: string) => warnings.push(m) };
+  return {
+    world,
+    repo,
+    fleets,
+    warnings,
+    uc: new LimitVehicles(world, repo, fleets, log),
+  };
 }
 
 describe("LimitVehicles (ADR 0038)", () => {
@@ -51,11 +59,32 @@ describe("LimitVehicles (ADR 0038)", () => {
   });
 
   it("trims a world that already has more vehicles than the limit", () => {
-    const { world, fleets, uc } = setup();
+    const { world, repo, fleets, uc } = setup();
     world.loadedIds = ids(SPEC.maxVehicles + 3);
+    for (const id of world.loadedIds) repo.save(Vehicle.create(id, 0));
     uc.start();
-    expect(world.calls).toHaveLength(3);
+    // Within one scan a later id counts as older, so the last three go.
+    const removed = world.loadedIds.slice(SPEC.maxVehicles);
+    expect(world.calls).toEqual(removed.map((id) => `remove:${id}`));
+    expect(removed.map((id) => repo.get(id))).toEqual([
+      undefined,
+      undefined,
+      undefined,
+    ]);
     expect(fleets.state.order).toHaveLength(SPEC.maxVehicles);
+    expect(fleets.state.evicted).toEqual([]);
+  });
+
+  it("keeps removing the others and saves the fleet when one removal fails", () => {
+    const { world, fleets, warnings, uc } = setup();
+    const cars = ids(SPEC.maxVehicles + 2);
+    fleets.state = { order: cars.slice(0, -1), evicted: [] };
+    world.loadedIds = cars;
+    world.failRemoveOn = "v0";
+    uc.spawned(cars[cars.length - 1] as string);
+    expect(world.calls).toEqual(["remove:v1"]);
+    expect(fleets.state.evicted).toEqual(["v0"]);
+    expect(warnings.some((w) => w.includes("v0"))).toBe(true);
   });
 
   it("counts a vehicle it never saw spawn as older than the ones it did", () => {

@@ -5,8 +5,9 @@ import { SPEC } from "./spec";
 
 export interface FleetState {
   /** Oldest first. */
-  order: string[];
-  evicted: string[];
+  readonly order: readonly string[];
+  /** Oldest eviction first. */
+  readonly evicted: readonly string[];
 }
 
 export class Fleet {
@@ -19,8 +20,17 @@ export class Fleet {
     return new Fleet([], []);
   }
 
+  /**
+   * A stored state may come from a build with a higher limit or be edited by
+   * hand, so a repeated id counts once and a tracked id is not also evicted.
+   */
   static restore(state: FleetState): Fleet {
-    const fleet = new Fleet([...state.order], [...state.evicted]);
+    const order = [...new Set(state.order)];
+    const tracked = new Set(order);
+    const evicted = [...new Set(state.evicted)].filter(
+      (id) => !tracked.has(id),
+    );
+    const fleet = new Fleet(order, evicted);
     fleet.trim();
     return fleet;
   }
@@ -37,9 +47,16 @@ export class Fleet {
     return this.evicted.includes(id);
   }
 
-  /** Adds a vehicle as the newest one. Does nothing for a vehicle already tracked or evicted. */
+  knows(id: string): boolean {
+    return this.has(id) || this.isEvicted(id);
+  }
+
+  /**
+   * Adds a vehicle as the newest one. A vehicle already known keeps its place,
+   * so a repeated event for the same vehicle changes nothing.
+   */
   admit(id: string): void {
-    if (this.has(id) || this.isEvicted(id)) return;
+    if (this.knows(id)) return;
     this.order.push(id);
     this.trim();
   }
@@ -49,7 +66,7 @@ export class Fleet {
    * so it goes before every vehicle the fleet watched appear.
    */
   admitAsOldest(id: string): void {
-    if (this.has(id) || this.isEvicted(id)) return;
+    if (this.knows(id)) return;
     this.order.unshift(id);
     this.trim();
   }

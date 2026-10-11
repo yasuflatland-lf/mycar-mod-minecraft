@@ -1,6 +1,8 @@
 // Use case: a player hit a vehicle (ADR 0008).
+
+import type { FleetRepository } from "../domain/vehicle/fleetRepository";
 import type { VehicleRepository } from "../domain/vehicle/vehicleRepository";
-import type { BreakWorld, FleetStore } from "./ports";
+import type { BreakWorld } from "./ports";
 
 export interface HitVehicleCommand {
   vehicleId: string;
@@ -11,7 +13,7 @@ export class HitVehicle {
   constructor(
     private readonly world: BreakWorld,
     private readonly repo: VehicleRepository,
-    private readonly fleets: FleetStore,
+    private readonly fleets: FleetRepository,
   ) {}
 
   execute(cmd: HitVehicleCommand): boolean {

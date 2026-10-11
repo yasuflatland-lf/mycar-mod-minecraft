@@ -1,7 +1,6 @@
 import type {
   BreakWorld,
   DriveWorld,
-  FleetStore,
   HeadlightWorld,
   LimitWorld,
   PaintWorld,
@@ -11,6 +10,7 @@ import type {
 } from "../../src/application/ports";
 import type { Vec3 } from "../../src/domain/shared/vec";
 import { Fleet, type FleetState } from "../../src/domain/vehicle/fleet";
+import type { FleetRepository } from "../../src/domain/vehicle/fleetRepository";
 import type { FlightMode } from "../../src/domain/vehicle/flight";
 import type { Cell } from "../../src/domain/vehicle/headlights";
 import type { Paint } from "../../src/domain/vehicle/paint";
@@ -34,7 +34,7 @@ export class InMemoryRepo implements VehicleRepository {
   }
 }
 
-export class FakeFleetStore implements FleetStore {
+export class FakeFleetRepository implements FleetRepository {
   state: FleetState = Fleet.empty().state();
   saves = 0;
   load() {
@@ -57,7 +57,6 @@ export class FakeWorld
     LimitWorld
 {
   snapshots: VehicleSnapshot[] = [];
-  /** Vehicles in loaded chunks, for LimitVehicles. */
   loadedIds: string[] = [];
   targets: RamTarget[] = [];
   readonly paints = new Map<string, Paint>();
@@ -71,6 +70,7 @@ export class FakeWorld
   itemInSlot = true;
   failOn: string | undefined;
   failCameraOn: string | undefined;
+  failRemoveOn: string | undefined;
   readonly calls: string[] = [];
   private nextId = 1;
 
@@ -146,6 +146,7 @@ export class FakeWorld
     this.calls.push(`drop:${id}`);
   }
   removeVehicle(id: string) {
+    if (id === this.failRemoveOn) throw new Error("remove");
     this.calls.push(`remove:${id}`);
   }
   paintOf(id: string) {
