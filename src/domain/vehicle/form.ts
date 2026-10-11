@@ -68,10 +68,11 @@ function nextForm(prev: FormState, input: FormInput, toggle: boolean): Form {
     case "landing":
       return input.onGround ? "car" : "landing";
     case "submarine":
-      if (isDry(input.waterDepth) && input.controlled && input.jump)
-        return "hover";
-      if (input.onGround && !isSubmerged(input.waterDepth)) return "car";
-      return isDry(input.waterDepth) ? "car" : "submarine";
+      if (isDry(input.waterDepth))
+        return input.controlled && input.jump ? "hover" : "car";
+      return input.onGround && !isSubmerged(input.waterDepth)
+        ? "car"
+        : "submarine";
   }
 }
 
