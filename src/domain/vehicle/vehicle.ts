@@ -115,7 +115,7 @@ function groundNear(ctx: TickContext, f: Vec2): boolean {
 /**
  * Takeoff ignores the controls, and there is no handbrake in the air or as a
  * submarine (ADR 0021). Out of car form the stick pulled back sinks instead of
- * reversing, in the air (ADR 0032) and under water (ADR 0039).
+ * reversing, in the air (ADR 0032) and under water (ADR 0040).
  */
 function driveInputFor(raw: RawInput | undefined, form: Form): DriveInput {
   if (!raw || form === "takeoff") return NEUTRAL_INPUT;

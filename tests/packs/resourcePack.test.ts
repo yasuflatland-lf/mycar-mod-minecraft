@@ -16,7 +16,7 @@ const particle = read(`${RP}/particles/hover_glow.json`).particle_effect;
 const WHEELS = ["wheel_fl", "wheel_fr", "wheel_rl", "wheel_rr"];
 
 describe("Resource Pack flight visuals (ADR 0022)", () => {
-  it("has no obsolete vehicle property references (ADR 0038)", () => {
+  it("has no obsolete vehicle property references (ADR 0039)", () => {
     // Split so that the issue's grep for the old name over src, tests, packs,
     // tools, docs, and manual-test.md does not match this test.
     for (const file of readdirSync(RP, {

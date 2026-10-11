@@ -44,7 +44,7 @@ function fixture() {
   };
 }
 
-describe("BedrockVehicleWorld submarine wiring (ADR 0039)", () => {
+describe("BedrockVehicleWorld submarine wiring (ADR 0040)", () => {
   beforeEach(() => vi.resetAllMocks());
 
   it.each([

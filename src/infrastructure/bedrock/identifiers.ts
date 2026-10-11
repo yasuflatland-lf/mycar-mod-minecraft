@@ -17,7 +17,7 @@ export const LIGHT_BLOCK = "minecraft:light_block_15";
  * (jump is 0 / 1). "<vehicleId>,clear" clears the input.
  */
 export const TEST_INPUT_EVENT = "mycar:test_input";
-/** Client-synced vehicle form. The script reads it back after /reload, and the Resource Pack draws each form from it (ADR 0021, 0038). */
+/** Client-synced vehicle form. The script reads it back after /reload, and the Resource Pack draws each form from it (ADR 0021, 0039). */
 export const FORM_PROPERTY = "mycar:form";
 /** Vanilla camera preset that views the player from behind, as F5 does (ADR 0028). */
 export const THIRD_PERSON_CAMERA = "minecraft:third_person";
