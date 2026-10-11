@@ -43,7 +43,7 @@ export interface TickContext {
   testInput?: RawInput;
   velocity: Vec2;
   onGround: boolean;
-  /** Vertical velocity from the engine (blocks/tick). Read only while airborne in flight mode. */
+  /** Vertical velocity from the engine (blocks/tick). Read whenever the flight mode is not ground, including the tick takeoff starts. */
   velocityY?: number;
   /** Whether the block at entity location + offset (world axes, y from the feet) is solid; air and liquids are not. */
   solidAt(offset: Vec3): boolean;
