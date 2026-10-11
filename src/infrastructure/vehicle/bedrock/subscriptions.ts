@@ -68,7 +68,7 @@ export function registerSubscriptions(
         return;
       const parsed = parseTestInputMessage(ev.message);
       if (!parsed) {
-        console.warn(`[yasuflatland] ignored test input: ${ev.message}`);
+        console.warn(`[${NAMESPACE}] ignored test input: ${ev.message}`);
         return;
       }
       if (parsed.input !== undefined) {

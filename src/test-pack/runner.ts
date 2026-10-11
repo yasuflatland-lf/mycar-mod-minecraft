@@ -108,14 +108,6 @@ async function withCar<T>(
 async function setupArena(): Promise<Arena> {
   const dim = world.getDimension("overworld");
   const { minX, maxX, minZ, maxZ } = ARENA;
-  // The arena grew to z 90 for the submarine pool. Older worlds keep the
-  // smaller "yasuflatlandtest" area, and re-adding a name in the tick that removes it
-  // fails silently, so the larger area gets a name of its own.
-  try {
-    dim.runCommand("tickingarea remove yasuflatlandtest");
-  } catch {
-    // Not in this world
-  }
   // An existing area of the same name keeps its old bounds; withPool reports
   // the fill that then fails in the chunks left out.
   dim.runCommand(
