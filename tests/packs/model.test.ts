@@ -188,9 +188,43 @@ describe("SUV model (ADR 0009)", () => {
             const [q0, q1] = span(p, a);
             return q0 <= c1 && c0 <= q1;
           });
-          return touches && span(c, thin).includes(outer);
+          const [c0, c1] = span(c, thin);
+          return touches && (Math.abs(c0) > Math.abs(c1) ? c0 : c1) === outer;
         });
         expect(flush, JSON.stringify(p)).toBe(true);
+      }
+    });
+
+    // Every edge of a plate meets the face of a pillar, the lower frame, a
+    // door top or the roof along its whole length, so the plate fills the
+    // opening rather than a corner of it.
+    it("fills its opening from frame to frame", () => {
+      const doors = DOOR_BY_SEAT.flatMap((d) => bones.get(d)?.cubes ?? []);
+      const frame = [...bodyCubes, ...doors];
+      const near = (a: number, b: number) => Math.abs(a - b) < 1e-6;
+      for (const p of plates) {
+        const thin = p.size.indexOf(Math.min(...p.size));
+        const [t0, t1] = span(p, thin);
+        const inPlane = [0, 1, 2].filter((a) => a !== thin);
+        for (const a of inPlane) {
+          const other = inPlane.find((b) => b !== a) ?? 0;
+          const [o0, o1] = span(p, other);
+          for (const edge of span(p, a)) {
+            const met = frame.some((c) => {
+              const [c0, c1] = span(c, a);
+              const [ct0, ct1] = span(c, thin);
+              const [co0, co1] = span(c, other);
+              return (
+                (near(c0, edge) || near(c1, edge)) &&
+                ct0 <= t1 + 1e-6 &&
+                t0 <= ct1 + 1e-6 &&
+                co0 <= o0 &&
+                o1 <= co1
+              );
+            });
+            expect(met, `${JSON.stringify(p)} edge ${a}=${edge}`).toBe(true);
+          }
+        }
       }
     });
   });
@@ -216,6 +250,32 @@ describe("SUV model (ADR 0009)", () => {
         .sort((a, b) => a - b);
       expect(angles).toEqual([120, 240]);
       expect(prop?.cubes?.length).toBeGreaterThanOrEqual(4);
+    });
+
+    it("turns its blades only around the axle", () => {
+      for (const c of prop?.cubes ?? []) {
+        if (!c.rotation) continue;
+        expect(c.rotation[1], JSON.stringify(c)).toBe(0);
+        expect(c.rotation[2], JSON.stringify(c)).toBe(0);
+      }
+    });
+
+    it("lies flat in the wheel's plane: every cube is thinnest along x", () => {
+      for (const c of prop?.cubes ?? []) {
+        const [sx, sy, sz] = c.size;
+        expect(sx, JSON.stringify(c)).toBeLessThan(Math.min(sy, sz));
+      }
+    });
+
+    // The hub cap is the outermost part of the wheel, so the prop starts where
+    // the wheel ends and grows outward from there.
+    it("is mounted on the outer face of the hub cap", () => {
+      const outward = Math.sign(pivot(`wheel_${side}`)[0]);
+      const outerX = (c: Cube) =>
+        [c.origin[0], c.origin[0] + c.size[0]].map((x) => x * outward);
+      const hubFace = Math.max(...(wheel?.cubes ?? []).flatMap(outerX));
+      const propXs = (prop?.cubes ?? []).flatMap(outerX);
+      expect(Math.min(...propXs)).toBeCloseTo(hubFace, 6);
     });
 
     // A rotation around x about the axle keeps every corner's distance from it,
