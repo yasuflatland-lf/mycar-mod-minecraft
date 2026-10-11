@@ -25,7 +25,7 @@ Work in progress. The first milestone is the **driving core**:
 - Ram damage to mobs, while keeping occupants safe
 - Placing a vehicle from an item and breaking it back into one
 - A free vehicle item for every player on their first join
-- Repainting a vehicle green or red by using a dye on it
+- Repainting a vehicle with any of the 16 dyes
 - Switching the headlights on and off with a switch item, which lights up the road ahead at night
 
 The manual test checklist is in [`docs/manual-test.md`](docs/manual-test.md).
@@ -51,7 +51,7 @@ The manual test checklist is in [`docs/manual-test.md`](docs/manual-test.md).
 | Take off / land | Double-tap Space | Double-tap the jump button |
 | Climb / descend while flying | Look up / down | Look up / down |
 | Headlights on / off | Right-click with the switch in hand (driver only) | Tap with the switch in hand (driver only) |
-| Repaint | Right-click the vehicle with green or red dye | Tap the vehicle with green or red dye |
+| Repaint | Right-click the vehicle with a dye | Tap the vehicle with a dye |
 
 The vehicle seats 4. The first player to get in drives and the others ride as passengers. When the driver gets out, a passenger moves up to the driver's seat.
 
@@ -62,7 +62,7 @@ The vehicle seats 4. The first player to get in drives and the others ride as pa
 - **Ramming.** It damages and pushes away mobs it hits at speed. People inside never take damage, from crashes or from falls
 - **Flying.** A double-tap of jump folds the wheels flat under the body, lights them blue, and lifts the vehicle 1.5 blocks. In the air it keeps the same handling and holds its altitude while you look level; look up or down while moving forward to climb or sink. Another double-tap lands it slowly, and an empty vehicle in the air sinks to the ground by itself
 - **Headlights.** At night they light the road up to 27 blocks ahead and follow the vehicle
-- **Paint.** A placed vehicle starts khaki. Green or red dye repaints it and uses one dye; a broken vehicle drops a plain item, so the next one starts khaki again
+- **Paint.** A placed vehicle starts khaki. Each of the 16 dyes repaints it in that dye's color, except brown dye, which turns it back to khaki; each repaint uses one dye. Ink sacs, bone meal, cocoa beans, and lapis lazuli do not repaint. a broken vehicle drops a plain item, so the next one starts khaki again
 
 ## Design
 

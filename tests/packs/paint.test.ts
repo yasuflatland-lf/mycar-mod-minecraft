@@ -16,7 +16,7 @@ const controller = read(
   "packs/mycar_rp/render_controllers/suv.render_controllers.json",
 ).render_controllers["controller.render.mycar.suv"];
 
-describe("vehicle paints (ADR 0017)", () => {
+describe("vehicle paints (ADR 0031)", () => {
   it("a new vehicle starts khaki", () => {
     expect(entity.components["minecraft:variant"].value).toBe(
       PAINT_VARIANT.khaki,
@@ -51,7 +51,33 @@ describe("vehicle paints (ADR 0017)", () => {
     }
   });
 
-  it("every dye maps to a paint other than the starting khaki", () => {
-    expect(Object.values(PAINT_BY_DYE).sort()).toEqual(["green", "red"]);
+  it("each of the 16 vanilla dyes maps to its own paint, and brown dye restores khaki", () => {
+    const colors = [
+      "white",
+      "light_gray",
+      "gray",
+      "black",
+      "brown",
+      "red",
+      "orange",
+      "yellow",
+      "lime",
+      "green",
+      "cyan",
+      "light_blue",
+      "blue",
+      "purple",
+      "magenta",
+      "pink",
+    ];
+    expect(Object.keys(PAINT_BY_DYE).sort()).toEqual(
+      colors.map((c) => `minecraft:${c}_dye`).sort(),
+    );
+    expect(Object.values(PAINT_BY_DYE).sort()).toEqual([...PAINTS].sort());
+    expect(PAINT_BY_DYE["minecraft:brown_dye"]).toBe("khaki");
+  });
+
+  it("khaki, green, and red keep the variants ADR 0017 gave them", () => {
+    expect(PAINTS.slice(0, 3)).toEqual(["khaki", "green", "red"]);
   });
 });

@@ -20,7 +20,7 @@ To use commands, run `docker exec mycar-bds send-command op <player name>`.
 | 12 | The moving vehicle as seen by a passenger | 3 or higher on a 5-point scale | | |
 | 13 | Appearance (SUV shape, khaki, interior and exterior) | As intended | | |
 | 14 | Stop, then hold the stick straight right (mobile) / hold only D (PC) | The vehicle moves slowly forward and turns right; it does not back up | | |
-| 15 | Use green dye, then red dye, on a placed vehicle / use red dye again | The body turns green, then red, one dye is used each time (not in Creative), and nobody gets in / nothing changes and the dye stays | | |
+| 15 | Use green dye, then light blue dye, then brown dye, on a placed vehicle / use brown dye again | The body turns green, then light blue, then khaki, one dye is used each time (not in Creative), and nobody gets in / nothing changes and the dye stays | | |
 | 16 | Craft the headlight switch from a lever and glowstone dust. At night, drive with it in hand and use it (right-click / tap), then use it again | The lamps glow and the road ahead lights up and follows the vehicle; the second use turns both off and leaves no light behind | | |
 | 17 | Use the switch from a passenger seat / outside the vehicle | Nothing changes | | |
 | 18 | While driving, double-tap Jump | The wheels fold flat and glow blue underneath, and the vehicle rises about 1.5 blocks | | |
