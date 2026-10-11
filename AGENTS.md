@@ -6,7 +6,7 @@ Guidance for coding agents (Codex, Claude Code, and others) working in this repo
 
 A vehicle add-on for Minecraft Bedrock Edition: a Behavior Pack and a Resource Pack driven by the stable Script API (`@minecraft/server` 2.x), written in TypeScript and bundled with esbuild. It targets a Bedrock Dedicated Server (BDS) on a home LAN, played from PC (keyboard) and mobile (touch).
 
-The source lives in `src/` (domain, application, infrastructure, and the in-game test pack in `src/test-pack/`), with unit tests in `tests/`. `pnpm build` bundles it into `packs/yasuflatland_bp` and `packs/yasuflatland_test_bp`. The in-game tests (`pnpm test:game`) run against the dev BDS in Docker, so they need `pnpm server:up` first.
+The source lives in `src/` (domain, application, infrastructure, and the in-game test pack in `src/test-pack/`), with unit tests in `tests/`. `pnpm build` bundles it into `packs/yasuflatland_ride_bp` and `packs/yasuflatland_ride_test_bp`. The in-game tests (`pnpm test:game`) run against the dev BDS in Docker, so they need `pnpm server:up` first.
 
 ## Commands
 
@@ -17,11 +17,13 @@ pnpm install --frozen-lockfile
 pnpm lint          # Biome format + lint check (CI runs `biome ci`)
 pnpm lint:fix      # apply Biome fixes
 pnpm lint:lang     # fail on Japanese/CJK text in tracked and unignored files
+pnpm lint:unused   # knip: fail on unused files, exports, and dependencies
 pnpm typecheck     # tsc --noEmit
 pnpm test          # vitest + fast-check
 pnpm test:coverage # same, with a coverage report in coverage/ (CI uploads it to Codecov)
+pnpm test:mutation # Stryker mutation testing, report in reports/mutation (not in CI)
 pnpm build         # esbuild bundle into the Behavior Pack and the test pack
-pnpm package       # zip the packs into dist/yasuflatland-addon-<version>.mcaddon (after build)
+pnpm package       # zip the packs into dist/yasuflatland-ride-<version>.mcaddon (after build)
 pnpm model         # regenerate the Resource Pack model and the README previews (Python 3)
 pnpm model:check   # fail if the README previews in docs/images are stale
 pnpm sounds        # regenerate the Resource Pack sounds (Python 3)
@@ -30,7 +32,7 @@ pnpm server:down   # stop the dev BDS
 pnpm test:game     # run the in-game tests on the running dev BDS
 ```
 
-Before you say a change is done, run `pnpm lint`, `pnpm lint:lang`, `pnpm typecheck`, and `pnpm test`. When you change `src/infrastructure`, `src/test-pack`, or the packs, also run `pnpm build`, restart the dev BDS, and run `pnpm test:game` if Docker is available. CI runs the lint, typecheck, test, build, and package checks on every pull request ([unit-test.yml](.github/workflows/unit-test.yml), which also uploads coverage to Codecov) and runs the in-game tests against a BDS container ([integration-test.yml](.github/workflows/integration-test.yml)).
+Before you say a change is done, run `pnpm lint`, `pnpm lint:lang`, `pnpm lint:unused`, `pnpm typecheck`, and `pnpm test`. When you change `src/infrastructure`, `src/test-pack`, or the packs, also run `pnpm build`, restart the dev BDS, and run `pnpm test:game` if Docker is available. CI runs the lint, unused code, test, build, and package checks on every pull request ([unit-test.yml](.github/workflows/unit-test.yml), which also uploads coverage to Codecov) and runs the in-game tests against a BDS container ([integration-test.yml](.github/workflows/integration-test.yml)).
 
 ## Language and comments
 
@@ -80,11 +82,13 @@ Design decisions live in [docs/adr](docs/adr/README.md). Read the ADRs that rela
 
 ## Naming and adding a new kind of content
 
-Ship all content in the Yasuflatland Add-on: `yasuflatland-addon-minecraft`, with `yasuflatland_bp` and `yasuflatland_rp`; `yasuflatland_test_bp` is for development only. The dev container is `yasuflatland-bds` and its world is `yasuflatland-dev`.
+Ship all rides in Yasuflatland Ride: `yasuflatland-ride-minecraft`, with `yasuflatland_ride_bp` and `yasuflatland_ride_rp`; `yasuflatland_ride_test_bp` is for development only. The dev container is `yasuflatland-ride-bds` and its world is `yasuflatland-ride-dev`.
 
-Use `yasuflatland:<snake_case>` for IDs, properties, groups, and events; the test entity namespace is `yasuflatland_test:`. Geometry names use `geometry.yasuflatland.<name>`, animations use `animation.yasuflatland.<entity>.<name>`, controllers use `controller.<kind>.yasuflatland.<entity>[.<name>]`, and sounds use `yasuflatland.<name>`. Lang keys follow IDs. Item texture shortnames use `yasuflatland_<name>` and the atlas resource pack name is `yasuflatland`. Keep engine-fixed manifest, lang, atlas, and sound definition files at their required paths (0047).
+House-building parts ship as a separate add-on with their own namespace. Do not change the `yasuflatland_ride` namespace after the first Yasuflatland Ride release (0047).
+
+Use `yasuflatland_ride:<snake_case>` for IDs, properties, groups, and events; the test entity namespace is `yasuflatland_ride_test:`. Geometry names use `geometry.yasuflatland_ride.<name>`, animations use `animation.yasuflatland_ride.<entity>.<name>`, controllers use `controller.<kind>.yasuflatland_ride.<entity>[.<name>]`, and sounds use `yasuflatland_ride.<name>`. Lang keys follow IDs. Item texture shortnames use `yasuflatland_ride_<name>` and the atlas resource pack name is `yasuflatland_ride`. Keep engine-fixed manifest, lang, atlas, and sound definition files at their required paths (0047).
 
 When adding a new kind of content, place its code by the feature boundaries rule above (0046), and:
 
 - Build identifiers with `id()` from `src/infrastructure/shared/identifiers.ts`.
-- Put pack files under `<type>/yasuflatland/`, flat below the namespace folder; test entities go under `entities/yasuflatland_test/`.
+- Put pack files under `<type>/yasuflatland_ride/`, flat below the namespace folder; test entities go under `entities/yasuflatland_ride_test/`.
