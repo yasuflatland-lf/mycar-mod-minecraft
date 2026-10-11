@@ -5,7 +5,7 @@ import type { VehicleRepository } from "../domain/vehicle/vehicleRepository";
 import type { DriveWorld, Logger } from "./ports";
 
 export class DriveVehicles {
-  /** Players this use case switched to the third-person camera (ADR 0027). */
+  /** Players this use case switched to the third-person camera (ADR 0028). */
   private readonly thirdPerson = new Set<string>();
 
   constructor(

@@ -19,7 +19,7 @@ This directory records design decisions and the reasons behind them. The format 
 | [0013](0013-dependency-updates-with-renovate.md) | Keep dependencies up to date with Renovate | Accepted |
 | [0014](0014-opt-in-nethernet-dev-server.md) | Offer NetherNet on the dev server as an opt-in transport | Superseded by 0015 |
 | [0015](0015-dev-server-docker-nethernet.md) | Run the development server as BDS in Docker with NetherNet | Accepted |
-| [0016](0016-readme-preview-rendered-from-model.md) | Render the README preview from the model files | Accepted |
+| [0016](0016-readme-preview-rendered-from-model.md) | Render the README preview from the model files | Superseded by 0027 |
 | [0017](0017-repaint-vehicles-with-dye.md) | Repaint vehicles with dye | Accepted |
 | [0018](0018-sideways-stick-creeps-forward.md) | Treat a sideways stick as a slow forward turn | Accepted |
 | [0019](0019-passengers-move-up-to-the-driver-seat.md) | Passengers move up to the driver seat | Accepted |
@@ -30,9 +30,10 @@ This directory records design decisions and the reasons behind them. The format 
 | [0024](0024-item-use-on-mobile-and-longer-headlights.md) | Make the vehicle item and the headlight switch work on mobile, and light the road three times farther | Accepted |
 | [0025](0025-jump-on-touch-and-a-sticky-driver.md) | Keep a touch rider's Jump from dismounting them, and keep the driver while they ride | Accepted |
 | [0026](0026-bank-into-turns-in-flight.md) | Bank into turns in flight | Accepted |
-| [0027](0027-third-person-camera-in-flight.md) | Switch riders to the third-person camera in flight | Accepted |
-| [0028](0028-raise-the-seats.md) | Raise the seats so riders' legs stay inside the body | Accepted |
-| [0029](0029-engine-and-hover-sounds.md) | Engine and hover sounds from client animations, stepped by speed | Accepted |
+| [0027](0027-readme-previews-in-three-poses.md) | Render the README previews in three poses | Accepted |
+| [0028](0028-third-person-camera-in-flight.md) | Switch riders to the third-person camera in flight | Accepted |
+| [0029](0029-raise-the-seats.md) | Raise the seats so riders' legs stay inside the body | Accepted |
+| [0030](0030-engine-and-hover-sounds.md) | Engine and hover sounds from client animations, stepped by speed | Accepted |
 
 The measurements and in-game tests behind these decisions are in [the driving-core spike findings](../spike-driving-core.md).
 

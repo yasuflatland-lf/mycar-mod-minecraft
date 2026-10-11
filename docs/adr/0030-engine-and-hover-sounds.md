@@ -1,4 +1,4 @@
-# 0029. Engine and hover sounds from client animations, stepped by speed
+# 0030. Engine and hover sounds from client animations, stepped by speed
 
 - Status: Accepted
 - Date: 2026-10-11

@@ -1,4 +1,4 @@
-# 0027. Switch riders to the third-person camera in flight
+# 0028. Switch riders to the third-person camera in flight
 
 - Status: Accepted
 - Date: 2026-10-11

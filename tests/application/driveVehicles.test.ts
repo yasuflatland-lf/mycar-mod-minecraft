@@ -197,7 +197,7 @@ describe("DriveVehicles", () => {
   });
 });
 
-describe("DriveVehicles third-person camera in flight (ADR 0027)", () => {
+describe("DriveVehicles third-person camera in flight (ADR 0028)", () => {
   const rider = (id: string) => ({
     id,
     offset: { x: -0.38, z: 0.35 },

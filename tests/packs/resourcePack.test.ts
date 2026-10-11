@@ -134,7 +134,7 @@ describe("Resource Pack banking (ADR 0026)", () => {
   });
 });
 
-describe("Resource Pack sounds (ADR 0029)", () => {
+describe("Resource Pack sounds (ADR 0030)", () => {
   const defs = read(`${RP}/sounds/sound_definitions.json`).sound_definitions;
   const effectsOf = (anim: string) =>
     Object.values<{ effect: string }>(anims[anim].sound_effects).map(
