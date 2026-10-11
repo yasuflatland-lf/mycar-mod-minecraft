@@ -61,6 +61,12 @@ export interface BreakWorld {
   removeVehicle(vehicleId: string): void;
 }
 
+export interface LimitWorld {
+  /** Vehicles in loaded chunks, in every dimension. */
+  loadedVehicleIds(): string[];
+  removeVehicle(vehicleId: string): void;
+}
+
 export interface PaintWorld {
   /** undefined when the vehicle no longer exists. */
   paintOf(vehicleId: string): Paint | undefined;
