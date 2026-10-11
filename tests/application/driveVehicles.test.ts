@@ -373,3 +373,113 @@ describe("DriveVehicles third-person camera in flight (ADR 0028)", () => {
     expect(cameraCalls(world)).toEqual(["camera:p:third", "camera:p:own"]);
   });
 });
+
+describe("DriveVehicles submarine riders (ADR 0040)", () => {
+  const rider = (id: string) => ({
+    id,
+    offset: { x: -0.38, z: 0.35 },
+    yaw: 0,
+    raw: { moveX: 0, moveY: 0, jump: false },
+  });
+  const breathing = (id: string) =>
+    `breathing:${id}:${SPEC.waterBreathingTicks}`;
+  const breathingCalls = (world: FakeWorld) =>
+    world.calls.filter((c) => c.startsWith("breathing:"));
+
+  it("senses submersion and refreshes every rider's breathing only every second", () => {
+    const world = new FakeWorld();
+    const repo = new InMemoryRepo();
+    const uc = new DriveVehicles(world, repo, logger());
+    world.snapshots = [
+      snapshot("a", {
+        waterDepth: SPEC.carHeight,
+        riders: [rider("driver"), rider("passenger")],
+      }),
+    ];
+    uc.execute(0);
+    expect(repo.get("a")?.form).toBe("submarine");
+    expect(world.calls).toContain("form:a:submarine");
+    expect(breathingCalls(world)).toEqual([
+      breathing("driver"),
+      breathing("passenger"),
+    ]);
+    for (let tick = 1; tick < SPEC.waterBreathingInterval; tick++)
+      uc.execute(tick);
+    expect(breathingCalls(world)).toHaveLength(2);
+    uc.execute(SPEC.waterBreathingInterval);
+    expect(breathingCalls(world)).toEqual([
+      breathing("driver"),
+      breathing("passenger"),
+      breathing("driver"),
+      breathing("passenger"),
+    ]);
+  });
+
+  it("does not give breathing to car or hover riders", () => {
+    const world = new FakeWorld();
+    world.snapshots = [
+      snapshot("car", { riders: [rider("c")] }),
+      snapshot("hover", {
+        form: "hover",
+        onGround: false,
+        riders: [rider("h")],
+      }),
+    ];
+    new DriveVehicles(world, new InMemoryRepo(), logger()).execute(20);
+    expect(breathingCalls(world)).toEqual([]);
+  });
+
+  it("logs a failed breathing call and still refreshes the other riders", () => {
+    const world = new FakeWorld();
+    const log = logger();
+    world.failBreathingOn = "bad";
+    world.snapshots = [
+      snapshot("a", {
+        waterDepth: SPEC.carHeight,
+        riders: [rider("bad"), rider("good")],
+      }),
+      snapshot("b", { waterDepth: SPEC.carHeight, riders: [rider("other")] }),
+    ];
+    new DriveVehicles(world, new InMemoryRepo(), log).execute(20);
+    expect(breathingCalls(world)).toEqual([
+      breathing("good"),
+      breathing("other"),
+    ]);
+    expect(log.lines.some((line) => line.includes("breathing bad"))).toBe(true);
+  });
+
+  it("switches submarine riders to third person and restores their view and stops breathing on shore", () => {
+    const world = new FakeWorld();
+    const uc = new DriveVehicles(world, new InMemoryRepo(), logger());
+    world.snapshots = [
+      snapshot("a", {
+        form: "submarine",
+        waterDepth: SPEC.carHeight,
+        riders: [rider("p")],
+      }),
+    ];
+    uc.execute(0);
+    uc.execute(1);
+    world.snapshots = [snapshot("a", { riders: [rider("p")] })];
+    uc.execute(20);
+    expect(world.calls.filter((c) => c.startsWith("camera:"))).toEqual([
+      "camera:p:third",
+      "camera:p:own",
+    ]);
+    expect(world.calls).toContain("form:a:car");
+    expect(breathingCalls(world)).toEqual([breathing("p")]);
+  });
+
+  it("stops refreshing breathing once a rider leaves", () => {
+    const world = new FakeWorld();
+    const uc = new DriveVehicles(world, new InMemoryRepo(), logger());
+    world.snapshots = [
+      snapshot("a", { waterDepth: SPEC.carHeight, riders: [rider("p")] }),
+    ];
+    uc.execute(0);
+    world.snapshots = [snapshot("a", { waterDepth: SPEC.carHeight })];
+    uc.execute(20);
+    expect(breathingCalls(world)).toEqual([breathing("p")]);
+    expect(world.calls).toContain("camera:p:own");
+  });
+});

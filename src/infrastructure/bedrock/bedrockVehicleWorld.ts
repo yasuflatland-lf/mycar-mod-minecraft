@@ -25,6 +25,7 @@ import { PAINTS, type Paint } from "../../domain/vehicle/paint";
 import type { RamHit, RamTarget } from "../../domain/vehicle/ram";
 import { RAM_QUERY_RADIUS } from "../../domain/vehicle/ramQuery";
 import type { RiderView } from "../../domain/vehicle/vehicle";
+import { waterDepthFrom } from "../../domain/vehicle/water";
 import type { TestInputStore } from "../testInput/testInputStore";
 import { HeadlightBlocks, isLightBlock } from "./headlightBlocks";
 import {
@@ -99,6 +100,7 @@ export class BedrockVehicleWorld
           velocity: { x: v.x, z: v.z },
           velocityY: v.y,
           onGround: car.isOnGround,
+          waterDepth: this.waterDepth(car),
           riders: this.riders(car),
           form: isForm(form) ? form : "car",
           headlights: car.getProperty(HEADLIGHTS_PROPERTY) === true,
@@ -110,6 +112,28 @@ export class BedrockVehicleWorld
     this.testInputs.retain(live);
     this.headlightBlocks.clearGone(live);
     return snapshots;
+  }
+
+  private waterDepth(car: Entity): number {
+    const { x, y, z } = car.location;
+    return waterDepthFrom(y, (cellY) => {
+      try {
+        const block = car.dimension.getBlock({
+          x: Math.floor(x),
+          y: cellY,
+          z: Math.floor(z),
+        });
+        return (
+          block !== undefined &&
+          (block.typeId === "minecraft:water" ||
+            block.typeId === "minecraft:flowing_water" ||
+            block.typeId === "minecraft:bubble_column" ||
+            block.isWaterlogged)
+        );
+      } catch {
+        return false; // Unloaded chunk or outside the world
+      }
+    });
   }
 
   private riders(car: Entity): RiderView[] {
@@ -214,6 +238,12 @@ export class BedrockVehicleWorld
     if (!camera) return;
     if (on) camera.setCamera(THIRD_PERSON_CAMERA);
     else camera.clear();
+  }
+
+  giveWaterBreathing(playerId: string, ticks: number): void {
+    this.player(playerId)?.addEffect("water_breathing", ticks, {
+      showParticles: false,
+    });
   }
 
   setBank(vehicleId: string, degrees: number): void {

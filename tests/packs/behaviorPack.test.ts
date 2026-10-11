@@ -67,7 +67,7 @@ describe("packs/mycar_bp", () => {
     expect(FORMS).toEqual(["car", "takeoff", "hover", "landing", "submarine"]);
     expect(entity.description.properties[FORM_PROPERTY]).toEqual({
       type: "enum",
-      values: ["car", "takeoff", "hover", "landing"],
+      values: ["car", "takeoff", "hover", "landing", "submarine"],
       default: "car",
       client_sync: true,
     });

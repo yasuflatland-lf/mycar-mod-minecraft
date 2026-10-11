@@ -7,6 +7,9 @@ describe("SPEC", () => {
     expect(SPEC.surfaceRise).toBeGreaterThan(0);
     expect(SPEC.surfaceRise).toBeLessThanOrEqual(SPEC.maxClimb);
     expect(SPEC.maxWaterSpeed).toBeLessThanOrEqual(SPEC.maxSpeed);
+    expect(SPEC.waterBreathingTicks).toBeGreaterThan(
+      SPEC.waterBreathingInterval,
+    );
   });
 
   it("matches the values in the ADRs", () => {
