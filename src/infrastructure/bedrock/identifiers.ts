@@ -3,8 +3,16 @@ import type { Paint } from "../../domain/vehicle/paint";
 export const VEHICLE_TYPE = "mycar:suv";
 export const ITEM_TYPE = "mycar:suv_item";
 export const PLAYER_TYPE = "minecraft:player";
-/** Test input messages have the form "<vehicleId>,<moveX>,<moveY>,<jump>" (jump is 0 / 1). "<vehicleId>,clear" clears the input. */
+/**
+ * Test input messages have the form "<vehicleId>,<moveX>,<moveY>,<jump>[,<pitch>]"
+ * (jump is 0 / 1, pitch in degrees with negative looking up). "<vehicleId>,clear"
+ * clears the input.
+ */
 export const TEST_INPUT_EVENT = "mycar:test_input";
+/** Client-synced enum property the Resource Pack reads to fold the wheels (ADR 0020). */
+export const FLIGHT_PROPERTY = "mycar:flight";
+export const HOVER_EVENT = "mycar:hover";
+export const LAND_EVENT = "mycar:land";
 
 /** Dyes that repaint a vehicle when used on it (ADR 0017). */
 export const PAINT_BY_DYE: Readonly<Record<string, Paint>> = {

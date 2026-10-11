@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest";
 import { SEAT_POSITIONS } from "../../src/domain/vehicle/seats";
 
 const read = (p: string) => JSON.parse(readFileSync(p, "utf8"));
-const c = read("packs/mycar_bp/entities/suv.json")["minecraft:entity"]
-  .components;
+const entity = read("packs/mycar_bp/entities/suv.json")["minecraft:entity"];
+const c = entity.components;
 const recipe = read("packs/mycar_bp/recipes/suv_item.json")[
   "minecraft:recipe_shaped"
 ];
@@ -46,6 +46,24 @@ describe("packs/mycar_bp", () => {
 
   it("the recipe is unlocked from the start (BDS does not load the recipe without unlock)", () => {
     expect(recipe.unlock).toEqual({ context: "AlwaysUnlocked" });
+  });
+
+  it("switches gravity off with mycar:hover and back on with mycar:land, and syncs the flight mode to clients (ADR 0020)", () => {
+    expect(entity.description.properties["mycar:flight"]).toEqual({
+      type: "enum",
+      values: ["ground", "takeoff", "flying", "landing"],
+      default: "ground",
+      client_sync: true,
+    });
+    expect(entity.component_groups["mycar:hovering"]).toEqual({
+      "minecraft:physics": { has_gravity: false },
+    });
+    expect(entity.events["mycar:hover"]).toEqual({
+      add: { component_groups: ["mycar:hovering"] },
+    });
+    expect(entity.events["mycar:land"]).toEqual({
+      remove: { component_groups: ["mycar:hovering"] },
+    });
   });
 });
 

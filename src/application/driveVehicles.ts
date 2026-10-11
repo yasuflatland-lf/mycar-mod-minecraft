@@ -18,9 +18,15 @@ export class DriveVehicles {
         let vehicle = this.repo.get(snap.id);
         if (!vehicle) {
           // The aggregate is lost after a reload: rebuild it with zero speed,
-          // the entity's heading, and the riders already seated, so the
-          // current driver is not treated as newly mounted.
-          vehicle = Vehicle.rebuild(snap.id, snap.yaw, snap.riders);
+          // the entity's heading, the riders already seated (so the current
+          // driver is not treated as newly mounted), and the flight mode
+          // stored on the entity (ADR 0020).
+          vehicle = Vehicle.rebuild(
+            snap.id,
+            snap.yaw,
+            snap.riders,
+            snap.flight,
+          );
           this.repo.save(vehicle);
         }
         const out = vehicle.tick({
@@ -28,11 +34,13 @@ export class DriveVehicles {
           riders: snap.riders,
           testInput: snap.testInput,
           velocity: snap.velocity,
+          velocityY: snap.velocityY,
           onGround: snap.onGround,
           solidAt: (offset) => this.world.solidAt(snap.id, offset),
           targets: () => this.world.targetsNear(snap.id),
         });
         this.world.applyMotion(snap.id, out.impulse, out.yaw);
+        if (out.flight) this.world.setFlight(snap.id, out.flight);
         for (const hit of out.hits) this.world.damage(hit, out.driverId);
         for (const event of out.events) {
           if (event.type === "SeatVacated") {
