@@ -25,3 +25,4 @@ A submarine form is coming, and a submarine is not a flight mode. The vehicle is
 - Later work can add a submarine to the same form state machine without calling it flight.
 - There is no migration: a vehicle that was flying when the server restarts with this change starts as `car` and drops.
 - Entity definition and Resource Pack changes require a server restart, and the Resource Pack version must increase so clients discard their cached copy (0015).
+- Revisit this decision if a form needs gravity rules other than "off in every form except `car`", or if vehicles saved in the old `mycar:hovering` group turn out not to drop after a restart.
