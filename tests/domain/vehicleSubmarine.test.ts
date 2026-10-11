@@ -201,6 +201,23 @@ describe("Vehicle as a submarine", () => {
     );
   });
 
+  it("rises for a step that stands less than half a block above its floating feet", () => {
+    fc.assert(
+      fc.property(
+        fc.double({ min: 0.01, max: 0.49, noNaN: true }),
+        (stepTop) => {
+          const sim = new DiveSim(100);
+          sim.y = 50;
+          sim.obstacle = (offset) =>
+            offset.z >= SPEC.hitboxFront && offset.y < stepTop;
+          sim.step(IDLE);
+          sim.step(FORWARD);
+          expect(sim.vy).toBeCloseTo(SPEC.maxClimb, 6);
+        },
+      ),
+    );
+  });
+
   it("still rises while a shore step stops it, as a step jump does on the ground", () => {
     const sim = new DiveSim(100);
     sim.obstacle = stepAhead(1);
