@@ -1,10 +1,14 @@
 // In-game tests (ADR 0010). They run in a script environment separate from the
 // main Behavior Pack, so they drive the vehicle through script events.
 import { type Dimension, type Entity, system, world } from "@minecraft/server";
-import { forward } from "../domain/shared/vec";
+import { dot, forward } from "../domain/shared/vec";
+import { SPORTSBOAT_WATER } from "../domain/vehicle/boatDrive";
+import { NEUTRAL_INPUT } from "../domain/vehicle/driveInput";
 import { type Form, isForm } from "../domain/vehicle/form";
 import { headlightCells } from "../domain/vehicle/headlights";
+import { initialMotion, stepFlightMotion } from "../domain/vehicle/motion";
 import { PAINTS } from "../domain/vehicle/paint";
+import { SPORTSBOAT_PROFILE } from "../domain/vehicle/profile";
 import { nearestSeat, toLocal } from "../domain/vehicle/seats";
 import { SPEC } from "../domain/vehicle/spec";
 import {
@@ -31,6 +35,7 @@ const SEAT_PROBE = "yasu_ride_test:seat_probe";
 interface Outcome {
   pass: boolean;
   detail: string;
+  lines?: string[];
 }
 interface Arena {
   dim: Dimension;
@@ -692,16 +697,21 @@ async function withPool<T>(
 async function withBoat<T>(
   a: Arena,
   run: (boat: Entity) => Promise<T>,
+  start: Horizontal & { yaw: number } = {
+    x: POOL.minX + 5.5,
+    z: POOL.z,
+    yaw: -90,
+  },
 ): Promise<T> {
-  const x = POOL.minX + 5.5;
-  a.dim.runCommand(`summon ${ENTITY_TYPE.sportsboat} ${x} ${a.gy} ${POOL.z}`);
+  const { x, z } = start;
+  a.dim.runCommand(`summon ${ENTITY_TYPE.sportsboat} ${x} ${a.gy} ${z}`);
   const boat = a.dim.getEntities({
     type: ENTITY_TYPE.sportsboat,
-    location: { x, y: a.gy, z: POOL.z },
+    location: { x, y: a.gy, z },
     maxDistance: 1.5,
   })[0];
   if (!boat) throw new Error("boat not spawned at the pool surface");
-  boat.setRotation({ x: 0, y: -90 });
+  boat.setRotation({ x: 0, y: start.yaw });
   try {
     return await run(boat);
   } finally {
@@ -729,6 +739,95 @@ function boatFloat(a: Arena): Promise<Outcome> {
         detail: `bob=${bob.toFixed(3)} draft=${minDraft.toFixed(3)}-${maxDraft.toFixed(3)}`,
       };
     }),
+  );
+}
+
+function feetInWater(boat: Entity): boolean {
+  const { x, y, z } = boat.location;
+  const block = boat.dimension.getBlock({
+    x: Math.floor(x),
+    y: Math.floor(y),
+    z: Math.floor(z),
+  });
+  return (
+    block?.typeId === "minecraft:water" ||
+    block?.typeId === "minecraft:flowing_water"
+  );
+}
+
+function boatDrag(a: Arena): Promise<Outcome> {
+  return withPool(a, 3, () =>
+    withBoat(
+      a,
+      async (boat) => {
+        await wait(40);
+        const start = boat.location;
+        let motion = initialMotion(boat.getRotation().y);
+        let observed = boat.getVelocity();
+        const waterRatios: number[] = [];
+        const airRatios: number[] = [];
+        const steadySpeeds: number[] = [];
+        const coastRatios: number[] = [];
+        const lines: string[] = [];
+        drive(boat, 0, 1);
+        for (let t = 0; t < 120; t++) {
+          const throttle = t < 80;
+          if (t === 80) clearInput(boat);
+          const step = stepFlightMotion(
+            motion,
+            { ...NEUTRAL_INPUT, throttle: throttle ? 1 : 0 },
+            observed,
+            SPORTSBOAT_WATER,
+            SPORTSBOAT_PROFILE.motion,
+          );
+          motion = step.state;
+          const given = {
+            x: observed.x + step.impulse.x,
+            z: observed.z + step.impulse.z,
+          };
+          const previousSpeed = hlen(observed);
+          // Each row pairs the given velocity at t with the observation at t+1.
+          await wait(1);
+          observed = boat.getVelocity();
+          const speed = hlen(observed);
+          const water = feetInWater(boat);
+          const denominator = throttle ? dot(given, given) : previousSpeed;
+          const ratio =
+            denominator > 0
+              ? (throttle ? dot(observed, given) : speed) / denominator
+              : undefined;
+          if (ratio !== undefined) {
+            if (throttle && t >= 5)
+              (water ? waterRatios : airRatios).push(ratio);
+            if (!throttle) coastRatios.push(ratio);
+          }
+          if (throttle && t >= 60) steadySpeeds.push(speed);
+          lines.push(
+            `tick=${t + 1} ${throttle ? "throttle" : "coast"} impulse=${hlen(step.impulse).toFixed(3)} given=${hlen(given).toFixed(3)} observed=${speed.toFixed(3)} feet=${(boat.location.y - a.gy).toFixed(3)} water=${water ? 1 : 0} ratio=${ratio?.toFixed(3) ?? "n/a"}`,
+          );
+        }
+        const mean = (values: number[]) =>
+          values.length > 0
+            ? (
+                values.reduce((sum, value) => sum + value, 0) / values.length
+              ).toFixed(3)
+            : "n/a";
+        const summary = (values: number[]) =>
+          `mean=${mean(values)} spread=${values.length > 0 ? (Math.max(...values) - Math.min(...values)).toFixed(3) : "n/a"} n=${values.length}`;
+        const distance = hlen({
+          x: boat.location.x - start.x,
+          z: boat.location.z - start.z,
+        });
+        return {
+          pass: distance >= 5,
+          detail: `distance=${distance.toFixed(3)} water(${summary(waterRatios)}) air(${summary(airRatios)}) steadySpeed=${mean(steadySpeeds)} coastRatio=${mean(coastRatios)}`,
+          lines,
+        };
+      },
+      // Along +z at x = 20.5 the pool is clear for the throttle and the coast;
+      // wall_diagonal's wall stands at x = 45.
+      { x: POOL.minX + 5.5, z: POOL.minZ + 2.5, yaw: 0 },
+    ),
   );
 }
 
@@ -1139,6 +1238,7 @@ async function runAll(runId: string): Promise<void> {
     ["submarine_shallow", () => submarineShallow(a)],
     ["vehicle_limit", () => vehicleLimit(a)],
     ["boat_float", () => boatFloat(a)],
+    ["boat_drag", () => boatDrag(a)],
     ["boat_cruise", () => boatCruise(a)],
     ["boat_shore", () => boatShore(a)],
     ["boat_ram", () => boatRam(a)],
@@ -1154,6 +1254,7 @@ async function runAll(runId: string): Promise<void> {
     }
     if (outcome.pass) passed++;
     lines.push(`${outcome.pass ? "PASS" : "FAIL"} ${name} ${outcome.detail}`);
+    for (const line of outcome.lines ?? []) lines.push(`${name} ${line}`);
   }
   for (const line of lines) log(runId, line);
   log(runId, `SUMMARY pass=${passed} fail=${tests.length - passed}`);
