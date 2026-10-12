@@ -1,8 +1,34 @@
+import { VEHICLE_KINDS, type VehicleKind } from "../../../domain/vehicle/kind";
 import { PAINTS, type Paint } from "../../../domain/vehicle/paint";
 import { id, NAMESPACE } from "../../shared/identifiers";
 
-export const VEHICLE_TYPE = id("suv");
-export const ITEM_TYPE = id("suv_item");
+/**
+ * Every ENTITY_TYPE entity must list this family in minecraft:type_family.
+ * loadedVehicles and loadedVehicleIds query entities by this family and then
+ * keep the known kinds, so an entity without it is never driven or counted.
+ */
+export const VEHICLE_FAMILY = "yasu_ride_vehicle";
+export const ENTITY_TYPE: Readonly<Record<VehicleKind, string>> = {
+  suv: id("suv"),
+  sportsboat: id("sportsboat"),
+};
+export const ITEM_TYPE: Readonly<Record<VehicleKind, string>> = {
+  suv: id("suv_item"),
+  sportsboat: id("sportsboat_item"),
+};
+export function kindOfEntity(
+  typeId: string | undefined,
+): VehicleKind | undefined {
+  return VEHICLE_KINDS.find((kind) => ENTITY_TYPE[kind] === typeId);
+}
+export function isVehicleEntity(typeId: string | undefined): boolean {
+  return kindOfEntity(typeId) !== undefined;
+}
+export function kindOfItem(
+  typeId: string | undefined,
+): VehicleKind | undefined {
+  return VEHICLE_KINDS.find((kind) => ITEM_TYPE[kind] === typeId);
+}
 export const PLAYER_TYPE = "minecraft:player";
 /** Dynamic property on a player, set after they have been given their starter vehicle item (ADR 0023). */
 export const STARTER_RECEIVED_PROPERTY = id("starter_received");
@@ -15,8 +41,8 @@ export const HEADLIGHTS_PROPERTY = id("headlights");
 /** Dynamic property on a vehicle holding the cells it put light blocks in. */
 export const LIT_CELLS_PROPERTY = id("lit_cells");
 /** Resource Pack animation that swings a door bone (ADR 0009) open and shut. */
-export const doorAnimation = (door: string): string =>
-  `animation.${NAMESPACE}.suv.${door}`;
+export const doorAnimation = (kind: VehicleKind, door: string): string =>
+  `animation.${NAMESPACE}.${ENTITY_TYPE[kind].slice(NAMESPACE.length + 1)}.${door}`;
 export const LIGHT_BLOCK = "minecraft:light_block_15";
 /**
  * Test input messages have the form "<vehicleId>,<moveX>,<moveY>,<jump>"
