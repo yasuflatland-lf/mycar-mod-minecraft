@@ -13,7 +13,7 @@ The nearest-seat rule of 0007 and 0019 does not specify how to break equal-dista
 ## Decision
 
 - Retry a failed `setCamera` or `clear()` on the next tick while that switch is still needed. Only update the `thirdPerson` set after the switch returns successfully. A missing player is a successful no-op, so clearing removes that player from the set
-- Log a camera failure once per player until a switch for that player succeeds. On success, remove the player from `cameraFailed`, allowing a later failure to be logged again. A failure must not stop other vehicles or riders
+- Log a camera failure once per player until a switch for that player succeeds. Only a successful switch removes the player from `cameraFailed`, allowing a later failure to be logged again; the entry stays when the failed switch stops being needed before it is retried. A failure must not stop other vehicles or riders
 - Use the lower seat index when two or more seats are exactly as close. Keep the existing seat coordinates, where positive x is left and positive z is forward:
 
   | Index | Position | x | z |
@@ -29,5 +29,6 @@ The nearest-seat rule of 0007 and 0019 does not specify how to break equal-dista
 
 - A transient clear failure can recover automatically instead of leaving the rider in third person. The existing "retries giving the view back when it fails" test in `tests/application/vehicle/driveVehicles.test.ts` pins the retry; nearby tests pin log suppression and logging again after success
 - A present player whose camera can never be cleared incurs a small retry every tick, with only one failure log until a switch succeeds. Revisit this if persistent failures make that cost significant; missing players do not cause this retry loop
+- Log suppression can span flights. If a failed switch stops being needed before its retry, for example because the rider lands or gets off before the next tick, `syncCameras` never calls `switchCamera` for that player again, and the `cameraFailed` entry stays. A later flight whose switches keep failing for that player then logs nothing, because the only log came from the earlier flight. This gap is accepted; clear the entry when the pending switch is dropped if a missing log hinders diagnosis
 - Equal-distance seat assignments are deterministic and favor the driver's side on the center line. Revisit the tie-break if the seat layout or index order changes
 - This records existing behavior without changing code or tests. The rest of 0028's Decision remains in force, with the third-person scope widened to every form but `car` by 0039; 0019 remains Accepted
