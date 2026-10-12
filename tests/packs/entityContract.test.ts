@@ -38,9 +38,11 @@ it.each(VEHICLE_KINDS)(
       ),
     )["minecraft:entity"];
     for (const [name, spec] of Object.entries(contract.properties)) {
-      expect(
-        entity.description.properties[entityPropertyId(name)],
-      ).toMatchObject(spec);
+      const definition = entity.description.properties[entityPropertyId(name)];
+      expect(definition).toMatchObject(spec);
+      expect(Object.keys(definition).sort()).toEqual(
+        [...Object.keys(spec), "default", "client_sync"].sort(),
+      );
       expectNotReserved(name);
     }
     for (const name of contract.events) {
