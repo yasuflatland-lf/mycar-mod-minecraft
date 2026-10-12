@@ -54,7 +54,7 @@ This directory records design decisions and the reasons behind them. The format 
 | [0048](0048-mutation-testing-and-unused-code-checks.md) | Mutation testing with Stryker, and unused code checks with knip | Accepted |
 | [0049](0049-pack-icons-rendered-from-model.md) | Render pack icons from the hovering SUV model | Accepted |
 | [0050](0050-vehicle-kinds-and-per-kind-profiles.md) | Vehicle kinds and per-kind profiles | Superseded in part by 0055 |
-| [0051](0051-sports-boat.md) | Sports boat | Extended by 0058 |
+| [0051](0051-sports-boat.md) | Sports boat | Extended by 0058 and 0063 |
 | [0052](0052-retry-camera-switches-and-break-seat-ties-low.md) | Retry camera switches in both directions, and break seat ties toward the lower index | Accepted |
 | [0053](0053-estimate-buoyant-boat-water-drag.md) | Estimate the buoyant boat's water drag | Accepted |
 | [0054](0054-shard-in-game-tests-in-ci.md) | Shard the in-game tests across four CI jobs and run model:check beside the unit tests | Accepted |
@@ -66,6 +66,7 @@ This directory records design decisions and the reasons behind them. The format 
 | [0060](0060-sports-boat-engine-sound.md) | Sports boat engine sound | Accepted |
 | [0061](0061-lift-the-bow-and-roll-further.md) | Lift the sports boat bow the right way and roll it further | Accepted |
 | [0062](0062-fresh-dev-pack-version-on-every-start.md) | Serve the dev BDS's packs under a fresh dev-only version on every start | Accepted |
+| [0063](0063-walk-on-a-stopped-sports-boat.md) | Walk on a stopped sports boat | Accepted |
 
 The measurements and in-game tests behind these decisions are in [the driving-core spike findings](../spike-driving-core.md).
 

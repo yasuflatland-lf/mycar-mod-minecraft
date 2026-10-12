@@ -1,18 +1,27 @@
 // In-game tests (ADR 0010). They run in a script environment separate from the
 // main Behavior Pack, so they drive the vehicle through script events.
 import { type Dimension, type Entity, system, world } from "@minecraft/server";
-import { dot, forward } from "../domain/shared/vec";
+import { dot, forward, type Vec3 } from "../domain/shared/vec";
 import { headlightCells } from "../domain/vehicle/headlights";
 import { BoatDrive } from "../domain/vehicle/kinds/sportsboat/drive";
-import { SPORTSBOAT_MOTION } from "../domain/vehicle/kinds/sportsboat/profile";
+import {
+  SPORTSBOAT_MOTION,
+  SPORTSBOAT_PROFILE,
+} from "../domain/vehicle/kinds/sportsboat/profile";
 import type { SUV_ENTITY } from "../domain/vehicle/kinds/suv/entity";
 import { type Form, isForm } from "../domain/vehicle/kinds/suv/form";
 import { SUV_PROFILE } from "../domain/vehicle/kinds/suv/profile";
 import { SUV_SPEC } from "../domain/vehicle/kinds/suv/spec";
 import { PAINTS } from "../domain/vehicle/paint";
-import { nearestSeat, toLocal } from "../domain/vehicle/seats";
+import {
+  nearestSeat,
+  seatWorldPositions,
+  toLocal,
+} from "../domain/vehicle/seats";
 import { SPEC } from "../domain/vehicle/spec";
 import {
+  DECK_FLOOR_BLOCK,
+  DECK_SEAT_TYPE,
   ENTITY_TYPE,
   entityPropertyId,
   HEADLIGHTS_PROPERTY,
@@ -733,6 +742,7 @@ async function withBoat<T>(
     z: POOL.z,
     yaw: -90,
   },
+  settleTicks = 40,
 ): Promise<T> {
   const { x, z } = start;
   a.dim.runCommand(`summon ${ENTITY_TYPE.sportsboat} ${x} ${a.gy} ${z}`);
@@ -744,7 +754,7 @@ async function withBoat<T>(
   if (!boat) throw new Error("boat not spawned at the pool surface");
   boat.setRotation({ x: 0, y: start.yaw });
   try {
-    await wait(40); // Let the boat settle on the water
+    if (settleTicks > 0) await wait(settleTicks); // Let the boat settle on the water
     return await run(boat);
   } finally {
     clearInput(boat);
@@ -754,22 +764,217 @@ async function withBoat<T>(
 
 function boatFloat(a: Arena): Promise<Outcome> {
   return withPool(a, 3, () =>
-    withBoat(a, async (boat) => {
-      let minY = Number.POSITIVE_INFINITY;
-      let maxY = Number.NEGATIVE_INFINITY;
-      for (let t = 0; t < 60; t++) {
-        await wait(1);
-        minY = Math.min(minY, boat.location.y);
-        maxY = Math.max(maxY, boat.location.y);
+    withBoat(
+      a,
+      async (boat) => {
+        // Any input, even a centered stick, keeps the boat from docking, so the
+        // engine floats it here instead of the hold pose (ADR 0063).
+        drive(boat, 0, 0);
+        await wait(40); // Let the boat settle on the water
+        let minY = Number.POSITIVE_INFINITY;
+        let maxY = Number.NEGATIVE_INFINITY;
+        let docked = false;
+        for (let t = 0; t < 60; t++) {
+          await wait(1);
+          minY = Math.min(minY, boat.location.y);
+          maxY = Math.max(maxY, boat.location.y);
+          docked ||= boat.getProperty(entityPropertyId("docked")) === true;
+        }
+        const bob = maxY - minY;
+        const minDraft = a.gy - maxY;
+        const maxDraft = a.gy - minY;
+        return {
+          pass: !docked && bob <= 0.3 && minDraft >= 0.3 && maxDraft <= 0.6,
+          detail: `docked=${docked} bob=${bob.toFixed(3)} draft=${minDraft.toFixed(3)}-${maxDraft.toFixed(3)}`,
+        };
+      },
+      undefined,
+      0,
+    ),
+  );
+}
+
+// Acceptance bounds from issue #198, not ADR 0063 (which sets only when a boat
+// docks and undocks): a docked boat holds still for 2 s, undocks within 0.5 s
+// of input, and leaves within 2 s.
+const BOAT_DOCK_TEST = {
+  timeout: 120,
+  holdTicks: 40,
+  heightTolerance: 0.02,
+  floorRadius: 3,
+  minFloorCells: 8,
+  undockTicks: 10,
+  clearRadius: 4,
+  departureTicks: 40,
+  minDeparture: 1,
+} as const;
+
+// Test bounds, not values from ADR 0063: the four seats lie within 0.9 blocks
+// of the boat, so a 4-block search finds them all; 0.1 allows for the seat
+// teleport tolerance; departure must clear every seat within the orphan-check
+// radius of deckSeats.ts within half a second.
+const BOAT_DECK_SEATS_TEST = {
+  count: 4,
+  radius: 4,
+  tolerance: 0.1,
+  clearRadius: 6,
+  clearTicks: 10,
+} as const;
+
+function boatDeckSeats(a: Arena): Promise<Outcome> {
+  return withPool(a, 3, () =>
+    withBoat(
+      a,
+      async (boat) => {
+        const docked = () =>
+          boat.getProperty(entityPropertyId("docked")) === true;
+        let ticks = 0;
+        while (!docked() && ticks < BOAT_DOCK_TEST.timeout) {
+          await wait(1);
+          ticks++;
+        }
+        if (!docked())
+          return { pass: false, detail: `not docked after ${ticks} ticks` };
+        const start = boat.location;
+        const seatsWithin = (maxDistance: number) =>
+          a.dim.getEntities({
+            type: DECK_SEAT_TYPE,
+            location: start,
+            maxDistance,
+          });
+        const seats = seatsWithin(BOAT_DECK_SEATS_TEST.radius);
+        const expected = seatWorldPositions(
+          { ...start, yaw: boat.getRotation().y },
+          SPORTSBOAT_PROFILE.seats.positions,
+        );
+        const unmatched = [...seats];
+        const positioned = expected.every((at) => {
+          const index = unmatched.findIndex(
+            (seat) =>
+              Math.hypot(
+                seat.location.x - at.x,
+                seat.location.y - at.y,
+                seat.location.z - at.z,
+              ) <= BOAT_DECK_SEATS_TEST.tolerance,
+          );
+          if (index < 0) return false;
+          unmatched.splice(index, 1);
+          return true;
+        });
+        drive(boat, 0, 1);
+        const remaining = () =>
+          seatsWithin(BOAT_DECK_SEATS_TEST.clearRadius).length;
+        let clearTicks = 0;
+        while (
+          remaining() > 0 &&
+          clearTicks < BOAT_DECK_SEATS_TEST.clearTicks
+        ) {
+          await wait(1);
+          clearTicks++;
+        }
+        const count = remaining();
+        return {
+          pass:
+            seats.length === BOAT_DECK_SEATS_TEST.count &&
+            positioned &&
+            count === 0,
+          detail: `seats=${seats.length} positioned=${positioned} clearTicks=${clearTicks} remaining=${count}`,
+        };
+      },
+      POOL_SOUTH_LANE,
+      0,
+    ),
+  );
+}
+
+function deckFloorCount(a: Arena, center: Vec3, radius: number): number {
+  const cx = Math.floor(center.x);
+  const cy = Math.floor(center.y);
+  const cz = Math.floor(center.z);
+  let count = 0;
+  for (let x = cx - radius; x <= cx + radius; x++) {
+    for (
+      let y = Math.max(a.dim.heightRange.min, cy - radius);
+      y <= cy + radius;
+      y++
+    ) {
+      for (let z = cz - radius; z <= cz + radius; z++) {
+        if (a.dim.getBlock({ x, y, z })?.typeId === DECK_FLOOR_BLOCK) count++;
       }
-      const bob = maxY - minY;
-      const minDraft = a.gy - maxY;
-      const maxDraft = a.gy - minY;
-      return {
-        pass: bob <= 0.3 && minDraft >= 0.3 && maxDraft <= 0.6,
-        detail: `bob=${bob.toFixed(3)} draft=${minDraft.toFixed(3)}-${maxDraft.toFixed(3)}`,
-      };
-    }),
+    }
+  }
+  return count;
+}
+
+function boatDock(a: Arena): Promise<Outcome> {
+  return withPool(a, 3, () =>
+    withBoat(
+      a,
+      async (boat) => {
+        const docked = () =>
+          boat.getProperty(entityPropertyId("docked")) === true;
+        let dockTicks = 0;
+        while (!docked() && dockTicks < BOAT_DOCK_TEST.timeout) {
+          await wait(1);
+          dockTicks++;
+        }
+        if (!docked())
+          return { pass: false, detail: `not docked after ${dockTicks} ticks` };
+        const start = boat.location;
+        let maxHeightError = 0;
+        let held = true;
+        for (let tick = 0; tick < BOAT_DOCK_TEST.holdTicks; tick++) {
+          await wait(1);
+          maxHeightError = Math.max(
+            maxHeightError,
+            Math.abs(boat.location.y - start.y),
+          );
+          held &&= docked();
+        }
+        const floorCount = deckFloorCount(a, start, BOAT_DOCK_TEST.floorRadius);
+        const f = forward(boat.getRotation().y);
+        drive(boat, 0, 1);
+        let undockTicks = 0;
+        let remainingFloor = deckFloorCount(
+          a,
+          start,
+          BOAT_DOCK_TEST.clearRadius,
+        );
+        while (
+          (docked() || remainingFloor > 0) &&
+          undockTicks < BOAT_DOCK_TEST.undockTicks
+        ) {
+          await wait(1);
+          undockTicks++;
+          remainingFloor = deckFloorCount(a, start, BOAT_DOCK_TEST.clearRadius);
+        }
+        const leftDock = !docked();
+        let distance = 0;
+        for (
+          let tick = undockTicks;
+          tick < BOAT_DOCK_TEST.departureTicks;
+          tick++
+        ) {
+          await wait(1);
+          distance =
+            (boat.location.x - start.x) * f.x +
+            (boat.location.z - start.z) * f.z;
+          if (distance >= BOAT_DOCK_TEST.minDeparture) break;
+        }
+        return {
+          pass:
+            held &&
+            maxHeightError <= BOAT_DOCK_TEST.heightTolerance &&
+            floorCount >= BOAT_DOCK_TEST.minFloorCells &&
+            leftDock &&
+            remainingFloor === 0 &&
+            distance >= BOAT_DOCK_TEST.minDeparture,
+          detail: `dockTicks=${dockTicks} held=${held} heightError=${maxHeightError.toFixed(3)} floor=${floorCount} undockTicks=${undockTicks} undocked=${leftDock} remainingFloor=${remainingFloor} forward=${distance.toFixed(3)}`,
+        };
+      },
+      POOL_SOUTH_LANE,
+      0,
+    ),
   );
 }
 
@@ -810,6 +1015,7 @@ function boatDrag(a: Arena): Promise<Outcome> {
           const step = replica.step(
             { moveX: 0, moveY: throttle ? 1 : 0, jump: false },
             {
+              deckSeatInputs: [],
               tick: t,
               velocity: observed,
               onGround: false,
@@ -1299,6 +1505,8 @@ async function runAll({ runId, shard }: RunRequest): Promise<void> {
     ["submarine_shallow", 118, () => submarineShallow(a)],
     ["vehicle_limit", 20, () => vehicleLimit(a)],
     ["boat_float", 105, () => boatFloat(a)],
+    ["boat_dock", 110, () => boatDock(a)],
+    ["boat_deck_seats", 110, () => boatDeckSeats(a)],
     ["boat_drag", 138, () => boatDrag(a)],
     ["boat_cruise", 235, () => boatCruise(a)],
     ["boat_shore", 165, () => boatShore(a)],

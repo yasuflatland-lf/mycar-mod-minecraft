@@ -1,5 +1,5 @@
 // The sports boat's drive: the engine floats the hull and the script drives only x and z (ADR 0051).
-import { clamp, dot, type Vec2 } from "../../../shared/vec";
+import { clamp, dot, forward, type Vec2, type Vec3 } from "../../../shared/vec";
 import type {
   Drive,
   DriveStep,
@@ -13,6 +13,7 @@ import {
   type RawInput,
   toDriveInput,
 } from "../../driveInput";
+import type { HoldPose } from "../../floor";
 import { MOTION } from "../../motion/constants";
 import {
   alignOnMount,
@@ -26,9 +27,16 @@ import {
 } from "../../motion/motion";
 import { waterBelowAt, waterDepthAt } from "../../motion/water";
 import type { MotionLimits } from "../../profile";
+import { seatWorldPositions } from "../../seats";
 import { stepRoll, stepTrim } from "./attitude";
-import { rollCommand, trimCommand } from "./entity";
-import { SPORTSBOAT_MOTION } from "./profile";
+import { DOCK, floorCells, holdHeight } from "./deck";
+import {
+  dockCommands,
+  rollCommand,
+  trimCommand,
+  undockCommands,
+} from "./entity";
+import { SPORTSBOAT_MOTION, SPORTSBOAT_PROFILE } from "./profile";
 
 // The height of the sportsboat collision box, which bounds the water depth
 // query; the boat only tests whether the depth is above zero.
@@ -79,6 +87,17 @@ export function estimateWaterDrag(
   );
 }
 
+function pushesStick(input: RawInput | undefined): boolean {
+  return (
+    input !== undefined &&
+    Math.max(Math.abs(input.moveX), Math.abs(input.moveY)) > DOCK.stick
+  );
+}
+
+function deckSeatPositions(pose: HoldPose): Vec3[] {
+  return seatWorldPositions(pose, SPORTSBOAT_PROFILE.seats.positions);
+}
+
 export function isAfloat(depth: number, below: () => boolean): boolean {
   return depth > 0 || below();
 }
@@ -95,6 +114,9 @@ export class BoatDrive implements Drive {
   private dragEstimate: number | undefined;
   private trim = 0;
   private roll = 0;
+  private docked: HoldPose | undefined;
+  private stillTicks = 0;
+  private restoredDocked: boolean;
   // Undefined until the first tick, so a rebuilt vehicle clears a trim or roll
   // the entity kept from before /reload, as the SUV does with its bank.
   private sentTrim: number | undefined;
@@ -103,10 +125,15 @@ export class BoatDrive implements Drive {
   /** `limits` other than the boat's own are for tests that vary one value. */
   constructor(
     yaw: number,
-    _restored: RestoredValues,
+    restored: RestoredValues,
     private readonly limits: MotionLimits = SPORTSBOAT_MOTION,
   ) {
     this.motion = initialMotion(yaw);
+    this.restoredDocked = restored.docked === true;
+  }
+
+  get isDocked(): boolean {
+    return this.docked !== undefined;
   }
 
   get speed(): number {
@@ -141,6 +168,9 @@ export class BoatDrive implements Drive {
   }
 
   onDriverMounted(driverYaw: number): void {
+    // A held hull keeps its hold yaw, so turning the drive to the driver here
+    // would point the seats and headlights away from the bow until undocking.
+    if (this.docked || this.restoredDocked) return;
     this.motion = alignOnMount(this.motion, driverYaw);
   }
 
@@ -149,6 +179,30 @@ export class BoatDrive implements Drive {
   }
 
   step(raw: RawInput | undefined, ctx: TickContext): DriveStep {
+    if (this.restoredDocked && !this.docked) {
+      this.docked = { ...ctx.location, yaw: this.motion.yaw };
+      this.restoredDocked = false;
+    }
+    const commands: EngineCommand[] = [];
+    let boardDeckRiders = false;
+    if (this.docked) {
+      if (!pushesStick(raw)) {
+        return {
+          deckSeats: deckSeatPositions(this.docked),
+          boardDeckRiders: pushesStick(ctx.deckSeatInputs[0]),
+          impulse: { x: 0, y: 0, z: 0 },
+          forward: forward(this.docked.yaw),
+          commands: [],
+          riders: { thirdPerson: false, underwater: false },
+          hold: this.docked,
+          floor: floorCells(this.docked),
+        };
+      }
+      boardDeckRiders = true;
+      commands.push(...undockCommands());
+      this.docked = undefined;
+      this.stillTicks = 0;
+    }
     // There is no handbrake: neither path below reads it, so jump does nothing.
     const input: DriveInput = raw ? toDriveInput(raw) : NEUTRAL_INPUT;
     const motion = this.motion;
@@ -185,26 +239,48 @@ export class BoatDrive implements Drive {
         this.limits,
       );
     }
-    this.trim = stepTrim(this.trim, motion.speed, step.state.speed, afloat);
-    this.roll = stepRoll(
-      this.roll,
-      motion.yaw,
-      step.state.yaw,
-      step.state.speed,
-      afloat,
-    );
-    const commands: EngineCommand[] = [];
+    this.motion = step.state;
+    this.stillTicks =
+      afloat && raw === undefined && Math.abs(step.state.speed) < DOCK.maxSpeed
+        ? this.stillTicks + 1
+        : 0;
+    if (this.stillTicks >= DOCK.ticks) {
+      const holdY = holdHeight(ctx.location.y, (dy) =>
+        ctx.waterAt({ x: 0, y: dy, z: 0 }),
+      );
+      if (holdY !== undefined) {
+        this.docked = { ...ctx.location, y: holdY, yaw: step.state.yaw };
+        this.motion = { ...step.state, speed: 0 };
+        commands.push(...dockCommands());
+      }
+    }
+    if (this.docked) {
+      // A docked boat sits level, so docking clears any residual trim or roll.
+      this.trim = 0;
+      this.roll = 0;
+    } else {
+      this.trim = stepTrim(this.trim, motion.speed, step.state.speed, afloat);
+      this.roll = stepRoll(
+        this.roll,
+        motion.yaw,
+        step.state.yaw,
+        step.state.speed,
+        afloat,
+      );
+    }
     if (this.trim !== this.sentTrim) commands.push(trimCommand(this.trim));
     if (this.roll !== this.sentRoll) commands.push(rollCommand(this.roll));
     this.sentTrim = this.trim;
     this.sentRoll = this.roll;
-    this.motion = step.state;
     // Buoyancy and gravity belong to the engine, so the script never pushes vertically.
     return {
       impulse: { x: step.impulse.x, y: 0, z: step.impulse.z },
       forward: step.forward,
       commands,
       riders: { thirdPerson: false, underwater: false },
+      boardDeckRiders,
+      deckSeats: this.docked ? deckSeatPositions(this.docked) : [],
+      ...(this.docked && { hold: this.docked, floor: floorCells(this.docked) }),
     };
   }
 }

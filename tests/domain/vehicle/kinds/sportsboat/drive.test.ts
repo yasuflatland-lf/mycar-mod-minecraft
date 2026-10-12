@@ -19,13 +19,22 @@ import {
 } from "../../../../../src/domain/vehicle/kinds/index";
 import { SPORTSBOAT_ATTITUDE } from "../../../../../src/domain/vehicle/kinds/sportsboat/attitude";
 import {
+  DOCK,
+  floorCells,
+  holdHeight,
+} from "../../../../../src/domain/vehicle/kinds/sportsboat/deck";
+import {
   BoatDrive,
   estimateWaterDrag,
   isAfloat,
   SPORTSBOAT_DRAG,
   SPORTSBOAT_WATER,
 } from "../../../../../src/domain/vehicle/kinds/sportsboat/drive";
-import { SPORTSBOAT_ENTITY } from "../../../../../src/domain/vehicle/kinds/sportsboat/entity";
+import {
+  dockCommands,
+  SPORTSBOAT_ENTITY,
+  undockCommands,
+} from "../../../../../src/domain/vehicle/kinds/sportsboat/entity";
 import {
   SPORTSBOAT_MOTION,
   SPORTSBOAT_PROFILE,
@@ -42,6 +51,7 @@ import {
   stepFlightMotion,
 } from "../../../../../src/domain/vehicle/motion/motion";
 import type { RamTarget } from "../../../../../src/domain/vehicle/ram";
+import { seatWorldPositions } from "../../../../../src/domain/vehicle/seats";
 import { SPEC } from "../../../../../src/domain/vehicle/spec";
 import type {
   TickOutcome,
@@ -126,6 +136,7 @@ function context(
   return {
     tick,
     riders: [],
+    deckSeatInputs: [],
     testInput: raw,
     velocity: { ...velocity, y: 0 },
     onGround: true,
@@ -143,6 +154,369 @@ const LEVEL = [
 function boat(heading: number): Vehicle {
   return createVehicle("sportsboat", "boat", heading);
 }
+
+describe("sports boat docking (ADR 0063)", () => {
+  it("docks exactly on the twentieth consecutive still tick with a water-relative hold and floor", () => {
+    fc.assert(
+      fc.property(
+        yaw,
+        afloatWater,
+        number(-100, 100),
+        number(-100, 100),
+        (heading, water, x, z) => {
+          const drive = new BoatDrive(heading, {});
+          const ctx = context(0, undefined, { x: 0, z: 0 }, water);
+          ctx.location = { ...ctx.location, x, z };
+          for (let tick = 1; tick < DOCK.ticks; tick++) {
+            const out = drive.step(undefined, ctx);
+            expect(drive.isDocked).toBe(false);
+            expect(out.hold).toBeUndefined();
+            expect(out.floor).toBeUndefined();
+            expect(out.commands).toStrictEqual(tick === 1 ? LEVEL : []);
+          }
+          const out = drive.step(undefined, ctx);
+          const hold = {
+            x,
+            y: holdHeight(ctx.location.y, (dy) =>
+              ctx.waterAt({ x: 0, y: dy, z: 0 }),
+            ),
+            z,
+            yaw: drive.yaw,
+          };
+          expect(drive.isDocked).toBe(true);
+          expect(drive.speed).toBe(0);
+          expect(out.commands).toStrictEqual(dockCommands());
+          expect(out.hold).toStrictEqual(hold);
+          if (!out.hold) throw new Error("missing dock hold");
+          expect(out.floor).toStrictEqual(floorCells(out.hold));
+          expect(out.deckSeats).toStrictEqual(
+            seatWorldPositions(out.hold, SPORTSBOAT_PROFILE.seats.positions),
+          );
+        },
+      ),
+    );
+  });
+
+  it("resets the still count for any input, so a driver never docks", () => {
+    fc.assert(
+      fc.property(yaw, rawInput, afloatWater, (heading, raw, water) => {
+        // Zero acceleration isolates input presence from changes in speed.
+        const drive = new BoatDrive(
+          heading,
+          {},
+          { ...SPORTSBOAT_MOTION, accel: 0, reverseAccel: 0, creepSpeed: 0 },
+        );
+        const ctx = context(0, undefined, { x: 0, z: 0 }, water);
+        for (let tick = 1; tick < DOCK.ticks; tick++)
+          drive.step(undefined, ctx);
+        drive.step(raw, ctx);
+        for (let tick = 1; tick < DOCK.ticks; tick++) {
+          expect(drive.step(undefined, ctx).hold).toBeUndefined();
+        }
+        expect(drive.step(undefined, ctx).hold).toBeDefined();
+        const occupied = new BoatDrive(heading, {});
+        for (let tick = 0; tick < DOCK.ticks * 3; tick++) {
+          expect(occupied.step(raw, ctx).hold).toBeUndefined();
+          expect(occupied.isDocked).toBe(false);
+        }
+        const idle = new BoatDrive(heading, {});
+        for (let tick = 0; tick < DOCK.ticks * 3; tick++) {
+          expect(
+            idle.step({ moveX: 0, moveY: 0, jump: raw.jump }, ctx).hold,
+          ).toBeUndefined();
+        }
+      }),
+    );
+  });
+
+  it("holds the same pose and motion without impulses or attitude commands for absent or small input", () => {
+    const smallInput = fc.record({
+      moveX: number(-DOCK.stick, DOCK.stick),
+      moveY: number(-DOCK.stick, DOCK.stick),
+      jump: fc.boolean(),
+    });
+    fc.assert(
+      fc.property(
+        yaw,
+        afloatWater,
+        fc.array(fc.option(smallInput, { nil: undefined }), {
+          minLength: 1,
+          maxLength: 50,
+        }),
+        (heading, water, inputs) => {
+          const drive = new BoatDrive(heading, {});
+          const ctx = context(0, undefined, { x: 0, z: 0 }, water);
+          let out = drive.step(undefined, ctx);
+          for (let tick = 1; tick < DOCK.ticks; tick++)
+            out = drive.step(undefined, ctx);
+          const hold = out.hold;
+          if (!hold) throw new Error("missing dock hold");
+          const state = drive.state;
+          for (const raw of [
+            ...inputs,
+            { moveX: DOCK.stick, moveY: -DOCK.stick, jump: true },
+          ]) {
+            out = drive.step(raw, {
+              ...ctx,
+              location: { x: 40, y: 30, z: -20 },
+              velocity: { x: 1, y: 1, z: 1 },
+              waterAt: () => false,
+            });
+            expect(out.hold).toBe(hold);
+            expect(out.floor).toStrictEqual(floorCells(hold));
+            expect(out.impulse).toStrictEqual({ x: 0, y: 0, z: 0 });
+            expect(out.forward).toStrictEqual(forward(drive.yaw));
+            expect(out.commands).toStrictEqual([]);
+            expect(drive.state).toStrictEqual(state);
+            expect(drive.trimAngle).toBe(0);
+            expect(drive.rollAngle).toBe(0);
+          }
+        },
+      ),
+    );
+  });
+
+  it("undocks on either axis above the threshold and runs normal motion that same tick", () => {
+    fc.assert(
+      fc.property(
+        yaw,
+        afloatWater,
+        fc.constantFrom("moveX", "moveY"),
+        number(DOCK.stick, 1).filter((n) => n > DOCK.stick),
+        fc.constantFrom(-1, 1),
+        (heading, water, axis, magnitude, sign) => {
+          const drive = new BoatDrive(heading, {});
+          const normal = new BoatDrive(heading, {});
+          const ctx = context(0, undefined, { x: 0, z: 0 }, water);
+          for (let tick = 0; tick < DOCK.ticks; tick++) {
+            drive.step(undefined, ctx);
+            normal.step({ moveX: 0, moveY: 0, jump: false }, ctx);
+          }
+          const raw = {
+            moveX: 0,
+            moveY: 0,
+            jump: false,
+            [axis]: magnitude * sign,
+          };
+          const expected = normal.step(raw, ctx);
+          const out = drive.step(raw, ctx);
+          expect(out).toStrictEqual({
+            ...expected,
+            commands: [...undockCommands(), ...expected.commands],
+            boardDeckRiders: true,
+            deckSeats: [],
+          });
+          expect(drive.isDocked).toBe(false);
+          expect(out.hold).toBeUndefined();
+          expect(out.floor).toBeUndefined();
+          expect(drive.state).toStrictEqual(normal.state);
+          drive.restore({ motion: initialMotion(drive.yaw) });
+          for (let tick = 1; tick < DOCK.ticks; tick++)
+            expect(drive.step(undefined, ctx).hold).toBeUndefined();
+          expect(drive.step(undefined, ctx).hold).toBeDefined();
+        },
+      ),
+    );
+  });
+
+  it("restores a docked boat at its first location without dock or attitude commands", () => {
+    fc.assert(
+      fc.property(
+        yaw,
+        number(-100, 100),
+        number(-60, 300),
+        number(-100, 100),
+        (heading, x, y, z) => {
+          const drive = new BoatDrive(heading, { docked: true });
+          const ctx = {
+            ...context(0, undefined, { x: 0, z: 0 }, BEACHED),
+            location: { x, y, z },
+          };
+          const out = drive.step(undefined, ctx);
+          expect(drive.isDocked).toBe(true);
+          expect(out.hold).toStrictEqual({
+            x,
+            y,
+            z,
+            yaw: normalizeYaw(heading),
+          });
+          if (!out.hold) throw new Error("missing dock hold");
+          expect(out.floor).toStrictEqual(floorCells(out.hold));
+          expect(out.deckSeats).toStrictEqual(
+            seatWorldPositions(out.hold, SPORTSBOAT_PROFILE.seats.positions),
+          );
+          expect(out.commands).toStrictEqual([]);
+          expect(
+            drive.step(undefined, { ...ctx, location: { x: 0, y: 0, z: 0 } })
+              .hold,
+          ).toBe(out.hold);
+        },
+      ),
+    );
+  });
+
+  it("resets the still count at the speed threshold in either direction", () => {
+    fc.assert(
+      fc.property(
+        yaw,
+        afloatWater,
+        fc.constantFrom(-1, 1),
+        (heading, water, sign) => {
+          const drive = new BoatDrive(
+            heading,
+            {},
+            { ...SPORTSBOAT_MOTION, drag: 0 },
+          );
+          const ctx = context(0, undefined, { x: 0, z: 0 }, water);
+          for (let tick = 1; tick < DOCK.ticks; tick++)
+            drive.step(undefined, ctx);
+          drive.restore({
+            motion: { ...initialMotion(heading), speed: sign * DOCK.maxSpeed },
+          });
+          expect(drive.step(undefined, ctx).hold).toBeUndefined();
+          expect(drive.speed).toBe(sign * DOCK.maxSpeed);
+          const speed = (sign * DOCK.maxSpeed) / 2;
+          drive.restore({ motion: { ...initialMotion(heading), speed } });
+          const f = forward(drive.yaw);
+          const still = {
+            ...ctx,
+            velocity: { x: f.x * speed, y: 0, z: f.z * speed },
+          };
+          for (let tick = 1; tick < DOCK.ticks; tick++)
+            expect(drive.step(undefined, still).hold).toBeUndefined();
+          expect(drive.step(undefined, still).hold).toBeDefined();
+          expect(drive.speed).toBe(0);
+        },
+      ),
+    );
+  });
+
+  it("waits for a water column before holding a boat sensed afloat only below its feet", () => {
+    fc.assert(
+      fc.property(yaw, (heading) => {
+        const drive = new BoatDrive(heading, {});
+        const ctx = {
+          ...context(0, undefined, { x: 0, z: 0 }, BEACHED),
+          waterAt: (o: Vec3) => o.y === -0.3,
+        };
+        for (let tick = 0; tick < DOCK.ticks * 2; tick++) {
+          expect(drive.step(undefined, ctx).hold).toBeUndefined();
+          expect(drive.isDocked).toBe(false);
+        }
+        expect(
+          drive.step(undefined, context(0, undefined, { x: 0, z: 0 }, AFLOAT))
+            .hold,
+        ).toBeDefined();
+      }),
+    );
+  });
+
+  it("levels residual trim when docking and keeps it level afterward", () => {
+    fc.assert(
+      fc.property(yaw, afloatWater, (heading, water) => {
+        const drive = new BoatDrive(heading, {});
+        const ctx = context(0, undefined, { x: 0, z: 0 }, water);
+        for (
+          let tick = 0;
+          tick < SPORTSBOAT_ATTITUDE.maxTrim / SPORTSBOAT_ATTITUDE.trimRiseRate;
+          tick++
+        ) {
+          drive.step(FULL_THROTTLE, ctx);
+          const given = drive.state.motion.airExpected;
+          if (!given) throw new Error("missing afloat given velocity");
+          ctx.velocity = {
+            x: given.x * SPORTSBOAT_WATER.drag,
+            y: 0,
+            z: given.z * SPORTSBOAT_WATER.drag,
+          };
+        }
+        expect(drive.trimAngle).toBe(SPORTSBOAT_ATTITUDE.maxTrim);
+        drive.restore({ motion: initialMotion(drive.yaw) });
+        ctx.velocity = { x: 0, y: 0, z: 0 };
+        for (let tick = 1; tick < DOCK.ticks; tick++)
+          drive.step(undefined, ctx);
+        const out = drive.step(undefined, ctx);
+        expect(out.commands.slice(-3)).toStrictEqual([
+          ...dockCommands(),
+          { type: "setProperty", name: "trim", value: 0 },
+        ]);
+        expect(drive.trimAngle).toBe(0);
+        expect(drive.step(undefined, ctx).commands).toStrictEqual([]);
+      }),
+    );
+  });
+
+  it("never docks beached and resets the count when it leaves the water", () => {
+    fc.assert(
+      fc.property(yaw, afloatWater, (heading, water) => {
+        const drive = new BoatDrive(heading, {});
+        const ctx = context(0, undefined, { x: 0, z: 0 }, water);
+        for (let tick = 1; tick < DOCK.ticks; tick++)
+          drive.step(undefined, ctx);
+        for (let tick = 0; tick < DOCK.ticks * 3; tick++) {
+          const out = drive.step(
+            undefined,
+            context(tick, undefined, { x: 0, z: 0 }, BEACHED),
+          );
+          expect(out.hold).toBeUndefined();
+          expect(drive.isDocked).toBe(false);
+        }
+        for (let tick = 1; tick < DOCK.ticks; tick++)
+          expect(drive.step(undefined, ctx).hold).toBeUndefined();
+        expect(drive.step(undefined, ctx).hold).toBeDefined();
+      }),
+    );
+  });
+  it("keeps the hold yaw when a driver mounts a docked or restored docked boat", () => {
+    const smallStick = number(-DOCK.stick, DOCK.stick);
+    fc.assert(
+      fc.property(
+        yaw,
+        yaw,
+        afloatWater,
+        smallStick,
+        smallStick,
+        fc.boolean(),
+        (heading, driverYaw, water, moveX, moveY, restored) => {
+          const vehicle = restored
+            ? rebuildVehicle("sportsboat", "boat", heading, [], {
+                docked: true,
+              })
+            : boat(heading);
+          if (!restored)
+            for (let tick = 0; tick < DOCK.ticks; tick++)
+              vehicle.tick(context(tick, undefined, { x: 0, z: 0 }, water));
+          const seat = SPORTSBOAT_PROFILE.seats.positions[0];
+          if (seat === undefined) throw new Error("no driver seat");
+          const f = forward(heading);
+          const left = leftOf(f);
+          const driver = {
+            id: "driver",
+            offset: {
+              x: left.x * seat.x + f.x * seat.z,
+              z: left.z * seat.x + f.z * seat.z,
+            },
+            yaw: driverYaw,
+            raw: { moveX, moveY, jump: false },
+          };
+          let hold: TickOutcome["hold"];
+          for (let tick = 0; tick < DOCK.ticks; tick++) {
+            const out = vehicle.tick({
+              ...context(tick, undefined, { x: 0, z: 0 }, water),
+              riders: [driver],
+            });
+            if (!out.hold) throw new Error("the boat undocked");
+            hold ??= out.hold;
+            expect(out.hold).toBe(hold);
+            expect(out.yaw).toBe(hold.yaw);
+            expect(out.yaw).toBe(normalizeYaw(heading));
+            expect(out.driverId).toBe("driver");
+          }
+        },
+      ),
+    );
+  });
+});
 
 describe("isAfloat (ADR 0051)", () => {
   it("is afloat with water at the feet or 0.3 blocks below them, and beached otherwise", () => {
@@ -565,7 +939,7 @@ describe("BoatDrive (ADR 0051)", () => {
     );
   });
 
-  it("never pushes vertically and sends only its trim and roll within their ranges, never a form, bank, or gear, for any inputs and surroundings", () => {
+  it("never pushes vertically and sends only attitude and docking commands, never a form, bank, or gear, for any inputs and surroundings", () => {
     const tick = fc.record({
       raw: fc.option(rawInput, { nil: undefined }),
       waterDepth: fc.option(number(0, 5), { nil: undefined }),
@@ -591,6 +965,15 @@ describe("BoatDrive (ADR 0051)", () => {
             });
             expect(out.impulse.y).toBe(0);
             for (const command of out.commands) {
+              if (
+                command.type === "triggerEvent" ||
+                (command.type === "setProperty" && command.name === "docked")
+              ) {
+                expect([...dockCommands(), ...undockCommands()]).toContainEqual(
+                  command,
+                );
+                continue;
+              }
               expect(command).toMatchObject({ type: "setProperty" });
               const { name, value } = command as {
                 name: "trim" | "roll";
@@ -829,4 +1212,98 @@ describe("a sports boat's trim and roll (ADR 0059)", () => {
     for (let i = 0; i < 10; i++)
       expect(sim.step(undefined, AFLOAT).commands).toStrictEqual([]);
   });
+});
+
+it("only the deck driver above the stick threshold requests boarding and keeps the hold", () => {
+  fc.assert(
+    fc.property(
+      yaw,
+      fc.array(fc.option(rawInput, { nil: undefined }), {
+        minLength: 4,
+        maxLength: 4,
+      }),
+      (heading, inputs) => {
+        const drive = new BoatDrive(heading, { docked: true });
+        const ctx = {
+          ...context(0, undefined, { x: 0, z: 0 }, AFLOAT),
+          deckSeatInputs: inputs,
+        };
+        const out = drive.step(undefined, ctx);
+        const driver = inputs[0];
+        expect(out.boardDeckRiders).toBe(
+          driver !== undefined &&
+            Math.max(Math.abs(driver.moveX), Math.abs(driver.moveY)) >
+              DOCK.stick,
+        );
+        expect(drive.isDocked).toBe(true);
+        expect(out.hold).toBeDefined();
+        expect(out.deckSeats).toHaveLength(4);
+        expect(out.commands).toEqual([]);
+        const passengersOnly = drive.step(undefined, {
+          ...ctx,
+          deckSeatInputs: [undefined, ...inputs.slice(1)],
+        });
+        expect(passengersOnly.boardDeckRiders).toBe(false);
+        expect(passengersOnly.hold).toEqual(out.hold);
+        for (const magnitude of [DOCK.stick, -DOCK.stick]) {
+          expect(
+            drive.step(undefined, {
+              ...ctx,
+              deckSeatInputs: [
+                { moveX: magnitude, moveY: magnitude, jump: true },
+              ],
+            }).boardDeckRiders,
+          ).toBe(false);
+        }
+      },
+    ),
+  );
+});
+
+it("keeps deck seats only at empty boat seats and ignores the deck driver while the boat has one", () => {
+  const pushes = (input: RawInput | undefined) =>
+    input !== undefined &&
+    Math.max(Math.abs(input.moveX), Math.abs(input.moveY)) > DOCK.stick;
+  fc.assert(
+    fc.property(
+      yaw,
+      fc.subarray([0, 1, 2, 3]),
+      fc.array(fc.option(rawInput, { nil: undefined }), {
+        minLength: 4,
+        maxLength: 4,
+      }),
+      (heading, taken, inputs) => {
+        const vehicle = rebuildVehicle("sportsboat", "boat", heading, [], {
+          docked: true,
+        });
+        const f = forward(heading);
+        const left = leftOf(f);
+        const riders = taken.map((seat) => {
+          const at = SPORTSBOAT_PROFILE.seats.positions[seat];
+          if (at === undefined) throw new Error(`no seat ${seat}`);
+          return {
+            id: `rider${seat}`,
+            offset: {
+              x: left.x * at.x + f.x * at.z,
+              z: left.z * at.x + f.z * at.z,
+            },
+            yaw: heading,
+            raw: { moveX: 0, moveY: 0, jump: false },
+          };
+        });
+        const out = vehicle.tick({
+          ...context(0, undefined, { x: 0, z: 0 }, AFLOAT),
+          riders,
+          deckSeatInputs: inputs,
+        });
+        expect(out.hold).toBeDefined();
+        expect(out.deckSeats).toHaveLength(4);
+        for (const [seat, at] of out.deckSeats.entries())
+          expect(at === undefined).toBe(taken.includes(seat));
+        expect(out.boardDeckRiders).toBe(
+          !taken.includes(0) && pushes(inputs[0]),
+        );
+      },
+    ),
+  );
 });

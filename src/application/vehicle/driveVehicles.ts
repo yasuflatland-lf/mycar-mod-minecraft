@@ -42,6 +42,7 @@ export class DriveVehicles {
         const out = vehicle.tick({
           tick,
           riders: snap.riders,
+          deckSeatInputs: snap.deckSeatInputs,
           testInput: snap.testInput,
           location: snap.location,
           velocity: snap.velocity,
@@ -52,11 +53,15 @@ export class DriveVehicles {
         });
         // Commands are sent on change, so send them before anything else that could throw.
         this.world.run(snap.id, out.commands);
+        this.world.holdAt(snap.id, out.hold);
         if (out.riders.thirdPerson)
           for (const rider of snap.riders) offRoad.add(rider.id);
         if (out.riders.underwater)
           for (const rider of snap.riders) underwater.add(rider.id);
-        this.world.applyMotion(snap.id, out.impulse, out.yaw);
+        if (!out.hold) this.world.applyMotion(snap.id, out.impulse, out.yaw);
+        if (out.boardDeckRiders) this.world.boardDeckRiders(snap.id);
+        this.world.keepDeckSeats(snap.id, out.deckSeats, out.yaw);
+        this.world.layFloor(snap.id, out.floor);
         this.world.shineHeadlights(
           snap.id,
           snap.headlights
@@ -77,10 +82,18 @@ export class DriveVehicles {
     for (const id of this.repo.ids()) {
       if (seen.has(id)) continue;
       this.repo.remove(id);
-      try {
-        this.world.shineHeadlights(id, []);
-      } catch (e) {
-        this.log.warn(`${id}: ${e}`);
+      // Each release runs on its own so one failure does not skip the others.
+      for (const release of [
+        () => this.world.keepDeckSeats(id, [], 0),
+        () => this.world.shineHeadlights(id, []),
+        () => this.world.layFloor(id, []),
+        () => this.world.holdAt(id, undefined),
+      ]) {
+        try {
+          release();
+        } catch (e) {
+          this.log.warn(`${id}: ${e}`);
+        }
       }
     }
     this.syncCameras(offRoad);

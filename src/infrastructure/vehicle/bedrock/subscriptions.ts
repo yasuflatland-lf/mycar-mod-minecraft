@@ -31,6 +31,8 @@ import {
 import { NAMESPACE } from "../../shared/identifiers";
 import { parseTestInputMessage } from "../testInput/testInputMessage";
 import type { TestInputStore } from "../testInput/testInputStore";
+import { standsOnDeck } from "./deck";
+import { removeOrphanDeckSeat } from "./deckSeats";
 import {
   HEADLIGHT_SWITCH_TYPE,
   isVehicleEntity,
@@ -73,10 +75,13 @@ export function registerSubscriptions(
   // that is no longer valid was removed by an earlier event for the same load.
   system.run(() => useCases.limit.start());
   world.afterEvents.entityLoad.subscribe((ev) => {
+    removeOrphanDeckSeat(ev.entity);
     if (isVehicleEntity(ev.entity.typeId) && ev.entity.isValid)
       useCases.limit.found([ev.entity.id]);
   });
   world.afterEvents.entitySpawn.subscribe((ev) => {
+    if (ev.cause === EntityInitializationCause.Loaded)
+      removeOrphanDeckSeat(ev.entity);
     if (!isVehicleEntity(ev.entity.typeId) || !ev.entity.isValid) return;
     if (ev.cause === EntityInitializationCause.Loaded) {
       useCases.limit.found([ev.entity.id]);
@@ -184,6 +189,7 @@ export function registerSubscriptions(
     useCases.hit.execute({
       vehicleId: ev.hitEntity.id,
       tick: system.currentTick,
+      fromDeck: standsOnDeck(player),
     });
   });
 

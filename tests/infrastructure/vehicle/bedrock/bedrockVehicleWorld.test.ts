@@ -5,6 +5,11 @@ import { SPEC } from "../../../../src/domain/vehicle/spec";
 import { NAMESPACE } from "../../../../src/infrastructure/shared/identifiers";
 import { BedrockVehicleWorld } from "../../../../src/infrastructure/vehicle/bedrock/bedrockVehicleWorld";
 import {
+  DECK_CELLS_PROPERTY,
+  DECK_FLOOR_BLOCK,
+  DECK_SEAT_OF_PROPERTY,
+  DECK_SEAT_TYPE,
+  DECK_SEATS_PROPERTY,
   ENTITY_TYPE,
   HEADLIGHTS_PROPERTY,
   ITEM_TYPE,
@@ -22,6 +27,12 @@ vi.mock("@minecraft/server", () => ({
   ButtonState: {},
   InputButton: {},
   EntityDamageCause: {},
+  BlockPermutation: {
+    resolve: (typeId: string, states: Record<string, number>) => ({
+      typeId,
+      states,
+    }),
+  },
   ItemStack: class {
     constructor(
       public typeId: string,
@@ -51,6 +62,11 @@ function fixture() {
     getComponent: vi.fn((_name: string): unknown => undefined),
     getDynamicProperty: vi.fn(),
     setDynamicProperty: vi.fn(),
+    teleport: vi.fn(),
+    clearVelocity: vi.fn(),
+    applyImpulse: vi.fn(),
+    setRotation: vi.fn(),
+    remove: vi.fn(),
     triggerEvent: vi.fn(),
     playAnimation: vi.fn(),
     setProperty: vi.fn(),
@@ -242,7 +258,7 @@ describe("BedrockVehicleWorld snapshots", () => {
       getRotation: () => ({ y: 0 }),
       inputInfo: {
         getMovementVector: () => ({ x: 0, y: 1 }),
-        getButtonState: () => undefined,
+        getButtonState: () => "Released",
       },
     };
     car.getComponent.mockImplementation((name) =>
@@ -382,23 +398,142 @@ describe("BedrockVehicleWorld command interpreter", () => {
   });
 });
 
-it.each(["suv", "sportsboat"] as const)(
-  "reads only %s's declared restored properties, lazily",
-  (kind) => {
+it.each([
+  { kind: "suv", name: "form", value: "hover" },
+  { kind: "sportsboat", name: "docked", value: true },
+] as const)(
+  "reads only $kind's declared restored properties, lazily",
+  ({ kind, name, value }) => {
     vi.resetAllMocks();
     const { world, car } = fixture();
     car.typeId = ENTITY_TYPE[kind];
-    car.getProperty.mockImplementation((name) =>
-      name === `${NAMESPACE}:form` ? "hover" : false,
-    );
+    const stored: Record<string, unknown> = {
+      [`${NAMESPACE}:form`]: "hover",
+      [`${NAMESPACE}:docked`]: true,
+    };
+    car.getProperty.mockImplementation((key) => stored[key] ?? false);
     const snapshot = world.loadedVehicles()[0];
     expect(car.getProperty.mock.calls).toEqual([[HEADLIGHTS_PROPERTY]]);
     car.getProperty.mockClear();
-    expect(snapshot?.restored()).toStrictEqual(
-      kind === "suv" ? { form: "hover" } : {},
-    );
-    expect(car.getProperty.mock.calls).toEqual(
-      kind === "suv" ? [[`${NAMESPACE}:form`]] : [],
-    );
+    expect(snapshot?.restored()).toStrictEqual({ [name]: value });
+    expect(car.getProperty.mock.calls).toEqual([[`${NAMESPACE}:${name}`]]);
   },
 );
+
+describe("BedrockVehicleWorld holds (ADR 0063)", () => {
+  beforeEach(() => vi.resetAllMocks());
+
+  it("teleports and clears velocity on every held tick, then releases motion", () => {
+    const { world, car } = fixture();
+    const pose = { x: 1, y: 64.5, z: -2, yaw: 30 };
+    const impulse = { x: 0, y: 0, z: 1 };
+    for (let tick = 0; tick < 3; tick++) {
+      world.holdAt(car.id, pose);
+      world.applyMotion(car.id, impulse, pose.yaw);
+    }
+    expect(car.teleport.mock.calls).toEqual(
+      Array.from({ length: 3 }, () => [
+        { x: pose.x, y: pose.y, z: pose.z },
+        { rotation: { x: 0, y: pose.yaw } },
+      ]),
+    );
+    expect(car.clearVelocity).toHaveBeenCalledTimes(3);
+    expect(car.applyImpulse).not.toHaveBeenCalled();
+    world.holdAt(car.id, undefined);
+    world.applyMotion(car.id, impulse, pose.yaw);
+    expect(car.applyImpulse).toHaveBeenCalledWith(impulse);
+    expect(car.setRotation).toHaveBeenCalledWith({ x: 0, y: pose.yaw });
+    world.holdAt("missing", pose);
+    expect(car.teleport).toHaveBeenCalledTimes(3);
+  });
+
+  it("clears the floor and releases the hold of a removed vehicle", () => {
+    const { dimension, world, car } = fixture();
+    const grid = blockGrid();
+    dimension.getBlock.mockImplementation(grid.getBlock);
+    const cell = { x: 0, y: 64, z: 3, height: 9 };
+    const pose = { x: 1, y: 64.5, z: -2, yaw: 30 };
+    world.loadedVehicles();
+    world.holdAt(car.id, pose);
+    world.layFloor(car.id, [cell]);
+    expect(grid.typeAt(cell)).toBe(DECK_FLOOR_BLOCK);
+    world.removeVehicle(car.id);
+    expect(grid.typeAt(cell)).toBe("minecraft:air");
+    expect(car.setDynamicProperty).toHaveBeenLastCalledWith(
+      DECK_CELLS_PROPERTY,
+      undefined,
+    );
+    expect(car.remove).toHaveBeenCalledOnce();
+    world.applyMotion(car.id, { x: 0, y: 0, z: 1 }, pose.yaw);
+    expect(car.applyImpulse).toHaveBeenCalledOnce();
+  });
+
+  it("clears the floor and releases the hold of a vehicle that is no longer loaded (ADR 0038)", () => {
+    const { dimension, world, car } = fixture();
+    const grid = blockGrid();
+    dimension.getBlock.mockImplementation(grid.getBlock);
+    const cell = { x: 0, y: 64, z: 3, height: 9 };
+    const pose = { x: 1, y: 64.5, z: -2, yaw: 30 };
+    world.loadedVehicles();
+    world.holdAt(car.id, pose);
+    world.layFloor(car.id, [cell]);
+    dimension.getEntities.mockReturnValue([]);
+    world.loadedVehicles();
+    expect(grid.typeAt(cell)).toBe("minecraft:air");
+    dimension.getEntities.mockReturnValue([car]);
+    world.loadedVehicles();
+    world.applyMotion(car.id, { x: 0, y: 0, z: 1 }, pose.yaw);
+    expect(car.applyImpulse).toHaveBeenCalledOnce();
+  });
+});
+
+describe("BedrockVehicleWorld deck seats (ADR 0063)", () => {
+  beforeEach(() => vi.resetAllMocks());
+
+  it("reads the input of each deck seat rider and boards them onto the boat", () => {
+    const { car, world } = fixture();
+    const player = {
+      id: "player",
+      typeId: "minecraft:player",
+      inputInfo: {
+        getMovementVector: () => ({ x: 0.5, y: 1 }),
+        getButtonState: () => "Released",
+      },
+    };
+    const seatRiders: unknown[] = [player];
+    const seatRideable = {
+      getRiders: () => seatRiders,
+      ejectRider: vi.fn(() => seatRiders.splice(0)),
+      addRider: vi.fn(),
+    };
+    const seat = {
+      id: "seat0",
+      typeId: DECK_SEAT_TYPE,
+      isValid: true,
+      getDynamicProperty: (key: string) =>
+        key === DECK_SEAT_OF_PROPERTY ? car.id : undefined,
+      getComponent: () => seatRideable,
+    };
+    const boatRideable = { getRiders: () => [], addRider: vi.fn(() => true) };
+    car.getDynamicProperty.mockImplementation((key: string) =>
+      key === DECK_SEATS_PROPERTY
+        ? JSON.stringify([seat.id, "empty"])
+        : undefined,
+    );
+    car.getComponent.mockImplementation((name: string) =>
+      name === "minecraft:rideable" ? boatRideable : undefined,
+    );
+    game.getEntity.mockImplementation((id: string) =>
+      id === car.id ? car : id === seat.id ? seat : undefined,
+    );
+    expect(world.loadedVehicles()[0]?.deckSeatInputs).toEqual([
+      { moveX: 0.5, moveY: 1, jump: false },
+      undefined,
+    ]);
+    world.boardDeckRiders("missing");
+    expect(boatRideable.addRider).not.toHaveBeenCalled();
+    world.boardDeckRiders(car.id);
+    expect(seatRideable.ejectRider).toHaveBeenCalledWith(player);
+    expect(boatRideable.addRider).toHaveBeenCalledWith(player);
+  });
+});

@@ -32,6 +32,7 @@ The boat seats 4. The first player to get in drives from the front-right seat an
 ## How it moves
 
 - **On water.** The boat floats on the surface and speeds up, coasts, and turns on the water
+- **Deck.** A boat that floats still with no driver for a second holds its place and lays an invisible floor, so players can walk on its deck. Choose a seat by right-clicking it on PC or long-pressing it on mobile. When the deck driver pushes the stick, seated players board the boat in seat order and it sets off; a passenger may move to a lower seat if lower seats were empty. Only the deck driver can set off. Driving off clears the floor and deck seats
 - **Wake and attitude.** While it moves faster than 2 blocks a second, bubbles and foam stream from the jet nozzles under the stern. The bow lifts while the boat gains speed and settles once it reaches a steady speed, and the hull leans into turns, more at higher speed
 - **Engine sound.** While someone rides, a V8 burbles with its exhaust bubbling under the water, and the revs and the hiss of the water rise in eight steps with the speed
 - **Shores.** It cannot leave the water: shores stop it, and it cannot drive on land. A boat placed on land coasts to a stop

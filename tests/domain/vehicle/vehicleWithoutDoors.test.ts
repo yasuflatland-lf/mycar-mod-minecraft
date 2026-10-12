@@ -40,6 +40,7 @@ it("emits no seat commands when the drive has no doors", () => {
   const out = vehicle.tick({
     tick: 0,
     riders: [],
+    deckSeatInputs: [],
     velocity: { x: 0, y: 0, z: 0 },
     onGround: true,
     ...waterSensors(),

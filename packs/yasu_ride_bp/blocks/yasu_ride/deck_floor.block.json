@@ -1,0 +1,175 @@
+{
+  "format_version": "1.21.80",
+  "minecraft:block": {
+    "description": {
+      "identifier": "yasu_ride:deck_floor",
+      "menu_category": {
+        "category": "none"
+      },
+      "states": {
+        "yasu_ride:height": [
+          1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+        ]
+      }
+    },
+    "components": {
+      "minecraft:geometry": "geometry.yasu_ride.deck_floor",
+      "minecraft:material_instances": {
+        "*": {
+          "texture": "glass",
+          "render_method": "alpha_test"
+        }
+      },
+      "minecraft:selection_box": false,
+      "minecraft:light_dampening": 0,
+      "minecraft:destructible_by_mining": false,
+      "minecraft:destructible_by_explosion": false
+    },
+    "permutations": [
+      {
+        "condition": "q.block_state('yasu_ride:height') == 1",
+        "components": {
+          "minecraft:collision_box": {
+            "origin": [-8, 0, -8],
+            "size": [16, 1, 16]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('yasu_ride:height') == 2",
+        "components": {
+          "minecraft:collision_box": {
+            "origin": [-8, 0, -8],
+            "size": [16, 2, 16]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('yasu_ride:height') == 3",
+        "components": {
+          "minecraft:collision_box": {
+            "origin": [-8, 0, -8],
+            "size": [16, 3, 16]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('yasu_ride:height') == 4",
+        "components": {
+          "minecraft:collision_box": {
+            "origin": [-8, 0, -8],
+            "size": [16, 4, 16]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('yasu_ride:height') == 5",
+        "components": {
+          "minecraft:collision_box": {
+            "origin": [-8, 0, -8],
+            "size": [16, 5, 16]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('yasu_ride:height') == 6",
+        "components": {
+          "minecraft:collision_box": {
+            "origin": [-8, 0, -8],
+            "size": [16, 6, 16]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('yasu_ride:height') == 7",
+        "components": {
+          "minecraft:collision_box": {
+            "origin": [-8, 0, -8],
+            "size": [16, 7, 16]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('yasu_ride:height') == 8",
+        "components": {
+          "minecraft:collision_box": {
+            "origin": [-8, 0, -8],
+            "size": [16, 8, 16]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('yasu_ride:height') == 9",
+        "components": {
+          "minecraft:collision_box": {
+            "origin": [-8, 0, -8],
+            "size": [16, 9, 16]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('yasu_ride:height') == 10",
+        "components": {
+          "minecraft:collision_box": {
+            "origin": [-8, 0, -8],
+            "size": [16, 10, 16]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('yasu_ride:height') == 11",
+        "components": {
+          "minecraft:collision_box": {
+            "origin": [-8, 0, -8],
+            "size": [16, 11, 16]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('yasu_ride:height') == 12",
+        "components": {
+          "minecraft:collision_box": {
+            "origin": [-8, 0, -8],
+            "size": [16, 12, 16]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('yasu_ride:height') == 13",
+        "components": {
+          "minecraft:collision_box": {
+            "origin": [-8, 0, -8],
+            "size": [16, 13, 16]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('yasu_ride:height') == 14",
+        "components": {
+          "minecraft:collision_box": {
+            "origin": [-8, 0, -8],
+            "size": [16, 14, 16]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('yasu_ride:height') == 15",
+        "components": {
+          "minecraft:collision_box": {
+            "origin": [-8, 0, -8],
+            "size": [16, 15, 16]
+          }
+        }
+      },
+      {
+        "condition": "q.block_state('yasu_ride:height') == 16",
+        "components": {
+          "minecraft:collision_box": {
+            "origin": [-8, 0, -8],
+            "size": [16, 16, 16]
+          }
+        }
+      }
+    ]
+  }
+}

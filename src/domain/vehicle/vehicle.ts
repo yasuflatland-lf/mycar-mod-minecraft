@@ -3,6 +3,7 @@ import { forward, type Vec2, type Vec3 } from "../shared/vec";
 import type { Drive, EngineCommand, RiderState, TickContext } from "./drive";
 import type { RawInput } from "./driveInput";
 import type { VehicleEvent } from "./events";
+import type { FloorCell, HoldPose } from "./floor";
 import { EMPTY_COUNTER, type HitCounter, registerHit } from "./hitCounter";
 import type { VehicleKind } from "./kind";
 import type { VehicleProfile } from "./profile";
@@ -24,6 +25,11 @@ export interface VehicleTickInput extends TickContext {
 }
 
 export interface TickOutcome {
+  hold?: HoldPose;
+  floor: readonly FloorCell[];
+  /** Deck seat i belongs to boat seat i; it is undefined while boat seat i has a rider (ADR 0063). */
+  deckSeats: readonly (Vec3 | undefined)[];
+  boardDeckRiders: boolean;
   impulse: Vec3;
   yaw: number;
   hits: RamHit[];
@@ -80,9 +86,21 @@ export class Vehicle {
     const driver = this.updateDriver(input.riders);
 
     const raw = driver?.raw ?? input.testInput;
-    const step = this.drive.step(raw, input);
+    const taken = new Set(this.seats.values());
+    const step = this.drive.step(raw, {
+      ...input,
+      deckSeatInputs: input.deckSeatInputs.map((deckInput, seat) =>
+        taken.has(seat) ? undefined : deckInput,
+      ),
+    });
 
     return {
+      hold: step.hold,
+      floor: step.floor ?? [],
+      deckSeats: (step.deckSeats ?? []).map((at, seat) =>
+        taken.has(seat) ? undefined : at,
+      ),
+      boardDeckRiders: step.boardDeckRiders ?? false,
       impulse: step.impulse,
       yaw: this.drive.yaw,
       hits: this.ram(input, step.forward),
