@@ -13,8 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # The main ruleset requires a status check named "check", so keep this job id.
-  check:
+  unit:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -33,9 +32,6 @@ jobs:
 
       # Unused files, exports, and dependencies (ADR 0048)
       - run: pnpm run lint:unused
-
-      # The README previews and pack icons must be re-rendered whenever the model or its texture changes
-      - run: pnpm run model:check
 
       # main has no source code yet, so only run these once tsconfig.json exists
       - id: src
@@ -62,3 +58,28 @@ jobs:
           files: coverage/lcov.info
           flags: unit
           fail_ci_if_error: false
+
+  # The renderer takes about 27 s, as long as the rest of the checks, so it
+  # runs beside them (ADR 0054). It only needs Python's standard library.
+  model:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+
+      # The README previews and pack icons must be re-rendered whenever the model or its texture changes
+      - run: pnpm run model:check
+
+  # The main ruleset requires a status check named "check", so keep this job
+  # id. It fails unless every job above succeeded.
+  check:
+    if: always()
+    needs: [unit, model]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo "unit=${{ needs.unit.result }} model=${{ needs.model.result }}"
+      - if: needs.unit.result != 'success' || needs.model.result != 'success'
+        run: exit 1
