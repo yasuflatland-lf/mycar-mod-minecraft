@@ -21,6 +21,9 @@ export function blockGrid() {
       setType: (typeId: string) => {
         types.set(cellKey(c), typeId);
       },
+      setPermutation: (permutation: { typeId: string }) => {
+        types.set(cellKey(c), permutation.typeId);
+      },
     }),
   };
 }

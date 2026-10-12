@@ -242,9 +242,9 @@ export class BedrockVehicleWorld
   }
 
   applyMotion(vehicleId: string, impulse: Vec3, yaw: number): void {
+    if (this.holds.has(vehicleId)) return;
     const car = this.entity(vehicleId);
     if (!car) return;
-    if (this.holds.has(vehicleId)) return;
     car.applyImpulse(impulse);
     car.setRotation({ x: 0, y: yaw });
   }

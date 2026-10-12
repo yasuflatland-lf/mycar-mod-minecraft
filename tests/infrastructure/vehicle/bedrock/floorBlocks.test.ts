@@ -31,14 +31,21 @@ const cells = fc.uniqueArray(cell, {
   maxLength: 8,
 });
 
-function fixture() {
+type Unavailable = "throw" | "undefined" | undefined;
+
+const nextHeight = (c: FloorCell): FloorCell => ({
+  ...c,
+  height: (c.height % 16) + 1,
+});
+
+// Each dimension has its own blocks, so a test can tell which one was changed.
+function fakeDimension(id: string) {
   const blocks = new Map<string, { typeId: string; height?: number }>();
-  const saved = new Map<string, unknown>();
-  let unavailable: "throw" | "undefined" | undefined;
+  let unavailable: Unavailable;
   const at = (c: FloorCell) =>
     blocks.get(cellKey(c)) ?? { typeId: "minecraft:air" };
   const dimension = {
-    id: "overworld",
+    id,
     getBlock: (c: FloorCell) => {
       if (unavailable === "throw") throw new Error("unloaded");
       if (unavailable === "undefined") return undefined;
@@ -61,21 +68,33 @@ function fixture() {
       };
     },
   };
+  return {
+    dimension,
+    at,
+    blocks,
+    unavailable: (mode: Unavailable) => {
+      unavailable = mode;
+    },
+  };
+}
+
+function fixture() {
+  const overworld = fakeDimension("overworld");
+  const saved = new Map<string, unknown>();
   const car = {
     id: "car",
     isValid: true,
-    dimension,
+    dimension: overworld.dimension,
     getDynamicProperty: (key: string) => saved.get(key),
     setDynamicProperty: (key: string, value: unknown) => saved.set(key, value),
   } as unknown as Entity;
   return {
     car,
-    at,
-    blocks,
+    at: overworld.at,
+    blocks: overworld.blocks,
     saved,
-    unavailable: (mode: typeof unavailable) => {
-      unavailable = mode;
-    },
+    savedCells: () => JSON.parse(String(saved.get(DECK_CELLS_PROPERTY))),
+    unavailable: overworld.unavailable,
   };
 }
 
@@ -91,13 +110,8 @@ describe("FloorBlocks (ADR 0063)", () => {
             typeId: DECK_FLOOR_BLOCK,
             height: c.height,
           });
-        expect(JSON.parse(String(f.saved.get(DECK_CELLS_PROPERTY)))).toEqual(
-          wanted,
-        );
-        const resized = wanted.map((c) => ({
-          ...c,
-          height: (c.height % 16) + 1,
-        }));
+        expect(f.savedCells()).toEqual(wanted);
+        const resized = wanted.map(nextHeight);
         const reloaded = new FloorBlocks();
         reloaded.lay(f.car.id, f.car, resized);
         for (const c of resized)
@@ -105,9 +119,7 @@ describe("FloorBlocks (ADR 0063)", () => {
             typeId: DECK_FLOOR_BLOCK,
             height: c.height,
           });
-        expect(JSON.parse(String(f.saved.get(DECK_CELLS_PROPERTY)))).toEqual(
-          resized,
-        );
+        expect(f.savedCells()).toEqual(resized);
         new FloorBlocks().lay(f.car.id, f.car, []);
         for (const c of wanted) expect(f.at(c).typeId).toBe("minecraft:air");
         expect(f.saved.get(DECK_CELLS_PROPERTY)).toBeUndefined();
@@ -134,9 +146,7 @@ describe("FloorBlocks (ADR 0063)", () => {
         });
         const allowed = wanted.filter((_, i) => i % 5 < 2);
         floors.lay(f.car.id, f.car, wanted);
-        expect(JSON.parse(String(f.saved.get(DECK_CELLS_PROPERTY)))).toEqual(
-          allowed,
-        );
+        expect(f.savedCells()).toEqual(allowed);
         for (const c of allowed)
           f.blocks.set(cellKey(c), { typeId: "minecraft:stone" });
         floors.lay(f.car.id, f.car, []);
@@ -180,36 +190,68 @@ describe("FloorBlocks (ADR 0063)", () => {
         const floors = new FloorBlocks();
         floors.lay(f.car.id, f.car, wanted);
         const before = f.saved.get(DECK_CELLS_PROPERTY);
-        const resized = wanted.map((c) => ({
-          ...c,
-          height: (c.height % 16) + 1,
-        }));
+        const resized = wanted.map(nextHeight);
         f.unavailable("throw");
         floors.lay(f.car.id, f.car, resized);
         expect(f.saved.get(DECK_CELLS_PROPERTY)).toBe(before);
         f.unavailable(undefined);
         floors.lay(f.car.id, f.car, resized);
-        expect(JSON.parse(String(f.saved.get(DECK_CELLS_PROPERTY)))).toEqual(
-          resized,
-        );
+        expect(f.savedCells()).toEqual(resized);
       }),
     );
   });
 
-  it("clears the old dimension and its saved cells when the vehicle changes dimension", () => {
+  it("clears the old dimension, not the new one, when the vehicle changes dimension", () => {
     fc.assert(
-      fc.property(cells, (wanted) => {
+      fc.property(cells, cells, (wanted, there) => {
         const f = fixture();
+        const nether = fakeDimension("nether");
         const floors = new FloorBlocks();
         floors.lay(f.car.id, f.car, wanted);
-        const moved = {
-          ...f.car,
-          dimension: { ...f.car.dimension, id: "nether" },
-        } as unknown as Entity;
-        floors.lay(f.car.id, moved, []);
-        for (const c of wanted) expect(f.at(c).typeId).toBe("minecraft:air");
+        for (const c of wanted)
+          nether.blocks.set(cellKey(c), { typeId: DECK_FLOOR_BLOCK });
+        Object.assign(f.car, { dimension: nether.dimension });
+        floors.lay(f.car.id, f.car, []);
+        for (const c of wanted) {
+          expect(f.at(c).typeId).toBe("minecraft:air");
+          expect(nether.at(c).typeId).toBe(DECK_FLOOR_BLOCK);
+        }
         expect(f.saved.get(DECK_CELLS_PROPERTY)).toBeUndefined();
+        // The blocks above belonged to someone else; start from open air.
+        nether.blocks.clear();
+        floors.lay(f.car.id, f.car, there);
+        for (const c of there)
+          expect(nether.at(c)).toEqual({
+            typeId: DECK_FLOOR_BLOCK,
+            height: c.height,
+          });
+        expect(f.savedCells()).toEqual(there);
       }),
+    );
+  });
+
+  it("keeps the cells it could not clear in the old dimension and clears them later", () => {
+    fc.assert(
+      fc.property(
+        cells,
+        fc.constantFrom<Unavailable>("throw", "undefined"),
+        (wanted, mode) => {
+          const f = fixture();
+          const nether = fakeDimension("nether");
+          const floors = new FloorBlocks();
+          floors.lay(f.car.id, f.car, wanted);
+          f.unavailable(mode);
+          Object.assign(f.car, { dimension: nether.dimension });
+          floors.lay(f.car.id, f.car, []);
+          floors.clearGone(new Set([f.car.id]));
+          expect(f.saved.get(DECK_CELLS_PROPERTY)).toBeUndefined();
+          f.unavailable(undefined);
+          for (const c of wanted) expect(f.at(c).typeId).toBe(DECK_FLOOR_BLOCK);
+          floors.clearGone(new Set([f.car.id]));
+          for (const c of wanted) expect(f.at(c).typeId).toBe("minecraft:air");
+          expect(nether.blocks.size).toBe(0);
+        },
+      ),
     );
   });
 
