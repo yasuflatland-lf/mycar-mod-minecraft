@@ -1,6 +1,6 @@
 # 0028. Switch riders to the third-person camera in flight
 
-- Status: Accepted
+- Status: Superseded in part by 0052
 - Date: 2026-10-11
 
 ## Context
