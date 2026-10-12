@@ -1,7 +1,7 @@
 // In-game tests (ADR 0010). They run in a script environment separate from the
 // main Behavior Pack, so they drive the vehicle through script events.
 import { type Dimension, type Entity, system, world } from "@minecraft/server";
-import { dot, forward } from "../domain/shared/vec";
+import { dot, forward, type Vec3 } from "../domain/shared/vec";
 import { headlightCells } from "../domain/vehicle/headlights";
 import { BoatDrive } from "../domain/vehicle/kinds/sportsboat/drive";
 import { SPORTSBOAT_MOTION } from "../domain/vehicle/kinds/sportsboat/profile";
@@ -733,6 +733,7 @@ async function withBoat<T>(
     z: POOL.z,
     yaw: -90,
   },
+  settleTicks = 40,
 ): Promise<T> {
   const { x, z } = start;
   a.dim.runCommand(`summon ${ENTITY_TYPE.sportsboat} ${x} ${a.gy} ${z}`);
@@ -744,7 +745,7 @@ async function withBoat<T>(
   if (!boat) throw new Error("boat not spawned at the pool surface");
   boat.setRotation({ x: 0, y: start.yaw });
   try {
-    await wait(40); // Let the boat settle on the water
+    if (settleTicks > 0) await wait(settleTicks); // Let the boat settle on the water
     return await run(boat);
   } finally {
     clearInput(boat);
@@ -770,6 +771,116 @@ function boatFloat(a: Arena): Promise<Outcome> {
         detail: `bob=${bob.toFixed(3)} draft=${minDraft.toFixed(3)}-${maxDraft.toFixed(3)}`,
       };
     }),
+  );
+}
+
+// A docked boat holds still for 2 s, undocks within 0.5 s of input, and leaves
+// within 2 s (ADR 0063).
+const BOAT_DOCK_TEST = {
+  timeout: 120,
+  holdTicks: 40,
+  heightTolerance: 0.02,
+  floorRadius: 3,
+  minFloorCells: 8,
+  undockTicks: 10,
+  clearRadius: 4,
+  departureTicks: 40,
+  minDeparture: 1,
+} as const;
+
+function deckFloorCount(a: Arena, center: Vec3, radius: number): number {
+  let count = 0;
+  for (
+    let x = Math.floor(center.x) - radius;
+    x <= Math.floor(center.x) + radius;
+    x++
+  ) {
+    for (
+      let y = Math.max(a.dim.heightRange.min, Math.floor(center.y) - radius);
+      y <= Math.floor(center.y) + radius;
+      y++
+    ) {
+      for (
+        let z = Math.floor(center.z) - radius;
+        z <= Math.floor(center.z) + radius;
+        z++
+      ) {
+        if (a.dim.getBlock({ x, y, z })?.typeId === "yasu_ride:deck_floor")
+          count++;
+      }
+    }
+  }
+  return count;
+}
+
+function boatDock(a: Arena): Promise<Outcome> {
+  return withPool(a, 3, () =>
+    withBoat(
+      a,
+      async (boat) => {
+        const docked = () => boat.getProperty("yasu_ride:docked") === true;
+        let dockTicks = 0;
+        while (!docked() && dockTicks < BOAT_DOCK_TEST.timeout) {
+          await wait(1);
+          dockTicks++;
+        }
+        if (!docked())
+          return { pass: false, detail: `not docked after ${dockTicks} ticks` };
+        const start = boat.location;
+        let maxHeightError = 0;
+        let held = true;
+        for (let tick = 0; tick < BOAT_DOCK_TEST.holdTicks; tick++) {
+          await wait(1);
+          maxHeightError = Math.max(
+            maxHeightError,
+            Math.abs(boat.location.y - start.y),
+          );
+          held &&= docked();
+        }
+        const floorCount = deckFloorCount(a, start, BOAT_DOCK_TEST.floorRadius);
+        const f = forward(boat.getRotation().y);
+        drive(boat, 0, 1);
+        let undockTicks = 0;
+        let remainingFloor = deckFloorCount(
+          a,
+          start,
+          BOAT_DOCK_TEST.clearRadius,
+        );
+        while (
+          (docked() || remainingFloor > 0) &&
+          undockTicks < BOAT_DOCK_TEST.undockTicks
+        ) {
+          await wait(1);
+          undockTicks++;
+          remainingFloor = deckFloorCount(a, start, BOAT_DOCK_TEST.clearRadius);
+        }
+        const leftDock = !docked();
+        let distance = 0;
+        for (
+          let tick = undockTicks;
+          tick < BOAT_DOCK_TEST.departureTicks;
+          tick++
+        ) {
+          await wait(1);
+          distance =
+            (boat.location.x - start.x) * f.x +
+            (boat.location.z - start.z) * f.z;
+          if (distance >= BOAT_DOCK_TEST.minDeparture) break;
+        }
+        return {
+          pass:
+            held &&
+            maxHeightError <= BOAT_DOCK_TEST.heightTolerance &&
+            floorCount >= BOAT_DOCK_TEST.minFloorCells &&
+            leftDock &&
+            remainingFloor === 0 &&
+            distance >= BOAT_DOCK_TEST.minDeparture,
+          detail: `dockTicks=${dockTicks} held=${held} heightError=${maxHeightError.toFixed(3)} floor=${floorCount} undockTicks=${undockTicks} undocked=${leftDock} remainingFloor=${remainingFloor} forward=${distance.toFixed(3)}`,
+        };
+      },
+      POOL_SOUTH_LANE,
+      0,
+    ),
   );
 }
 
@@ -1299,6 +1410,7 @@ async function runAll({ runId, shard }: RunRequest): Promise<void> {
     ["submarine_shallow", 118, () => submarineShallow(a)],
     ["vehicle_limit", 20, () => vehicleLimit(a)],
     ["boat_float", 105, () => boatFloat(a)],
+    ["boat_dock", 110, () => boatDock(a)],
     ["boat_drag", 138, () => boatDrag(a)],
     ["boat_cruise", 235, () => boatCruise(a)],
     ["boat_shore", 165, () => boatShore(a)],
