@@ -10,7 +10,7 @@
 |:---:|:---:|:---:|:---:|
 | ![The SUV on the ground, seen from its front-left corner](docs/images/suv-front-left.png) | ![The SUV with its headlights on, lighting the ground ahead](docs/images/suv-headlights.png) | ![The SUV flying with its wheels folded flat on gunmetal arms and glowing blue underneath](docs/images/suv-flying.png) | ![The SUV as a submarine, with sealed blue windows and its rear wheels turned backward on gunmetal arms](docs/images/suv-submarine.png) |
 
-A vehicle add-on for Minecraft Bedrock Edition, inspired by [MrCrayfish's Vehicle Mod](https://www.curseforge.com/minecraft/mc-mods/mrcrayfishs-vehicle-mod). It is built as a Behavior Pack + Resource Pack driven by the stable Script API (`@minecraft/server` 2.x), with no experimental toggles required.
+A vehicle add-on for Minecraft Bedrock Edition. It is built as a Behavior Pack + Resource Pack driven by the stable Script API (`@minecraft/server` 2.x), with no experimental toggles required.
 
 This add-on holds only rides: the SUV now and boats later. House-building parts will ship as a separate add-on with their own namespace. The `yasu_ride` namespace never changes once Yasuflatland Ride is first released ([ADR 0047](docs/adr/0047-rename-to-yasuflatland-ride.md)).
 
@@ -18,7 +18,7 @@ The target setup is a Bedrock Dedicated Server on a home LAN, with players joini
 
 ## Status
 
-Work in progress. The [latest release](https://github.com/yasuflatland-lf/yasuflatland-ride-minecraft/releases/latest) has one vehicle, the **SUV**, that drives, flies, and dives:
+The [latest release](https://github.com/yasuflatland-lf/yasuflatland-ride-minecraft/releases/latest) has one vehicle, the **SUV**, that drives, flies, and dives:
 
 - Getting in and out, with a driver seat and three passenger seats; a passenger moves up when the driver gets out
 - Arcade-style acceleration, inertia, steering, and a handbrake slide, tuned so touch players get full throttle like keyboard players
