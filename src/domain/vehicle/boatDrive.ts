@@ -1,4 +1,5 @@
 // The sports boat's drive: the engine floats the hull and the script drives only x and z (ADR 0051).
+import { clamp, dot, type Vec2 } from "../shared/vec";
 import type { Drive, DriveResult } from "./drive";
 import {
   type DriveInput,
@@ -8,16 +9,61 @@ import {
 } from "./driveInput";
 import type { Form } from "./form";
 import {
+  hitWall,
   type Medium,
+  type MotionResult,
   type MotionState,
   stepFlightMotion,
   stepMotion,
 } from "./motion";
-import type { VehicleProfile } from "./profile";
+import { SPORTSBOAT_PROFILE, type VehicleProfile } from "./profile";
+import { SPEC } from "./spec";
 import type { TickContext } from "./vehicle";
 
-/** Engine drag per tick on a buoyant hull in water; provisional until 8/8 measures it. */
-export const SPORTSBOAT_WATER: Medium = { drag: 0.83, maxSpeed: 1.12 };
+// boat_drag measured 0.833 at full speed, 0.916-0.927 on the 3 ticks of every
+// 14 at the top of the bob, and 0.815 the tick after; weight 0.1 keeps one bump
+// to about +0.02 on the estimate (ADR 0052).
+export const SPORTSBOAT_DRAG = {
+  initial: 0.83,
+  min: 0.7,
+  max: 0.95,
+  smoothing: 0.1,
+  minGiven: 0.05,
+} as const;
+
+export const SPORTSBOAT_WATER: Medium = {
+  drag: SPORTSBOAT_DRAG.initial,
+  maxSpeed: SPORTSBOAT_PROFILE.motion.maxSpeed,
+};
+
+export function estimateWaterDrag(
+  prev: number | undefined,
+  given: Vec2 | undefined,
+  observed: Vec2,
+): number {
+  const estimate = clamp(
+    prev ?? SPORTSBOAT_DRAG.initial,
+    SPORTSBOAT_DRAG.min,
+    SPORTSBOAT_DRAG.max,
+  );
+  if (
+    !given ||
+    dot(given, given) <= SPORTSBOAT_DRAG.minGiven ** 2 ||
+    hitWall(observed, given, estimate * SPEC.blockedRatio)
+  )
+    return estimate;
+  const sample = clamp(
+    dot(observed, given) / dot(given, given),
+    SPORTSBOAT_DRAG.min,
+    SPORTSBOAT_DRAG.max,
+  );
+  return clamp(
+    estimate * (1 - SPORTSBOAT_DRAG.smoothing) +
+      sample * SPORTSBOAT_DRAG.smoothing,
+    SPORTSBOAT_DRAG.min,
+    SPORTSBOAT_DRAG.max,
+  );
+}
 
 export function isAfloat(
   waterDepth: number | undefined,
@@ -41,22 +87,30 @@ export class BoatDrive implements Drive {
     const input: DriveInput = raw
       ? { ...toDriveInput(raw), handbrake: false }
       : NEUTRAL_INPUT;
-    // Beached, it coasts to a stop and never steps up a block.
-    const step = isAfloat(ctx.waterDepth, ctx.waterBelow)
-      ? stepFlightMotion(
-          motion,
-          input,
-          ctx.velocity,
-          SPORTSBOAT_WATER,
-          profile.motion,
-        )
-      : stepMotion(
-          motion,
-          NEUTRAL_INPUT,
-          { velocity: ctx.velocity, onGround: ctx.onGround },
-          () => 0,
-          profile.motion,
-        );
+    let step: MotionResult;
+    if (isAfloat(ctx.waterDepth, ctx.waterBelow)) {
+      const waterDrag = estimateWaterDrag(
+        motion.waterDrag,
+        motion.airExpected,
+        ctx.velocity,
+      );
+      step = stepFlightMotion(
+        { ...motion, waterDrag },
+        input,
+        ctx.velocity,
+        { drag: waterDrag, maxSpeed: SPORTSBOAT_WATER.maxSpeed },
+        profile.motion,
+      );
+    } else {
+      // Beached, it coasts to a stop and never steps up a block.
+      step = stepMotion(
+        motion,
+        NEUTRAL_INPUT,
+        { velocity: ctx.velocity, onGround: ctx.onGround },
+        () => 0,
+        profile.motion,
+      );
+    }
     // Buoyancy and gravity belong to the engine, so the script never pushes vertically.
     return {
       motion: step.state,

@@ -26,6 +26,8 @@ export interface MotionState {
   speed: number; // Internal forward/reverse speed (blocks/tick; negative means reverse)
   yaw: number;
   friction?: number; // Ground friction estimate; undefined until estimated
+  /** Buoyant boat's water drag estimate (ADR 0052), retained while beached. */
+  waterDrag?: number;
   // Velocity the script aimed for in the previous tick. Kept only when that
   // tick was on the ground: in the air the engine applies airFriction and only
   // airControl of the impulse, so the ratio would not measure ground friction.
@@ -94,7 +96,7 @@ export function steerYaw(
  * on either axis. The engine zeroes velocity per axis at walls, so x and z
  * are checked separately (ADR 0003).
  */
-function hitWall(v: Vec2, given: Vec2, keptRatio: number): boolean {
+export function hitWall(v: Vec2, given: Vec2, keptRatio: number): boolean {
   const axisBlocked = (ve: number, ee: number) =>
     Math.abs(ee) > SPEC.blockedAxisMin && ve / ee < keptRatio;
   return axisBlocked(v.x, given.x) || axisBlocked(v.z, given.z);
