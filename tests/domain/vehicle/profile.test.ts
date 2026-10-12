@@ -303,6 +303,90 @@ describe("vehicle profiles (ADR 0050)", () => {
     );
   });
 
+  it("hits just inside a body's half width and misses just outside", () => {
+    fc.assert(
+      fc.property(
+        number(2, 10),
+        number(0.1, 3),
+        number(0.0001, 0.05),
+        number(0.05, 0.95),
+        yaw,
+        fc.boolean(),
+        fc.boolean(),
+        (front, halfWidth, gap, aheadRatio, heading, reversing, leftSide) => {
+          const f = forward(heading);
+          const right = rightOf(f);
+          const direction = reversing ? -1 : 1;
+          const ahead = (front + SPEC.targetHalfWidth) * aheadRatio * direction;
+          const sign = leftSide ? -1 : 1;
+          const target = (id: string, side: number) => ({
+            id,
+            offset: {
+              x: f.x * ahead + right.x * side * sign,
+              y: 0,
+              z: f.z * ahead + right.z * side * sign,
+            },
+            protectedOccupant: false,
+          });
+          const width = halfWidth + SPEC.targetHalfWidth;
+          const targets = [
+            target("inside", width - gap),
+            target("outside", width + gap),
+          ];
+          expect(
+            selectHits(f, direction * SPEC.maxReverse, targets, new Map(), 0, {
+              front,
+              halfWidth,
+            }).map((hit) => hit.id),
+          ).toEqual(["inside"]);
+        },
+      ),
+    );
+  });
+
+  it("clamps the speed left after a wall hit to the profile reverse limit", () => {
+    // Faster than the vehicle forward, but pushed backward by the wall harder
+    // than the profile may reverse, so only the profile's limit can bound it.
+    const wallCase = fc
+      .tuple(limits, number(0, 1), number(0.01, 0.99))
+      .map(([motion, reverse, ratio]) => {
+        const maxSpeed = Math.max(motion.maxSpeed, motion.maxReverse + 0.1);
+        const maxReverse = motion.maxReverse * (0.1 + 0.9 * reverse);
+        const vLong = -(maxReverse + (maxSpeed - maxReverse) * ratio);
+        return { motion: { ...motion, maxSpeed, maxReverse }, vLong };
+      });
+    const pushed = { ...NEUTRAL_INPUT, throttle: 1 };
+    fc.assert(
+      fc.property(wallCase, yaw, ({ motion, vLong }, heading) => {
+        const f = forward(heading);
+        const aimed = {
+          x: f.x * motion.maxSpeed * 4,
+          z: f.z * motion.maxSpeed * 4,
+        };
+        const v = { x: f.x * vLong, z: f.z * vLong };
+        const start = { ...initialMotion(heading), speed: motion.maxSpeed };
+        const ground = stepMotion(
+          { ...start, expected: aimed },
+          pushed,
+          { velocity: v, onGround: true },
+          () => 0,
+          motion,
+        );
+        const flight = stepFlightMotion(
+          { ...start, airExpected: aimed },
+          pushed,
+          v,
+          { drag: 1, maxSpeed: 5 },
+          motion,
+        );
+        for (const out of [ground, flight]) {
+          expect(out.blocked).toBe(true);
+          expect(out.state.speed).toBe(-motion.maxReverse);
+        }
+      }),
+    );
+  });
+
   it("queries every profile's hit box including its far corners", () => {
     fc.assert(
       fc.property(
