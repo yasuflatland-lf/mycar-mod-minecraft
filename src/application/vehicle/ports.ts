@@ -1,5 +1,5 @@
 // Capabilities the application layer requires from the game (ports). Implementations live in the infrastructure layer (ADR 0012).
-import type { Vec2, Vec3 } from "../../domain/shared/vec";
+import type { Vec3 } from "../../domain/shared/vec";
 import type { RawInput } from "../../domain/vehicle/driveInput";
 import type { Form } from "../../domain/vehicle/form";
 import type { Cell } from "../../domain/vehicle/headlights";
@@ -13,11 +13,8 @@ export interface VehicleSnapshot {
   id: string;
   location: Vec3;
   yaw: number;
-  velocity: Vec2;
-  velocityY: number;
+  velocity: Vec3;
   onGround: boolean;
-  waterDepth: number;
-  waterBelow: boolean;
   riders: RiderView[];
   form: Form;
   headlights: boolean;
@@ -26,6 +23,7 @@ export interface VehicleSnapshot {
 
 export interface DriveWorld {
   loadedVehicles(): VehicleSnapshot[];
+  waterAt(vehicleId: string, offset: Vec3): boolean;
   solidAt(vehicleId: string, offset: Vec3): boolean;
   targetsNear(vehicleId: string): RamTarget[];
   applyMotion(vehicleId: string, impulse: Vec3, yaw: number): void;

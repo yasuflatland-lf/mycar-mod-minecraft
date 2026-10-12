@@ -29,7 +29,7 @@ function ramAhead(over: Parameters<typeof snapshot>[1]): string[] {
   for (let tick = 0; tick < 200; tick++) {
     const speed = repo.get("a")?.speed ?? 0;
     world.snapshots = [
-      snapshot("a", { ...over, velocity: { x: 0, z: speed } }),
+      snapshot("a", { ...over, velocity: { x: 0, y: 0, z: speed } }),
     ];
     uc.execute(tick);
   }
@@ -82,7 +82,7 @@ describe("DriveVehicles", () => {
   it("does not throw for a moving vehicle missing from the repository (after a reload) and rebuilds it from zero speed", () => {
     const world = new FakeWorld();
     const repo = new InMemoryRepo();
-    world.snapshots = [snapshot("a", { velocity: { x: 0, z: 0.5 } })];
+    world.snapshots = [snapshot("a", { velocity: { x: 0, y: 0, z: 0.5 } })];
     expect(() =>
       new DriveVehicles(world, repo, logger()).execute(0),
     ).not.toThrow();
@@ -220,7 +220,7 @@ describe("DriveVehicles", () => {
             form: "hover",
             onGround: false,
             yaw: v?.yaw ?? 0,
-            velocity: { x: f.x * speed, z: f.z * speed },
+            velocity: { x: f.x * speed, y: 0, z: f.z * speed },
             testInput: right,
           }),
         ];

@@ -8,7 +8,6 @@ import {
 } from "../../src/domain/vehicle/registry";
 import type { TickContext, Vehicle } from "../../src/domain/vehicle/vehicle";
 import type { VehicleRepository } from "../../src/domain/vehicle/vehicleRepository";
-import { waterDepthFrom } from "../../src/domain/vehicle/water";
 
 export type TraceKind = "suv" | "sportsboat";
 export type PropertyValue = string | number | boolean;
@@ -64,17 +63,15 @@ function context(
     tick: s.tick,
     riders,
     testInput,
-    velocity: { x: s.velocity.x, z: s.velocity.z },
-    velocityY: s.velocity.y,
+    location: s.location,
+    velocity: s.velocity,
     onGround: s.onGround,
-    waterDepth: waterDepthFrom(y, (cellY) =>
-      s.isWaterCell(Math.floor(x), cellY, Math.floor(z)),
-    ),
-    waterBelow: s.isWaterCell(
-      Math.floor(x),
-      Math.floor(y - 0.3),
-      Math.floor(z),
-    ),
+    waterAt: (o) =>
+      s.isWaterCell(
+        Math.floor(x + o.x),
+        Math.floor(y + o.y),
+        Math.floor(z + o.z),
+      ),
     solidAt: (o) =>
       s.isSolidCell(
         Math.floor(x + o.x),
@@ -204,10 +201,7 @@ export function createTraceApp(): TraceApp {
           yaw: v.yaw,
           location: v.sensors.location,
           velocity: c.velocity,
-          velocityY: c.velocityY ?? 0,
           onGround: c.onGround,
-          waterDepth: c.waterDepth ?? 0,
-          waterBelow: c.waterBelow ?? false,
           riders: [...v.riders],
           testInput: v.testInput,
           headlights: v.headlights,
@@ -215,6 +209,7 @@ export function createTraceApp(): TraceApp {
         };
       }),
     solidAt: (id, offset) => context(snapshot(id).sensors, []).solidAt(offset),
+    waterAt: (id, offset) => context(snapshot(id).sensors, []).waterAt(offset),
     targetsNear: (id) => [...snapshot(id).sensors.targets()],
     applyMotion: (id, impulse, yaw) => {
       activeVehicleId = id;

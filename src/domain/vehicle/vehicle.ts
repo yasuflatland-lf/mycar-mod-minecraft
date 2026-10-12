@@ -24,14 +24,13 @@ export interface TickContext {
   riders: readonly RiderView[];
   /** Input used only when there is no driver (for in-game tests). */
   testInput?: RawInput;
-  velocity: Vec2;
+  /** Entity feet in world coordinates. */
+  location: Vec3;
+  /** Engine velocity in blocks/tick. */
+  velocity: Vec3;
   onGround: boolean;
-  /** Blocks of water above the feet; absent or 0 out of water. */
-  waterDepth?: number;
-  /** Whether the cell 0.3 blocks below the feet holds water; a floating hull's feet can sit above the water cell (ADR 0051). */
-  waterBelow?: boolean;
-  /** Vertical velocity from the engine (blocks/tick). Read whenever the form is not car, including the tick takeoff starts. */
-  velocityY?: number;
+  /** Water, flowing water, bubble columns, or waterlogged blocks at floor(location + offset). */
+  waterAt(offset: Vec3): boolean;
   /** Whether the block at entity location + offset (world axes, y from the feet) is solid; air, liquids and blocks without a collision box (flowers, grass, carpets) are not (ADR 0035). */
   solidAt(offset: Vec3): boolean;
   /** Nearby targets. Called only when the speed exceeds the ram threshold. */

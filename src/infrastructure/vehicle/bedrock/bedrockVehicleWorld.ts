@@ -26,7 +26,6 @@ import { PAINTS, type Paint } from "../../../domain/vehicle/paint";
 import type { RamHit, RamTarget } from "../../../domain/vehicle/ram";
 import { RAM_QUERY_RADIUS } from "../../../domain/vehicle/ramQuery";
 import type { RiderView } from "../../../domain/vehicle/vehicle";
-import { waterDepthFrom } from "../../../domain/vehicle/water";
 import type { TestInputStore } from "../testInput/testInputStore";
 import { HeadlightBlocks, isLightBlock } from "./headlightBlocks";
 import {
@@ -53,6 +52,14 @@ import { isWaterAt } from "./water";
 
 const DIMENSIONS = ["overworld", "nether", "the_end"] as const;
 const isPlayer = (e: Entity): e is Player => e.typeId === PLAYER_TYPE;
+
+function offsetFrom(car: Entity, offset: Vec3): Vec3 {
+  return {
+    x: car.location.x + offset.x,
+    y: car.location.y + offset.y,
+    z: car.location.z + offset.z,
+  };
+}
 
 export class BedrockVehicleWorld
   implements
@@ -107,11 +114,8 @@ export class BedrockVehicleWorld
           kind,
           location: car.location,
           yaw: car.getRotation().y,
-          velocity: { x: v.x, z: v.z },
-          velocityY: v.y,
+          velocity: v,
           onGround: car.isOnGround,
-          waterDepth: this.waterDepth(car),
-          waterBelow: this.isWaterCell(car, Math.floor(car.location.y - 0.3)),
           riders: this.riders(car),
           form: isForm(form) ? form : "car",
           headlights: car.getProperty(HEADLIGHTS_PROPERTY) === true,
@@ -123,16 +127,6 @@ export class BedrockVehicleWorld
     this.testInputs.retain(live);
     this.headlightBlocks.clearGone(live);
     return snapshots;
-  }
-
-  private waterDepth(car: Entity): number {
-    return waterDepthFrom(car.location.y, (cellY) =>
-      this.isWaterCell(car, cellY),
-    );
-  }
-
-  private isWaterCell(car: Entity, cellY: number): boolean {
-    return isWaterAt(car.dimension, { ...car.location, y: cellY });
   }
 
   private riders(car: Entity): RiderView[] {
@@ -158,15 +152,17 @@ export class BedrockVehicleWorld
       });
   }
 
+  waterAt(vehicleId: string, offset: Vec3): boolean {
+    const car = this.entity(vehicleId);
+    if (!car) return false;
+    return isWaterAt(car.dimension, offsetFrom(car, offset));
+  }
+
   solidAt(vehicleId: string, offset: Vec3): boolean {
     const car = this.entity(vehicleId);
     if (!car) return false;
     try {
-      const at = {
-        x: car.location.x + offset.x,
-        y: car.location.y + offset.y,
-        z: car.location.z + offset.z,
-      };
+      const at = offsetFrom(car, offset);
       const b = car.dimension.getBlock(at);
       if (!b || b.isAir || b.isLiquid || isLightBlock(b)) return false;
       // A ray that starts inside a block finds nothing, so a cell under

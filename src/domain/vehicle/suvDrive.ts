@@ -32,6 +32,7 @@ import { SPEC } from "./spec";
 import { stepHeight } from "./stepUp";
 import { submarineVerticalSpeed } from "./submarine";
 import type { TickContext } from "./vehicle";
+import { waterDepthAt } from "./water";
 
 function stepProbe(ctx: TickContext, drop = 0): StepProbe {
   return (f, speed) => {
@@ -117,13 +118,15 @@ export class SuvDrive implements Drive {
     ctx: TickContext,
     profile: VehicleProfile,
   ): DriveResult {
+    const waterDepth = waterDepthAt(ctx.location, ctx.waterAt, SPEC.carHeight);
+    const velocity = { x: ctx.velocity.x, z: ctx.velocity.z };
     const before = this.formState.form;
     this.formState = stepForm(this.formState, {
       tick: ctx.tick,
       jump: raw?.jump ?? false,
       controlled: raw !== undefined,
       onGround: ctx.onGround,
-      waterDepth: ctx.waterDepth ?? 0,
+      waterDepth,
     });
     const form = this.formState.form;
     const input = driveInputFor(raw, form);
@@ -133,14 +136,14 @@ export class SuvDrive implements Drive {
         ? stepMotion(
             motion,
             input,
-            { velocity: ctx.velocity, onGround: ctx.onGround },
+            { velocity, onGround: ctx.onGround },
             stepProbe(ctx),
             profile.motion,
           )
         : stepFlightMotion(
             motion,
             input,
-            ctx.velocity,
+            velocity,
             form === "submarine" ? WATER : AIR,
             profile.motion,
           );
@@ -165,11 +168,11 @@ export class SuvDrive implements Drive {
         climb: climbInput(raw),
         controlled: raw !== undefined,
         rising,
-        waterDepth: ctx.waterDepth ?? 0,
+        waterDepth,
       });
       impulseY = verticalImpulse(
         targetVy,
-        ctx.velocityY ?? 0,
+        ctx.velocity.y,
         SPEC.waterVerticalDrag,
       );
     } else {
@@ -178,7 +181,7 @@ export class SuvDrive implements Drive {
         -SPEC.maxClimb,
         SPEC.maxClimb,
       );
-      impulseY = verticalImpulse(targetVy, ctx.velocityY ?? 0);
+      impulseY = verticalImpulse(targetVy, ctx.velocity.y);
     }
     const bank = this.bank === this.sentBank ? undefined : this.bank;
     this.sentBank = this.bank;

@@ -5,6 +5,7 @@ import { FORMS } from "../../../src/domain/vehicle/form";
 import { initialMotion } from "../../../src/domain/vehicle/motion";
 import { SUV_PROFILE } from "../../../src/domain/vehicle/profile";
 import type { TickContext } from "../../../src/domain/vehicle/vehicle";
+import { waterSensors } from "../../support/waterDepth";
 
 it("starts the SUV drive in the given form, unbanked, with the wheels down only in car form", () => {
   fc.assert(
@@ -22,9 +23,9 @@ it("keeps an SUV drive started in hover hovering with the gear folded on its fir
   const ctx: TickContext = {
     tick: 0,
     riders: [],
-    velocity: { x: 0, z: 0 },
+    velocity: { x: 0, y: 0, z: 0 },
     onGround: false,
-    velocityY: 0,
+    ...waterSensors(),
     solidAt: () => false,
     targets: () => [],
   };
