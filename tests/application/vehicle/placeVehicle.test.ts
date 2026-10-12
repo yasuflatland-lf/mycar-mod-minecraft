@@ -16,12 +16,12 @@ const cmd: PlaceVehicleCommand = {
 };
 
 describe("PlaceVehicle (ADR 0008)", () => {
-  it("consumes one item from the slot it was used from, then places a vehicle on the block and saves the aggregate", () => {
+  it("consumes one item of the command's kind from the slot it was used from, then places a vehicle on the block and saves the aggregate", () => {
     const world = new FakeWorld();
     const repo = new InMemoryRepo();
     expect(new PlaceVehicle(world, repo).execute(cmd)).toBe(true);
     expect(world.calls).toEqual([
-      "consume:p:2",
+      "consume:p:2:suv",
       "spawn:minecraft:overworld:10.5,65,-2.5:45:suv",
     ]);
     expect(repo.get("v1")?.kind).toBe(cmd.kind);

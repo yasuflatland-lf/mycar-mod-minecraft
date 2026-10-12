@@ -133,9 +133,9 @@ export class FakeWorld
     this.calls.push(`spawn:${dim}:${at.x},${at.y},${at.z}:${yaw}:${kind}`);
     return id;
   }
-  consumeVehicleItem(playerId: string, slot: number) {
+  consumeVehicleItem(playerId: string, slot: number, kind: VehicleKind) {
     if (!this.itemInSlot) return false;
-    this.calls.push(`consume:${playerId}:${slot}`);
+    this.calls.push(`consume:${playerId}:${slot}:${kind}`);
     return true;
   }
   receivedStarter(playerId: string) {
