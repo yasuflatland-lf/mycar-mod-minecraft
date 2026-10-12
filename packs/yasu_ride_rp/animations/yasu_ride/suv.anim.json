@@ -1,0 +1,679 @@
+{
+  "format_version": "1.8.0",
+  "animations": {
+    "animation.yasu_ride.suv.wheels": {
+      "loop": true,
+      "bones": {
+        "wheel_fl": {
+          "rotation": ["-query.modified_distance_moved * 152.8", 0, 0]
+        },
+        "wheel_fr": {
+          "rotation": ["-query.modified_distance_moved * 152.8", 0, 0]
+        },
+        "wheel_rl": {
+          "rotation": ["-query.modified_distance_moved * 152.8", 0, 0]
+        },
+        "wheel_rr": {
+          "rotation": ["-query.modified_distance_moved * 152.8", 0, 0]
+        },
+        "prop_rl": {
+          "scale": [0, 0, 0]
+        },
+        "prop_rr": {
+          "scale": [0, 0, 0]
+        },
+        "arm_fl": {
+          "scale": [0, 0, 0]
+        },
+        "arm_fr": {
+          "scale": [0, 0, 0]
+        },
+        "arm_rl": {
+          "scale": [0, 0, 0]
+        },
+        "arm_rr": {
+          "scale": [0, 0, 0]
+        },
+        "sub_arm_rl": {
+          "scale": [0, 0, 0]
+        },
+        "sub_arm_rr": {
+          "scale": [0, 0, 0]
+        }
+      }
+    },
+    "animation.yasu_ride.suv.bank": {
+      "loop": true,
+      "bones": {
+        "root": {
+          "rotation": [0, 0, "-query.property('yasu_ride:bank')"]
+        }
+      }
+    },
+    "animation.yasu_ride.suv.exhaust": {
+      "loop": true,
+      "animation_length": 0.2,
+      "particle_effects": {
+        "0.0": {
+          "effect": "exhaust",
+          "locator": "exhaust"
+        }
+      }
+    },
+    "animation.yasu_ride.suv.engine_sound_0": {
+      "loop": true,
+      "animation_length": 1.0,
+      "sound_effects": {
+        "0.0": {
+          "effect": "engine_0"
+        }
+      }
+    },
+    "animation.yasu_ride.suv.engine_sound_1": {
+      "loop": true,
+      "animation_length": 1.0,
+      "sound_effects": {
+        "0.0": {
+          "effect": "engine_1"
+        }
+      }
+    },
+    "animation.yasu_ride.suv.engine_sound_2": {
+      "loop": true,
+      "animation_length": 1.0,
+      "sound_effects": {
+        "0.0": {
+          "effect": "engine_2"
+        }
+      }
+    },
+    "animation.yasu_ride.suv.engine_sound_3": {
+      "loop": true,
+      "animation_length": 1.0,
+      "sound_effects": {
+        "0.0": {
+          "effect": "engine_3"
+        }
+      }
+    },
+    "animation.yasu_ride.suv.engine_sound_4": {
+      "loop": true,
+      "animation_length": 1.0,
+      "sound_effects": {
+        "0.0": {
+          "effect": "engine_4"
+        }
+      }
+    },
+    "animation.yasu_ride.suv.engine_sound_5": {
+      "loop": true,
+      "animation_length": 1.0,
+      "sound_effects": {
+        "0.0": {
+          "effect": "engine_5"
+        }
+      }
+    },
+    "animation.yasu_ride.suv.hover_sound_0": {
+      "loop": true,
+      "animation_length": 1.0,
+      "sound_effects": {
+        "0.0": {
+          "effect": "hover_0"
+        }
+      }
+    },
+    "animation.yasu_ride.suv.hover_sound_1": {
+      "loop": true,
+      "animation_length": 1.0,
+      "sound_effects": {
+        "0.0": {
+          "effect": "hover_1"
+        }
+      }
+    },
+    "animation.yasu_ride.suv.hover_sound_2": {
+      "loop": true,
+      "animation_length": 1.0,
+      "sound_effects": {
+        "0.0": {
+          "effect": "hover_2"
+        }
+      }
+    },
+    "animation.yasu_ride.suv.hover_sound_3": {
+      "loop": true,
+      "animation_length": 1.0,
+      "sound_effects": {
+        "0.0": {
+          "effect": "hover_3"
+        }
+      }
+    },
+    "animation.yasu_ride.suv.hover_sound_4": {
+      "loop": true,
+      "animation_length": 1.0,
+      "sound_effects": {
+        "0.0": {
+          "effect": "hover_4"
+        }
+      }
+    },
+    "animation.yasu_ride.suv.submarine_sound": {
+      "loop": true,
+      "animation_length": 4.0,
+      "sound_effects": {
+        "0.0": {
+          "effect": "sonar"
+        }
+      }
+    },
+    "animation.yasu_ride.suv.wheels_deploy": {
+      "animation_length": 1.0,
+      "sound_effects": {
+        "0.0": {
+          "effect": "hover_start"
+        }
+      },
+      "bones": {
+        "wheel_fl": {
+          "rotation": {
+            "0.0": [0, 0, 0],
+            "1.0": [0, 0, 90]
+          },
+          "position": {
+            "0.0": [0, 0, 0],
+            "1.0": [6, -4, 0]
+          }
+        },
+        "wheel_rl": {
+          "rotation": {
+            "0.0": [0, 0, 0],
+            "1.0": [0, 0, 90]
+          },
+          "position": {
+            "0.0": [0, 0, 0],
+            "1.0": [6, -4, 0]
+          }
+        },
+        "wheel_fr": {
+          "rotation": {
+            "0.0": [0, 0, 0],
+            "1.0": [0, 0, -90]
+          },
+          "position": {
+            "0.0": [0, 0, 0],
+            "1.0": [-6, -4, 0]
+          }
+        },
+        "wheel_rr": {
+          "rotation": {
+            "0.0": [0, 0, 0],
+            "1.0": [0, 0, -90]
+          },
+          "position": {
+            "0.0": [0, 0, 0],
+            "1.0": [-6, -4, 0]
+          }
+        },
+        "prop_rl": {
+          "scale": [0, 0, 0]
+        },
+        "prop_rr": {
+          "scale": [0, 0, 0]
+        },
+        "arm_fl": {
+          "scale": {
+            "0.0": [0, 0, 0],
+            "1.0": [1, 1, 1]
+          }
+        },
+        "arm_fr": {
+          "scale": {
+            "0.0": [0, 0, 0],
+            "1.0": [1, 1, 1]
+          }
+        },
+        "arm_rl": {
+          "scale": {
+            "0.0": [0, 0, 0],
+            "1.0": [1, 1, 1]
+          }
+        },
+        "arm_rr": {
+          "scale": {
+            "0.0": [0, 0, 0],
+            "1.0": [1, 1, 1]
+          }
+        },
+        "sub_arm_rl": {
+          "scale": [0, 0, 0]
+        },
+        "sub_arm_rr": {
+          "scale": [0, 0, 0]
+        }
+      }
+    },
+    "animation.yasu_ride.suv.wheels_folded": {
+      "loop": true,
+      "bones": {
+        "wheel_fl": {
+          "rotation": [0, 0, 90],
+          "position": [6, -4, 0]
+        },
+        "wheel_rl": {
+          "rotation": [0, 0, 90],
+          "position": [6, -4, 0]
+        },
+        "wheel_fr": {
+          "rotation": [0, 0, -90],
+          "position": [-6, -4, 0]
+        },
+        "wheel_rr": {
+          "rotation": [0, 0, -90],
+          "position": [-6, -4, 0]
+        },
+        "prop_rl": {
+          "scale": [0, 0, 0]
+        },
+        "prop_rr": {
+          "scale": [0, 0, 0]
+        },
+        "arm_fl": {
+          "scale": [1, 1, 1]
+        },
+        "arm_fr": {
+          "scale": [1, 1, 1]
+        },
+        "arm_rl": {
+          "scale": [1, 1, 1]
+        },
+        "arm_rr": {
+          "scale": [1, 1, 1]
+        },
+        "sub_arm_rl": {
+          "scale": [0, 0, 0]
+        },
+        "sub_arm_rr": {
+          "scale": [0, 0, 0]
+        }
+      }
+    },
+    "animation.yasu_ride.suv.wheels_retract": {
+      "animation_length": 1.0,
+      "bones": {
+        "wheel_fl": {
+          "rotation": {
+            "0.0": [0, 0, 90],
+            "1.0": [0, 0, 0]
+          },
+          "position": {
+            "0.0": [6, -4, 0],
+            "1.0": [0, 0, 0]
+          }
+        },
+        "wheel_rl": {
+          "rotation": {
+            "0.0": [0, 0, 90],
+            "1.0": [0, 0, 0]
+          },
+          "position": {
+            "0.0": [6, -4, 0],
+            "1.0": [0, 0, 0]
+          }
+        },
+        "wheel_fr": {
+          "rotation": {
+            "0.0": [0, 0, -90],
+            "1.0": [0, 0, 0]
+          },
+          "position": {
+            "0.0": [-6, -4, 0],
+            "1.0": [0, 0, 0]
+          }
+        },
+        "wheel_rr": {
+          "rotation": {
+            "0.0": [0, 0, -90],
+            "1.0": [0, 0, 0]
+          },
+          "position": {
+            "0.0": [-6, -4, 0],
+            "1.0": [0, 0, 0]
+          }
+        },
+        "prop_rl": {
+          "scale": [0, 0, 0]
+        },
+        "prop_rr": {
+          "scale": [0, 0, 0]
+        },
+        "arm_fl": {
+          "scale": {
+            "0.0": [1, 1, 1],
+            "1.0": [0, 0, 0]
+          }
+        },
+        "arm_fr": {
+          "scale": {
+            "0.0": [1, 1, 1],
+            "1.0": [0, 0, 0]
+          }
+        },
+        "arm_rl": {
+          "scale": {
+            "0.0": [1, 1, 1],
+            "1.0": [0, 0, 0]
+          }
+        },
+        "arm_rr": {
+          "scale": {
+            "0.0": [1, 1, 1],
+            "1.0": [0, 0, 0]
+          }
+        },
+        "sub_arm_rl": {
+          "scale": [0, 0, 0]
+        },
+        "sub_arm_rr": {
+          "scale": [0, 0, 0]
+        }
+      }
+    },
+    "animation.yasu_ride.suv.hover_glow": {
+      "loop": true,
+      "animation_length": 0.1,
+      "particle_effects": {
+        "0.0": [
+          {
+            "effect": "hover_glow",
+            "locator": "hover_fl"
+          },
+          {
+            "effect": "hover_glow",
+            "locator": "hover_fr"
+          },
+          {
+            "effect": "hover_glow",
+            "locator": "hover_rl"
+          },
+          {
+            "effect": "hover_glow",
+            "locator": "hover_rr"
+          }
+        ]
+      }
+    },
+    "animation.yasu_ride.suv.door_fr": {
+      "animation_length": 1.2,
+      "bones": {
+        "door_fr": {
+          "rotation": {
+            "0.0": [0, 0, 0],
+            "0.3": [0, -70, 0],
+            "0.8": [0, -70, 0],
+            "1.2": [0, 0, 0]
+          }
+        }
+      }
+    },
+    "animation.yasu_ride.suv.door_rr": {
+      "animation_length": 1.2,
+      "bones": {
+        "door_rr": {
+          "rotation": {
+            "0.0": [0, 0, 0],
+            "0.3": [0, -70, 0],
+            "0.8": [0, -70, 0],
+            "1.2": [0, 0, 0]
+          }
+        }
+      }
+    },
+    "animation.yasu_ride.suv.door_fl": {
+      "animation_length": 1.2,
+      "bones": {
+        "door_fl": {
+          "rotation": {
+            "0.0": [0, 0, 0],
+            "0.3": [0, 70, 0],
+            "0.8": [0, 70, 0],
+            "1.2": [0, 0, 0]
+          }
+        }
+      }
+    },
+    "animation.yasu_ride.suv.door_rl": {
+      "animation_length": 1.2,
+      "bones": {
+        "door_rl": {
+          "rotation": {
+            "0.0": [0, 0, 0],
+            "0.3": [0, 70, 0],
+            "0.8": [0, 70, 0],
+            "1.2": [0, 0, 0]
+          }
+        }
+      }
+    },
+    "animation.yasu_ride.suv.dive": {
+      "animation_length": 1.0,
+      "bones": {
+        "wheel_rl": {
+          "rotation": {
+            "0.0": [0, 0, 0],
+            "0.5": [0, 0, 0],
+            "1.0": [0, -90, 0]
+          },
+          "position": {
+            "0.0": [0, 0, 0],
+            "0.5": [6, 0, 0],
+            "1.0": [6, 0, 0]
+          }
+        },
+        "prop_rl": {
+          "rotation": {
+            "0.0": [0, 0, 0],
+            "0.5": [0, 0, 0],
+            "1.0": [0, -90, 0]
+          },
+          "position": {
+            "0.0": [0, 0, 0],
+            "0.5": [6, 0, 0],
+            "1.0": [6, 0, 0]
+          },
+          "scale": {
+            "0.0": [0, 0, 0],
+            "0.5": [0, 0, 0],
+            "1.0": [1, 1, 1]
+          }
+        },
+        "wheel_rr": {
+          "rotation": {
+            "0.0": [0, 0, 0],
+            "0.5": [0, 0, 0],
+            "1.0": [0, 90, 0]
+          },
+          "position": {
+            "0.0": [0, 0, 0],
+            "0.5": [-6, 0, 0],
+            "1.0": [-6, 0, 0]
+          }
+        },
+        "prop_rr": {
+          "rotation": {
+            "0.0": [0, 0, 0],
+            "0.5": [0, 0, 0],
+            "1.0": [0, 90, 0]
+          },
+          "position": {
+            "0.0": [0, 0, 0],
+            "0.5": [-6, 0, 0],
+            "1.0": [-6, 0, 0]
+          },
+          "scale": {
+            "0.0": [0, 0, 0],
+            "0.5": [0, 0, 0],
+            "1.0": [1, 1, 1]
+          }
+        },
+        "arm_fl": {
+          "scale": [0, 0, 0]
+        },
+        "arm_fr": {
+          "scale": [0, 0, 0]
+        },
+        "arm_rl": {
+          "scale": [0, 0, 0]
+        },
+        "arm_rr": {
+          "scale": [0, 0, 0]
+        },
+        "sub_arm_rl": {
+          "scale": {
+            "0.0": [0, 0, 0],
+            "0.5": [0, 0, 0],
+            "1.0": [1, 1, 1]
+          }
+        },
+        "sub_arm_rr": {
+          "scale": {
+            "0.0": [0, 0, 0],
+            "0.5": [0, 0, 0],
+            "1.0": [1, 1, 1]
+          }
+        }
+      }
+    },
+    "animation.yasu_ride.suv.submerged": {
+      "loop": true,
+      "bones": {
+        "wheel_rl": {
+          "rotation": [0, -90, 0],
+          "position": [6, 0, 0]
+        },
+        "prop_rl": {
+          "rotation": [0, -90, "query.modified_distance_moved * 360"],
+          "position": [6, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        "wheel_rr": {
+          "rotation": [0, 90, 0],
+          "position": [-6, 0, 0]
+        },
+        "prop_rr": {
+          "rotation": [0, 90, "query.modified_distance_moved * 360"],
+          "position": [-6, 0, 0],
+          "scale": [1, 1, 1]
+        },
+        "arm_fl": {
+          "scale": [0, 0, 0]
+        },
+        "arm_fr": {
+          "scale": [0, 0, 0]
+        },
+        "arm_rl": {
+          "scale": [0, 0, 0]
+        },
+        "arm_rr": {
+          "scale": [0, 0, 0]
+        },
+        "sub_arm_rl": {
+          "scale": [1, 1, 1]
+        },
+        "sub_arm_rr": {
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    "animation.yasu_ride.suv.surface": {
+      "animation_length": 1.0,
+      "bones": {
+        "wheel_rl": {
+          "rotation": {
+            "0.0": [0, -90, 0],
+            "0.5": [0, 0, 0],
+            "1.0": [0, 0, 0]
+          },
+          "position": {
+            "0.0": [6, 0, 0],
+            "0.5": [6, 0, 0],
+            "1.0": [0, 0, 0]
+          }
+        },
+        "prop_rl": {
+          "rotation": {
+            "0.0": [0, -90, 0],
+            "0.5": [0, 0, 0],
+            "1.0": [0, 0, 0]
+          },
+          "position": {
+            "0.0": [6, 0, 0],
+            "0.5": [6, 0, 0],
+            "1.0": [0, 0, 0]
+          },
+          "scale": {
+            "0.0": [1, 1, 1],
+            "0.5": [0, 0, 0],
+            "1.0": [0, 0, 0]
+          }
+        },
+        "wheel_rr": {
+          "rotation": {
+            "0.0": [0, 90, 0],
+            "0.5": [0, 0, 0],
+            "1.0": [0, 0, 0]
+          },
+          "position": {
+            "0.0": [-6, 0, 0],
+            "0.5": [-6, 0, 0],
+            "1.0": [0, 0, 0]
+          }
+        },
+        "prop_rr": {
+          "rotation": {
+            "0.0": [0, 90, 0],
+            "0.5": [0, 0, 0],
+            "1.0": [0, 0, 0]
+          },
+          "position": {
+            "0.0": [-6, 0, 0],
+            "0.5": [-6, 0, 0],
+            "1.0": [0, 0, 0]
+          },
+          "scale": {
+            "0.0": [1, 1, 1],
+            "0.5": [0, 0, 0],
+            "1.0": [0, 0, 0]
+          }
+        },
+        "arm_fl": {
+          "scale": [0, 0, 0]
+        },
+        "arm_fr": {
+          "scale": [0, 0, 0]
+        },
+        "arm_rl": {
+          "scale": [0, 0, 0]
+        },
+        "arm_rr": {
+          "scale": [0, 0, 0]
+        },
+        "sub_arm_rl": {
+          "scale": {
+            "0.0": [1, 1, 1],
+            "0.5": [0, 0, 0],
+            "1.0": [0, 0, 0]
+          }
+        },
+        "sub_arm_rr": {
+          "scale": {
+            "0.0": [1, 1, 1],
+            "0.5": [0, 0, 0],
+            "1.0": [0, 0, 0]
+          }
+        }
+      }
+    }
+  }
+}

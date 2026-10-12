@@ -11,6 +11,10 @@ const HISTORICAL_DOCS = /^docs\/(adr|releases|superpowers)\//;
 
 it("keeps the former namespace only in historical documents", () => {
   const oldName = ["my", "car"].join("");
+  const oldNamespace = ["yasu", "flatland"].join("");
+  const staleNamespace = new RegExp(`${oldNamespace}(?!-ride|-lf)`);
+  const staleDisplayName = ["Yasuflatland", "Add-on"].join(" ");
+  const currentAdrs = /^docs\/adr\/004[67]-/;
   // Untracked files that are not ignored count too, so a file added before its
   // first commit is checked like the rest (ADR 0047).
   const files = execFileSync(
@@ -23,13 +27,24 @@ it("keeps the former namespace only in historical documents", () => {
   expect(files.length).toBeGreaterThan(0);
   const violations: string[] = [];
   for (const file of new Set(files)) {
-    if (HISTORICAL_DOCS.test(file)) continue;
-    if (file.includes(oldName)) violations.push(`${file}: path`);
     const path = join(REPO_ROOT, file);
     if (!existsSync(path)) continue;
-    const lines = readFileSync(path, "utf8").split("\n");
+    if (HISTORICAL_DOCS.test(file) && !currentAdrs.test(file)) continue;
+    const historicalName = currentAdrs.test(file);
+    if (
+      (!historicalName && file.includes(oldName)) ||
+      staleNamespace.test(file)
+    )
+      violations.push(`${file}: path`);
+    const content = readFileSync(path);
+    if (content.includes(0)) continue;
+    const lines = content.toString("utf8").split("\n");
     for (const [index, line] of lines.entries()) {
-      if (line.includes(oldName)) {
+      if (
+        (!historicalName && line.includes(oldName)) ||
+        staleNamespace.test(line) ||
+        line.includes(staleDisplayName)
+      ) {
         violations.push(`${file}:${index + 1}: ${line}`);
       }
     }

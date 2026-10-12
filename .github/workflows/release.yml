@@ -33,9 +33,9 @@ jobs:
           if [ "$GITHUB_REF_TYPE" = tag ]; then
             tag="$GITHUB_REF_NAME"
           else
-            tag="v$(node -p 'require("./packs/yasuflatland_bp/manifest.json").header.version.join(".")')"
+            tag="v$(node -p 'require("./packs/yasu_ride_bp/manifest.json").header.version.join(".")')"
             if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null; then
-              echo "::error::$tag already exists; bump the version in packs/yasuflatland_bp/manifest.json"
+              echo "::error::$tag already exists; bump the version in packs/yasu_ride_bp/manifest.json"
               exit 1
             fi
           fi
