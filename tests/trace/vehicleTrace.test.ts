@@ -30,6 +30,12 @@ for (const scenario of domainScenarios) {
       expect(
         lines.some((line) => line.riders.underwater && line.velocity.y > 0),
       ).toBe(true);
+      // With a driver, a submarine surfaces to its float line, 1.2 blocks
+      // below the surface with the roof above it, and stays in submarine form
+      // until it reaches dry ground (ADR 0040).
+      expect(lines[55]?.location.y).toBeLessThan(-2);
+      expect(lines[80]?.location.y).toBeCloseTo(-1.2, 3);
+      expect(lines[80]?.riders.underwater).toBe(true);
       expect(lines.at(-1)?.riders.underwater).toBe(false);
       expect(lines.at(-1)?.location.z).toBeGreaterThan(45);
       expect(writes).toContain("property form car");
@@ -96,6 +102,17 @@ for (const scenario of domainScenarios) {
       expect(lines[40]?.writes).not.toContain("property form car");
       expect(lines[40]?.location.y).toBeGreaterThan(1);
       expect(lines[40]?.driverId).toBe("rider_0");
+      // The seated driver's position reads as the passenger seat for one tick;
+      // the driver stays the driver and the vehicle keeps hovering (ADR 0025).
+      expect(lines[60]?.driverId).toBe("rider_0");
+      expect(lines[60]?.writes).toEqual([]);
+      expect(lines[61]?.driverId).toBe("rider_0");
+      // Rebuilt while hovering at yaw -90 with the driver looking at yaw 0: a
+      // rebuild that forgot the driver would snap the heading to the driver's.
+      expect(lines[84]?.yaw).toBe(-90);
+      expect(lines[85]?.yaw).toBe(-90);
+      expect(lines[85]?.driverId).toBe("rider_0");
+      expect(lines[85]?.writes).not.toContain("property form landing");
     }
     if (scenario.name === "boat_rebuild") {
       expect(lines[40]?.speed).toBeGreaterThan(0);
@@ -103,6 +120,11 @@ for (const scenario of domainScenarios) {
       expect(lines[40]?.location.y).toBe(0);
       expect(lines[40]?.driverId).toBe("rider_0");
       expect(lines[70]?.seatWrites).toEqual([]);
+      // Rebuilt mid-turn, away from the driver's yaw 0, so the heading carries
+      // over instead of snapping to the driver's view.
+      expect(lines[74]?.yaw).toBeGreaterThan(20);
+      expect(lines[75]?.yaw).toBeGreaterThanOrEqual(lines[74]?.yaw ?? 0);
+      expect(lines[75]?.driverId).toBe("rider_0");
       expect(lines.every((line) => line.seatWrites.length === 0)).toBe(true);
     }
     await expect(traceText(lines)).toMatchFileSnapshot(

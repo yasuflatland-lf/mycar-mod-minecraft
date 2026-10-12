@@ -105,7 +105,7 @@ export class TraceWorld {
     }
     const wet = y >= c.ground && y < (c.surface ?? c.ground);
     const drag =
-      afloat || (!this.gravity && wet)
+      !this.gravity && wet
         ? 0.83
         : !this.gravity
           ? 0.91

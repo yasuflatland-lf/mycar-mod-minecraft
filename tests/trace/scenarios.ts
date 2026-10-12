@@ -5,6 +5,7 @@ type Segment = readonly [TraceInput, number];
 type ScenarioEvent =
   | { tick: number; type: "join"; seat: number; yaw: number }
   | { tick: number; type: "leave"; seat: number }
+  | { tick: number; type: "shift"; seat: number; to: number }
   | { tick: number; type: "rebuild" | "forget" }
   | { tick: number; type: "failure"; write: string };
 export interface Scenario {
@@ -142,6 +143,8 @@ export const domainScenarios: readonly Scenario[] = [
       { tick: 0, type: "join", seat: 0, yaw: 0 },
       { tick: 0, type: "join", seat: 3, yaw: 0 },
       { tick: 40, type: "rebuild" },
+      { tick: 60, type: "shift", seat: 0, to: 1 },
+      { tick: 85, type: "rebuild" },
     ],
   },
   {
@@ -230,6 +233,7 @@ export const domainScenarios: readonly Scenario[] = [
       { tick: 0, type: "join", seat: 0, yaw: 0 },
       { tick: 40, type: "rebuild" },
       { tick: 70, type: "leave", seat: 3 },
+      { tick: 75, type: "rebuild" },
     ],
   },
 ];
@@ -244,7 +248,9 @@ export const appScenarios: readonly Scenario[] = [
     headlights: true,
     segments: [
       ...takeoff,
-      [idle, 39],
+      [input(1, 0), 4],
+      [idle, 31],
+      [input(-1, 0), 4],
       [forward, 20],
       [back, 12],
       [idle, 8],

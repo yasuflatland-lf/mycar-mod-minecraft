@@ -36,9 +36,14 @@ function runner(scenario: Scenario) {
             if (event.type === "join") seats.set(event.seat, event.yaw);
             if (event.type === "leave") seats.delete(event.seat);
           }
+          const shifts = new Map(
+            events.flatMap((e) =>
+              e.type === "shift" ? [[e.seat, e.to] as const] : [],
+            ),
+          );
           const riders: TraceRider[] = [...seats].map(([seat, yaw]) => ({
             id: `rider_${seat}`,
-            offset: seatOffset(seat, world.yaw),
+            offset: seatOffset(shifts.get(seat) ?? seat, world.yaw),
             yaw,
             raw: seat === 0 ? input : { moveX: 0, moveY: 0, jump: false },
           }));
