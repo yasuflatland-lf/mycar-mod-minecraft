@@ -18,6 +18,7 @@ import {
   verticalSpeed,
 } from "./form";
 import { EMPTY_COUNTER, type HitCounter, registerHit } from "./hitCounter";
+import type { VehicleKind } from "./kind";
 import { nextGearDown } from "./landingGear";
 import {
   AIR,
@@ -29,6 +30,7 @@ import {
   stepMotion,
   WATER,
 } from "./motion";
+import { profileOf, type VehicleProfile } from "./profile";
 import { type RamHit, type RamTarget, selectHits } from "./ram";
 import { doorOf, occupiedSeats, vacatedSeats } from "./seats";
 import { SPEC } from "./spec";
@@ -125,6 +127,7 @@ function driveInputFor(raw: RawInput | undefined, form: Form): DriveInput {
 }
 
 export class Vehicle {
+  private readonly profile: VehicleProfile;
   private motion: MotionState;
   private formState: FormState;
   private bank = 0;
@@ -144,14 +147,16 @@ export class Vehicle {
     readonly id: string,
     yaw: number,
     form: Form = "car",
+    kind: VehicleKind = "suv",
   ) {
+    this.profile = profileOf(kind);
     this.motion = initialMotion(yaw);
     this.formState = initialForm(form);
     this.gearDown = form === "car";
   }
 
-  static create(id: string, yaw: number): Vehicle {
-    return new Vehicle(id, yaw);
+  static create(id: string, yaw: number, kind: VehicleKind = "suv"): Vehicle {
+    return new Vehicle(id, yaw, "car", kind);
   }
 
   /**
@@ -166,11 +171,16 @@ export class Vehicle {
     yaw: number,
     riders: readonly RiderView[],
     form: Form = "car",
+    kind: VehicleKind = "suv",
   ): Vehicle {
-    const v = new Vehicle(id, yaw, form);
-    v.seats = occupiedSeats(riders, forward(yaw));
+    const v = new Vehicle(id, yaw, form, kind);
+    v.seats = occupiedSeats(riders, forward(yaw), v.profile.seats.positions);
     v.driverId = riders.find((r) => v.seats.get(r.id) === 0)?.id;
     return v;
+  }
+
+  get kind(): VehicleKind {
+    return this.profile.kind;
   }
 
   get speed(): number {
@@ -218,12 +228,14 @@ export class Vehicle {
             input,
             { velocity: ctx.velocity, onGround: ctx.onGround },
             stepProbe(ctx),
+            this.profile.motion,
           )
         : stepFlightMotion(
             this.motion,
             input,
             ctx.velocity,
             form === "submarine" ? WATER : AIR,
+            this.profile.motion,
           );
     this.motion = step.state;
     this.bank = stepBank(this.bank, form, yawBefore, this.motion.yaw);
@@ -284,13 +296,17 @@ export class Vehicle {
   }
 
   private updateSeats(riders: readonly RiderView[]): VehicleEvent[] {
-    const seats = occupiedSeats(riders, forward(this.motion.yaw));
+    const seats = occupiedSeats(
+      riders,
+      forward(this.motion.yaw),
+      this.profile.seats.positions,
+    );
     const events: VehicleEvent[] = vacatedSeats(this.seats, seats).map(
       (seat) => ({
         type: "SeatVacated",
         vehicleId: this.id,
         seat,
-        door: doorOf(seat),
+        door: doorOf(seat, this.profile.seats.doors ?? []),
       }),
     );
     this.seats = seats;
@@ -327,6 +343,7 @@ export class Vehicle {
       ctx.targets(),
       this.lastHit,
       ctx.tick,
+      this.profile.ram,
     );
     for (const h of hits) this.lastHit.set(h.id, ctx.tick);
     return hits;
