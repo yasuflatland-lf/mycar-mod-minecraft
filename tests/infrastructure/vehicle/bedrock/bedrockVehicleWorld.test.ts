@@ -22,6 +22,12 @@ vi.mock("@minecraft/server", () => ({
   ButtonState: {},
   InputButton: {},
   EntityDamageCause: {},
+  BlockPermutation: {
+    resolve: (typeId: string, states: Record<string, number>) => ({
+      typeId,
+      states,
+    }),
+  },
   ItemStack: class {
     constructor(
       public typeId: string,
@@ -51,6 +57,11 @@ function fixture() {
     getComponent: vi.fn((_name: string): unknown => undefined),
     getDynamicProperty: vi.fn(),
     setDynamicProperty: vi.fn(),
+    teleport: vi.fn(),
+    clearVelocity: vi.fn(),
+    applyImpulse: vi.fn(),
+    setRotation: vi.fn(),
+    remove: vi.fn(),
     triggerEvent: vi.fn(),
     playAnimation: vi.fn(),
     setProperty: vi.fn(),
@@ -403,3 +414,31 @@ it.each([
     expect(car.getProperty.mock.calls).toEqual([[`${NAMESPACE}:${name}`]]);
   },
 );
+
+describe("BedrockVehicleWorld holds (ADR 0063)", () => {
+  beforeEach(() => vi.resetAllMocks());
+
+  it("teleports and clears velocity on every held tick, then releases motion", () => {
+    const { world, car } = fixture();
+    const pose = { x: 1, y: 64.5, z: -2, yaw: 30 };
+    const impulse = { x: 0, y: 0, z: 1 };
+    for (let tick = 0; tick < 3; tick++) {
+      world.holdAt(car.id, pose);
+      world.applyMotion(car.id, impulse, pose.yaw);
+    }
+    expect(car.teleport.mock.calls).toEqual(
+      Array.from({ length: 3 }, () => [
+        { x: pose.x, y: pose.y, z: pose.z },
+        { rotation: { x: 0, y: pose.yaw } },
+      ]),
+    );
+    expect(car.clearVelocity).toHaveBeenCalledTimes(3);
+    expect(car.applyImpulse).not.toHaveBeenCalled();
+    world.holdAt(car.id, undefined);
+    world.applyMotion(car.id, impulse, pose.yaw);
+    expect(car.applyImpulse).toHaveBeenCalledWith(impulse);
+    expect(car.setRotation).toHaveBeenCalledWith({ x: 0, y: pose.yaw });
+    world.holdAt("missing", pose);
+    expect(car.teleport).toHaveBeenCalledTimes(3);
+  });
+});

@@ -1,6 +1,7 @@
 // How one vehicle kind moves each tick, under the shared core in vehicle.ts (ADR 0050, 0055).
 import type { Vec2, Vec3 } from "../shared/vec";
 import type { RawInput } from "./driveInput";
+import type { FloorCell, HoldPose } from "./floor";
 import type { RamTarget } from "./ram";
 
 /** Sensors only. Riders and test input stay with the core. */
@@ -36,6 +37,8 @@ export interface RiderState {
 }
 
 export interface DriveStep {
+  hold?: HoldPose;
+  floor?: readonly FloorCell[];
   impulse: Vec3;
   /** The facing used for the ram this tick. */
   forward: Vec2;
