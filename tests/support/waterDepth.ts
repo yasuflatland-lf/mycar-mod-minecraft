@@ -1,4 +1,5 @@
 import fc from "fast-check";
+import type { Vec3 } from "../../src/domain/shared/vec";
 import { SPEC } from "../../src/domain/vehicle/spec";
 
 const EPSILON = 1e-9;
@@ -42,7 +43,7 @@ export function waterSensors(depth = 0, below = false) {
   const location = { x: 0, y: depth > 0 ? -depth : 0, z: 0 };
   return {
     location,
-    waterAt: (offset: { x: number; y: number; z: number }) =>
+    waterAt: (offset: Vec3) =>
       depth > 0
         ? Math.floor(location.y + offset.y) < 0
         : below && Math.floor(offset.y) === -1,

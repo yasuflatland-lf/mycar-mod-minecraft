@@ -53,6 +53,14 @@ import { isWaterAt } from "./water";
 const DIMENSIONS = ["overworld", "nether", "the_end"] as const;
 const isPlayer = (e: Entity): e is Player => e.typeId === PLAYER_TYPE;
 
+function offsetFrom(car: Entity, offset: Vec3): Vec3 {
+  return {
+    x: car.location.x + offset.x,
+    y: car.location.y + offset.y,
+    z: car.location.z + offset.z,
+  };
+}
+
 export class BedrockVehicleWorld
   implements
     DriveWorld,
@@ -121,16 +129,6 @@ export class BedrockVehicleWorld
     return snapshots;
   }
 
-  waterAt(vehicleId: string, offset: Vec3): boolean {
-    const car = this.entity(vehicleId);
-    if (!car) return false;
-    return isWaterAt(car.dimension, {
-      x: car.location.x + offset.x,
-      y: car.location.y + offset.y,
-      z: car.location.z + offset.z,
-    });
-  }
-
   private riders(car: Entity): RiderView[] {
     return (car.getComponent("minecraft:rideable")?.getRiders() ?? [])
       .filter(isPlayer)
@@ -154,15 +152,17 @@ export class BedrockVehicleWorld
       });
   }
 
+  waterAt(vehicleId: string, offset: Vec3): boolean {
+    const car = this.entity(vehicleId);
+    if (!car) return false;
+    return isWaterAt(car.dimension, offsetFrom(car, offset));
+  }
+
   solidAt(vehicleId: string, offset: Vec3): boolean {
     const car = this.entity(vehicleId);
     if (!car) return false;
     try {
-      const at = {
-        x: car.location.x + offset.x,
-        y: car.location.y + offset.y,
-        z: car.location.z + offset.z,
-      };
+      const at = offsetFrom(car, offset);
       const b = car.dimension.getBlock(at);
       if (!b || b.isAir || b.isLiquid || isLightBlock(b)) return false;
       // A ray that starts inside a block finds nothing, so a cell under

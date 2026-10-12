@@ -88,7 +88,8 @@ export class FakeWorld
   }
   waterAt(id: string, offset: Vec3) {
     const snap = this.snapshots.find((s) => s.id === id);
-    return snap ? (waterQueries.get(snap)?.(offset) ?? false) : false;
+    const waterAt = snap && waterQueries.get(snap);
+    return waterAt ? waterAt(offset) : false;
   }
   targetsNear() {
     return this.targets;

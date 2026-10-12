@@ -43,8 +43,8 @@ export class DriveVehicles {
           testInput: snap.testInput,
           location: snap.location,
           velocity: snap.velocity,
-          waterAt: (offset) => this.world.waterAt(snap.id, offset),
           onGround: snap.onGround,
+          waterAt: (offset) => this.world.waterAt(snap.id, offset),
           solidAt: (offset) => this.world.solidAt(snap.id, offset),
           targets: () => this.world.targetsNear(snap.id),
         });
