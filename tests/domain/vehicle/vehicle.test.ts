@@ -15,6 +15,7 @@ import {
   rebuildVehicle,
 } from "../../../src/domain/vehicle/kinds/index";
 import { DOOR_BY_SEAT } from "../../../src/domain/vehicle/kinds/suv/entity";
+import { SUV_PROFILE } from "../../../src/domain/vehicle/kinds/suv/profile";
 import { SUV_SPEC } from "../../../src/domain/vehicle/kinds/suv/spec";
 import { MOTION } from "../../../src/domain/vehicle/motion/constants";
 import { STEP_LANES } from "../../../src/domain/vehicle/motion/stepUp";
@@ -161,6 +162,34 @@ describe("Vehicle (aggregate)", () => {
     sim.riders = [{ id: "d", seat: 0, yaw: 0, raw: FORWARD }];
     sim.run(createVehicle("suv", "car", 0), 40);
     expect(sim.pos.z).toBeGreaterThan(5);
+  });
+
+  it("uses the driver's input ahead of conflicting test input", () => {
+    fc.assert(
+      fc.property(fc.double({ min: 0.5, max: 1, noNaN: true }), (throttle) => {
+        const vehicle = createVehicle("suv", "car", 0);
+        const out = vehicle.tick({
+          tick: 0,
+          riders: [
+            {
+              id: "driver",
+              offset: defined(SUV_PROFILE.seats.positions[0], "driver seat"),
+              yaw: 0,
+              raw: { ...FORWARD, moveY: throttle },
+            },
+          ],
+          testInput: { ...IDLE, moveY: -1 },
+          velocity: { x: 0, y: 0, z: 0 },
+          onGround: true,
+          ...waterSensors(),
+          solidAt: () => false,
+          targets: () => [],
+        });
+        expect(out.driverId).toBe("driver");
+        expect(vehicle.speed).toBeGreaterThan(0);
+        expect(out.impulse.z).toBeGreaterThan(0);
+      }),
+    );
   });
 
   it("cannot be driven by a passenger alone", () => {

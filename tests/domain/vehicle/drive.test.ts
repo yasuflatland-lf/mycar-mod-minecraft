@@ -1,14 +1,12 @@
 import fc from "fast-check";
 import { expect, it } from "vitest";
-import type { Drive, TickContext } from "../../../src/domain/vehicle/drive";
-import {
-  VEHICLE_KINDS,
-  type VehicleKind,
-} from "../../../src/domain/vehicle/kind";
+import { forward } from "../../../src/domain/shared/vec";
+import type { TickContext } from "../../../src/domain/vehicle/drive";
 import { BoatDrive } from "../../../src/domain/vehicle/kinds/sportsboat/drive";
 import { SuvDrive } from "../../../src/domain/vehicle/kinds/suv/drive";
 import { FORMS } from "../../../src/domain/vehicle/kinds/suv/form";
 import { MOTION } from "../../../src/domain/vehicle/motion/constants";
+import { initialMotion } from "../../../src/domain/vehicle/motion/motion";
 import { propertyValue } from "../../support/engineCommands";
 import { waterSensors } from "../../support/waterDepth";
 
@@ -27,21 +25,6 @@ function stillContext(onGround: boolean, waterDepth = 0): TickContext {
     targets: () => [],
   };
 }
-
-/** Each kind's drive, on its own ground: the SUV on dry land, the boat afloat. */
-const KIND_DRIVES: Record<
-  VehicleKind,
-  { drive(heading: number): Drive; ctx: TickContext }
-> = {
-  suv: {
-    drive: (heading) => new SuvDrive(heading, { form: "car" }),
-    ctx: stillContext(true),
-  },
-  sportsboat: {
-    drive: (heading) => new BoatDrive(heading, {}),
-    ctx: stillContext(false, 0.5),
-  },
-};
 
 it("starts the SUV drive in the given form, unbanked, with the wheels down only in car form", () => {
   fc.assert(
@@ -67,26 +50,65 @@ it("keeps an SUV drive started in hover hovering with the gear folded on its fir
   expect(drive.wheelsDown).toBe(false);
 });
 
-it("turns every kind's drive to a new driver's yaw only below mountAlignSpeed, and keeps its speed (ADR 0019)", () => {
+it("aligns a boat below mountAlignSpeed and keeps its heading at or above it, without changing speed (ADR 0019)", () => {
   fc.assert(
     fc.property(
-      fc.constantFrom(...VEHICLE_KINDS),
       yaw,
-      yaw,
-      fc.array(number(-1, 1), { maxLength: 4 }),
-      (kind, heading, driverYaw, throttles) => {
-        const { drive: make, ctx } = KIND_DRIVES[kind];
-        const drive = make(heading);
-        throttles.forEach((moveY, tick) => {
-          drive.step({ moveX: 0, moveY, jump: false }, { ...ctx, tick });
-        });
-        const { speed, yaw: before } = drive;
-        drive.onDriverMounted(driverYaw);
-        expect(drive.yaw).toBe(
-          Math.abs(speed) < MOTION.mountAlignSpeed ? driverYaw : before,
-        );
-        expect(drive.speed).toBe(speed);
+      number(30, 90),
+      number(0, MOTION.mountAlignSpeed * 0.99),
+      number(MOTION.mountAlignSpeed, 0.5),
+      (heading, turn, slow, fast) => {
+        const driverYaw = heading + turn;
+        for (const speed of [
+          slow,
+          -slow,
+          fast,
+          -fast,
+          MOTION.mountAlignSpeed,
+          -MOTION.mountAlignSpeed,
+        ]) {
+          const drive = new BoatDrive(heading, {}).restore({
+            motion: { ...initialMotion(heading), speed },
+          });
+          const before = drive.yaw;
+          drive.onDriverMounted(driverYaw);
+          expect(drive.yaw).toBe(
+            Math.abs(speed) < MOTION.mountAlignSpeed ? driverYaw : before,
+          );
+          expect(drive.speed).toBe(speed);
+        }
       },
     ),
+  );
+});
+
+it("aligns a stopped SUV but keeps a moving SUV's heading and speed on mounting (ADR 0019)", () => {
+  fc.assert(
+    fc.property(yaw, number(30, 90), (heading, turn) => {
+      const driverYaw = heading + turn;
+      const stopped = new SuvDrive(heading, {});
+      stopped.onDriverMounted(driverYaw);
+      expect(stopped.yaw).toBe(driverYaw);
+      expect(stopped.speed).toBe(0);
+      for (const moveY of [-1, 1]) {
+        const drive = new SuvDrive(heading, {});
+        for (let tick = 0; tick < 20; tick++) {
+          const f = forward(drive.yaw);
+          drive.step(
+            { moveX: 0, moveY, jump: false },
+            {
+              ...stillContext(true),
+              tick,
+              velocity: { x: f.x * drive.speed, y: 0, z: f.z * drive.speed },
+            },
+          );
+        }
+        const { speed, yaw: before } = drive;
+        expect(Math.abs(speed)).toBeGreaterThanOrEqual(MOTION.mountAlignSpeed);
+        drive.onDriverMounted(driverYaw);
+        expect(drive.yaw).toBe(before);
+        expect(drive.speed).toBe(speed);
+      }
+    }),
   );
 });
