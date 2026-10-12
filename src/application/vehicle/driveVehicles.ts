@@ -1,5 +1,6 @@
 // Use case: every tick, move all loaded vehicles.
 import { headlightCells } from "../../domain/vehicle/headlights";
+import { profileOf } from "../../domain/vehicle/profile";
 import { SPEC } from "../../domain/vehicle/spec";
 import { Vehicle } from "../../domain/vehicle/vehicle";
 import type { VehicleRepository } from "../../domain/vehicle/vehicleRepository";
@@ -58,11 +59,17 @@ export class DriveVehicles {
         this.world.applyMotion(snap.id, out.impulse, out.yaw);
         this.world.shineHeadlights(
           snap.id,
-          snap.headlights ? headlightCells(snap.location, out.yaw) : [],
+          snap.headlights
+            ? headlightCells(
+                snap.location,
+                out.yaw,
+                profileOf(vehicle.kind).beams,
+              )
+            : [],
         );
         for (const hit of out.hits) this.world.damage(hit, out.driverId);
         for (const event of out.events) {
-          if (event.type === "SeatVacated") {
+          if (event.type === "SeatVacated" && event.door !== undefined) {
             this.world.playDoor(snap.id, event.door);
           }
         }

@@ -1,5 +1,6 @@
 // Select targets in a rectangle in front of the car (behind it when reversing) and decide the damage and push (ADR 0006).
 import { dot, rightOf, type Vec2, type Vec3 } from "../shared/vec";
+import { type RamBody, SUV_PROFILE } from "./profile";
 import { SPEC } from "./spec";
 
 export interface RamTarget {
@@ -24,12 +25,13 @@ export function selectHits(
   targets: readonly RamTarget[],
   lastHit: ReadonlyMap<string, number>,
   tick: number,
+  body: RamBody = SUV_PROFILE.ram,
 ): RamHit[] {
   if (Math.abs(speed) <= SPEC.ramMinSpeed) return [];
   const dir = Math.sign(speed);
   const right = rightOf(f);
-  const reach = SPEC.bodyFront + SPEC.targetHalfWidth;
-  const halfWidth = SPEC.bodyHalfWidth + SPEC.targetHalfWidth;
+  const reach = body.front + SPEC.targetHalfWidth;
+  const halfWidth = body.halfWidth + SPEC.targetHalfWidth;
   const damage = ramDamage(speed);
   const pushSpeed =
     dir * (SPEC.ramPushBase + Math.abs(speed) * SPEC.ramPushPerSpeed);
