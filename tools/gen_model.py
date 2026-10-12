@@ -1,4 +1,4 @@
-"""Generate the model and textures for the Yasuflatland Add-on SUV.
+"""Generate the model and textures for the Yasuflatland Ride SUV.
 
 Coordinates are in pixels (16 px = 1 block). The definitions below use "forward +z, right +x",
 and are rotated 180° around the Y axis just before writing, because in Bedrock the front of an
@@ -15,9 +15,9 @@ import zlib
 from pathlib import Path
 
 RP = Path(sys.argv[1])
-MODELS = RP / "models/entity/yasuflatland"
-ENTITY_TEXTURES = RP / "textures/entity/yasuflatland"
-ITEM_TEXTURES = RP / "textures/items/yasuflatland"
+MODELS = RP / "models/entity/yasu_ride"
+ENTITY_TEXTURES = RP / "textures/entity/yasu_ride"
+ITEM_TEXTURES = RP / "textures/items/yasu_ride"
 MODELS.mkdir(parents=True, exist_ok=True)
 
 # Color swatches. Each color fills a 4x4 cell, and each face's UV points at the cell's center 2x2
@@ -489,7 +489,7 @@ def prop(name, x_out, z_center):
 
 
 # The folded wheels hang out from the body on arms in flight, like a hovering DeLorean (ADR 0043): the
-# hover animation moves each wheel this far outward on top of lowering it 4 px. suv.animation.json is
+# hover animation moves each wheel this far outward on top of lowering it 4 px. suv.anim.json is
 # written by hand, so wheels_folded, wheels_deploy and wheels_retract must use the same value.
 FOLD_OUT = 6
 # How far the dive and submerged animations move each turned rear wheel out (ADR 0040), which the
@@ -567,7 +567,7 @@ geo = {
     "minecraft:geometry": [
         {
             "description": {
-                "identifier": "geometry.yasuflatland.suv",
+                "identifier": "geometry.yasu_ride.suv",
                 "texture_width": TEXTURE_WIDTH,
                 "texture_height": 16,
                 "visible_bounds_width": 5,
