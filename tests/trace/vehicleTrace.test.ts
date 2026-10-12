@@ -57,12 +57,9 @@ for (const scenario of domainScenarios) {
       expect(lines[50]?.yaw).not.toBe(0);
     }
     if (scenario.name === "suv_ram") {
-      expect(lines.flatMap((line) => line.hits).map((hit) => hit.id)).toContain(
-        "near",
-      );
-      expect(
-        lines.flatMap((line) => line.hits).map((hit) => hit.id),
-      ).not.toContain("occupant");
+      const hitIds = lines.flatMap((line) => line.hits).map((hit) => hit.id);
+      expect(hitIds).toContain("near");
+      expect(hitIds).not.toContain("occupant");
     }
     if (scenario.name === "suv_wall") {
       expect(lines.at(-1)?.location.z).toBeGreaterThan(11);

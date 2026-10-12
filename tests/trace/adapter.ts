@@ -1,7 +1,7 @@
 import { DriveVehicles } from "../../src/application/vehicle/driveVehicles";
 import type { DriveWorld } from "../../src/application/vehicle/ports";
 import type { Vec2, Vec3 } from "../../src/domain/shared/vec";
-import { isForm } from "../../src/domain/vehicle/form";
+import { type Form, isForm } from "../../src/domain/vehicle/form";
 import { type TickContext, Vehicle } from "../../src/domain/vehicle/vehicle";
 import type { VehicleRepository } from "../../src/domain/vehicle/vehicleRepository";
 import { waterDepthFrom } from "../../src/domain/vehicle/water";
@@ -80,6 +80,9 @@ function context(
     targets: () => s.targets(),
   };
 }
+function formOf(properties: Readonly<Record<string, PropertyValue>>): Form {
+  return isForm(properties.form) ? properties.form : "car";
+}
 function formWrites(form: string): string[] {
   return [
     `event gravity_${form === "car" ? "on" : "off"}`,
@@ -132,15 +135,7 @@ export function rebuildTraceVehicle(
   riders: readonly TraceRider[],
   properties: Readonly<Record<string, PropertyValue>>,
 ): TraceVehicle {
-  return wrap(
-    Vehicle.rebuild(
-      id,
-      yaw,
-      riders,
-      isForm(properties.form) ? properties.form : "car",
-      kind,
-    ),
-  );
+  return wrap(Vehicle.rebuild(id, yaw, riders, formOf(properties), kind));
 }
 export interface TraceAppVehicle {
   id: string;
@@ -188,11 +183,13 @@ export function createTraceApp(): TraceApp {
     if (!v) throw new Error(`Missing trace vehicle ${id}`);
     return v;
   };
+  // A rider who left this tick is no longer in any snapshot, but the camera
+  // reset for them still belongs to the vehicle they left.
+  const riderOwners = new Map<string, string>();
   const ownerOf = (player: string) => {
     const v = vehicles.find((v) => v.riders.some((r) => r.id === player));
     return v?.id ?? riderOwners.get(player) ?? "-";
   };
-  const riderOwners = new Map<string, string>();
   const world: DriveWorld = {
     loadedVehicles: () =>
       vehicles.map((v) => {
@@ -210,7 +207,7 @@ export function createTraceApp(): TraceApp {
           riders: [...v.riders],
           testInput: v.testInput,
           headlights: v.headlights,
-          form: isForm(v.properties.form) ? v.properties.form : "car",
+          form: formOf(v.properties),
         };
       }),
     solidAt: (id, offset) => context(snapshot(id).sensors, []).solidAt(offset),

@@ -14,6 +14,20 @@ export interface WorldSetup {
     protectedOccupant: boolean;
   }[];
 }
+function parsePropertyValue(value: string): PropertyValue {
+  if (value === "true") return true;
+  if (value === "false") return false;
+  const number = Number(value);
+  return Number.isNaN(number) ? value : number;
+}
+function horizontalDrag(
+  gravity: boolean,
+  wet: boolean,
+  grounded: boolean,
+): number {
+  if (!gravity) return wet ? 0.83 : 0.91;
+  return grounded ? 0.688 : 0.91;
+}
 export class TraceWorld {
   location: Vec3;
   velocity: Vec3 = { x: 0, y: 0, z: 0 };
@@ -67,14 +81,7 @@ export class TraceWorld {
     if (write.startsWith("property ")) {
       const [, name, value] = write.split(" ");
       if (name !== undefined && value !== undefined)
-        this.properties[name] =
-          value === "true"
-            ? true
-            : value === "false"
-              ? false
-              : Number.isNaN(Number(value))
-                ? value
-                : Number(value);
+        this.properties[name] = parsePropertyValue(value);
     }
   }
   advance(impulse: Vec3, yaw: number): void {
@@ -104,14 +111,7 @@ export class TraceWorld {
       }
     }
     const wet = y >= c.ground && y < (c.surface ?? c.ground);
-    const drag =
-      !this.gravity && wet
-        ? 0.83
-        : !this.gravity
-          ? 0.91
-          : y <= c.ground
-            ? 0.688
-            : 0.91;
+    const drag = horizontalDrag(this.gravity, wet, y <= c.ground);
     vx *= drag;
     vz *= drag;
     vy *= !this.gravity && wet ? 0.84 : 0.98;

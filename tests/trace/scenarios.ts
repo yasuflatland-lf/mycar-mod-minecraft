@@ -294,17 +294,17 @@ export const appScenarios: readonly Scenario[] = [
     ],
   },
 ];
+const seatPositions = [
+  { x: -0.38, z: 0.35 },
+  { x: 0.38, z: 0.35 },
+  { x: -0.38, z: -0.8 },
+  { x: 0.38, z: -0.8 },
+];
 export function seatOffset(
   seat: number,
   yaw: number,
 ): { x: number; z: number } {
-  const positions = [
-    { x: -0.38, z: 0.35 },
-    { x: 0.38, z: 0.35 },
-    { x: -0.38, z: -0.8 },
-    { x: 0.38, z: -0.8 },
-  ];
-  const p = positions[seat];
+  const p = seatPositions[seat];
   if (!p) throw new Error(`Invalid seat ${seat}`);
   const angle = (yaw * Math.PI) / 180;
   return {
