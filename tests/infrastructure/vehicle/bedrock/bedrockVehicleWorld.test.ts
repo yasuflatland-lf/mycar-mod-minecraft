@@ -152,13 +152,22 @@ describe("BedrockVehicleWorld snapshots", () => {
     expect(world.loadedVehicles().map((s) => s.id)).toEqual(["car"]);
   });
 
-  it.each(["nether", "the_end"])("snapshots a vehicle in the %s", (dimId) => {
-    const { dimension, car, world } = fixture();
-    game.getDimension.mockImplementation((id: string) =>
-      id === dimId ? dimension : { getEntities: () => [] },
+  it("snapshots the vehicles of every dimension, not only the first one that has any", () => {
+    fc.assert(
+      fc.property(fc.subarray(["overworld", "nether", "the_end"]), (dimIds) => {
+        const { car, world } = fixture();
+        const cars = new Map(
+          dimIds.map((dimId) => [dimId, { ...car, id: `car-${dimId}` }]),
+        );
+        game.getDimension.mockImplementation((id: string) => {
+          const inDim = cars.get(id);
+          return { getEntities: () => (inDim ? [inDim] : []) };
+        });
+        const ids = dimIds.map((dimId) => `car-${dimId}`);
+        expect(world.loadedVehicles().map((s) => s.id)).toEqual(ids);
+        expect(world.loadedVehicleIds()).toEqual(ids);
+      }),
     );
-    expect(world.loadedVehicles().map((s) => s.id)).toEqual([car.id]);
-    expect(world.loadedVehicleIds()).toEqual([car.id]);
   });
 
   it("reports the headlights as the vehicle's headlights property says (ADR 0020)", () => {
