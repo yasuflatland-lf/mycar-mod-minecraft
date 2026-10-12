@@ -32,7 +32,13 @@ export class DriveVehicles {
           // the entity's heading, the riders already seated (so the current
           // driver is not treated as newly mounted), and the vehicle form
           // stored on the entity (ADR 0021, 0039).
-          vehicle = Vehicle.rebuild(snap.id, snap.yaw, snap.riders, snap.form);
+          vehicle = Vehicle.rebuild(
+            snap.id,
+            snap.yaw,
+            snap.riders,
+            snap.form,
+            snap.kind,
+          );
           this.repo.save(vehicle);
         }
         const out = vehicle.tick({

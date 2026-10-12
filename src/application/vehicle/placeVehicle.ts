@@ -1,11 +1,13 @@
 // Use case: place a vehicle by using the vehicle item on the top face of a block (ADR 0008).
 import type { Vec3 } from "../../domain/shared/vec";
+import type { VehicleKind } from "../../domain/vehicle/kind";
 import { canPlaceAt } from "../../domain/vehicle/placement";
 import { Vehicle } from "../../domain/vehicle/vehicle";
 import type { VehicleRepository } from "../../domain/vehicle/vehicleRepository";
 import type { PlacementWorld } from "./ports";
 
 export interface PlaceVehicleCommand {
+  kind: VehicleKind;
   playerId: string;
   dimensionId: string;
   /** Position of the block the item was used on (integer coordinates). The vehicle appears one block above it. */
@@ -34,14 +36,18 @@ export class PlaceVehicle {
     if (!canPlaceAt(isAir)) return false;
     // Taking the item first means a player who moved or dropped it in the
     // meantime gets no vehicle, instead of a vehicle and the item (ADR 0024).
-    if (!cmd.creative && !this.world.consumeVehicleItem(cmd.playerId, cmd.slot))
+    if (
+      !cmd.creative &&
+      !this.world.consumeVehicleItem(cmd.playerId, cmd.slot, cmd.kind)
+    )
       return false;
     const id = this.world.spawnVehicle(
       cmd.dimensionId,
       { x: block.x + 0.5, y: block.y + 1, z: block.z + 0.5 },
       cmd.yaw,
+      cmd.kind,
     );
-    this.repo.save(Vehicle.create(id, cmd.yaw));
+    this.repo.save(Vehicle.create(id, cmd.yaw, cmd.kind));
     return true;
   }
 }

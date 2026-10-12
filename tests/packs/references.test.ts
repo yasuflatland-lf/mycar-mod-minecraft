@@ -6,12 +6,14 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { DOOR_BY_SEAT } from "../../src/domain/vehicle/seats";
+import { VEHICLE_KINDS } from "../../src/domain/vehicle/kind";
+import { profileOf } from "../../src/domain/vehicle/profile";
 import {
   doorAnimation,
+  ENTITY_TYPE,
   HEADLIGHT_SWITCH_TYPE,
   ITEM_TYPE,
-  VEHICLE_TYPE,
+  VEHICLE_FAMILY,
 } from "../../src/infrastructure/vehicle/bedrock/identifiers";
 import { type Json, jsonFiles } from "../support/packFiles";
 
@@ -76,11 +78,15 @@ const itemTextures = (
     texture_data: Record<string, { textures: string | string[] }>;
   }
 ).texture_data;
-const bpEntityIds = jsonFiles(join(BP, "entities")).map(
-  (f) =>
-    (f["minecraft:entity"] as { description: { identifier: string } })
-      .description.identifier,
+interface BpEntity {
+  description: { identifier: string };
+  components?: { "minecraft:type_family"?: { family?: string[] } };
+}
+
+const bpEntities: BpEntity[] = jsonFiles(join(BP, "entities")).map(
+  (f) => f["minecraft:entity"] as BpEntity,
 );
+const bpEntityIds = bpEntities.map((e) => e.description.identifier);
 const bpItems = jsonFiles(join(BP, "items")).map(
   (f) =>
     f["minecraft:item"] as {
@@ -164,11 +170,33 @@ describe("Resource Pack and Behavior Pack references", () => {
   });
 
   it("defines the identifiers and door animations the script uses", () => {
-    expect(bpEntityIds).toContain(VEHICLE_TYPE);
-    expect(bpItems.map((i) => i.description.identifier)).toEqual(
-      expect.arrayContaining([ITEM_TYPE, HEADLIGHT_SWITCH_TYPE]),
+    expect(bpEntityIds).toEqual(
+      expect.arrayContaining(Object.values(ENTITY_TYPE)),
     );
-    for (const door of DOOR_BY_SEAT)
-      expect(animations, door).toContain(doorAnimation(door));
+    expect(bpItems.map((i) => i.description.identifier)).toEqual(
+      expect.arrayContaining([
+        ...Object.values(ITEM_TYPE),
+        HEADLIGHT_SWITCH_TYPE,
+      ]),
+    );
+    for (const kind of VEHICLE_KINDS)
+      for (const door of profileOf(kind).seats.doors ?? [])
+        expect(animations, `${kind}: ${door}`).toContain(
+          doorAnimation(kind, door),
+        );
+  });
+
+  // The adapter finds vehicles by this family and skips an entity without it
+  // silently, so the vehicle would never be driven.
+  it("every vehicle entity lists the vehicle family", () => {
+    for (const kind of VEHICLE_KINDS) {
+      const entity = bpEntities.find(
+        (e) => e.description.identifier === ENTITY_TYPE[kind],
+      );
+      expect(
+        entity?.components?.["minecraft:type_family"]?.family,
+        kind,
+      ).toContain(VEHICLE_FAMILY);
+    }
   });
 });

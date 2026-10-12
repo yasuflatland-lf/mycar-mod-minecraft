@@ -5,8 +5,10 @@ import { SPEC } from "../../../../src/domain/vehicle/spec";
 import { NAMESPACE } from "../../../../src/infrastructure/shared/identifiers";
 import { BedrockVehicleWorld } from "../../../../src/infrastructure/vehicle/bedrock/bedrockVehicleWorld";
 import {
+  ENTITY_TYPE,
   HEADLIGHTS_PROPERTY,
-  VEHICLE_TYPE,
+  ITEM_TYPE,
+  VEHICLE_FAMILY,
 } from "../../../../src/infrastructure/vehicle/bedrock/identifiers";
 import { TestInputStore } from "../../../../src/infrastructure/vehicle/testInput/testInputStore";
 import { blockGrid } from "../../../support/blockGrid";
@@ -20,14 +22,24 @@ vi.mock("@minecraft/server", () => ({
   ButtonState: {},
   InputButton: {},
   EntityDamageCause: {},
-  ItemStack: class {},
+  ItemStack: class {
+    constructor(
+      public typeId: string,
+      public amount: number,
+    ) {}
+  },
 }));
 
 function fixture() {
-  const dimension = { getBlock: vi.fn(), getEntities: vi.fn() };
+  const dimension = {
+    getBlock: vi.fn(),
+    getEntities: vi.fn(),
+    spawnItem: vi.fn(),
+  };
   const car = {
     id: "car",
-    typeId: VEHICLE_TYPE,
+    typeId: ENTITY_TYPE.suv,
+    families: [VEHICLE_FAMILY],
     isValid: true,
     location: { x: -1.25, y: 64.25, z: 2.75 },
     dimension,
@@ -41,7 +53,16 @@ function fixture() {
     triggerEvent: vi.fn(),
     setProperty: vi.fn(),
   };
-  dimension.getEntities.mockReturnValue([car]);
+  const entities = [car];
+  dimension.getEntities.mockImplementation(
+    (query: { type?: string; families?: string[] } = {}) =>
+      entities.filter(
+        (e) =>
+          (query.type === undefined || e.typeId === query.type) &&
+          (query.families === undefined ||
+            query.families.every((family) => e.families.includes(family))),
+      ),
+  );
   game.getDimension.mockImplementation((id: string) =>
     id === "overworld" ? dimension : { getEntities: () => [] },
   );
@@ -51,6 +72,7 @@ function fixture() {
   const inputs = new TestInputStore();
   return {
     inputs,
+    entities,
     dimension,
     car,
     world: new BedrockVehicleWorld(inputs),
@@ -143,13 +165,32 @@ describe("BedrockVehicleWorld snapshots", () => {
   beforeEach(() => vi.resetAllMocks());
 
   it("snapshots only vehicles, not the other entities in the dimension", () => {
-    const { dimension, car, world } = fixture();
-    dimension.getEntities.mockImplementation((query: { type?: string }) =>
-      [car, cow].filter(
-        (e) => query?.type === undefined || e.typeId === query.type,
-      ),
-    );
+    const { entities, car, world } = fixture();
+    entities.push({
+      ...car,
+      id: "cow",
+      typeId: "minecraft:cow",
+      families: ["cow"],
+    });
     expect(world.loadedVehicles().map((s) => s.id)).toEqual(["car"]);
+  });
+
+  it("skips an unknown entity in the vehicle family in snapshots and fleet IDs", () => {
+    const { entities, car, world } = fixture();
+    entities.push({ ...car, id: "unknown", typeId: "yasu_ride:unknown" });
+    expect(
+      world.loadedVehicles().map((s) => ({ id: s.id, kind: s.kind })),
+    ).toEqual([{ id: car.id, kind: "suv" }]);
+    expect(world.loadedVehicleIds()).toEqual([car.id]);
+  });
+
+  it("drops the item of the broken entity's kind at its location", () => {
+    const { car, dimension, world } = fixture();
+    world.dropVehicleItem(car.id);
+    expect(dimension.spawnItem).toHaveBeenCalledWith(
+      expect.objectContaining({ typeId: ITEM_TYPE.suv, amount: 1 }),
+      car.location,
+    );
   });
 
   it("reports the headlights as the vehicle's headlights property says (ADR 0020)", () => {

@@ -9,6 +9,7 @@ import { nearestSeat, toLocal } from "../domain/vehicle/seats";
 import { SPEC } from "../domain/vehicle/spec";
 import {
   BANK_PROPERTY,
+  ENTITY_TYPE,
   FORM_PROPERTY,
   GEAR_DOWN_PROPERTY,
   HEADLIGHTS_PROPERTY,
@@ -16,7 +17,6 @@ import {
   LIGHT_BLOCK,
   PAINT_VARIANT,
   paintEvent,
-  VEHICLE_TYPE as VEHICLE,
 } from "../infrastructure/vehicle/bedrock/identifiers";
 import { LOG_TAG, linePrefix, runIdFrom, TEST_EVENT } from "./protocol";
 import { hitTick, judgeRam, PUSH_WINDOW, type RamSample } from "./ramJudge";
@@ -78,9 +78,9 @@ function clearInput(car: Entity): void {
 }
 
 function spawnCar(a: Arena, x: number, z: number, yaw: number): Entity {
-  a.dim.runCommand(`summon ${VEHICLE} ${x} ${a.gy} ${z}`);
+  a.dim.runCommand(`summon ${ENTITY_TYPE.suv} ${x} ${a.gy} ${z}`);
   const car = a.dim.getEntities({
-    type: VEHICLE,
+    type: ENTITY_TYPE.suv,
     location: { x, y: a.gy, z },
     maxDistance: 1.5,
   })[0];
@@ -134,7 +134,7 @@ async function setupArena(): Promise<Arena> {
   );
   // The flight tests climb up to about 8 blocks above the floor along z = 4.5.
   dim.runCommand(`fill ${minX} ${gy + 7} 0 60 ${gy + 20} 12 air`);
-  dim.runCommand(`kill @e[type=${VEHICLE}]`);
+  dim.runCommand(`kill @e[type=${ENTITY_TYPE.suv}]`);
   dim.runCommand("kill @e[type=cow]");
   dim.runCommand(`kill @e[type=${SEAT_PROBE}]`);
   // The pool's water replaces the stone under passable_no_hop's carpets and
