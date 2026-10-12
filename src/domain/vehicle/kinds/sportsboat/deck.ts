@@ -22,8 +22,6 @@ export const DOCK = Object.freeze({
 });
 
 const PIXELS_PER_BLOCK = 16;
-// Four blocks enclose every rotated deck part, including its margin (ADR 0063).
-const SCAN_RADIUS = 4;
 const WATER_OFFSETS = [2, 1, 0, -1] as const;
 
 export const DECK = Object.freeze({
@@ -53,6 +51,19 @@ export const DECK = Object.freeze({
   ]),
 });
 
+// A covered cell center lies inside a grown part, so it is no farther from the
+// pose than that part's farthest corner, whatever the yaw. Today that is the
+// cockpit's (1.26, -3.05), about 3.3 blocks; deriving the radius keeps the scan
+// wide enough if a part grows.
+const SCAN_RADIUS = Math.max(
+  ...DECK.parts.map((part) =>
+    Math.hypot(
+      part.halfWidth + DECK.margin,
+      Math.max(Math.abs(part.zMin), Math.abs(part.zMax)) + DECK.margin,
+    ),
+  ),
+);
+
 function covers(part: DeckPart, local: Vec2): boolean {
   return (
     Math.abs(local.x) <= part.halfWidth + DECK.margin &&
@@ -64,7 +75,8 @@ function covers(part: DeckPart, local: Vec2): boolean {
 /** First and last block whose center lies within the scan radius of `center`. */
 function scanRange(center: number): readonly [number, number] {
   return [
-    Math.ceil(center - SCAN_RADIUS - 0.5),
+    // Math.ceil gives -0 between -1 and 0, which would leak into cell keys.
+    Math.ceil(center - SCAN_RADIUS - 0.5) || 0,
     Math.floor(center + SCAN_RADIUS - 0.5),
   ];
 }

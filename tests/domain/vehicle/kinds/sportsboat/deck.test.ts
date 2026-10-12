@@ -22,6 +22,20 @@ const pose = fc.record<HoldPose>({
   yaw: fc.double({ min: -180, max: 180, maxExcluded: true, noNaN: true }),
 });
 
+// Bounds each grown part by its width plus its length, which is never less than
+// its corner distance, so the comparison reaches past any cell the scan skips.
+const WINDOW =
+  Math.ceil(
+    Math.max(
+      ...DECK.parts.map(
+        (part) =>
+          part.halfWidth +
+          Math.max(Math.abs(part.zMin), Math.abs(part.zMax)) +
+          2 * DECK.margin,
+      ),
+    ),
+  ) + 1;
+
 function coveringParts(
   p: HoldPose,
   cell: Pick<FloorCell, "x" | "z">,
@@ -67,11 +81,17 @@ describe("sports boat deck floor (ADR 0063)", () => {
         expect(cells.length).toBeGreaterThan(0);
         for (const cell of cells) {
           expect(coveringParts(p, cell).length).toBeGreaterThan(0);
-          expect(Math.abs(cell.x + 0.5 - p.x)).toBeLessThanOrEqual(4);
-          expect(Math.abs(cell.z + 0.5 - p.z)).toBeLessThanOrEqual(4);
         }
-        for (let x = Math.floor(p.x) - 4; x <= Math.floor(p.x) + 4; x++) {
-          for (let z = Math.floor(p.z) - 4; z <= Math.floor(p.z) + 4; z++) {
+        for (
+          let x = Math.floor(p.x) - WINDOW;
+          x <= Math.floor(p.x) + WINDOW;
+          x++
+        ) {
+          for (
+            let z = Math.floor(p.z) - WINDOW;
+            z <= Math.floor(p.z) + WINDOW;
+            z++
+          ) {
             expect(covered.has(`${x},${z}`)).toBe(
               coveringParts(p, { x, z }).length > 0,
             );

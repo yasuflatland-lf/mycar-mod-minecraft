@@ -393,24 +393,25 @@ describe("BedrockVehicleWorld command interpreter", () => {
   });
 });
 
-it.each(["suv", "sportsboat"] as const)(
-  "reads only %s's declared restored properties, lazily",
-  (kind) => {
+it.each([
+  { kind: "suv", name: "form", value: "hover" },
+  { kind: "sportsboat", name: "docked", value: true },
+] as const)(
+  "reads only $kind's declared restored properties, lazily",
+  ({ kind, name, value }) => {
     vi.resetAllMocks();
     const { world, car } = fixture();
     car.typeId = ENTITY_TYPE[kind];
-    car.getProperty.mockImplementation((name) =>
-      name === `${NAMESPACE}:form` ? "hover" : name === `${NAMESPACE}:docked`,
-    );
+    const stored: Record<string, unknown> = {
+      [`${NAMESPACE}:form`]: "hover",
+      [`${NAMESPACE}:docked`]: true,
+    };
+    car.getProperty.mockImplementation((key) => stored[key] ?? false);
     const snapshot = world.loadedVehicles()[0];
     expect(car.getProperty.mock.calls).toEqual([[HEADLIGHTS_PROPERTY]]);
     car.getProperty.mockClear();
-    expect(snapshot?.restored()).toStrictEqual(
-      kind === "suv" ? { form: "hover" } : { docked: true },
-    );
-    expect(car.getProperty.mock.calls).toEqual(
-      kind === "suv" ? [[`${NAMESPACE}:form`]] : [[`${NAMESPACE}:docked`]],
-    );
+    expect(snapshot?.restored()).toStrictEqual({ [name]: value });
+    expect(car.getProperty.mock.calls).toEqual([[`${NAMESPACE}:${name}`]]);
   },
 );
 
