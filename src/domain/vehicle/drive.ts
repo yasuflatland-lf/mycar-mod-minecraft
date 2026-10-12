@@ -1,5 +1,6 @@
 // How one vehicle kind moves each tick, under the shared core in vehicle.ts (ADR 0050).
 import type { Vec2, Vec3 } from "../shared/vec";
+import { BoatDrive } from "./boatDrive";
 import type { RawInput } from "./driveInput";
 import type { Form } from "./form";
 import type { VehicleKind } from "./kind";
@@ -40,5 +41,7 @@ export function driveFor(kind: VehicleKind, form: Form): Drive {
   switch (kind) {
     case "suv":
       return new SuvDrive(form);
+    case "sportsboat":
+      return new BoatDrive();
   }
 }
