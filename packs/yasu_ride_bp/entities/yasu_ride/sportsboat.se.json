@@ -6,6 +6,11 @@
       "is_spawnable": false,
       "is_summonable": true,
       "properties": {
+        "yasu_ride:docked": {
+          "type": "bool",
+          "default": false,
+          "client_sync": false
+        },
         "yasu_ride:headlights": {
           "type": "bool",
           "default": false,
@@ -26,6 +31,15 @@
       }
     },
     "component_groups": {
+      "yasu_ride:docked": {
+        "minecraft:physics": {
+          "has_collision": false,
+          "has_gravity": false
+        }
+      },
+      "yasu_ride:undocked": {
+        "minecraft:physics": {}
+      },
       "yasu_ride:paint_khaki": {
         "minecraft:variant": {
           "value": 0
@@ -108,6 +122,22 @@
       }
     },
     "events": {
+      "yasu_ride:dock": {
+        "remove": {
+          "component_groups": ["yasu_ride:undocked"]
+        },
+        "add": {
+          "component_groups": ["yasu_ride:docked"]
+        }
+      },
+      "yasu_ride:undock": {
+        "remove": {
+          "component_groups": ["yasu_ride:docked"]
+        },
+        "add": {
+          "component_groups": ["yasu_ride:undocked"]
+        }
+      },
       "yasu_ride:paint_khaki": {
         "add": {
           "component_groups": ["yasu_ride:paint_khaki"]
