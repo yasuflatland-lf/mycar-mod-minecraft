@@ -1,5 +1,6 @@
 // Connects game events to the use cases.
 import {
+  type Block,
   Direction,
   type Entity,
   EntityInitializationCause,
@@ -14,8 +15,12 @@ import type { GiveStarterVehicle } from "../../../application/vehicle/giveStarte
 import type { HitVehicle } from "../../../application/vehicle/hitVehicle";
 import type { LimitVehicles } from "../../../application/vehicle/limitVehicles";
 import type { PaintVehicle } from "../../../application/vehicle/paintVehicle";
-import type { PlaceVehicle } from "../../../application/vehicle/placeVehicle";
+import type {
+  PlaceVehicle,
+  PlaceVehicleCommand,
+} from "../../../application/vehicle/placeVehicle";
 import type { SwitchHeadlights } from "../../../application/vehicle/switchHeadlights";
+import { surfaceCellY } from "../../../domain/vehicle/placement";
 import { NAMESPACE } from "../../shared/identifiers";
 import { parseTestInputMessage } from "../testInput/testInputMessage";
 import type { TestInputStore } from "../testInput/testInputStore";
@@ -26,6 +31,7 @@ import {
   PAINT_BY_DYE,
   TEST_INPUT_EVENT,
 } from "./identifiers";
+import { isWaterAt } from "./water";
 
 export function registerSubscriptions(
   useCases: {
@@ -81,6 +87,27 @@ export function registerSubscriptions(
     { namespaces: [NAMESPACE] },
   );
 
+  // One tap on water can fire both the block interaction and itemUse, in the
+  // same tick, so each player gets one boat request and one placement per tick.
+  // The deferred placement runs a tick later, where it can meet an itemUse.
+  const boatRequested = oncePerPlayerPerTick();
+  const boatPlaced = oncePerPlayerPerTick();
+  const placeBoat = (cmd: PlaceVehicleCommand) => {
+    if (boatPlaced(cmd.playerId)) useCases.place.execute(cmd);
+  };
+  // The interaction ray skips liquids and reports the bed under the water, so
+  // the boat climbs to the top water cell (docs/spike-sportsboat.md).
+  const surfaceLocation = (block: Block) => {
+    const { x, y, z } = block.location;
+    return {
+      x,
+      y: surfaceCellY(y, (cellY) =>
+        isWaterAt(block.dimension, { x, y: cellY, z }),
+      ),
+      z,
+    };
+  };
+
   // The after-event only fires when the interaction did something, and an item
   // with no use behavior does nothing on a block, so a tap never reaches it
   // (BDS 1.26.52, mobile; ADR 0024). Before-events cannot change the world, so the
@@ -88,9 +115,15 @@ export function registerSubscriptions(
   // or toggling the block underneath.
   world.beforeEvents.playerInteractWithBlock.subscribe((ev) => {
     const kind = kindOfItem(ev.itemStack?.typeId);
-    if (!ev.isFirstEvent || kind === undefined || ev.blockFace !== Direction.Up)
+    if (
+      !ev.isFirstEvent ||
+      kind === undefined ||
+      (kind !== "sportsboat" && ev.blockFace !== Direction.Up)
+    )
       return;
     ev.cancel = true;
+    if (kind === "sportsboat" && !boatRequested(ev.player.id)) return;
+    const block = ev.block;
     const cmd = {
       kind,
       playerId: ev.player.id,
@@ -100,7 +133,13 @@ export function registerSubscriptions(
       creative: ev.player.getGameMode() === GameMode.Creative,
       slot: ev.player.selectedSlotIndex,
     };
-    system.run(() => useCases.place.execute(cmd));
+    system.run(() => {
+      if (kind === "sportsboat") {
+        placeBoat({ ...cmd, blockLocation: surfaceLocation(block) });
+      } else {
+        useCases.place.execute(cmd);
+      }
+    });
   });
 
   // initialSpawn is true on every join, not only the first one, so a player
@@ -150,6 +189,25 @@ export function registerSubscriptions(
     });
 
   world.afterEvents.itemUse.subscribe((ev) => {
+    if (kindOfItem(ev.itemStack.typeId) === "sportsboat") {
+      const player = ev.source;
+      const hit = player.getBlockFromViewDirection({
+        includeLiquidBlocks: true,
+        includePassableBlocks: true,
+        maxDistance: 12,
+      });
+      if (hit && boatRequested(player.id))
+        placeBoat({
+          kind: "sportsboat",
+          playerId: player.id,
+          dimensionId: hit.block.dimension.id,
+          blockLocation: surfaceLocation(hit.block),
+          yaw: player.getRotation().y,
+          creative: player.getGameMode() === GameMode.Creative,
+          slot: player.selectedSlotIndex,
+        });
+      return;
+    }
     if (ev.itemStack.typeId !== HEADLIGHT_SWITCH_TYPE) return;
     const car = ridden(ev.source);
     if (car) switchHeadlights(ev.source.id, car.id);
@@ -169,4 +227,19 @@ export function registerSubscriptions(
       system.run(() => switchHeadlights(playerId, vehicleId));
     }
   });
+}
+
+/** Returns true for the first call per player in a game tick. */
+function oncePerPlayerPerTick(): (playerId: string) => boolean {
+  const seen = new Set<string>();
+  let tick = -1;
+  return (playerId) => {
+    if (tick !== system.currentTick) {
+      seen.clear();
+      tick = system.currentTick;
+    }
+    if (seen.has(playerId)) return false;
+    seen.add(playerId);
+    return true;
+  };
 }

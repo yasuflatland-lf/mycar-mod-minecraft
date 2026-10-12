@@ -12,3 +12,14 @@ export function canPlaceAt(isAir: IsAir): boolean {
   }
   return true;
 }
+
+/** The top water cell of the contiguous column above `startY`, or `startY` when the cell above is dry (ADR 0051). */
+export function surfaceCellY(
+  startY: number,
+  isWaterAt: (y: number) => boolean,
+  maxClimb = 16,
+): number {
+  let y = startY;
+  while (y - startY < maxClimb && isWaterAt(y + 1)) y++;
+  return y;
+}
