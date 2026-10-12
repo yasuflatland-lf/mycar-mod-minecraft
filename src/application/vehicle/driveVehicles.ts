@@ -49,6 +49,7 @@ export class DriveVehicles {
           velocityY: snap.velocityY,
           onGround: snap.onGround,
           waterDepth: snap.waterDepth,
+          waterBelow: snap.waterBelow,
           solidAt: (offset) => this.world.solidAt(snap.id, offset),
           targets: () => this.world.targetsNear(snap.id),
         });
