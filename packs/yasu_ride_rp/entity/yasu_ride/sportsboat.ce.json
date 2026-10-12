@@ -1,0 +1,34 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "yasu_ride:sportsboat",
+      "materials": {
+        "default": "entity",
+        "lamp": "entity",
+        "lamp_lit": "entity_emissive",
+        "glass": "entity_alphablend"
+      },
+      "textures": {
+        "default": "textures/entity/yasu_ride/sportsboat",
+        "green": "textures/entity/yasu_ride/sportsboat_green",
+        "red": "textures/entity/yasu_ride/sportsboat_red",
+        "white": "textures/entity/yasu_ride/sportsboat_white",
+        "light_gray": "textures/entity/yasu_ride/sportsboat_light_gray",
+        "gray": "textures/entity/yasu_ride/sportsboat_gray",
+        "black": "textures/entity/yasu_ride/sportsboat_black",
+        "orange": "textures/entity/yasu_ride/sportsboat_orange",
+        "yellow": "textures/entity/yasu_ride/sportsboat_yellow",
+        "lime": "textures/entity/yasu_ride/sportsboat_lime",
+        "cyan": "textures/entity/yasu_ride/sportsboat_cyan",
+        "light_blue": "textures/entity/yasu_ride/sportsboat_light_blue",
+        "blue": "textures/entity/yasu_ride/sportsboat_blue",
+        "purple": "textures/entity/yasu_ride/sportsboat_purple",
+        "magenta": "textures/entity/yasu_ride/sportsboat_magenta",
+        "pink": "textures/entity/yasu_ride/sportsboat_pink"
+      },
+      "geometry": { "default": "geometry.yasu_ride.sportsboat" },
+      "render_controllers": ["controller.render.yasu_ride.sportsboat"]
+    }
+  }
+}

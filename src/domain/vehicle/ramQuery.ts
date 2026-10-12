@@ -1,12 +1,21 @@
+import { PROFILES } from "./profile";
 import { SPEC } from "./spec";
 
+const RAM_HEIGHT_REACH = Math.max(
+  Math.abs(SPEC.ramMinDy),
+  Math.abs(SPEC.ramMaxDy),
+);
+
 /**
- * Radius of the sphere the world is asked for ram targets. It reaches the far
- * corners of the hit box in selectHits, at either height bound, so changing the
- * body or target size in SPEC cannot leave part of the box unqueried (ADR 0006).
+ * Reaches the far corners of every profile's ram hit box at either height
+ * bound, so a longer or wider kind cannot be missed by the world query (ADR 0006).
  */
-export const RAM_QUERY_RADIUS = Math.hypot(
-  SPEC.bodyFront + SPEC.targetHalfWidth,
-  SPEC.bodyHalfWidth + SPEC.targetHalfWidth,
-  Math.max(Math.abs(SPEC.ramMinDy), Math.abs(SPEC.ramMaxDy)),
+export const RAM_QUERY_RADIUS = Math.max(
+  ...Object.values(PROFILES).map(({ ram }) =>
+    Math.hypot(
+      ram.front + SPEC.targetHalfWidth,
+      ram.halfWidth + SPEC.targetHalfWidth,
+      RAM_HEIGHT_REACH,
+    ),
+  ),
 );

@@ -52,6 +52,34 @@ describe("seats (ADR 0019)", () => {
     );
   });
 
+  it("assigns seats using a supplied layout for any facing", () => {
+    const positions = fc.uniqueArray(
+      fc.record({
+        x: fc.integer({ min: -10, max: 10 }),
+        z: fc.integer({ min: -10, max: 10 }),
+      }),
+      { minLength: 1, maxLength: 8, selector: (p) => `${p.x},${p.z}` },
+    );
+    fc.assert(
+      fc.property(positions, yaw, (layout, heading) => {
+        const f = forward(heading);
+        const left = leftOf(f);
+        const riders = layout.map((position, i) => ({
+          id: `r${i}`,
+          offset: {
+            x: left.x * position.x + f.x * position.z,
+            z: left.z * position.x + f.z * position.z,
+          },
+        }));
+        const seats = occupiedSeats(riders, f, layout);
+        for (const [i, position] of layout.entries()) {
+          expect(nearestSeat(position, layout)).toBe(i);
+          expect(seats.get(`r${i}`)).toBe(i);
+        }
+      }),
+    );
+  });
+
   it("breaks an exact tie on the centerline toward the lower seat index, the driver's side", () => {
     fc.assert(
       fc.property(fc.double({ min: -3, max: 3, noNaN: true }), (z) => {
@@ -81,12 +109,25 @@ describe("doorOf", () => {
     );
   });
 
-  it("throws for a seat the vehicle does not have", () => {
+  it("uses a supplied door list and returns undefined when there is no entry", () => {
+    fc.assert(
+      fc.property(
+        fc.array(fc.string(), { maxLength: 8 }),
+        fc.integer({ min: -1, max: 9 }),
+        (doors, i) => {
+          expect(doorOf(i, doors)).toBe(doors[i]);
+          expect(doorOf(i, [])).toBeUndefined();
+        },
+      ),
+    );
+  });
+
+  it("returns undefined for a seat the vehicle does not have", () => {
     fc.assert(
       fc.property(
         fc.oneof(fc.integer({ max: -1 }), fc.integer({ min: 4 })),
         (i) => {
-          expect(() => doorOf(i)).toThrow(RangeError);
+          expect(doorOf(i)).toBeUndefined();
         },
       ),
     );

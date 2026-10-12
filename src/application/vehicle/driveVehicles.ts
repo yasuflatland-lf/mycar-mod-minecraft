@@ -1,5 +1,6 @@
 // Use case: every tick, move all loaded vehicles.
 import { headlightCells } from "../../domain/vehicle/headlights";
+import { profileOf } from "../../domain/vehicle/profile";
 import { SPEC } from "../../domain/vehicle/spec";
 import { Vehicle } from "../../domain/vehicle/vehicle";
 import type { VehicleRepository } from "../../domain/vehicle/vehicleRepository";
@@ -31,7 +32,13 @@ export class DriveVehicles {
           // the entity's heading, the riders already seated (so the current
           // driver is not treated as newly mounted), and the vehicle form
           // stored on the entity (ADR 0021, 0039).
-          vehicle = Vehicle.rebuild(snap.id, snap.yaw, snap.riders, snap.form);
+          vehicle = Vehicle.rebuild(
+            snap.id,
+            snap.yaw,
+            snap.riders,
+            snap.form,
+            snap.kind,
+          );
           this.repo.save(vehicle);
         }
         const out = vehicle.tick({
@@ -42,6 +49,7 @@ export class DriveVehicles {
           velocityY: snap.velocityY,
           onGround: snap.onGround,
           waterDepth: snap.waterDepth,
+          waterBelow: snap.waterBelow,
           solidAt: (offset) => this.world.solidAt(snap.id, offset),
           targets: () => this.world.targetsNear(snap.id),
         });
@@ -58,11 +66,17 @@ export class DriveVehicles {
         this.world.applyMotion(snap.id, out.impulse, out.yaw);
         this.world.shineHeadlights(
           snap.id,
-          snap.headlights ? headlightCells(snap.location, out.yaw) : [],
+          snap.headlights
+            ? headlightCells(
+                snap.location,
+                out.yaw,
+                profileOf(vehicle.kind).beams,
+              )
+            : [],
         );
         for (const hit of out.hits) this.world.damage(hit, out.driverId);
         for (const event of out.events) {
-          if (event.type === "SeatVacated") {
+          if (event.type === "SeatVacated" && event.door !== undefined) {
             this.world.playDoor(snap.id, event.door);
           }
         }

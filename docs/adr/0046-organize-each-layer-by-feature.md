@@ -1,6 +1,6 @@
 # 0046. Organize each layer by feature
 
-- Status: Accepted
+- Status: Extended by 0050
 - Date: 2026-10-11
 
 ## Context
