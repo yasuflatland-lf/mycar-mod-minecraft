@@ -1,16 +1,13 @@
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { defined } from "../support/defined";
-import { type Json, jsonFileEntries } from "../support/packFiles";
+import type { Json } from "../support/packFiles";
+
+const read = (p: string) => JSON.parse(readFileSync(p, "utf8"));
 
 const BP = "packs/yasu_ride_bp";
 const RP = "packs/yasu_ride_rp";
-const entityFile = defined(
-  jsonFileEntries(`${BP}/entities/yasu_ride`).find(
-    ({ path }) => path === "deck_seat.se.json",
-  ),
-  "deck seat entity",
-).json;
+const entityFile = read(`${BP}/entities/yasu_ride/deck_seat.se.json`);
 const entity = entityFile["minecraft:entity"] as {
   description: Json;
   components: Json;
@@ -24,11 +21,9 @@ describe("Boat deck seat (ADR 0063)", () => {
       is_spawnable: false,
       is_summonable: true,
     });
-    const family = entity.components["minecraft:type_family"] as {
-      family: string[];
-    };
-    expect(family.family).toEqual(["yasu_ride_deck_seat", "inanimate"]);
-    expect(family.family).not.toContain("yasu_ride_vehicle");
+    expect(entity.components["minecraft:type_family"]).toEqual({
+      family: ["yasu_ride_deck_seat", "inanimate"],
+    });
   });
 
   it("offers one player seat at the boat's rider height", () => {
@@ -70,12 +65,7 @@ describe("Boat deck seat (ADR 0063)", () => {
   });
 
   it("references an existing texture and an invisible model with no cubes", () => {
-    const clientFile = defined(
-      jsonFileEntries(`${RP}/entity/yasu_ride`).find(
-        ({ path }) => path === "deck_seat.ce.json",
-      ),
-      "deck seat client entity",
-    ).json;
+    const clientFile = read(`${RP}/entity/yasu_ride/deck_seat.ce.json`);
     const client = (
       clientFile["minecraft:client_entity"] as {
         description: {
@@ -99,16 +89,11 @@ describe("Boat deck seat (ADR 0063)", () => {
       default: "geometry.yasu_ride.deck_seat",
     });
 
-    const file = defined(
-      jsonFileEntries(`${RP}/models/entity/yasu_ride`).find(
-        ({ path }) => path === "deck_seat.geo.json",
-      ),
-      "deck seat model",
-    ).json;
+    const file = read(`${RP}/models/entity/yasu_ride/deck_seat.geo.json`);
     expect(file.format_version).toBe("1.12.0");
     const geometries = file["minecraft:geometry"] as {
       description: Json;
-      bones: { name: string; pivot: number[]; cubes?: unknown[] }[];
+      bones: Json[];
     }[];
     expect(geometries).toHaveLength(1);
     const geometry = defined(geometries[0], "deck seat geometry");
@@ -120,7 +105,6 @@ describe("Boat deck seat (ADR 0063)", () => {
       visible_bounds_height: 1,
     });
     expect(geometry.bones).toEqual([{ name: "root", pivot: [0, 0, 0] }]);
-    for (const bone of geometry.bones) expect(bone.cubes ?? []).toEqual([]);
   });
 
   it.each(["en_US", "ja_JP"])("names the entity in %s", (locale) => {
