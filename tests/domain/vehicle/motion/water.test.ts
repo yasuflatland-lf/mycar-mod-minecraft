@@ -1,7 +1,10 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { SPEC } from "../../../src/domain/vehicle/spec";
-import { waterBelowAt, waterDepthAt } from "../../../src/domain/vehicle/water";
+import { SUV_SPEC } from "../../../../src/domain/vehicle/kinds/suv/spec";
+import {
+  waterBelowAt,
+  waterDepthAt,
+} from "../../../../src/domain/vehicle/motion/water";
 
 const feet = fc.double({
   min: -256,
@@ -52,10 +55,13 @@ describe("waterDepthAt", () => {
             feetY,
             (y) => y > cell && y <= cell + cells,
           );
-          const probedCells = Math.min(cells, Math.ceil(SPEC.carHeight) + 1);
+          const probedCells = Math.min(
+            cells,
+            Math.ceil(SUV_SPEC.carHeight) + 1,
+          );
           expect(depth).toBeGreaterThan(0);
           expect(depth).toBeCloseTo(
-            Math.min(cell + 1 + probedCells - feetY, SPEC.carHeight + 1),
+            Math.min(cell + 1 + probedCells - feetY, SUV_SPEC.carHeight + 1),
           );
         },
       ),
@@ -67,12 +73,12 @@ describe("waterDepthAt", () => {
       fc.property(feet, fc.integer({ min: 1, max: 10 }), (feetY, cells) => {
         const bottom = Math.floor(feetY);
         const depth = depthFromCells(feetY, (y) => y < bottom + cells);
-        const probedCells = Math.min(cells, Math.ceil(SPEC.carHeight) + 1);
+        const probedCells = Math.min(cells, Math.ceil(SUV_SPEC.carHeight) + 1);
         expect(depth).toBeCloseTo(
-          Math.min(bottom + probedCells - feetY, SPEC.carHeight + 1),
+          Math.min(bottom + probedCells - feetY, SUV_SPEC.carHeight + 1),
         );
         expect(depth).toBeGreaterThan(0);
-        expect(depth).toBeLessThanOrEqual(SPEC.carHeight + 1);
+        expect(depth).toBeLessThanOrEqual(SUV_SPEC.carHeight + 1);
         const shorter = depthFromCells(feetY, (y) => y < bottom + cells - 1);
         expect(depth).toBeGreaterThanOrEqual(shorter);
       }),
@@ -85,12 +91,12 @@ describe("waterDepthAt", () => {
         const bottom = Math.floor(feetY);
         expect(depthFromCells(feetY, (y) => y !== bottom + gap)).toBeCloseTo(
           gap > 0
-            ? Math.min(bottom + gap - feetY, SPEC.carHeight + 1)
+            ? Math.min(bottom + gap - feetY, SUV_SPEC.carHeight + 1)
             : feetY === bottom
               ? 0
               : Math.min(
-                  bottom + 1 + Math.ceil(SPEC.carHeight) + 1 - feetY,
-                  SPEC.carHeight + 1,
+                  bottom + 1 + Math.ceil(SUV_SPEC.carHeight) + 1 - feetY,
+                  SUV_SPEC.carHeight + 1,
                 ),
         );
       }),
@@ -106,11 +112,11 @@ describe("waterDepthAt", () => {
           return true;
         });
         expect(depth).toBeGreaterThanOrEqual(0);
-        expect(depth).toBeLessThanOrEqual(SPEC.carHeight + 1);
+        expect(depth).toBeLessThanOrEqual(SUV_SPEC.carHeight + 1);
         // Adding zero turns the -0 that Math.floor(-0) probes into +0.
         expect(checked.map((y) => y + 0)).toEqual(
           Array.from(
-            { length: Math.ceil(SPEC.carHeight) + 1 },
+            { length: Math.ceil(SUV_SPEC.carHeight) + 1 },
             (_, i) => Math.floor(feetY) + i,
           ),
         );
@@ -126,7 +132,7 @@ describe("waterDepthAt", () => {
 function depthFromCells(
   feetY: number,
   isWater: (y: number) => boolean,
-  maxHeight: number = SPEC.carHeight,
+  maxHeight: number = SUV_SPEC.carHeight,
 ): number {
   return waterDepthAt(
     { x: 0, y: feetY, z: 0 },
@@ -147,10 +153,10 @@ function referenceDepth(
   // block's cell, so the water starts in the cell above it.
   else if (feetY > bottom) bottom += 1;
   else return 0;
-  const maxCells = Math.ceil(SPEC.carHeight) + 1;
+  const maxCells = Math.ceil(SUV_SPEC.carHeight) + 1;
   while (cells < maxCells && isWater(bottom + cells)) cells++;
   if (cells === 0) return 0;
-  return Math.min(bottom + cells - feetY, SPEC.carHeight + 1);
+  return Math.min(bottom + cells - feetY, SUV_SPEC.carHeight + 1);
 }
 
 it("matches the previous depth algorithm, including feet within 1e-9 of a cell boundary", () => {
@@ -237,7 +243,7 @@ it("reports water below feet less than 0.3 above a water cell, independently of 
         const feetY = y + fraction;
         const waterAt = (o: { y: number }) => Math.floor(feetY + o.y) === y - 1;
         expect(
-          waterDepthAt({ x: 0, y: feetY, z: 0 }, waterAt, SPEC.carHeight),
+          waterDepthAt({ x: 0, y: feetY, z: 0 }, waterAt, SUV_SPEC.carHeight),
         ).toBe(0);
         // Feet 0.3 or more above the water cell are airborne, not afloat.
         expect(waterBelowAt(waterAt)).toBe(fraction < 0.3);

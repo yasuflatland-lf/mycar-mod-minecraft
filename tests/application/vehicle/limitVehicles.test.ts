@@ -1,7 +1,7 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { LimitVehicles } from "../../../src/application/vehicle/limitVehicles";
-import { createVehicle } from "../../../src/domain/vehicle/registry";
+import { createVehicle } from "../../../src/domain/vehicle/kinds/index";
 import { SPEC } from "../../../src/domain/vehicle/spec";
 import { FakeFleetRepository, FakeWorld, InMemoryRepo } from "./fakes";
 

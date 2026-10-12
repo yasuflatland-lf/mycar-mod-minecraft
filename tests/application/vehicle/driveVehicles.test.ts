@@ -4,8 +4,9 @@ import { DriveVehicles } from "../../../src/application/vehicle/driveVehicles";
 import { forward } from "../../../src/domain/shared/vec";
 import type { RawInput } from "../../../src/domain/vehicle/driveInput";
 import { headlightCells } from "../../../src/domain/vehicle/headlights";
-import { SUV_PROFILE } from "../../../src/domain/vehicle/profile";
-import { createVehicle } from "../../../src/domain/vehicle/registry";
+import { createVehicle } from "../../../src/domain/vehicle/kinds/index";
+import { SUV_PROFILE } from "../../../src/domain/vehicle/kinds/suv/profile";
+import { SUV_SPEC } from "../../../src/domain/vehicle/kinds/suv/spec";
 import { SPEC } from "../../../src/domain/vehicle/spec";
 import { FakeWorld, InMemoryRepo, snapshot } from "./fakes";
 
@@ -216,7 +217,7 @@ describe("DriveVehicles", () => {
         // Feed back the velocity the engine would report for the heading and speed.
         const v = repo.get("a");
         const f = forward(v?.yaw ?? 0);
-        const speed = (v?.speed ?? 0) * SPEC.flightDrag;
+        const speed = (v?.speed ?? 0) * SUV_SPEC.flightDrag;
         world.snapshots = [
           snapshot("a", {
             restored: () => ({ form: "hover" }),
@@ -231,7 +232,7 @@ describe("DriveVehicles", () => {
     };
     fly(60);
     const angle = world.properties.get("a")?.bank;
-    expect(angle).toBe(SPEC.maxBank);
+    expect(angle).toBe(SUV_SPEC.maxBank);
     expect(bankCalls().at(-1)).toBe(`bank:a:${angle}`);
     const before = bankCalls().length;
     fly(20);
@@ -426,7 +427,7 @@ describe("DriveVehicles submarine riders (ADR 0040)", () => {
     const uc = new DriveVehicles(world, repo, logger());
     world.snapshots = [
       snapshot("a", {
-        waterDepth: SPEC.carHeight,
+        waterDepth: SUV_SPEC.carHeight,
         riders: [rider("driver"), rider("passenger")],
       }),
     ];
@@ -469,10 +470,13 @@ describe("DriveVehicles submarine riders (ADR 0040)", () => {
     world.failBreathingOn = "bad";
     world.snapshots = [
       snapshot("a", {
-        waterDepth: SPEC.carHeight,
+        waterDepth: SUV_SPEC.carHeight,
         riders: [rider("bad"), rider("good")],
       }),
-      snapshot("b", { waterDepth: SPEC.carHeight, riders: [rider("other")] }),
+      snapshot("b", {
+        waterDepth: SUV_SPEC.carHeight,
+        riders: [rider("other")],
+      }),
     ];
     new DriveVehicles(world, new InMemoryRepo(), log).execute(20);
     expect(breathingCalls(world)).toEqual([
@@ -488,7 +492,7 @@ describe("DriveVehicles submarine riders (ADR 0040)", () => {
     world.snapshots = [
       snapshot("a", {
         restored: () => ({ form: "submarine" }),
-        waterDepth: SPEC.carHeight,
+        waterDepth: SUV_SPEC.carHeight,
         riders: [rider("p")],
       }),
     ];
@@ -508,10 +512,10 @@ describe("DriveVehicles submarine riders (ADR 0040)", () => {
     const world = new FakeWorld();
     const uc = new DriveVehicles(world, new InMemoryRepo(), logger());
     world.snapshots = [
-      snapshot("a", { waterDepth: SPEC.carHeight, riders: [rider("p")] }),
+      snapshot("a", { waterDepth: SUV_SPEC.carHeight, riders: [rider("p")] }),
     ];
     uc.execute(0);
-    world.snapshots = [snapshot("a", { waterDepth: SPEC.carHeight })];
+    world.snapshots = [snapshot("a", { waterDepth: SUV_SPEC.carHeight })];
     uc.execute(20);
     expect(breathingCalls(world)).toEqual([breathing("p")]);
     expect(world.calls).toContain("camera:p:own");

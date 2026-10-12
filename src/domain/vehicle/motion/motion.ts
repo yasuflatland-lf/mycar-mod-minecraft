@@ -6,10 +6,10 @@ import {
   forward,
   normalizeYaw,
   type Vec2,
-} from "../shared/vec";
-import type { DriveInput } from "./driveInput";
-import type { MotionLimits } from "./profile";
-import { SPEC } from "./spec";
+} from "../../shared/vec";
+import type { DriveInput } from "../driveInput";
+import type { MotionLimits } from "../profile";
+import { MOTION } from "./constants";
 
 export interface Medium {
   readonly drag: number;
@@ -22,12 +22,6 @@ export interface Medium {
    */
   readonly wallDrag?: number;
 }
-
-export const AIR: Medium = { drag: SPEC.flightDrag, maxSpeed: SPEC.maxSpeed };
-export const WATER: Medium = {
-  drag: SPEC.waterDrag,
-  maxSpeed: SPEC.maxWaterSpeed,
-};
 
 export interface MotionState {
   speed: number; // Internal forward/reverse speed (blocks/tick; negative means reverse)
@@ -52,7 +46,7 @@ export function alignOnMount(
   state: MotionState,
   driverYaw: number,
 ): MotionState {
-  return Math.abs(state.speed) < SPEC.mountAlignSpeed
+  return Math.abs(state.speed) < MOTION.mountAlignSpeed
     ? { ...state, yaw: driverYaw }
     : state;
 }
@@ -113,7 +107,7 @@ export function steerYaw(
  */
 export function hitWall(v: Vec2, given: Vec2, keptRatio: number): boolean {
   const axisBlocked = (ve: number, ee: number) =>
-    Math.abs(ee) > SPEC.blockedAxisMin && ve / ee < keptRatio;
+    Math.abs(ee) > MOTION.blockedAxisMin && ve / ee < keptRatio;
   return axisBlocked(v.x, given.x) || axisBlocked(v.z, given.z);
 }
 
@@ -146,25 +140,29 @@ export function stepMotion(
   let blocked = false;
   if (st.expected && obs.onGround) {
     const e = st.expected;
-    const limit = (st.friction ?? SPEC.defaultFriction) * SPEC.blockedRatio;
+    const limit = (st.friction ?? MOTION.defaultFriction) * MOTION.blockedRatio;
     blocked = hitWall(v, e, limit);
     if (blocked) {
       // While colliding, freeze the friction estimate.
       st.speed = speedAfterWall(st.speed, vLong, limits);
     } else {
       const eLen2 = e.x * e.x + e.z * e.z;
-      if (eLen2 > SPEC.minExpectedForFriction ** 2) {
-        const r = clamp(dot(v, e) / eLen2, SPEC.frictionMin, SPEC.frictionMax);
+      if (eLen2 > MOTION.minExpectedForFriction ** 2) {
+        const r = clamp(
+          dot(v, e) / eLen2,
+          MOTION.frictionMin,
+          MOTION.frictionMax,
+        );
         st.friction =
           st.friction === undefined
             ? r
-            : st.friction * (1 - SPEC.frictionEma) + r * SPEC.frictionEma;
+            : st.friction * (1 - MOTION.frictionEma) + r * MOTION.frictionEma;
       }
     }
   }
   const friction = obs.onGround
-    ? (st.friction ?? SPEC.defaultFriction)
-    : SPEC.airFriction;
+    ? (st.friction ?? MOTION.defaultFriction)
+    : MOTION.airFriction;
 
   // Steps (ADR 0004, 0035)
   let jumpVelocity = 0;
@@ -173,9 +171,9 @@ export function stepMotion(
       ? probe(f, st.speed)
       : 0;
   if (height > 0) {
-    jumpVelocity = height === 2 ? SPEC.stepVelocity : SPEC.oneStepVelocity;
-    st.speed = Math.max(st.speed, SPEC.stepMinSpeed);
-    st.stepTicks = SPEC.stepTicks;
+    jumpVelocity = height === 2 ? MOTION.stepVelocity : MOTION.oneStepVelocity;
+    st.speed = Math.max(st.speed, MOTION.stepMinSpeed);
+    st.stepTicks = MOTION.stepTicks;
   }
   const stepping = st.stepTicks > 0;
   if (stepping) st.stepTicks--;
@@ -196,7 +194,7 @@ export function stepMotion(
   // friction this tick is the target.
   const given = { x: target.x / friction, z: target.z / friction };
   st.expected = obs.onGround ? given : undefined;
-  const control = obs.onGround || stepping ? 1 : SPEC.airControl;
+  const control = obs.onGround || stepping ? 1 : MOTION.airControl;
   return {
     state: st,
     forward: f,
@@ -236,7 +234,7 @@ export function stepFlightMotion(
     hitWall(
       v,
       prev.airExpected,
-      (medium.wallDrag ?? medium.drag) * SPEC.blockedRatio,
+      (medium.wallDrag ?? medium.drag) * MOTION.blockedRatio,
     );
   if (blocked) speed = speedAfterWall(speed, vLong, limits);
   const keepLat = 1 - limits.grip;

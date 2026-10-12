@@ -1,23 +1,26 @@
 import { expect, it, vi } from "vitest";
-import { SUV_PROFILE } from "../../../src/domain/vehicle/profile";
-import { rebuildVehicle } from "../../../src/domain/vehicle/registry";
+import { rebuildVehicle } from "../../../src/domain/vehicle/kinds/index";
+import { SUV_PROFILE } from "../../../src/domain/vehicle/kinds/suv/profile";
 import { defined } from "../../support/defined";
 import { waterSensors } from "../../support/waterDepth";
 
-vi.mock("../../../src/domain/vehicle/suvDrive", async (importOriginal) => {
-  const original =
-    await importOriginal<
-      typeof import("../../../src/domain/vehicle/suvDrive")
-    >();
-  return {
-    ...original,
-    SuvDrive: class extends original.SuvDrive {
-      onSeatVacated() {
-        return [];
-      }
-    },
-  };
-});
+vi.mock(
+  "../../../src/domain/vehicle/kinds/suv/drive",
+  async (importOriginal) => {
+    const original =
+      await importOriginal<
+        typeof import("../../../src/domain/vehicle/kinds/suv/drive")
+      >();
+    return {
+      ...original,
+      SuvDrive: class extends original.SuvDrive {
+        onSeatVacated() {
+          return [];
+        }
+      },
+    };
+  },
+);
 
 it("emits no seat commands when the drive has no doors", () => {
   const vehicle = rebuildVehicle(

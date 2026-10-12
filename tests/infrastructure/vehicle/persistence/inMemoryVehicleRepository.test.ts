@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createVehicle } from "../../../../src/domain/vehicle/registry";
+import { createVehicle } from "../../../../src/domain/vehicle/kinds/index";
 import { InMemoryVehicleRepository } from "../../../../src/infrastructure/vehicle/persistence/inMemoryVehicleRepository";
 
 describe("InMemoryVehicleRepository", () => {

@@ -40,7 +40,7 @@ export class Vehicle {
   private hitCounter: HitCounter = EMPTY_COUNTER;
   private lastSwitchUseTick = Number.NEGATIVE_INFINITY;
 
-  /** Called only by registry.ts, which picks the drive for the kind. */
+  /** Called only by kinds/index.ts, which picks the drive for the kind. */
   constructor(
     readonly id: string,
     private readonly profile: VehicleProfile,
@@ -51,7 +51,7 @@ export class Vehicle {
    * Seats riders who were already aboard when the aggregate was lost (e.g.
    * after `/reload`), so the first tick does not treat the current driver as
    * newly mounted, which would snap the heading to the driver's view. Called
-   * only by registry.ts. `yaw` is the entity's heading as read, before the
+   * only by kinds/index.ts. `yaw` is the entity's heading as read, before the
    * drive normalizes it.
    */
   seatRiders(riders: readonly RiderView[], yaw: number): void {

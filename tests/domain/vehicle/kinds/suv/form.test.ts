@@ -13,9 +13,10 @@ import {
   stepForm,
   verticalImpulse,
   verticalSpeed,
-} from "../../../src/domain/vehicle/form";
-import { SPEC } from "../../../src/domain/vehicle/spec";
-import { shallowWaterDepth, waterDepth } from "../../support/waterDepth";
+} from "../../../../../src/domain/vehicle/kinds/suv/form";
+import { SUV_SPEC } from "../../../../../src/domain/vehicle/kinds/suv/spec";
+import { SPEC } from "../../../../../src/domain/vehicle/spec";
+import { shallowWaterDepth, waterDepth } from "../../../../support/waterDepth";
 
 type Step = Omit<FormInput, "tick">;
 interface Frame {
@@ -86,7 +87,7 @@ describe("stepForm (ADR 0021)", () => {
           expect(press(t)).toBe(true);
           expect(f.input.controlled).toBe(true);
           let earlier = false;
-          for (let i = Math.max(0, t - SPEC.doubleTapTicks); i < t; i++)
+          for (let i = Math.max(0, t - SUV_SPEC.doubleTapTicks); i < t; i++)
             earlier ||= press(i);
           expect(earlier).toBe(true);
         });
@@ -96,13 +97,18 @@ describe("stepForm (ADR 0021)", () => {
 
   it("toggles on two presses 2 to doubleTapTicks ticks apart, but not on presses further apart", () => {
     fc.assert(
-      fc.property(fc.integer({ min: 2, max: SPEC.doubleTapTicks }), (gap) => {
-        expect(run(taps([0, gap], gap + 1)).at(-1)?.after.form).toBe("takeoff");
-      }),
+      fc.property(
+        fc.integer({ min: 2, max: SUV_SPEC.doubleTapTicks }),
+        (gap) => {
+          expect(run(taps([0, gap], gap + 1)).at(-1)?.after.form).toBe(
+            "takeoff",
+          );
+        },
+      ),
     );
     fc.assert(
       fc.property(
-        fc.integer({ min: SPEC.doubleTapTicks + 1, max: 60 }),
+        fc.integer({ min: SUV_SPEC.doubleTapTicks + 1, max: 60 }),
         (gap) => {
           expect(run(taps([0, gap], gap + 1)).at(-1)?.after.form).toBe("car");
         },
@@ -114,15 +120,15 @@ describe("stepForm (ADR 0021)", () => {
     fc.assert(
       fc.property(
         fc.array(step, {
-          minLength: SPEC.takeoffTicks,
-          maxLength: SPEC.takeoffTicks,
+          minLength: SUV_SPEC.takeoffTicks,
+          maxLength: SUV_SPEC.takeoffTicks,
         }),
         (seq) => {
           const forms = run([...taps([0, 2], 3), ...seq]).map(
             (f) => f.after.form,
           );
           expect(forms.filter((m) => m === "takeoff")).toHaveLength(
-            SPEC.takeoffTicks,
+            SUV_SPEC.takeoffTicks,
           );
           expect(forms.at(-1)).toBe("hover");
         },
@@ -205,13 +211,13 @@ describe("stepForm (ADR 0021)", () => {
   it("example: take off, fly, land, and touch down", () => {
     const forms = run([
       ...taps([0, 2], 3),
-      ...taps([], SPEC.takeoffTicks, { onGround: false }),
+      ...taps([], SUV_SPEC.takeoffTicks, { onGround: false }),
       ...taps([], 10, { onGround: false }),
       ...taps([0, 2], 3, { onGround: false }),
       ...taps([], 1),
     ]).map((f) => f.after.form);
     expect(forms[2]).toBe("takeoff");
-    expect(forms[2 + SPEC.takeoffTicks]).toBe("hover");
+    expect(forms[2 + SUV_SPEC.takeoffTicks]).toBe("hover");
     expect(forms.at(-2)).toBe("landing");
     expect(forms.at(-1)).toBe("car");
   });
@@ -282,7 +288,7 @@ describe("verticalSpeed (ADR 0021, 0032)", () => {
     fc.assert(
       fc.property(fc.double(), (c) => {
         expect(Math.abs(verticalSpeed("hover", c))).toBeLessThanOrEqual(
-          SPEC.maxClimb,
+          SUV_SPEC.maxClimb,
         );
       }),
     );
@@ -291,7 +297,10 @@ describe("verticalSpeed (ADR 0021, 0032)", () => {
   it("follows the climb command while flying", () => {
     fc.assert(
       fc.property(climb, (c) => {
-        expect(verticalSpeed("hover", c)).toBeCloseTo(c * SPEC.maxClimb, 12);
+        expect(verticalSpeed("hover", c)).toBeCloseTo(
+          c * SUV_SPEC.maxClimb,
+          12,
+        );
       }),
     );
   });
@@ -299,8 +308,8 @@ describe("verticalSpeed (ADR 0021, 0032)", () => {
   it("rises at takeoffClimb in takeoff, sinks at landingSink while landing, and is 0 on the ground", () => {
     fc.assert(
       fc.property(climb, (c) => {
-        expect(verticalSpeed("takeoff", c)).toBe(SPEC.takeoffClimb);
-        expect(verticalSpeed("landing", c)).toBe(-SPEC.landingSink);
+        expect(verticalSpeed("takeoff", c)).toBe(SUV_SPEC.takeoffClimb);
+        expect(verticalSpeed("landing", c)).toBe(-SUV_SPEC.landingSink);
         expect(verticalSpeed("car", c)).toBe(0);
       }),
     );
@@ -318,7 +327,7 @@ describe("verticalImpulse", () => {
     fc.assert(
       fc.property(v, v, (target, vy) => {
         expect(
-          (vy + verticalImpulse(target, vy)) * SPEC.flightVerticalDrag,
+          (vy + verticalImpulse(target, vy)) * SUV_SPEC.flightVerticalDrag,
         ).toBeCloseTo(target, 9);
       }),
     );
@@ -343,12 +352,12 @@ describe("submarine form transitions", () => {
   it("detects submerged and dry depths, including non-finite values", () => {
     fc.assert(
       fc.property(fc.oneof(waterDepth, fc.double()), (depth) => {
-        expect(isSubmerged(depth)).toBe(depth >= SPEC.carHeight);
+        expect(isSubmerged(depth)).toBe(depth >= SUV_SPEC.carHeight);
         expect(isDry(depth)).toBe(!(depth > 0));
       }),
     );
     expect(isDry(Number.NaN)).toBe(true);
-    expect(isSubmerged(SPEC.carHeight)).toBe(true);
+    expect(isSubmerged(SUV_SPEC.carHeight)).toBe(true);
     expect(isSubmerged(1)).toBe(false);
   });
 
@@ -359,7 +368,7 @@ describe("submarine form transitions", () => {
         fc.nat(),
         fc.boolean(),
         fc.option(fc.nat(), { nil: undefined }),
-        fc.double({ min: SPEC.carHeight, noNaN: true }),
+        fc.double({ min: SUV_SPEC.carHeight, noNaN: true }),
         (i, formTicks, jumpHeld, lastTap, waterDepth) => {
           for (const form of FORMS.filter((f) => f !== "submarine")) {
             expect(
@@ -390,7 +399,8 @@ describe("submarine form transitions", () => {
         const dry = !(i.waterDepth > 0);
         const breach = dry && i.controlled && i.jump;
         expect(stepForm(s, i).form === "car").toBe(
-          !breach && (dry || (i.onGround && !(i.waterDepth >= SPEC.carHeight))),
+          !breach &&
+            (dry || (i.onGround && !(i.waterDepth >= SUV_SPEC.carHeight))),
         );
       }),
     );
@@ -403,7 +413,7 @@ describe("submarine form transitions", () => {
       onGround: fc.constant(false),
       waterDepth: fc.double({
         min: Number.MIN_VALUE,
-        max: SPEC.carHeight - Number.EPSILON,
+        max: SUV_SPEC.carHeight - Number.EPSILON,
         noNaN: true,
       }),
     });

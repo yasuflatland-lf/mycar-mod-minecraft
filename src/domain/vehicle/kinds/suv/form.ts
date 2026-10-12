@@ -1,8 +1,8 @@
 // Forms of the transforming vehicle (ADR 0039): double-tap Jump to take off
 // and land (ADR 0021), hold Jump to climb and pull the stick back to sink (ADR 0032).
-import { clamp } from "../shared/vec";
-import { type RawInput, toDriveInput } from "./driveInput";
-import { SPEC } from "./spec";
+import { clamp } from "../../../shared/vec";
+import { type RawInput, toDriveInput } from "../../driveInput";
+import { SUV_SPEC } from "./spec";
 
 export const FORMS = [
   "car",
@@ -37,7 +37,7 @@ export interface FormInput {
 }
 
 export function isSubmerged(waterDepth: number): boolean {
-  return waterDepth >= SPEC.carHeight;
+  return waterDepth >= SUV_SPEC.carHeight;
 }
 
 export function isDry(waterDepth: number): boolean {
@@ -62,7 +62,7 @@ function nextForm(prev: FormState, input: FormInput, toggle: boolean): Form {
     case "car":
       return toggle && input.controlled ? "takeoff" : "car";
     case "takeoff":
-      return prev.formTicks >= SPEC.takeoffTicks ? "hover" : "takeoff";
+      return prev.formTicks >= SUV_SPEC.takeoffTicks ? "hover" : "takeoff";
     case "hover":
       // Sinking onto the ground lands at once, as touchdown ends landing (ADR 0034).
       if (input.onGround) return "car";
@@ -83,7 +83,7 @@ export function stepForm(prev: FormState, input: FormInput): FormState {
     tap &&
     accepts &&
     prev.lastTap !== undefined &&
-    input.tick - prev.lastTap <= SPEC.doubleTapTicks;
+    input.tick - prev.lastTap <= SUV_SPEC.doubleTapTicks;
   let lastTap = prev.lastTap;
   if (tap) lastTap = accepts && !toggle ? input.tick : undefined;
   const form = nextForm(prev, input, toggle);
@@ -120,11 +120,13 @@ export function verticalSpeed(form: Form, climb: number): number {
     case "submarine":
       return 0;
     case "takeoff":
-      return SPEC.takeoffClimb;
+      return SUV_SPEC.takeoffClimb;
     case "landing":
-      return -SPEC.landingSink;
+      return -SUV_SPEC.landingSink;
     case "hover":
-      return Number.isFinite(climb) ? clamp(climb, -1, 1) * SPEC.maxClimb : 0;
+      return Number.isFinite(climb)
+        ? clamp(climb, -1, 1) * SUV_SPEC.maxClimb
+        : 0;
   }
 }
 
@@ -132,7 +134,7 @@ export function verticalSpeed(form: Form, climb: number): number {
 export function verticalImpulse(
   targetVy: number,
   vy: number,
-  drag: number = SPEC.flightVerticalDrag,
+  drag: number = SUV_SPEC.flightVerticalDrag,
 ): number {
   return targetVy / drag - vy;
 }

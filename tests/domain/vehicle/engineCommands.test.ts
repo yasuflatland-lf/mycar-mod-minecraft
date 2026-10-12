@@ -9,7 +9,7 @@ import { VEHICLE_KINDS } from "../../../src/domain/vehicle/kind";
 import {
   createVehicle,
   entityContractOf,
-} from "../../../src/domain/vehicle/registry";
+} from "../../../src/domain/vehicle/kinds/index";
 import { waterSensors } from "../../support/waterDepth";
 
 const number = (min: number, max: number) =>

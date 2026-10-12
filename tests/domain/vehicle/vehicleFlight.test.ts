@@ -8,13 +8,14 @@ import {
   type Vec3,
 } from "../../../src/domain/shared/vec";
 import type { RawInput } from "../../../src/domain/vehicle/driveInput";
-import type { Form } from "../../../src/domain/vehicle/form";
 import {
   createVehicle,
   rebuildVehicle,
-} from "../../../src/domain/vehicle/registry";
+} from "../../../src/domain/vehicle/kinds/index";
+import { SuvDrive } from "../../../src/domain/vehicle/kinds/suv/drive";
+import type { Form } from "../../../src/domain/vehicle/kinds/suv/form";
+import { SUV_SPEC } from "../../../src/domain/vehicle/kinds/suv/spec";
 import { SPEC } from "../../../src/domain/vehicle/spec";
-import { SuvDrive } from "../../../src/domain/vehicle/suvDrive";
 import type { Vehicle } from "../../../src/domain/vehicle/vehicle";
 import { propertyValue } from "../../support/engineCommands";
 import { AIR_DRAG, GRAVITY, VERTICAL_DRAG } from "../../support/engineModel";
@@ -56,7 +57,7 @@ class FlightSim {
   }
 
   private horizontalDrag(): number {
-    if (!this.gravity) return SPEC.flightDrag;
+    if (!this.gravity) return SUV_SPEC.flightDrag;
     return this.onGround ? GROUND_FRICTION : AIR_DRAG;
   }
 
@@ -118,7 +119,7 @@ class FlightSim {
 function flyingSim(): FlightSim {
   const sim = new FlightSim();
   sim.doubleTap();
-  sim.run(IDLE, SPEC.takeoffTicks);
+  sim.run(IDLE, SUV_SPEC.takeoffTicks);
   expect(sim.form).toBe("hover");
   return sim;
 }
@@ -142,7 +143,7 @@ describe("Vehicle in flight (ADR 0021)", () => {
           expect(held.form).toBe("takeoff");
           expect(held.vehicle.speed).toBeGreaterThan(0);
           let ticks = 0;
-          for (; ticks <= SPEC.takeoffTicks; ticks++) {
+          for (; ticks <= SUV_SPEC.takeoffTicks; ticks++) {
             held.step(input);
             idle.step(IDLE);
             if (held.form !== "takeoff") break;
@@ -162,11 +163,11 @@ describe("Vehicle in flight (ADR 0021)", () => {
         // The press comes within doubleTapTicks of every driverless tick, so
         // a driverless tick read as a Jump press would always pair with it.
         fc
-          .integer({ min: 1, max: SPEC.doubleTapTicks - 1 })
+          .integer({ min: 1, max: SUV_SPEC.doubleTapTicks - 1 })
           .chain((driverless) =>
             fc.tuple(
               fc.constant(driverless),
-              fc.integer({ min: 1, max: SPEC.doubleTapTicks - driverless }),
+              fc.integer({ min: 1, max: SUV_SPEC.doubleTapTicks - driverless }),
             ),
           ),
         ([driverless, idle]) => {
@@ -174,7 +175,7 @@ describe("Vehicle in flight (ADR 0021)", () => {
           sim.run(undefined, driverless);
           sim.run(IDLE, idle);
           sim.step({ ...IDLE, jump: true });
-          sim.run(IDLE, SPEC.takeoffTicks);
+          sim.run(IDLE, SUV_SPEC.takeoffTicks);
           expect(sim.changes).toEqual([]);
           expect(sim.form).toBe("car");
         },
@@ -185,7 +186,7 @@ describe("Vehicle in flight (ADR 0021)", () => {
   it("takes off on a double tap and rises about 1.5 blocks before flying", () => {
     const sim = new FlightSim();
     sim.doubleTap();
-    sim.run(IDLE, SPEC.takeoffTicks + 5);
+    sim.run(IDLE, SUV_SPEC.takeoffTicks + 5);
     expect(sim.changes).toEqual(["takeoff", "hover"]);
     expect(sim.y).toBeGreaterThan(1.2);
     expect(sim.y).toBeLessThan(1.8);
@@ -202,7 +203,7 @@ describe("Vehicle in flight (ADR 0021)", () => {
     const sim = new FlightSim();
     sim.doubleTap();
     sim.doubleTap();
-    sim.run(IDLE, SPEC.takeoffTicks);
+    sim.run(IDLE, SUV_SPEC.takeoffTicks);
     expect(sim.changes).toEqual(["takeoff", "hover"]);
   });
 
@@ -212,7 +213,7 @@ describe("Vehicle in flight (ADR 0021)", () => {
     sim.run(FORWARD, 100);
     expect(Math.abs(sim.y - y0)).toBeLessThan(1e-6);
     expect(Math.hypot(sim.vel.x, sim.vel.z)).toBeGreaterThan(
-      SPEC.maxSpeed * 0.95,
+      SUV_SPEC.maxSpeed * 0.95,
     );
   });
 
@@ -227,8 +228,8 @@ describe("Vehicle in flight (ADR 0021)", () => {
     sim.run({ moveX: 0, moveY: -1, jump: false }, 10);
     expect(sim.y).toBeLessThan(y1 - 2);
     // The car coasts under drag alone; read as a brake, the pulled-back stick
-    // would shed 10 * SPEC.brake instead.
-    expect(v1 - sim.vehicle.speed).toBeCloseTo(10 * SPEC.drag, 6);
+    // would shed 10 * SUV_SPEC.brake instead.
+    expect(v1 - sim.vehicle.speed).toBeCloseTo(10 * SUV_SPEC.drag, 6);
   });
 
   it("climbs on held Jump while hovering in place (ADR 0032)", () => {
@@ -259,8 +260,8 @@ describe("Vehicle in flight (ADR 0021)", () => {
     expect(sim.form).toBe("car");
     expect(sim.gearYs.map(([down]) => down)).toEqual([true, false, true]);
     const [, y] = sim.gearYs.at(-1) ?? [true, 0];
-    expect(y).toBeGreaterThan(SPEC.gearDownHeight - 1);
-    expect(y).toBeLessThanOrEqual(SPEC.gearDownHeight);
+    expect(y).toBeGreaterThan(SUV_SPEC.gearDownHeight - 1);
+    expect(y).toBeLessThanOrEqual(SUV_SPEC.gearDownHeight);
   });
 
   it("returns to the ground when it sinks onto it in flight (ADR 0034)", () => {
@@ -398,7 +399,7 @@ describe("Vehicle landing gear (ADR 0033)", () => {
   });
 
   it("lowers the wheels while landing over ground within gearDownHeight under the center or any corner, and keeps them up over deeper ground, in any heading", () => {
-    const d = SPEC.gearProbeOffset;
+    const d = SUV_SPEC.gearProbeOffset;
     const spots = [
       [0, 0],
       [d, d],
@@ -410,7 +411,7 @@ describe("Vehicle landing gear (ADR 0033)", () => {
       fc.property(
         fc.integer({ min: -180, max: 179 }),
         fc.constantFrom(...spots),
-        fc.integer({ min: 1, max: SPEC.gearDownHeight + 1 }),
+        fc.integer({ min: 1, max: SUV_SPEC.gearDownHeight + 1 }),
         (yaw, [ahead, side], depth) => {
           const f = forward(yaw);
           const r = rightOf(f);
@@ -423,7 +424,7 @@ describe("Vehicle landing gear (ADR 0033)", () => {
               o.y <= -depth &&
               o.y > -depth - 1,
           );
-          expect(gearDown).toBe(depth <= SPEC.gearDownHeight);
+          expect(gearDown).toBe(depth <= SUV_SPEC.gearDownHeight);
         },
       ),
     );

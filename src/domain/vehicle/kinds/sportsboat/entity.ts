@@ -1,4 +1,4 @@
-import type { EntityContract } from "./entityContract";
+import type { EntityContract } from "../../entityContract";
 
 export const SPORTSBOAT_ENTITY = {
   properties: {},
