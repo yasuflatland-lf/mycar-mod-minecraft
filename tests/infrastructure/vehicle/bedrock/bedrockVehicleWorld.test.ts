@@ -151,7 +151,6 @@ describe("BedrockVehicleWorld snapshots", () => {
   const cow = {
     id: "cow",
     typeId: "minecraft:cow",
-    families: ["cow"],
     location: { x: 0, y: 64, z: 0 },
     getVelocity: () => ({ x: 0, y: 0, z: 0 }),
     getRotation: () => ({ y: 0 }),
@@ -169,9 +168,9 @@ describe("BedrockVehicleWorld snapshots", () => {
     const { entities, car, world } = fixture();
     entities.push({
       ...car,
-      id: cow.id,
-      typeId: cow.typeId,
-      families: cow.families,
+      id: "cow",
+      typeId: "minecraft:cow",
+      families: ["cow"],
     });
     expect(world.loadedVehicles().map((s) => s.id)).toEqual(["car"]);
   });
