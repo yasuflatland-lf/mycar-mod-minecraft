@@ -138,8 +138,10 @@ ROOF_Y = 29  # underside of the roof
 # The roof starts where the A-pillars meet it.
 WINDSHIELD_LEAN = 25  # degrees back from vertical
 WINDSHIELD_PIVOT = (0, 17, 12.5)
-_lean = math.tan(math.radians(WINDSHIELD_LEAN))
-ROOF_FRONT = 12.5 - (ROOF_Y + 1 - 17) * _lean + 0.6
+_LEAN_SIN = math.sin(math.radians(WINDSHIELD_LEAN))
+_LEAN_COS = math.cos(math.radians(WINDSHIELD_LEAN))
+_LEAN_TAN = math.tan(math.radians(WINDSHIELD_LEAN))
+ROOF_FRONT = 12.5 - (ROOF_Y + 1 - 17) * _LEAN_TAN + 0.6
 
 
 def windshield_part(x0, y0, z0, x1, y1, z1, color):
@@ -155,7 +157,7 @@ body = [
     box(-12, 13, 10, 12, 17, 13, "trim"),
     # Windshield lower frame and A-pillars, leaning back
     windshield_part(-12, 17, 12.5, 12, 18, 13, "trim"),
-    *both_sides([windshield_part(12, 17, 12, 13, 17 + (ROOF_Y + 0.8 - 17) / math.cos(math.radians(WINDSHIELD_LEAN)), 13, "body")]),
+    *both_sides([windshield_part(12, 17, 12, 13, 17 + (ROOF_Y + 0.8 - 17) / _LEAN_COS, 13, "body")]),
     # Rearview mirror (center of the windshield's top edge, behind the leaning glass)
     box(-0.5, 26.5, ROOF_FRONT - 0.8, 0.5, ROOF_Y, ROOF_FRONT - 0.3, "trim"),
     box(-2.5, 25, ROOF_FRONT - 1.3, 2.5, 26.5, ROOF_FRONT - 0.8, "rim"),
@@ -210,8 +212,6 @@ body += both_sides([
 # Distance of the wheel hubs from the center line. The tires stand 1.5 px out from the body's side
 # (x 13), under over-fenders.
 HUB_X = 15.5
-
-
 FRONT_AXLE_Z, REAR_AXLE_Z = 17, -16
 # Wheel arch: the inside of each flare. Its flat top's underside, the top's half length, and the inner
 # lower end of each slope, ahead of and behind the axle. The inner edge stays at least 6.3 px from the
@@ -243,12 +243,10 @@ def fender_flare(z_center, front_leg_bottom, rear_leg_bottom):
         z1 = z0 + side * thickness
         cubes.append(turned(box(13, ARCH_FOOT_Y, min(z0, z1), x1, ARCH_FOOT_Y + length, max(z0, z1), "trim"),
                             (13, ARCH_FOOT_Y, z0), (side * slope, 0, 0)))
-    cubes += [
-        box(13, front_leg_bottom, z_center + ARCH_FOOT_Z, x1, ARCH_FOOT_Y + 0.5, z_center + ARCH_FOOT_Z + 1.9,
-            "trim"),
-        box(13, rear_leg_bottom, z_center - ARCH_FOOT_Z - 1.9, x1, ARCH_FOOT_Y + 0.5, z_center - ARCH_FOOT_Z,
-            "trim"),
-    ]
+    for side, leg_bottom in ((1, front_leg_bottom), (-1, rear_leg_bottom)):
+        z0 = z_center + side * ARCH_FOOT_Z
+        z1 = z0 + side * 1.9
+        cubes.append(box(13, leg_bottom, min(z0, z1), x1, ARCH_FOOT_Y + 0.5, max(z0, z1), "trim"))
     return cubes
 
 
@@ -295,8 +293,9 @@ def chamfered_band(y0, y1, z_back, z_front, half_width, chamfer, angle=30):
     trapezoid from above: a straight middle, and at each corner a block turned back around the inner end
     of the cut (a positive y rotation turns +x toward -z) over a side block that fills behind it."""
     cx = half_width - chamfer
-    tan = math.tan(math.radians(angle))
-    corner = turned(box(cx, y0, z_back, cx + chamfer / math.cos(math.radians(angle)), y1, z_front, "trim"),
+    radians = math.radians(angle)
+    tan = math.tan(radians)
+    corner = turned(box(cx, y0, z_back, cx + chamfer / math.cos(radians), y1, z_front, "trim"),
                     (cx, y0, z_front), (0, angle, 0))
     side = box(cx, y0, z_back, half_width, y1, z_front - chamfer * tan, "trim")
     return [box(-cx, y0, z_back, cx, y1, z_front, "trim"), *both_sides([corner, side])]
@@ -310,16 +309,19 @@ body += chamfered_band(7.3, 8, 25, 28.9, 15.4, 2.9)
 
 # Rear bumper: the same kind of band facing backward, with red reflectors at its ends and red tow
 # hooks under it
-rear_bumper = chamfered_band(3, 7, 24, -REAR + 1.5, 15.5, 2.5)
-for cube in rear_bumper:
+def facing_back(cube):
+    """The same cube mirrored front to back (z -> -z). The bumper's corners turn only around y."""
     (x, y, z), (w, h, d) = cube["origin"], cube["size"]
-    cube["origin"] = [x, y, -(z + d)]
+    copy = {**cube, "origin": [x, y, -(z + d)]}
     if "pivot" in cube:
         px, py, pz = cube["pivot"]
-        cube["pivot"] = [px, py, -pz]
         rx, ry, rz = cube["rotation"]
-        cube["rotation"] = [rx, -ry, rz]
-body += rear_bumper
+        copy["pivot"] = [px, py, -pz]
+        copy["rotation"] = [rx, -ry, rz]
+    return copy
+
+
+body += [facing_back(c) for c in chamfered_band(3, 7, 24, -REAR + 1.5, 15.5, 2.5)]
 body += both_sides([
     box(10.5, 5, REAR - 1.6, 13, 6.2, REAR - 1.5, "tail"),  # reflector
     box(7.4, 1.8, REAR - 1.2, 8.4, 3, REAR + 1, "tail"),  # tow hook
@@ -494,8 +496,8 @@ body += [
 
 # Gauges (behind the steering wheel, on the driver's side of the dashboard), like an old utility
 # 4x4: a black instrument panel with a large speedometer in the middle and two small gauges on each
-# side. Every dial has a black face, white ticks and a white
-# needle, in a chrome bezel. No logo or lettering (ADR 0009).
+# side. Every dial has a black face, white ticks and a white needle, in a chrome bezel. No logo or
+# lettering (ADR 0009).
 def dial(cx, cy, radius, ticks, needle_angle):
     center = (cx, cy, 10)
     cubes = round_face(center, radius + 0.25, 10, 10.5, "rim")  # bezel
@@ -589,7 +591,7 @@ DOORS = {
 }
 # The front door's window frame leans with the windshield, so its window is a trapezoid. The frame's
 # front post sits just behind the A-pillar, turned around the same pivot.
-FRONT_POST_LENGTH = (ROOF_Y - 17) / math.cos(math.radians(WINDSHIELD_LEAN))
+FRONT_POST_LENGTH = (ROOF_Y - 17) / _LEAN_COS
 
 
 def window_frame_piece(y0, z0, y1, z1):
@@ -601,30 +603,33 @@ def door(name):
     """A door with its window frame and a black door card inside, hinged at its front edge. The front
     doors carry the side mirrors, so the mirrors swing open with them."""
     side, z_front, z_back = DOORS[name]
-    front_post = (
-        [windshield_part(x0, 17, 11, x0 + 0.5, 17 + FRONT_POST_LENGTH, 12, color)
-         for x0, color in ((12.5, "body"), (12, "trim"))]
-        if z_front > 0
-        else window_frame_piece(17, z_front - 1, ROOF_Y, z_front)
-    )
-    top_front = ROOF_FRONT - 0.4 if z_front > 0 else z_front
-    cubes = [
-        # The rear doors' lower rear corner follows the rear arch (see arch_cut)
-        *(arch_cut(12, 13, 7, 17, z_back, z_front, REAR_AXLE_Z, "body") if z_front < 0
-          else [box(12, 7, z_back, 13, 17, z_front, "body")]),
-        *(arch_cut(11.8, 12, 8, 16, z_back + 0.6, z_front - 0.6, REAR_AXLE_Z, "trim") if z_front < 0
-          else [box(11.8, 8, z_back + 0.6, 12, 16, z_front - 0.6, "trim")]),  # door card
-        *front_post,
-        box(13, 14.4, z_back + 1.5, 13.35, 15.1, z_back + 4.5, "grille"),  # door handle, near the rear edge
-        *window_frame_piece(17, z_back, ROOF_Y, z_back + 1),  # rear post
-        *window_frame_piece(ROOF_Y - 1, z_back, ROOF_Y, top_front),  # top rail
-    ]
     if z_front > 0:
-        cubes += [
+        panel = [box(12, 7, z_back, 13, 17, z_front, "body")]
+        card = [box(11.8, 8, z_back + 0.6, 12, 16, z_front - 0.6, "trim")]
+        front_post = [windshield_part(x0, 17, 11, x0 + 0.5, 17 + FRONT_POST_LENGTH, 12, color)
+                      for x0, color in ((12.5, "body"), (12, "trim"))]
+        top_front = ROOF_FRONT - 0.4
+        side_mirror = [
             box(13, 17, 10, 14, 18, 11, "body"),
             box(14, 16.5, 9.5, 16.5, 19.5, 11, "body"),
             box(14.2, 17, 9.3, 16.3, 19, 9.5, "rim"),
         ]
+    else:
+        # The rear doors' lower rear corner follows the rear arch
+        panel = arch_cut(12, 13, 7, 17, z_back, z_front, REAR_AXLE_Z, "body")
+        card = arch_cut(11.8, 12, 8, 16, z_back + 0.6, z_front - 0.6, REAR_AXLE_Z, "trim")
+        front_post = window_frame_piece(17, z_front - 1, ROOF_Y, z_front)
+        top_front = z_front
+        side_mirror = []
+    cubes = [
+        *panel,
+        *card,
+        *front_post,
+        box(13, 14.4, z_back + 1.5, 13.35, 15.1, z_back + 4.5, "grille"),  # door handle, near the rear edge
+        *window_frame_piece(17, z_back, ROOF_Y, z_back + 1),  # rear post
+        *window_frame_piece(ROOF_Y - 1, z_back, ROOF_Y, top_front),  # top rail
+        *side_mirror,
+    ]
     return {
         "name": name,
         "parent": "body",
@@ -658,13 +663,15 @@ def round_tire(axis, center, radius, a0, a1, segments=16):
     return cubes
 
 
+def hub_span(x_out, inner, outer):
+    """The x span from HUB_X + inner to HUB_X + outer on the side x_out (+1 = right, -1 = left), low end first."""
+    return sorted((x_out * (HUB_X + inner), x_out * (HUB_X + outer)))
 
 
 def wheel(name, x_out, z_center):
-    # x_out: sign pointing outward (+1 = right, -1 = left)
-    x0, x1 = sorted((x_out * (HUB_X - 2), x_out * (HUB_X + 2)))
-    rim_x0, rim_x1 = sorted((x_out * (HUB_X + 1.9), x_out * (HUB_X + 2.2)))
-    hub_x0, hub_x1 = sorted((x_out * (HUB_X + 2.2), x_out * (HUB_X + 2.5)))
+    x0, x1 = hub_span(x_out, -2, 2)
+    rim_x0, rim_x1 = hub_span(x_out, 1.9, 2.2)
+    hub_x0, hub_x1 = hub_span(x_out, 2.2, 2.5)
     center = (HUB_X * x_out, 6, z_center)
     return {
         "name": name,
@@ -685,9 +692,8 @@ def wheel(name, x_out, z_center):
 # the overlap does not fight the post for the same plane.
 def front_post_back(y):
     """z of the rear face of the front door's leaning post at height y, which starts 1.5 px behind the pivot."""
-    lean = math.radians(WINDSHIELD_LEAN)
-    y0, z0 = WINDSHIELD_PIVOT[1] - 1.5 * math.sin(lean), WINDSHIELD_PIVOT[2] - 1.5 * math.cos(lean)
-    return z0 - (y - y0) * _lean
+    y0, z0 = WINDSHIELD_PIVOT[1] - 1.5 * _LEAN_SIN, WINDSHIELD_PIVOT[2] - 1.5 * _LEAN_COS
+    return z0 - (y - y0) * _LEAN_TAN
 
 
 WINDOWS_SEALED = [
@@ -710,7 +716,7 @@ def prop(name, x_out, z_center):
     plane and inside the tire's inner radius, so the tread ring frames the prop."""
     center = (HUB_X * x_out, 6, z_center)
     _, cy, cz = center
-    x0, x1 = sorted((x_out * (HUB_X + 2.5), x_out * (HUB_X + 3.1)))
+    x0, x1 = hub_span(x_out, 2.5, 3.1)
     blades = []
     for base in (0, 90, 180, 270):
         for r0, r1, half, sweep in PROP_BLADE:

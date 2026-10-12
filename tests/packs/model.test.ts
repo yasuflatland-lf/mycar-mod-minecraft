@@ -189,10 +189,12 @@ describe("SUV model (ADR 0009)", () => {
     const bodyCubes = allBodyCubes.filter((c) => !c.rotation);
     const doorCubes = DOOR_BY_SEAT.flatMap((d) => bones.get(d)?.cubes ?? []);
     const frame = [...bodyCubes, ...doorCubes.filter((c) => !c.rotation)];
+    const EPS = 1e-6;
     const span = (c: Cube, a: number): [number, number] => [
       c.origin[a] ?? 0,
       (c.origin[a] ?? 0) + (c.size[a] ?? 0),
     ];
+    const thinAxis = (c: Cube) => c.size.indexOf(Math.min(...c.size));
     // The x rotation of tools/render_preview.py, which matches the game.
     const turnX = (p: Vec3, pivot: Vec3, degrees: number): Vec3 => {
       const r = (degrees * Math.PI) / 180;
@@ -207,7 +209,7 @@ describe("SUV model (ADR 0009)", () => {
       const local = turnX(p, c.pivot ?? [0, 0, 0], -(c.rotation?.[0] ?? 0));
       return local.every((v, a) => {
         const [c0, c1] = span(c, a);
-        return c0 - 1e-6 <= v && v <= c1 + 1e-6;
+        return c0 - EPS <= v && v <= c1 + EPS;
       });
     };
 
@@ -264,7 +266,7 @@ describe("SUV model (ADR 0009)", () => {
     // piece it touches, so it reads as glass set in the window frame.
     it("sits in the window frame, at its outer face", () => {
       for (const p of sidePlates) {
-        const thin = p.size.indexOf(Math.min(...p.size));
+        const thin = thinAxis(p);
         const [p0, p1] = span(p, thin);
         const outer = Math.max(Math.abs(p0), Math.abs(p1));
         const flush = frame.some((c) => {
@@ -275,7 +277,7 @@ describe("SUV model (ADR 0009)", () => {
           });
           const [c0, c1] = span(c, thin);
           const gap = Math.max(Math.abs(c0), Math.abs(c1)) - outer;
-          return touches && gap > -1e-6 && gap <= 0.05 + 1e-6;
+          return touches && gap > -EPS && gap <= 0.05 + EPS;
         });
         expect(flush, JSON.stringify(p)).toBe(true);
       }
@@ -289,9 +291,9 @@ describe("SUV model (ADR 0009)", () => {
     // does not cover lies inside the post.
     it("fills its opening from frame to frame", () => {
       const posts = doorCubes.filter((c) => c.rotation);
-      const near = (a: number, b: number) => Math.abs(a - b) < 1e-6;
+      const near = (a: number, b: number) => Math.abs(a - b) < EPS;
       for (const p of sidePlates) {
-        const thin = p.size.indexOf(Math.min(...p.size));
+        const thin = thinAxis(p);
         const [t0, t1] = span(p, thin);
         const inPlane = [0, 1, 2].filter((a) => a !== thin);
         for (const a of inPlane) {
@@ -304,14 +306,15 @@ describe("SUV model (ADR 0009)", () => {
               const [co0, co1] = span(c, other);
               return (
                 (near(c0, edge) || near(c1, edge)) &&
-                ct0 <= t1 + 1e-6 &&
-                t0 <= ct1 + 1e-6 &&
+                ct0 <= t1 + EPS &&
+                t0 <= ct1 + EPS &&
                 co0 <= o0 &&
                 o1 <= co1
               );
             });
             const at = (o: number): Vec3 => {
-              const point: Vec3 = [(t0 + t1) / 2, 0, 0];
+              const point: Vec3 = [0, 0, 0];
+              point[thin] = (t0 + t1) / 2;
               point[a] = edge;
               point[other] = o;
               return point;
