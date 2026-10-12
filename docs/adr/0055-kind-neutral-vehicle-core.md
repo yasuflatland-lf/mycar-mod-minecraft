@@ -1,6 +1,6 @@
 # 0055. Kind-neutral vehicle core
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-10-12
 
 ## Context
@@ -27,9 +27,9 @@ Three ways to carry per-kind visual state were compared: a typed state per kind 
 
 - Keep the core in `src/domain/vehicle`: the aggregate, seats, ram, hit counter, headlight switch and beams, placement, fleet, paint, input, and the contracts in `drive.ts`
 - Put the movement building blocks that kinds pick from in `src/domain/vehicle/motion/`: `stepMotion`, `stepFlightMotion`, step detection, water depth, `alignOnMount`, and their constants
-- Put each kind in `src/domain/vehicle/kinds/<kind>/`: its drive, state, tuning, entity contract, and commands. The SUV's form, step, flight, submarine, and door values move from `SPEC` there
-- Each tuning value still lives in one place (0002): `SPEC` for values the core reads, `motion/constants.ts` for the motion functions, and `kinds/<kind>/spec.ts` for one kind
-- `kinds/index.ts` maps each kind to its profile, entity contract, and drive factory as a `Record<VehicleKind, …>`, and exports `createVehicle` and `rebuildVehicle`. `kind.ts` holds only the kind names and imports nothing
+- Put each kind in `src/domain/vehicle/kinds/<kind>/`: its drive, state, profile, tuning, and `entity.ts` contract and command builders. The SUV's form, flight, submarine, body, and door values live there; shared step detection values live in `motion/`
+- Each tuning value still lives in one place (0002): `SPEC` for values the core reads, `MOTION` in `motion/constants.ts` for the motion functions, and `SUV_SPEC` in `kinds/suv/spec.ts` for SUV tuning. The boat keeps its profile and motion limits in `kinds/sportsboat/profile.ts` and its water drag and height values in `drive.ts`
+- `kinds/index.ts` maps each kind to its profile, entity contract, and drive factory in the frozen `KINDS` record, and exports `createVehicle` and `rebuildVehicle`. `kind.ts` holds the kind names and `isVehicleKind` guard and imports nothing
 - `tests/architecture.test.ts` enforces, for `src/domain`, `src/application`, and `src/infrastructure`:
   - `kinds/<a>/` never imports `kinds/<b>/`
   - the core and `motion/` never import `kinds/`
@@ -41,9 +41,9 @@ Three ways to carry per-kind visual state were compared: a typed state per kind 
 ### Contracts
 
 - `Vehicle` takes `(id, profile, drive)` with no defaults. It keeps seats and driver, ram, the hit counter, and the headlight switch
-- `Drive` exposes `speed` and `yaw`, `onDriverMounted(driverYaw)`, `onSeatVacated(seat)`, which returns commands, and `step(raw, ctx)`, which returns `{ impulse, forward, commands, riders: { thirdPerson, underwater } }`. The drive owns its motion state and limits. The state of the shared motion functions stays a type in `motion/`; state only one kind uses, such as the boat's water drag estimate, lives in that kind's drive
+- `Drive` exposes `speed` and `yaw`, `onDriverMounted(driverYaw): void`, `onSeatVacated(seat)`, which returns commands, and `step(raw: RawInput | undefined, ctx: TickContext)`, which returns `{ impulse, forward, commands, riders: { thirdPerson, underwater } }`. The drive owns its motion state and limits. The state of the shared motion functions stays a type in `motion/`; state only one kind uses, such as the boat's water drag estimate, lives in that kind's drive
 - `Vehicle.tick` takes the riders, the test input, and the sensors. `Drive.step` gets only the sensors: `TickContext` is `{ tick, location, velocity: Vec3, onGround, solidAt(offset), waterAt(offset), targets() }`, and the three queries are lazy
-- `VehicleProfile` keeps only what the core reads: seat positions, ram body, beams, and placement
+- `VehicleProfile` keeps only what the core reads: kind, seat positions, ram body, beams, and placement
 - `VehicleSnapshot` drops `form`, `waterDepth`, `waterBelow`, and `velocityY`, gains `velocity: Vec3`, and reads the restored properties lazily, only when the aggregate is rebuilt
 
 ### Engine commands
@@ -51,7 +51,7 @@ Three ways to carry per-kind visual state were compared: a typed state per kind 
 - Commands are `setProperty`, `triggerEvent`, `playAnimation`, and `playSound` (at the vehicle). The vocabulary grows only when a kind needs an engine operation these four cannot express
 - Properties, events, and animations use names local to the entity (`form`, `gravity_off`, `door_fr`). The infrastructure turns them into `yasu_ride:form` and `animation.yasu_ride.<entity>.<name>`, and exports those functions to the test pack. Sounds use full names, since vanilla sounds have no namespace
 - Each kind declares an entity contract: properties with their type, enum values, or range; events; animations; and the properties restored after `/reload`. Commands are built by typed functions bound to the contract's keys
-- `DriveVehicles` runs the step's commands first, in order, and the seat commands last, as `setForm`, `setBank`, `setGearDown`, and `playDoor` run today. A throw skips the rest of that vehicle's tick, so a failed gravity event never writes the form (0021). A missing entity makes a command do nothing
+- `DriveVehicles` runs the step's commands first, in order, and the seat commands last, through `DriveWorld.run(vehicleId, commands)`. A throw skips the rest of that vehicle's tick, so a failed gravity event never writes the form (0021). A missing entity makes a command do nothing
 - Kinds cannot declare names the core writes: `headlights` and the paint events
 
 ### Placement
@@ -68,7 +68,7 @@ Three ways to carry per-kind visual state were compared: a typed state per kind 
 
 ### Order
 
-Each pull request keeps behavior and the trace file unchanged:
+The refactoring pull requests kept behavior and the trace file unchanged:
 
 1. Trace test
 2. `createVehicle` and `rebuildVehicle`, and no SUV defaults (2)
@@ -84,6 +84,6 @@ A new kind needs its folder under `kinds/`, a row in `kinds/index.ts`, rows in t
 
 The domain knows engine names (properties, events, animations), as it already knows bone names (0009), but it does not import `@minecraft/server` (0012). The compiler cannot catch a name or value that the packs do not define; the pack test and the property-based tests catch it in CI.
 
-The trace test pins exact behavior, which 0010 avoids for lasting tests, so it is deleted after step 7.
+The trace test pins exact behavior, which 0010 avoids for lasting tests, so it was removed in issue #173 (step 9/9), after step 7 of the Order list completed the refactoring.
 
-When 0055 is accepted, 0050's flat layout and its rule that `SPEC` holds SUV-only tuning are superseded, and 0046 is extended. Step 7 also updates the architecture rules in AGENTS.md. Revisit the command vocabulary if it grows past eight operations, or if the add-on is ported away from Bedrock.
+0055 supersedes 0050's flat layout, SUV-only tuning in `SPEC`, motion limits in `VehicleProfile`, and aggregate-owned motion state, and extends 0046. Step 7 also updates the architecture rules in AGENTS.md. Revisit the command vocabulary if it grows past eight operations, or if the add-on is ported away from Bedrock.
