@@ -21,7 +21,7 @@ Animations cannot change a sound's pitch while it plays. The SUV picks one of si
 
 ## Consequences
 
-- The Resource Pack gains eight 1 s WAV files of about 43 KB each, and its version goes up to 0.1.43 (0015)
+- The Resource Pack gains eight 1 s WAV files of about 43 KB each, and its version goes up to 0.1.45 (0015)
 - The revs step up at each speed boundary rather than gliding. Eight levels keep each step small
 - The sound follows the speed, not the throttle: the revs only fall as the boat slows. Holding full throttle against a shore sounds like idle
 - Revisit the levels and the mix after hearing them in game against the reference

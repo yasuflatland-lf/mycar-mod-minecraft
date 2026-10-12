@@ -19,7 +19,7 @@ The client can read `query.ground_speed`, which the SUV's engine sounds already 
 
 ## Consequences
 
-- The boat gains two entity properties. The Behavior Pack entity and the Resource Pack version (0.1.42) change together (0015)
+- The boat gains two entity properties. The Behavior Pack entity and the Resource Pack version (0.1.44) change together (0015)
 - The particles are emitted in world space, so the foam stays behind as a trail while the boat moves on
 - Riders stay level while the hull pitches and rolls by up to 7 and 10 degrees, as they do while the SUV banks
 - The wake depends on the client's `query.ground_speed`, so a boat pushed along by something else while ridden also shows a wake
