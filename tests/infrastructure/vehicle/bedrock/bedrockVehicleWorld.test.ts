@@ -209,6 +209,24 @@ describe("BedrockVehicleWorld snapshots", () => {
     expect(world.loadedVehicles().map((s) => s.id)).toEqual(["car"]);
   });
 
+  it("snapshots the vehicles of every dimension, not only the first one that has any", () => {
+    fc.assert(
+      fc.property(fc.subarray(["overworld", "nether", "the_end"]), (dimIds) => {
+        const { car, world } = fixture();
+        const cars = new Map(
+          dimIds.map((dimId) => [dimId, { ...car, id: `car-${dimId}` }]),
+        );
+        game.getDimension.mockImplementation((id: string) => {
+          const inDim = cars.get(id);
+          return { getEntities: () => (inDim ? [inDim] : []) };
+        });
+        const ids = dimIds.map((dimId) => `car-${dimId}`);
+        expect(world.loadedVehicles().map((s) => s.id)).toEqual(ids);
+        expect(world.loadedVehicleIds()).toEqual(ids);
+      }),
+    );
+  });
+
   it("skips an unknown entity in the vehicle family in snapshots and fleet IDs", () => {
     const { entities, car, world } = fixture();
     entities.push({ ...car, id: "unknown", typeId: "yasu_ride:unknown" });
