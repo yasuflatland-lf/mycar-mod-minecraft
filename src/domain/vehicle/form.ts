@@ -112,7 +112,7 @@ export function climbInput(raw: RawInput | undefined): number {
 /**
  * Target vertical velocity in blocks/tick. In hover form, the climb command
  * sets it independent of the forward speed (ADR 0032).
- * The aggregate uses submarineVerticalSpeed for submarine form.
+ * SuvDrive uses submarineVerticalSpeed for submarine form.
  */
 export function verticalSpeed(form: Form, climb: number): number {
   switch (form) {
