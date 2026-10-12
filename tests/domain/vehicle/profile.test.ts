@@ -75,7 +75,10 @@ describe("vehicle profiles (ADR 0050)", () => {
       ram: { front: SPEC.bodyFront, halfWidth: SPEC.bodyHalfWidth },
       seats: { positions: SEAT_POSITIONS },
       beams: { reach: SPEC.headlightReach, lanes: [0] },
-      placement: { onWater: false, anyFace: false },
+      placement: {
+        surfaces: ["top"],
+        clearance: { halfX: 1, halfZ: 1, height: 2 },
+      },
     });
   });
 
@@ -108,7 +111,10 @@ describe("vehicle profiles (ADR 0050)", () => {
         reach: Array.from({ length: 15 }, (_, i) => 4 * (i + 1)),
         lanes: [-3, 3],
       },
-      placement: { onWater: true, anyFace: true },
+      placement: {
+        surfaces: ["water", "top"],
+        clearance: { halfX: 1, halfZ: 1, height: 2 },
+      },
     });
     expect(PROFILES.sportsboat).toBe(SPORTSBOAT_PROFILE);
   });

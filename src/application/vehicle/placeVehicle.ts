@@ -4,6 +4,7 @@
 import type { Vec3 } from "../../domain/shared/vec";
 import type { VehicleKind } from "../../domain/vehicle/kind";
 import { canPlaceAt } from "../../domain/vehicle/placement";
+import { profileOf } from "../../domain/vehicle/profile";
 import { createVehicle } from "../../domain/vehicle/registry";
 import type { VehicleRepository } from "../../domain/vehicle/vehicleRepository";
 import type { PlacementWorld } from "./ports";
@@ -39,7 +40,8 @@ export class PlaceVehicle {
         z: block.z + dz,
       });
     // Returning before the spawn also leaves the item unconsumed.
-    if (!canPlaceAt(isAir)) return false;
+    if (!canPlaceAt(isAir, profileOf(cmd.kind).placement.clearance))
+      return false;
     // Taking the item first means a player who moved or dropped it in the
     // meantime gets no vehicle, instead of a vehicle and the item (ADR 0024).
     if (

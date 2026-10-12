@@ -37,13 +37,15 @@ const onlyBlocked =
 
 describe("canPlaceAt (ADR 0008, collision box from ADR 0009)", () => {
   it("can place when a 3-wide × 2-high space is clear", () => {
-    expect(canPlaceAt(() => true)).toBe(true);
+    expect(canPlaceAt(() => true, SUV_PROFILE.placement.clearance)).toBe(true);
   });
 
   it("cannot place when any single cell of the 3 × 2 × 3 footprint is blocked", () => {
     fc.assert(
       fc.property(insideFootprint, (b) => {
-        expect(canPlaceAt(onlyBlocked(b))).toBe(false);
+        expect(
+          canPlaceAt(onlyBlocked(b), SUV_PROFILE.placement.clearance),
+        ).toBe(false);
       }),
     );
   });
@@ -51,7 +53,9 @@ describe("canPlaceAt (ADR 0008, collision box from ADR 0009)", () => {
   it("can place when the only blocked cell is outside the footprint", () => {
     fc.assert(
       fc.property(outsideFootprint, (b) => {
-        expect(canPlaceAt(onlyBlocked(b))).toBe(true);
+        expect(
+          canPlaceAt(onlyBlocked(b), SUV_PROFILE.placement.clearance),
+        ).toBe(true);
       }),
     );
   });

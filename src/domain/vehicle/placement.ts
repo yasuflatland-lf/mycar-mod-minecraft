@@ -2,13 +2,24 @@
 // and whether there is room for it there.
 import type { Vec3 } from "../shared/vec";
 
-// Checks the 3 × 2 × 3 blocks that fit the 1.8-wide, 1.6-high collision box (ADR 0009).
 export type IsAir = (dx: number, dy: number, dz: number) => boolean;
 
-export function canPlaceAt(isAir: IsAir): boolean {
-  for (const dx of [-1, 0, 1]) {
-    for (const dz of [-1, 0, 1]) {
-      for (const dy of [1, 2]) {
+/**
+ * The cells that must be air for a kind to be placed: -halfX..halfX,
+ * -halfZ..halfZ, and 1..height above the block. It must cover the kind's
+ * collision box (ADR 0055).
+ */
+export interface Clearance {
+  readonly halfX: number;
+  readonly halfZ: number;
+  readonly height: number;
+}
+
+export function canPlaceAt(isAir: IsAir, clearance: Clearance): boolean {
+  // `0 - half` instead of `-half`, so a zero half-width asks 0 and not -0.
+  for (let dx = 0 - clearance.halfX; dx <= clearance.halfX; dx++) {
+    for (let dz = 0 - clearance.halfZ; dz <= clearance.halfZ; dz++) {
+      for (let dy = 1; dy <= clearance.height; dy++) {
         if (!isAir(dx, dy, dz)) return false;
       }
     }
@@ -44,21 +55,23 @@ export const FACE_OFFSET: Readonly<Record<BlockFace, Vec3>> = Object.freeze({
   west: Object.freeze({ x: -1, y: 0, z: 0 }),
 });
 
-/** How a kind of vehicle is placed from its item (ADR 0050). */
+/**
+ * "top": a click on the top face places on the clicked block. "water": the
+ * clicked or the adjacent cell holds water; place on its column's top water cell.
+ */
+export type PlacementSurface = "top" | "water";
+
+/** How a kind of vehicle is placed from its item (ADR 0050, ADR 0055). */
 export interface PlacementRule {
-  /** Whether a click next to or on water places the vehicle at the water surface. */
-  readonly onWater: boolean;
-  /** Whether a click on any face counts, not only on the top face. */
-  readonly anyFace: boolean;
+  /** Tried in order; the first that matches gives the placement cell. */
+  readonly surfaces: readonly PlacementSurface[];
+  readonly clearance: Clearance;
 }
 
 /**
- * The cell the vehicle is placed on top of, or undefined when the click places
- * nothing. A water kind looks at the clicked cell and then at the cell next to
- * the clicked face; the first one that holds water gives the top water cell of
- * its column. Otherwise only a top-face click places the vehicle, on the
- * clicked block, as on land. A side or bottom face with no water next to it
- * places nothing, so a click on the side of a shore never lifts a boat onto it.
+ * The cell the vehicle is placed on top of, or undefined when no surface
+ * matches. "water" accepts any face but "top" only the top face, so a click on
+ * the side of a shore with no water next to it never lifts a boat onto it.
  */
 export function placementCell(
   rule: PlacementRule,
@@ -67,8 +80,11 @@ export function placementCell(
   isWaterAt: (at: Vec3) => boolean,
   maxClimb = 16,
 ): Vec3 | undefined {
-  if (!rule.anyFace && face !== "up") return undefined;
-  if (rule.onWater) {
+  for (const surface of rule.surfaces) {
+    if (surface === "top") {
+      if (face === "up") return clicked;
+      continue;
+    }
     const offset = FACE_OFFSET[face];
     const next = {
       x: clicked.x + offset.x,
@@ -85,5 +101,5 @@ export function placementCell(
       };
     }
   }
-  return face === "up" ? clicked : undefined;
+  return undefined;
 }
