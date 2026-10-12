@@ -99,11 +99,23 @@ describe("sports boat Behavior Pack entity (ADR 0051)", () => {
     }
   });
 
-  it("has only the headlights property, off by default and synced to the client: no form, bank, or gear", () => {
+  it("has the headlights, trim, and roll properties, off or level by default and synced to the client: no form, bank, or gear (ADR 0059)", () => {
     expect(entity.description.properties).toEqual({
       [HEADLIGHTS_PROPERTY]: {
         type: "bool",
         default: false,
+        client_sync: true,
+      },
+      "yasu_ride:trim": {
+        type: "float",
+        range: [0, 7],
+        default: 0,
+        client_sync: true,
+      },
+      "yasu_ride:roll": {
+        type: "float",
+        range: [-10, 10],
+        default: 0,
         client_sync: true,
       },
     });
@@ -128,6 +140,64 @@ describe("sports boat Behavior Pack entity (ADR 0051)", () => {
       item: "yasu_ride:sportsboat_item",
       count: 1,
     });
+  });
+});
+
+describe("sports boat attitude and wake (ADR 0059)", () => {
+  const animations = read(
+    `${RP}/animations/yasu_ride/sportsboat.anim.json`,
+  ).animations;
+
+  it("turns the root bone by the trim on x and the roll on z in one always-on animation", () => {
+    expect(client.animations.attitude).toBe(
+      "animation.yasu_ride.sportsboat.attitude",
+    );
+    expect(client.scripts.animate).toContain("attitude");
+    expect(animations["animation.yasu_ride.sportsboat.attitude"].bones).toEqual(
+      {
+        root: {
+          rotation: [
+            "query.property('yasu_ride:trim')",
+            0,
+            "-query.property('yasu_ride:roll')",
+          ],
+        },
+      },
+    );
+  });
+
+  it("puts the root pivot in the aft third at the waterline", () => {
+    const root = geometry.bones.find(
+      (b: { name: string }) => b.name === "root",
+    );
+    expect(root.pivot).toEqual([0, 7, 20]);
+  });
+
+  it("emits bubbles and foam from both jet nozzles while ridden faster than 2 blocks a second", () => {
+    expect(client.scripts.animate).toContainEqual({
+      wake: "query.has_rider && query.ground_speed > 2",
+    });
+    const effects = Object.values(
+      animations["animation.yasu_ride.sportsboat.wake"].particle_effects,
+    ).flat() as { effect: string; locator: string }[];
+    const body = geometry.bones.find(
+      (b: { name: string }) => b.name === "body",
+    );
+    for (const effect of ["jet_bubbles", "jet_foam"]) {
+      const particle = read(
+        `${RP}/particles/yasu_ride/${effect}.particle.json`,
+      ).particle_effect;
+      expect(client.particle_effects[effect]).toBe(
+        particle.description.identifier,
+      );
+      expect(
+        effects.filter((e) => e.effect === effect).map((e) => e.locator),
+      ).toEqual(["jet_left", "jet_right"]);
+    }
+    expect(Object.keys(body.locators).sort()).toEqual([
+      "jet_left",
+      "jet_right",
+    ]);
   });
 });
 

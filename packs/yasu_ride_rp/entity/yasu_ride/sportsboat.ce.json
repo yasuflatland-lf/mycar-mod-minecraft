@@ -28,6 +28,20 @@
         "pink": "textures/entity/yasu_ride/sportsboat_pink"
       },
       "geometry": { "default": "geometry.yasu_ride.sportsboat" },
+      "animations": {
+        "attitude": "animation.yasu_ride.sportsboat.attitude",
+        "wake": "animation.yasu_ride.sportsboat.wake"
+      },
+      "particle_effects": {
+        "jet_bubbles": "yasu_ride:jet_bubbles",
+        "jet_foam": "yasu_ride:jet_foam"
+      },
+      "scripts": {
+        "animate": [
+          "attitude",
+          { "wake": "query.has_rider && query.ground_speed > 2" }
+        ]
+      },
       "render_controllers": ["controller.render.yasu_ride.sportsboat"]
     }
   }

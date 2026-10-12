@@ -26,6 +26,8 @@ import {
 } from "../../motion/motion";
 import { waterBelowAt, waterDepthAt } from "../../motion/water";
 import type { MotionLimits } from "../../profile";
+import { stepRoll, stepTrim } from "./attitude";
+import { rollCommand, trimCommand } from "./entity";
 import { SPORTSBOAT_MOTION } from "./profile";
 
 // The height of the sportsboat collision box, which bounds the water depth
@@ -91,6 +93,12 @@ export interface BoatDriveState {
 export class BoatDrive implements Drive {
   private motion: MotionState;
   private dragEstimate: number | undefined;
+  private trim = 0;
+  private roll = 0;
+  // Undefined until the first tick, so a rebuilt vehicle clears a trim or roll
+  // the entity kept from before /reload, as the SUV does with its bank.
+  private sentTrim: number | undefined;
+  private sentRoll: number | undefined;
 
   /** `limits` other than the boat's own are for tests that vary one value. */
   constructor(
@@ -107,6 +115,14 @@ export class BoatDrive implements Drive {
 
   get yaw(): number {
     return this.motion.yaw;
+  }
+
+  get trimAngle(): number {
+    return this.trim;
+  }
+
+  get rollAngle(): number {
+    return this.roll;
   }
 
   get waterDrag(): number | undefined {
@@ -138,7 +154,8 @@ export class BoatDrive implements Drive {
     const motion = this.motion;
     let step: MotionResult;
     const depth = waterDepthAt(ctx.location, ctx.waterAt, SPORTSBOAT_HEIGHT);
-    if (isAfloat(depth, () => waterBelowAt(ctx.waterAt))) {
+    const afloat = isAfloat(depth, () => waterBelowAt(ctx.waterAt));
+    if (afloat) {
       const waterDrag = estimateWaterDrag(
         this.dragEstimate,
         motion.airExpected,
@@ -168,12 +185,25 @@ export class BoatDrive implements Drive {
         this.limits,
       );
     }
+    this.trim = stepTrim(this.trim, motion.speed, step.state.speed, afloat);
+    this.roll = stepRoll(
+      this.roll,
+      motion.yaw,
+      step.state.yaw,
+      step.state.speed,
+      afloat,
+    );
+    const commands: EngineCommand[] = [];
+    if (this.trim !== this.sentTrim) commands.push(trimCommand(this.trim));
+    if (this.roll !== this.sentRoll) commands.push(rollCommand(this.roll));
+    this.sentTrim = this.trim;
+    this.sentRoll = this.roll;
     this.motion = step.state;
     // Buoyancy and gravity belong to the engine, so the script never pushes vertically.
     return {
       impulse: { x: step.impulse.x, y: 0, z: step.impulse.z },
       forward: step.forward,
-      commands: [],
+      commands,
       riders: { thirdPerson: false, underwater: false },
     };
   }
