@@ -1,4 +1,4 @@
-"""Render the README previews of the vehicle model from its front-left corner.
+"""Render the README previews and the pack icons from the vehicle model.
 
     python3 -I tools/render_preview.py <resource pack> <output dir>          write the images
     python3 -I tools/render_preview.py <resource pack> <output dir> --check  fail if any is stale
@@ -100,23 +100,29 @@ POSES = {
 def read_png(path):
     """Decode an 8-bit RGB or RGBA PNG without interlacing into rows of RGBA tuples."""
     data = path.read_bytes()
-    pos, idat = 8, b""
+    pos, idat, header = 8, b"", None
     while pos < len(data):
         (length,) = struct.unpack(">I", data[pos : pos + 4])
         kind, body = data[pos + 4 : pos + 8], data[pos + 8 : pos + 8 + length]
         if kind == b"IHDR":
-            w, h, depth, color, _, _, interlace = struct.unpack(">IIBBBBB", body)
+            header = w, h, depth, color, _, _, interlace = struct.unpack(">IIBBBBB", body)
             if depth != 8 or color not in (2, 6) or interlace:
                 raise ValueError(f"{path}: only 8-bit RGB/RGBA PNGs without interlacing are supported")
         elif kind == b"IDAT":
             idat += body
         pos += 12 + length
+    if header is None:
+        raise ValueError(f"{path}: no IHDR chunk")
     channels = 4 if color == 6 else 3
     stride = w * channels
     raw = zlib.decompress(idat)
+    if len(raw) != h * (stride + 1):
+        raise ValueError(f"{path}: image data is {len(raw)} bytes, expected {h * (stride + 1)}")
     rows, prev = [], bytearray(stride)
     for y in range(h):
         filter_type = raw[y * (stride + 1)]
+        if filter_type > 4:
+            raise ValueError(f"{path}: unknown filter type {filter_type} on row {y}")
         line = bytearray(raw[y * (stride + 1) + 1 : (y + 1) * (stride + 1)])
         for i in range(stride):
             a = line[i - channels] if i >= channels else 0
@@ -438,8 +444,9 @@ def add_bloom(planes, body, source, config, width, height):
 def rasterize(polygons, layers, to_screen, width=WIDTH, height=HEIGHT, background=None, bloom=BLOOM):
     w, h = width * SUPERSAMPLE, height * SUPERSAMPLE
 
-    # Premultiplied (r, g, b, a) under the vehicle: the shadow and light pools, laid over an
-    # opaque background when one is given
+    # Premultiplied (r, g, b, a) under the vehicle. The shadow and light pools add up on top of
+    # the background when one is given, and the downsample below scales any sum whose alpha
+    # exceeds 1 back to 1. The icon passes an opaque background and no pools.
     ground = [None] * (w * h) if background is None else background
     for quad, alpha, rgb in layers:
 
@@ -620,6 +627,13 @@ def main():
     parser.add_argument("--check", action="store_true")
     parser.add_argument("--icons", nargs="+", type=Path, default=[])
     args = parser.parse_args()
+    # A mistyped pack dir would otherwise get a fresh pack_icon.png that no manifest uses
+    for pack in args.icons:
+        if not (pack / "manifest.json").is_file():
+            parser.error(f"--icons {pack}: no manifest.json, so it is not a pack")
+    # Renaming the test pack must not silently turn its icon into a color copy
+    if args.icons and not any(pack.name == ICON_GRAYSCALE_PACK for pack in args.icons):
+        parser.error(f"--icons must include {ICON_GRAYSCALE_PACK}, which gets the grayscale icon")
     images, icon = render(args.resource_pack, bool(args.icons))
     targets = [(args.output_dir / name, WIDTH, HEIGHT, pixels, False) for name, pixels in images.items()]
     for pack in args.icons:
@@ -630,8 +644,12 @@ def main():
         if args.check:
             try:
                 current = bytes(c for row in read_png(target) for px in row for c in px)
-            except (OSError, ValueError, struct.error, zlib.error):
-                current = b""
+            except FileNotFoundError:
+                stale.append(f"{target} (missing)")
+                continue
+            except (OSError, ValueError, struct.error, zlib.error) as e:
+                stale.append(f"{target} ({e})")
+                continue
             if current != bytes(pixels):
                 stale.append(str(target))
         else:
