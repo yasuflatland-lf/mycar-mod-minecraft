@@ -1,5 +1,5 @@
 // The sports boat's drive: the engine floats the hull and the script drives only x and z (ADR 0051).
-import { clamp, dot, forward, type Vec2 } from "../../../shared/vec";
+import { clamp, dot, forward, type Vec2, type Vec3 } from "../../../shared/vec";
 import type {
   Drive,
   DriveStep,
@@ -87,6 +87,17 @@ export function estimateWaterDrag(
   );
 }
 
+function pushesStick(input: RawInput | undefined): boolean {
+  return (
+    input !== undefined &&
+    Math.max(Math.abs(input.moveX), Math.abs(input.moveY)) > DOCK.stick
+  );
+}
+
+function deckSeatPositions(pose: HoldPose): Vec3[] {
+  return seatWorldPositions(pose, SPORTSBOAT_PROFILE.seats.positions);
+}
+
 export function isAfloat(depth: number, below: () => boolean): boolean {
   return depth > 0 || below();
 }
@@ -172,20 +183,10 @@ export class BoatDrive implements Drive {
     const commands: EngineCommand[] = [];
     let boardDeckRiders = false;
     if (this.docked) {
-      const departing =
-        raw !== undefined &&
-        Math.max(Math.abs(raw.moveX), Math.abs(raw.moveY)) > DOCK.stick;
-      if (!departing) {
-        const deckDriver = ctx.deckSeatInputs[0];
+      if (!pushesStick(raw)) {
         return {
-          deckSeats: seatWorldPositions(
-            this.docked,
-            SPORTSBOAT_PROFILE.seats.positions,
-          ),
-          boardDeckRiders:
-            deckDriver !== undefined &&
-            Math.max(Math.abs(deckDriver.moveX), Math.abs(deckDriver.moveY)) >
-              DOCK.stick,
+          deckSeats: deckSeatPositions(this.docked),
+          boardDeckRiders: pushesStick(ctx.deckSeatInputs[0]),
           impulse: { x: 0, y: 0, z: 0 },
           forward: forward(this.motion.yaw),
           commands,
@@ -273,9 +274,7 @@ export class BoatDrive implements Drive {
       commands,
       riders: { thirdPerson: false, underwater: false },
       boardDeckRiders,
-      deckSeats: this.docked
-        ? seatWorldPositions(this.docked, SPORTSBOAT_PROFILE.seats.positions)
-        : [],
+      deckSeats: this.docked ? deckSeatPositions(this.docked) : [],
       ...(this.docked && { hold: this.docked, floor: floorCells(this.docked) }),
     };
   }

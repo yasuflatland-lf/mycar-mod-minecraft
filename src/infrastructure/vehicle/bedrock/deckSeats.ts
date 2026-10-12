@@ -5,8 +5,9 @@ import {
   DECK_SEAT_OF_PROPERTY,
   DECK_SEAT_TYPE,
   DECK_SEATS_PROPERTY,
-} from "../../shared/identifiers";
-import { isVehicleEntity, PLAYER_TYPE } from "./identifiers";
+  isVehicleEntity,
+  PLAYER_TYPE,
+} from "./identifiers";
 
 // ADR 0063: avoid teleporting seated players for sub-pixel drift.
 const TELEPORT_TOLERANCE = 0.05;
@@ -36,6 +37,13 @@ function seatEntity(
     seat.getDynamicProperty(DECK_SEAT_OF_PROPERTY) === vehicleId
     ? seat
     : undefined;
+}
+
+function seatedPlayer(seat: Entity | undefined): Player | undefined {
+  return seat
+    ?.getComponent("minecraft:rideable")
+    ?.getRiders()
+    .find((rider): rider is Player => rider.typeId === PLAYER_TYPE);
 }
 
 export function removeOrphanDeckSeat(seat: Entity): void {
@@ -103,12 +111,7 @@ export class DeckSeats {
   }
 
   riders(car: Entity): (Player | undefined)[] {
-    return this.ids(car).map((id) =>
-      seatEntity(id, car.id)
-        ?.getComponent("minecraft:rideable")
-        ?.getRiders()
-        .find((rider): rider is Player => rider.typeId === PLAYER_TYPE),
-    );
+    return this.ids(car).map((id) => seatedPlayer(seatEntity(id, car.id)));
   }
 
   board(car: Entity): void {

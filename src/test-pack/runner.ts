@@ -21,6 +21,7 @@ import {
 import { SPEC } from "../domain/vehicle/spec";
 import {
   DECK_FLOOR_BLOCK,
+  DECK_SEAT_TYPE,
   ENTITY_TYPE,
   entityPropertyId,
   HEADLIGHTS_PROPERTY,
@@ -811,22 +812,23 @@ function boatDeckSeats(a: Arena): Promise<Outcome> {
     withBoat(
       a,
       async (boat) => {
+        const docked = () =>
+          boat.getProperty(entityPropertyId("docked")) === true;
         let ticks = 0;
-        while (
-          boat.getProperty("yasu_ride:docked") !== true &&
-          ticks < BOAT_DOCK_TEST.timeout
-        ) {
+        while (!docked() && ticks < BOAT_DOCK_TEST.timeout) {
           await wait(1);
           ticks++;
         }
-        if (boat.getProperty("yasu_ride:docked") !== true)
+        if (!docked())
           return { pass: false, detail: `not docked after ${ticks} ticks` };
         const start = boat.location;
-        const seats = a.dim.getEntities({
-          type: "yasu_ride:deck_seat",
-          location: start,
-          maxDistance: BOAT_DECK_SEATS_TEST.radius,
-        });
+        const seatsWithin = (maxDistance: number) =>
+          a.dim.getEntities({
+            type: DECK_SEAT_TYPE,
+            location: start,
+            maxDistance,
+          });
+        const seats = seatsWithin(BOAT_DECK_SEATS_TEST.radius);
         const expected = seatWorldPositions(
           { ...start, yaw: boat.getRotation().y },
           SPORTSBOAT_PROFILE.seats.positions,
@@ -847,11 +849,7 @@ function boatDeckSeats(a: Arena): Promise<Outcome> {
         });
         drive(boat, 0, 1);
         const remaining = () =>
-          a.dim.getEntities({
-            type: "yasu_ride:deck_seat",
-            location: start,
-            maxDistance: BOAT_DECK_SEATS_TEST.clearRadius,
-          }).length;
+          seatsWithin(BOAT_DECK_SEATS_TEST.clearRadius).length;
         let clearTicks = 0;
         while (
           remaining() > 0 &&

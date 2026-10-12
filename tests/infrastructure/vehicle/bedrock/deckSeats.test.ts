@@ -3,14 +3,14 @@ import fc from "fast-check";
 import { expect, it, vi } from "vitest";
 import type { Vec3 } from "../../../../src/domain/shared/vec";
 import {
-  DECK_SEAT_OF_PROPERTY,
-  DECK_SEAT_TYPE,
-  DECK_SEATS_PROPERTY,
-} from "../../../../src/infrastructure/shared/identifiers";
-import {
   DeckSeats,
   removeOrphanDeckSeat,
 } from "../../../../src/infrastructure/vehicle/bedrock/deckSeats";
+import {
+  DECK_SEAT_OF_PROPERTY,
+  DECK_SEAT_TYPE,
+  DECK_SEATS_PROPERTY,
+} from "../../../../src/infrastructure/vehicle/bedrock/identifiers";
 
 const game = vi.hoisted(() => ({ getEntity: vi.fn() }));
 vi.mock("@minecraft/server", () => ({ world: game }));
