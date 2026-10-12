@@ -19,7 +19,7 @@
         },
         "yasu_ride:roll": {
           "type": "float",
-          "range": [-10.0, 10.0],
+          "range": [-20.0, 20.0],
           "default": 0.0,
           "client_sync": true
         }

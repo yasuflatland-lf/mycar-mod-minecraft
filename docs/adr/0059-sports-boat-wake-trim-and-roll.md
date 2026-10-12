@@ -1,6 +1,6 @@
 # 0059. Sports boat wake, bow rise, and roll
 
-- Status: Accepted
+- Status: Superseded in part by [0061](0061-lift-the-bow-and-roll-further.md)
 - Date: 2026-10-12
 
 ## Context

@@ -99,7 +99,7 @@ describe("sports boat Behavior Pack entity (ADR 0051)", () => {
     }
   });
 
-  it("has the headlights, trim, and roll properties, off or level by default and synced to the client: no form, bank, or gear (ADR 0059)", () => {
+  it("has the headlights, trim, and roll properties, off or level by default and synced to the client: no form, bank, or gear (ADR 0059, ADR 0061)", () => {
     expect(entity.description.properties).toEqual({
       [HEADLIGHTS_PROPERTY]: {
         type: "bool",
@@ -114,7 +114,7 @@ describe("sports boat Behavior Pack entity (ADR 0051)", () => {
       },
       "yasu_ride:roll": {
         type: "float",
-        range: [-10, 10],
+        range: [-20, 20],
         default: 0,
         client_sync: true,
       },
@@ -148,7 +148,8 @@ describe("sports boat attitude and wake (ADR 0059)", () => {
     `${RP}/animations/yasu_ride/sportsboat.anim.json`,
   ).animations;
 
-  it("turns the root bone by the trim on x and the roll on z in one always-on animation", () => {
+  // In game a positive x rotation of the root lowered the bow, so the trim is negated (ADR 0061).
+  it("turns the root bone by minus the trim on x and minus the roll on z in one always-on animation", () => {
     expect(client.animations.attitude).toBe(
       "animation.yasu_ride.sportsboat.attitude",
     );
@@ -157,7 +158,7 @@ describe("sports boat attitude and wake (ADR 0059)", () => {
       {
         root: {
           rotation: [
-            "query.property('yasu_ride:trim')",
+            "-query.property('yasu_ride:trim')",
             0,
             "-query.property('yasu_ride:roll')",
           ],
