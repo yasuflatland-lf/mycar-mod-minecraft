@@ -154,16 +154,12 @@ describe("sports boat deck floor (ADR 0063)", () => {
     const cells = floorCells({ x: 267.5, y: -60.45, z: 15.5, yaw: 0 });
     expect(cells.length).toBeGreaterThanOrEqual(13);
     expect(new Set(cells.map((cell) => cell.y))).toStrictEqual(new Set([-60]));
-    expect(cells.find((cell) => cell.x === 267 && cell.z === 15)?.height).toBe(
-      2,
-    );
-    expect(cells.find((cell) => cell.x === 267 && cell.z === 17)?.height).toBe(
-      4,
-    );
+    const heightAt = (z: number) =>
+      cells.find((cell) => cell.x === 267 && cell.z === z)?.height;
+    expect(heightAt(15)).toBe(2);
+    expect(heightAt(17)).toBe(4);
     // The grown cockpit and bow overlap at z = 16; the higher bow wins.
-    expect(cells.find((cell) => cell.x === 267 && cell.z === 16)?.height).toBe(
-      4,
-    );
+    expect(heightAt(16)).toBe(4);
     expect(new Set(cells.map((cell) => cell.height))).toStrictEqual(
       new Set([2, 4]),
     );
