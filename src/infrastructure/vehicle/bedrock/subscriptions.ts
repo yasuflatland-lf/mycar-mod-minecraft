@@ -20,6 +20,7 @@ import type {
   PlaceVehicleCommand,
 } from "../../../application/vehicle/placeVehicle";
 import type { SwitchHeadlights } from "../../../application/vehicle/switchHeadlights";
+import type { VehicleKind } from "../../../domain/vehicle/kind";
 import { surfaceCellY } from "../../../domain/vehicle/placement";
 import { NAMESPACE } from "../../shared/identifiers";
 import { parseTestInputMessage } from "../testInput/testInputMessage";
@@ -94,6 +95,19 @@ export function registerSubscriptions(
   const placeBoat = (cmd: PlaceVehicleCommand) => {
     if (boatPlaced(cmd.playerId)) useCases.place.execute(cmd);
   };
+  const placeCommand = (
+    player: Player,
+    kind: VehicleKind,
+    block: Block,
+  ): PlaceVehicleCommand => ({
+    kind,
+    playerId: player.id,
+    dimensionId: block.dimension.id,
+    blockLocation: block.location,
+    yaw: player.getRotation().y,
+    creative: player.getGameMode() === GameMode.Creative,
+    slot: player.selectedSlotIndex,
+  });
   // The interaction ray skips liquids and reports the bed under the water, so
   // the boat climbs to the top water cell (docs/spike-sportsboat.md).
   const surfaceLocation = (block: Block) => {
@@ -121,24 +135,16 @@ export function registerSubscriptions(
     )
       return;
     ev.cancel = true;
-    if (kind === "sportsboat" && !boatRequested(ev.player.id)) return;
     const block = ev.block;
-    const cmd = {
-      kind,
-      playerId: ev.player.id,
-      dimensionId: ev.block.dimension.id,
-      blockLocation: ev.block.location,
-      yaw: ev.player.getRotation().y,
-      creative: ev.player.getGameMode() === GameMode.Creative,
-      slot: ev.player.selectedSlotIndex,
-    };
-    system.run(() => {
-      if (kind === "sportsboat") {
-        placeBoat({ ...cmd, blockLocation: surfaceLocation(block) });
-      } else {
-        useCases.place.execute(cmd);
-      }
-    });
+    const cmd = placeCommand(ev.player, kind, block);
+    if (kind !== "sportsboat") {
+      system.run(() => useCases.place.execute(cmd));
+      return;
+    }
+    if (!boatRequested(ev.player.id)) return;
+    system.run(() =>
+      placeBoat({ ...cmd, blockLocation: surfaceLocation(block) }),
+    );
   });
 
   // initialSpawn is true on every join, not only the first one, so a player
@@ -194,13 +200,8 @@ export function registerSubscriptions(
       });
       if (hit && boatRequested(player.id))
         placeBoat({
-          kind: "sportsboat",
-          playerId: player.id,
-          dimensionId: hit.block.dimension.id,
+          ...placeCommand(player, "sportsboat", hit.block),
           blockLocation: surfaceLocation(hit.block),
-          yaw: player.getRotation().y,
-          creative: player.getGameMode() === GameMode.Creative,
-          slot: player.selectedSlotIndex,
         });
       return;
     }
