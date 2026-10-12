@@ -37,10 +37,8 @@ export class BoatDrive implements Drive {
     ctx: TickContext,
     profile: VehicleProfile,
   ): DriveResult {
-    // There is no handbrake, so jump does nothing.
-    const input: DriveInput = raw
-      ? { ...toDriveInput(raw), handbrake: false }
-      : NEUTRAL_INPUT;
+    // There is no handbrake: neither path below reads it, so jump does nothing.
+    const input: DriveInput = raw ? toDriveInput(raw) : NEUTRAL_INPUT;
     // Beached, it coasts to a stop and never steps up a block.
     const step = isAfloat(ctx.waterDepth, ctx.waterBelow)
       ? stepFlightMotion(

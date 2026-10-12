@@ -356,24 +356,36 @@ describe("BoatDrive (ADR 0051)", () => {
     );
   });
 
-  it("does the same with jump held as with jump released", () => {
-    const tick = fc.record({
-      raw: fc.option(rawInput, { nil: undefined }),
-      afloat: fc.boolean(),
-    });
+  it("ignores jump afloat or beached, even with a handbrake grip that differs from its grip", () => {
+    // SPORTSBOAT_PROFILE sets handbrakeGrip equal to grip, which would hide a
+    // path that reads the handbrake; a differing one makes such a path show.
+    const water = fc.oneof(
+      afloatWater,
+      fc.constant(BEACHED),
+      fc.constant<Water>({}),
+    );
     fc.assert(
       fc.property(
         yaw,
-        fc.array(tick, { minLength: 1, maxLength: 80 }),
-        (heading, ticks) => {
-          const held = new BoatSim(boat(heading), SPORTSBOAT_WATER.drag);
-          const released = new BoatSim(boat(heading), SPORTSBOAT_WATER.drag);
-          for (const t of ticks) {
-            const water = t.afloat ? AFLOAT : BEACHED;
-            const a = held.step(t.raw && { ...t.raw, jump: true }, water);
-            const b = released.step(t.raw && { ...t.raw, jump: false }, water);
-            expect(a).toStrictEqual(b);
-          }
+        number(-0.2, 1.12),
+        fc.record({ x: number(-2, 2), z: number(-2, 2) }),
+        water,
+        fc.boolean(),
+        rawInput,
+        number(0, 1),
+        (heading, speed, velocity, w, onGround, raw, handbrakeGrip) => {
+          const profile = {
+            ...SPORTSBOAT_PROFILE,
+            motion: { ...SPORTSBOAT_PROFILE.motion, handbrakeGrip },
+          };
+          const motion = { ...initialMotion(heading), speed };
+          const ctx = { ...context(0, undefined, velocity, w), onGround };
+          const drive = new BoatDrive();
+          expect(
+            drive.step(motion, { ...raw, jump: true }, ctx, profile),
+          ).toStrictEqual(
+            drive.step(motion, { ...raw, jump: false }, ctx, profile),
+          );
         },
       ),
     );
