@@ -2,7 +2,7 @@
 // it silently: a missing geometry or texture draws nothing, and a missing lang
 // key shows the raw key. These checks walk every file so new content is
 // covered without a new test.
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -13,6 +13,7 @@ import {
   ITEM_TYPE,
   VEHICLE_TYPE,
 } from "../../src/infrastructure/vehicle/bedrock/identifiers";
+import { type Json, jsonFiles } from "../support/packFiles";
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const RP = join(REPO_ROOT, "packs/yasu_ride_rp");
@@ -20,14 +21,6 @@ const BP = join(REPO_ROOT, "packs/yasu_ride_bp");
 // Textures the game ships, so the pack has no PNG for them.
 const VANILLA_TEXTURES = new Set(["textures/particle/particles"]);
 const LOCALES = ["en_US", "ja_JP"];
-
-type Json = Record<string, unknown>;
-
-function jsonFiles(dir: string): Json[] {
-  return readdirSync(dir, { recursive: true, withFileTypes: true })
-    .filter((f) => f.isFile() && f.name.endsWith(".json"))
-    .map((f) => JSON.parse(readFileSync(join(f.parentPath, f.name), "utf8")));
-}
 
 function definedKeys(dir: string, key: string): Set<string> {
   return new Set(

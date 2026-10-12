@@ -91,4 +91,4 @@ Use `yasu_ride:<snake_case>` for IDs, properties, groups, and events; the test e
 When adding a new kind of content, place its code by the feature boundaries rule above (0046), and:
 
 - Build identifiers with `id()` from `src/infrastructure/shared/identifiers.ts`.
-- Put pack files under `<type>/yasu_ride/`, flat below the namespace folder; test entities go under `entities/yasu_ride_test/`. Use the short type suffixes from 0047 (`suv.se.json`, `suv.ce.json`, `suv.ac.json`, ...), and keep every path within 80 characters counting the pack folder (a console limit).
+- Put pack files under `<type>/yasu_ride/`, flat below the namespace folder; test entities go under `entities/yasu_ride_test/`. Use the short type suffixes from 0047 (`suv.se.json`, `suv.ce.json`, `suv.ac.json`, ...), and keep every path within 80 characters counting the pack folder (a console limit). `tests/packs/layout.test.ts` enforces this layout and the path length.
