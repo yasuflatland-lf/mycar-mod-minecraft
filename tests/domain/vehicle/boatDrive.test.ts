@@ -45,6 +45,14 @@ interface Water {
 }
 const AFLOAT: Water = { waterDepth: 0.5 };
 const BEACHED: Water = { waterDepth: 0, waterBelow: false };
+/** The usual case for a floating hull: its feet sit above the water cell (ADR 0051). */
+const WATER_BELOW: Water = { waterDepth: 0, waterBelow: true };
+const waterDepth = number(0.01, 5);
+const afloatWater: fc.Arbitrary<Water> = fc.oneof(
+  waterDepth.map((d) => ({ waterDepth: d })),
+  fc.constant(WATER_BELOW),
+  waterDepth.map((d) => ({ waterDepth: d, waterBelow: true })),
+);
 
 /** Feeds a vehicle through the engine model: apply the impulse, then the medium's drag. */
 class BoatSim {
@@ -142,10 +150,10 @@ describe("BoatDrive (ADR 0051)", () => {
 
   it("afloat at full throttle, rises to the boat's top speed above the SUV's and never exceeds it", () => {
     fc.assert(
-      fc.property(yaw, fc.boolean(), (heading, jump) => {
+      fc.property(yaw, fc.boolean(), afloatWater, (heading, jump, water) => {
         const sim = new BoatSim(boat(heading), SPORTSBOAT_WATER.drag);
         for (let i = 0; i < 120; i++) {
-          sim.step({ ...FULL_THROTTLE, jump }, AFLOAT);
+          sim.step({ ...FULL_THROTTLE, jump }, water);
           expect(length(sim.body.vel)).toBeLessThanOrEqual(
             SPORTSBOAT_PROFILE.motion.maxSpeed + 1e-9,
           );
@@ -157,6 +165,28 @@ describe("BoatDrive (ADR 0051)", () => {
         expect(sim.vehicle.speed).toBe(SPORTSBOAT_PROFILE.motion.maxSpeed);
         expect(sim.vehicle.speed).toBeGreaterThan(SUV_PROFILE.motion.maxSpeed);
       }),
+    );
+  });
+
+  it("with water only 0.3 blocks below the feet, drives exactly as with water at the feet", () => {
+    fc.assert(
+      fc.property(
+        yaw,
+        waterDepth,
+        fc.array(fc.option(rawInput, { nil: undefined }), {
+          minLength: 1,
+          maxLength: 80,
+        }),
+        (heading, depth, inputs) => {
+          const below = new BoatSim(boat(heading), SPORTSBOAT_WATER.drag);
+          const atFeet = new BoatSim(boat(heading), SPORTSBOAT_WATER.drag);
+          for (const raw of inputs) {
+            expect(below.step(raw, WATER_BELOW)).toStrictEqual(
+              atFeet.step(raw, { waterDepth: depth }),
+            );
+          }
+        },
+      ),
     );
   });
 
