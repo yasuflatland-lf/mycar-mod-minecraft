@@ -380,8 +380,9 @@ body.append(box(11.4, F + 7.4, 6.6, 12.8, F + 8.8, 8.4, "steel"))  # chrome hand
 body.append(box(11.6, F + 8.8, 6.9, 12.6, F + 9.2, 8.1, "steel"))
 
 # Wraparound windshield: side panes follow the gunwale back to z -10; the front leans back toward
-# the cockpit about 55 degrees, built from thin rows that each step aft, and the side panes are cut
-# along the same slope where they meet it.
+# the cockpit about 55 degrees, and the side panes are cut along the same slope where they meet it.
+# The front is one slanted row per step of width, each turned to the slope, so its face reads as a
+# single plane leaning toward the driver; stacked flat rows read as louvers leaning toward the bow.
 WS_TOP = [(-12, 0.0), (-10, 1.8), (0, 3.4), (12, 4.3), (16, 4.5)]  # glass height above the sheer
 WS_HEIGHT = 4.5
 FRONT_BASE, FRONT_TOP = 22.0, 15.5  # z of the front glass at the sheer and at its top edge
@@ -402,28 +403,44 @@ while z < FRONT_BASE:
         body += pair(b - 1.7, s + h, z, b - 0.8, s + h + 0.7, z + SLICE, "frame")  # top rail
     z += SLICE
 s0 = sheer(FRONT_BASE)
-ROW_HEIGHT = WS_HEIGHT / WS_ROWS
+# A box standing up from its front bottom edge leans toward -z, the cockpit, under a positive x
+# rotation in game before the 180-degree turn (the struts below lean the other way, ADR 0051).
+LEAN = math.degrees(math.atan2(FRONT_BASE - FRONT_TOP, WS_HEIGHT))
+SEGMENT = math.hypot(FRONT_BASE - FRONT_TOP, WS_HEIGHT) / WS_ROWS  # each row's length along the slope
 # (bottom y, front z) of each row of the front glass
 ROWS = [(s0 + r * WS_HEIGHT / WS_ROWS, FRONT_BASE - r * (FRONT_BASE - FRONT_TOP) / WS_ROWS) for r in range(WS_ROWS)]
 POST = WALK_HALF + 0.6  # outer face of each walk-through post
 RAIL_Y = s0 + WS_HEIGHT  # bottom of the front glass's top rail
+
+
+def slanted(x0, x1, y0, zf, depth, color, overlap=0.0, proud=0.0):
+    """A front row from x0 to x1 laid on the windshield's slope, `depth` thick behind its face."""
+    return box(x0, y0, zf - depth, x1, y0 + SEGMENT + overlap, zf + proud, color,
+               pivot=[0, y0, zf], rotation=[LEAN, 0, 0])
+
+
+def slanted_pair(x0, x1, y0, zf, depth, color, overlap=0.0, proud=0.0):
+    return [slanted(x0, x1, y0, zf, depth, color, overlap, proud),
+            slanted(-x1, -x0, y0, zf, depth, color, overlap, proud)]
+
+
 for y0, zf in ROWS:
     # The center section is the walk-through to the bow
-    glass += pair(POST, y0, zf - 0.9, beam(zf) - 1.0, y0 + ROW_HEIGHT, zf, "glass")
+    glass += slanted_pair(POST, beam(zf) - 1.0, y0, zf, 0.5, "glass")
 body += pair(POST - 0.2, RAIL_Y, FRONT_TOP - 1.0, beam(FRONT_TOP) - 1.0, RAIL_Y + 0.7, FRONT_TOP + 0.2, "frame")
-# Walk-through posts lean back with the glass: one short block per row
+# Walk-through posts lean back with the glass
 for y0, zf in ROWS:
-    body += pair(WALK_HALF, y0, zf - 0.9, POST, y0 + ROW_HEIGHT + 0.05, zf, "frame")
+    body += slanted_pair(WALK_HALF, POST, y0, zf, 0.9, "frame", overlap=0.05)
 # Corner posts where the front meets the sides, a divider halfway across each front pane, and a mid
 # post on each side pane
 for y0, zf in ROWS:
     hw = beam(zf) - 1.0
-    body += pair(hw - 0.6, y0, zf - 0.9, hw, y0 + ROW_HEIGHT + 0.05, zf, "frame")
+    body += slanted_pair(hw - 0.6, hw, y0, zf, 0.9, "frame", overlap=0.05)
     mid = (POST + hw) / 2
-    body += pair(mid - 0.25, y0, zf - 0.95, mid + 0.25, y0 + ROW_HEIGHT + 0.05, zf + 0.05, "frame")
+    body += slanted_pair(mid - 0.25, mid + 0.25, y0, zf, 0.95, "frame", overlap=0.05, proud=0.05)
 # The walk-through door is closed: its glass leans back in line with the front panes, under the top rail
 for y0, zf in ROWS:
-    glass.append(box(-WALK_HALF, y0, zf - 0.9, WALK_HALF, y0 + ROW_HEIGHT, zf, "glass"))
+    glass.append(slanted(-WALK_HALF, WALK_HALF, y0, zf, 0.5, "glass"))
 body.append(box(-WALK_HALF, RAIL_Y, FRONT_TOP - 1.0, WALK_HALF, RAIL_Y + 0.7, FRONT_TOP + 0.2, "frame"))
 # Rear-view mirror on a stalk over the helm half of the windshield's top rail, its glass facing aft
 MX, MY, MZ = 8.5, RAIL_Y + 0.7, FRONT_TOP - 0.4
