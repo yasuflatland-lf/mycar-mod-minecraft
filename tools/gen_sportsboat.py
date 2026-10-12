@@ -403,9 +403,9 @@ while z < FRONT_BASE:
         body += pair(b - 1.7, s + h, z, b - 0.8, s + h + 0.7, z + SLICE, "frame")  # top rail
     z += SLICE
 s0 = sheer(FRONT_BASE)
-# A box standing up from its front bottom edge leans toward -z, the cockpit, under a positive x
-# rotation in game before the 180-degree turn (the struts below lean the other way, ADR 0051).
-LEAN = math.degrees(math.atan2(FRONT_BASE - FRONT_TOP, WS_HEIGHT))
+# A box standing up from its front bottom edge leans toward -z, the cockpit, under a negative x
+# rotation before the 180-degree turn: a positive one showed the posts leaning toward the bow in game.
+LEAN = -math.degrees(math.atan2(FRONT_BASE - FRONT_TOP, WS_HEIGHT))
 SEGMENT = math.hypot(FRONT_BASE - FRONT_TOP, WS_HEIGHT) / WS_ROWS  # each row's length along the slope
 # (bottom y, front z) of each row of the front glass
 ROWS = [(s0 + r * WS_HEIGHT / WS_ROWS, FRONT_BASE - r * (FRONT_BASE - FRONT_TOP) / WS_ROWS) for r in range(WS_ROWS)]
