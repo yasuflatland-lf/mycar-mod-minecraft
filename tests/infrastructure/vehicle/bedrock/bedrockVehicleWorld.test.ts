@@ -1,5 +1,6 @@
 import fc from "fast-check";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { EngineCommand } from "../../../../src/domain/vehicle/drive";
 import { SPEC } from "../../../../src/domain/vehicle/spec";
 import { NAMESPACE } from "../../../../src/infrastructure/shared/identifiers";
 import { BedrockVehicleWorld } from "../../../../src/infrastructure/vehicle/bedrock/bedrockVehicleWorld";
@@ -362,6 +363,22 @@ describe("BedrockVehicleWorld command interpreter", () => {
     expect(car.setProperty.mock.calls).toEqual([[`${NAMESPACE}:bank`, 0]]);
     expect(car.playAnimation).not.toHaveBeenCalled();
     expect(dimension.playSound).not.toHaveBeenCalled();
+  });
+
+  // The type checker rejects a missing case, so only a command cast past the
+  // type reaches the default branch.
+  it("throws on an unknown command type and stops the remaining commands", () => {
+    const { world, car } = fixture();
+    const unknown = { type: "spawnParticle", name: "smoke" };
+    expect(() =>
+      world.run(car.id, [
+        { type: "setProperty", name: "bank", value: 0 },
+        unknown as unknown as EngineCommand,
+        { type: "triggerEvent", name: "gravity_off" },
+      ]),
+    ).toThrow(`Unknown engine command: ${JSON.stringify(unknown)}`);
+    expect(car.setProperty.mock.calls).toEqual([[`${NAMESPACE}:bank`, 0]]);
+    expect(car.triggerEvent).not.toHaveBeenCalled();
   });
 });
 

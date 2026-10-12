@@ -31,7 +31,6 @@ import {
   updateSpeed,
 } from "../../../src/domain/vehicle/motion/motion";
 import { selectHits } from "../../../src/domain/vehicle/ram";
-import { SEAT_POSITIONS } from "../../../src/domain/vehicle/seats";
 import { SPEC } from "../../../src/domain/vehicle/spec";
 
 const number = (min: number, max: number) =>
@@ -77,7 +76,14 @@ describe("vehicle profiles (ADR 0050)", () => {
     expect(SUV_PROFILE).toEqual({
       kind: "suv",
       ram: { front: SUV_SPEC.bodyFront, halfWidth: SUV_SPEC.bodyHalfWidth },
-      seats: { positions: SEAT_POSITIONS },
+      seats: {
+        positions: [
+          { x: -0.38, z: 0.35 },
+          { x: 0.38, z: 0.35 },
+          { x: -0.38, z: -0.8 },
+          { x: 0.38, z: -0.8 },
+        ],
+      },
       beams: { reach: SUV_SPEC.headlightReach, lanes: [0] },
       placement: {
         surfaces: ["top"],

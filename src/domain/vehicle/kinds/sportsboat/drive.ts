@@ -77,11 +77,8 @@ export function estimateWaterDrag(
   );
 }
 
-export function isAfloat(
-  waterDepth: number | undefined,
-  waterBelow: boolean | undefined,
-): boolean {
-  return (waterDepth ?? 0) > 0 || waterBelow === true;
+export function isAfloat(depth: number, below: () => boolean): boolean {
+  return depth > 0 || below();
 }
 
 /** What a boat drive carries from one tick to the next. */
@@ -141,7 +138,7 @@ export class BoatDrive implements Drive {
     const motion = this.motion;
     let step: MotionResult;
     const depth = waterDepthAt(ctx.location, ctx.waterAt, SPORTSBOAT_HEIGHT);
-    if (isAfloat(depth, depth > 0 ? undefined : waterBelowAt(ctx.waterAt))) {
+    if (isAfloat(depth, () => waterBelowAt(ctx.waterAt))) {
       const waterDrag = estimateWaterDrag(
         this.dragEstimate,
         motion.airExpected,

@@ -140,15 +140,16 @@ function boat(heading: number): Vehicle {
 describe("isAfloat (ADR 0051)", () => {
   it("is afloat with water at the feet or 0.3 blocks below them, and beached otherwise", () => {
     fc.assert(
-      fc.property(
-        fc.option(number(-2, 10), { nil: undefined }),
-        fc.option(fc.boolean(), { nil: undefined }),
-        (depth, below) => {
-          expect(isAfloat(depth, below)).toBe(
-            (depth !== undefined && depth > 0) || below === true,
-          );
-        },
-      ),
+      fc.property(number(-2, 10), fc.boolean(), (depth, below) => {
+        let probes = 0;
+        expect(
+          isAfloat(depth, () => {
+            probes++;
+            return below;
+          }),
+        ).toBe(depth > 0 || below);
+        expect(probes).toBe(depth <= 0 ? 1 : 0);
+      }),
     );
   });
 });

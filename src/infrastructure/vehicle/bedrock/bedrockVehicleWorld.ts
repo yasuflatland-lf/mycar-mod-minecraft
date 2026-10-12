@@ -239,6 +239,10 @@ export class BedrockVehicleWorld
         case "playSound":
           entity.dimension.playSound(command.name, entity.location);
           break;
+        default: {
+          const unknown: never = command;
+          throw new Error(`Unknown engine command: ${JSON.stringify(unknown)}`);
+        }
       }
     }
   }

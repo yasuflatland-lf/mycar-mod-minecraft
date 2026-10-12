@@ -41,6 +41,87 @@ const startIn = (s: number) =>
 const laneIndex = fc.integer({ min: 0, max: 2 });
 
 describe("stepHeight (ADR 0004, 0035)", () => {
+  it("moves the scan with the body's front and ignores obstacles behind its scan start", () => {
+    fc.assert(
+      fc.property(
+        fc.double({ min: 4, max: 8, noNaN: true }),
+        laneIndex,
+        fc.constantFrom(1, 2),
+        (front, lane, height) => {
+          const lanes = (start: number): (Lane | undefined)[] => {
+            const result: (Lane | undefined)[] = [
+              undefined,
+              undefined,
+              undefined,
+            ];
+            result[lane] = { start, height };
+            return result;
+          };
+          for (const bodyFront of [front, front + 10]) {
+            expect(
+              probeStepHeight(terrain(lanes(bodyFront + 0.2)), 0.2, {
+                front: bodyFront,
+                height: 1,
+              }),
+            ).toBe(height);
+            const behind: SolidAt = (ahead, side, dy) =>
+              side === STEP_LANES[lane] &&
+              ahead >= bodyFront - 0.2 &&
+              ahead < bodyFront + 0.05 &&
+              dy < height;
+            expect(
+              probeStepHeight(behind, 0.2, { front: bodyFront, height: 1 }),
+            ).toBe(0);
+          }
+        },
+      ),
+    );
+  });
+
+  it("checks clearance above a step against the body's height", () => {
+    fc.assert(
+      fc.property(
+        fc.double({ min: 0.5, max: 1, noNaN: true }),
+        fc.double({ min: 2.1, max: 3, noNaN: true }),
+        (short, tall) => {
+          const solid = terrain([{ start: 4.2, height: 1, ceiling: 2 }]);
+          expect(probeStepHeight(solid, 0.2, { front: 4, height: short })).toBe(
+            1,
+          );
+          expect(probeStepHeight(solid, 0.2, { front: 4, height: tall })).toBe(
+            0,
+          );
+        },
+      ),
+    );
+  });
+
+  it("checks overhead at the ceiling of the body's height", () => {
+    fc.assert(
+      fc.property(
+        fc.double({ min: 0.5, max: 1, noNaN: true }),
+        fc.double({ min: 2.1, max: 3, noNaN: true }),
+        (short, tall) => {
+          const step = terrain([{ start: 4.2, height: 1 }]);
+          for (const height of [short, tall]) {
+            const overhead = Math.ceil(height) + 0.5;
+            const solid: SolidAt = (ahead, side, dy) =>
+              ahead === 0 && side === 0
+                ? dy === overhead
+                : step(ahead, side, dy);
+            expect(probeStepHeight(solid, 0.2, { front: 4, height })).toBe(0);
+            expect(
+              probeStepHeight(solid, 0.2, {
+                front: 4,
+                height: height === short ? tall : short,
+              }),
+            ).toBe(1);
+          }
+        },
+      ),
+    );
+  });
+
   it("jumps for a step of height 2 within look-ahead range (on any ray)", () => {
     fc.assert(
       fc.property(

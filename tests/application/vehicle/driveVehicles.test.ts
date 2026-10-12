@@ -4,10 +4,14 @@ import { DriveVehicles } from "../../../src/application/vehicle/driveVehicles";
 import { forward } from "../../../src/domain/shared/vec";
 import type { RawInput } from "../../../src/domain/vehicle/driveInput";
 import { headlightCells } from "../../../src/domain/vehicle/headlights";
-import { createVehicle } from "../../../src/domain/vehicle/kinds/index";
+import {
+  createVehicle,
+  rebuildVehicle,
+} from "../../../src/domain/vehicle/kinds/index";
 import { SUV_PROFILE } from "../../../src/domain/vehicle/kinds/suv/profile";
 import { SUV_SPEC } from "../../../src/domain/vehicle/kinds/suv/spec";
 import { SPEC } from "../../../src/domain/vehicle/spec";
+import { defined } from "../../support/defined";
 import { FakeWorld, InMemoryRepo, snapshot } from "./fakes";
 
 const logger = () => {
@@ -108,6 +112,64 @@ describe("DriveVehicles", () => {
     expect(world.calls).toContain("motion:good:0");
     expect(log.lines.some((l) => l.includes("bad"))).toBe(true);
   });
+
+  it.each(["bank", "gear_down"])(
+    "skips the rest of a vehicle's tick when its %s command throws, while other vehicles continue (ADR 0055)",
+    (name) => {
+      const world = new FakeWorld();
+      const repo = new InMemoryRepo();
+      const log = logger();
+      const driver = {
+        id: "driver",
+        offset: defined(SUV_PROFILE.seats.positions[0], "driver seat"),
+        yaw: 0,
+        raw: FULL_THROTTLE,
+      };
+      const passenger = {
+        ...driver,
+        id: "passenger",
+        offset: defined(SUV_PROFILE.seats.positions[1], "passenger seat"),
+      };
+      repo.save(
+        rebuildVehicle("suv", "bad", 0, [driver, passenger], {
+          form: "submarine",
+        }),
+      );
+      world.snapshots = [
+        snapshot("bad", {
+          waterDepth: SUV_SPEC.carHeight,
+          riders: [driver],
+          headlights: true,
+        }),
+        snapshot("good", {
+          waterDepth: SUV_SPEC.carHeight,
+          riders: [{ ...driver, id: "other" }],
+          headlights: true,
+        }),
+      ];
+      world.failRunOn = { id: "bad", name };
+      const run = vi.spyOn(world, "run");
+      new DriveVehicles(world, repo, log).execute(0);
+      expect(run.mock.calls.filter(([id]) => id === "bad")).toHaveLength(1);
+      expect(
+        world.calls.some(
+          (c) =>
+            c.startsWith("motion:bad:") ||
+            c.startsWith("door:bad:") ||
+            c.startsWith("camera:driver:") ||
+            c.startsWith("breathing:driver:"),
+        ),
+      ).toBe(false);
+      expect(world.shone.has("bad")).toBe(false);
+      expect(log.lines).toEqual([`bad: Error: command ${name}`]);
+      expect(world.calls).toContain("motion:good:0");
+      expect(world.calls).toContain("camera:other:third");
+      expect(world.calls).toContain(
+        `breathing:other:${SPEC.waterBreathingTicks}`,
+      );
+      expect(world.shone.get("good")?.length).toBeGreaterThan(0);
+    },
+  );
 
   it("plays that seat's door sound when the driver's seat becomes empty", () => {
     const world = new FakeWorld();
@@ -260,6 +322,20 @@ describe("DriveVehicles", () => {
     world.shone.set("gone", [{ x: 0, y: 0, z: 4 }]);
     new DriveVehicles(world, repo, logger()).execute(0);
     expect(world.shone.get("gone")).toEqual([]);
+  });
+
+  it("logs a failed light clear of an unloaded vehicle and still clears and forgets the others", () => {
+    const world = new FakeWorld();
+    const repo = new InMemoryRepo();
+    const log = logger();
+    repo.save(createVehicle("suv", "stuck", 0));
+    repo.save(createVehicle("suv", "gone", 0));
+    world.shone.set("gone", [{ x: 0, y: 0, z: 4 }]);
+    world.failShineOn = "stuck";
+    new DriveVehicles(world, repo, log).execute(0);
+    expect(log.lines).toEqual(["stuck: Error: lights"]);
+    expect(world.shone.get("gone")).toEqual([]);
+    expect(repo.ids()).toEqual([]);
   });
 });
 
