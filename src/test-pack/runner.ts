@@ -806,7 +806,9 @@ function boatDrag(a: Arena): Promise<Outcome> {
               riders: [],
               velocity: observed,
               onGround: false,
-              waterDepth: Math.max(0.01, a.gy - boat.location.y),
+              // The replica stays afloat for the whole run.
+              location: boat.location,
+              waterAt: () => true,
               solidAt: () => false,
               targets: () => [],
             },

@@ -2,6 +2,7 @@ import { expect, it, vi } from "vitest";
 import { SUV_PROFILE } from "../../../src/domain/vehicle/profile";
 import { rebuildVehicle } from "../../../src/domain/vehicle/registry";
 import { defined } from "../../support/defined";
+import { waterSensors } from "../../support/waterDepth";
 
 vi.mock("../../../src/domain/vehicle/profile", async (importOriginal) => {
   const original =
@@ -35,8 +36,9 @@ it("emits SeatVacated without a door when the profile has no doors", () => {
   const out = vehicle.tick({
     tick: 0,
     riders: [],
-    velocity: { x: 0, z: 0 },
+    velocity: { x: 0, y: 0, z: 0 },
     onGround: true,
+    ...waterSensors(),
     solidAt: () => false,
     targets: () => [],
   });

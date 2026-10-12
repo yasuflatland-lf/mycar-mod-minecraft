@@ -33,6 +33,7 @@ import {
   WATER_DRAG,
   WATER_VERTICAL_DRAG,
 } from "../../support/engineModel";
+import { waterSensors } from "../../support/waterDepth";
 
 const IDLE: RawInput = { moveX: 0, moveY: 0, jump: false };
 const FORWARD: RawInput = { ...IDLE, moveY: 1 };
@@ -81,10 +82,9 @@ class DiveSim {
       tick: this.tick++,
       riders: [],
       testInput: input,
-      velocity: this.body.vel,
-      velocityY: this.vy,
+      velocity: { ...this.body.vel, y: this.vy },
       onGround: this.y <= 0,
-      waterDepth: this.waterDepth,
+      ...waterSensors(this.waterDepth),
       solidAt: (offset) => this.y + offset.y < 0 || this.obstacle(offset),
       targets: this.targets,
     });

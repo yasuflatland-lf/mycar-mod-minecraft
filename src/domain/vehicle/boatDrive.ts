@@ -19,6 +19,11 @@ import {
 import { SPORTSBOAT_PROFILE, type VehicleProfile } from "./profile";
 import { SPEC } from "./spec";
 import type { TickContext } from "./vehicle";
+import { waterBelowAt, waterDepthAt } from "./water";
+
+// The height of the sportsboat collision box, which bounds the water depth
+// query; the boat only tests whether the depth is above zero.
+const SPORTSBOAT_HEIGHT = 1.2;
 
 // boat_drag measured 0.833 at full speed, 0.916-0.927 on the 3 ticks of every
 // 14 at the top of the bob, and 0.815 the tick after; weight 0.1 keeps one bump
@@ -86,7 +91,8 @@ export class BoatDrive implements Drive {
     // There is no handbrake: neither path below reads it, so jump does nothing.
     const input: DriveInput = raw ? toDriveInput(raw) : NEUTRAL_INPUT;
     let step: MotionResult;
-    if (isAfloat(ctx.waterDepth, ctx.waterBelow)) {
+    const depth = waterDepthAt(ctx.location, ctx.waterAt, SPORTSBOAT_HEIGHT);
+    if (isAfloat(depth, depth > 0 ? undefined : waterBelowAt(ctx.waterAt))) {
       const waterDrag = estimateWaterDrag(
         motion.waterDrag,
         motion.airExpected,

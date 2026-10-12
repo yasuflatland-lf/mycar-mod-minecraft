@@ -17,7 +17,7 @@ function depths(maxMillimeters: number, boundaries: readonly number[]) {
   );
 }
 
-/** Water depth from dry to a block above the roof (infrastructure caps it at carHeight + 1). */
+/** Water depth from dry to a block above the roof (the SUV caps it at carHeight + 1). */
 export const waterDepth = depths(Math.round((SPEC.carHeight + 1) * 1000), [
   0,
   Number.NaN,
@@ -36,3 +36,15 @@ export const shallowWaterDepth = depths(Math.round(SPEC.carHeight * 1000) - 1, [
   SPEC.floatDraft,
   SPEC.carHeight - EPSILON,
 ]);
+
+/** Put the surface at y = 0 so fractional depths still end on a cell boundary. */
+export function waterSensors(depth = 0, below = false) {
+  const location = { x: 0, y: depth > 0 ? -depth : 0, z: 0 };
+  return {
+    location,
+    waterAt: (offset: { x: number; y: number; z: number }) =>
+      depth > 0
+        ? Math.floor(location.y + offset.y) < 0
+        : below && Math.floor(offset.y) === -1,
+  };
+}

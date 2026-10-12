@@ -25,6 +25,7 @@ import type {
 } from "../../../src/domain/vehicle/vehicle";
 import { defined } from "../../support/defined";
 import { engineStep } from "../../support/engineModel";
+import { waterSensors } from "../../support/waterDepth";
 
 const FORWARD: RawInput = { moveX: 0, moveY: 1, jump: false };
 const IDLE: RawInput = { moveX: 0, moveY: 0, jump: false };
@@ -120,8 +121,9 @@ class Sim {
         tick: t,
         riders,
         testInput: this.testInput,
-        velocity: this.vel,
+        velocity: { ...this.vel, y: 0 },
         onGround: true,
+        ...waterSensors(),
         solidAt: (o) =>
           this.solid({ x: this.pos.x + o.x, y: o.y, z: this.pos.z + o.z }),
         targets: () => this.targets,
@@ -364,8 +366,9 @@ describe("Vehicle (aggregate)", () => {
         tick,
         riders: [],
         testInput: { moveX: 0, moveY: 0.2, jump: false },
-        velocity: vel,
+        velocity: { ...vel, y: 0 },
         onGround: true,
+        ...waterSensors(),
         solidAt: (o) => step({ x: at.x + o.x, y: o.y, z: at.z + o.z }),
         targets: () => {
           queried = true;
@@ -416,8 +419,9 @@ describe("Vehicle (aggregate)", () => {
               tick,
               riders: [],
               testInput: { moveX: 0, moveY, jump: false },
-              velocity: vel,
+              velocity: { ...vel, y: 0 },
               onGround: true,
+              ...waterSensors(),
               solidAt: () => false,
               targets: () => {
                 queried = true;
@@ -603,9 +607,9 @@ describe("Vehicle water depth context", () => {
           const ctx: TickContext = {
             tick: 0,
             riders: [],
-            velocity: { x: 0, z: 0 },
+            velocity: { x: 0, y: 0, z: 0 },
             onGround: true,
-            waterDepth,
+            ...waterSensors(waterDepth),
             solidAt: () => false,
             targets: () => [],
           };
@@ -617,14 +621,15 @@ describe("Vehicle water depth context", () => {
     );
   });
 
-  it("treats absent depth as dry", () => {
+  it("treats dry cells as dry", () => {
     const vehicle = rebuildVehicle("suv", "car", 0, [], { form: "submarine" });
     expect(
       vehicle.tick({
         tick: 0,
         riders: [],
-        velocity: { x: 0, z: 0 },
+        velocity: { x: 0, y: 0, z: 0 },
         onGround: false,
+        ...waterSensors(),
         solidAt: () => false,
         targets: () => [],
       }).form,

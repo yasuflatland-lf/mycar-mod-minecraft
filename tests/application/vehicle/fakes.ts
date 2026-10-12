@@ -18,6 +18,7 @@ import type { Paint } from "../../../src/domain/vehicle/paint";
 import type { RamHit, RamTarget } from "../../../src/domain/vehicle/ram";
 import type { Vehicle } from "../../../src/domain/vehicle/vehicle";
 import type { VehicleRepository } from "../../../src/domain/vehicle/vehicleRepository";
+import { waterSensors } from "../../support/waterDepth";
 
 export class InMemoryRepo implements VehicleRepository {
   readonly map = new Map<string, Vehicle>();
@@ -84,6 +85,10 @@ export class FakeWorld
   }
   solidAt() {
     return false;
+  }
+  waterAt(id: string, offset: Vec3) {
+    const snap = this.snapshots.find((s) => s.id === id);
+    return snap ? (waterQueries.get(snap)?.(offset) ?? false) : false;
   }
   targetsNear() {
     return this.targets;
@@ -167,21 +172,29 @@ export class FakeWorld
   }
 }
 
+const waterQueries = new WeakMap<VehicleSnapshot, (offset: Vec3) => boolean>();
+
 export const snapshot = (
   id: string,
-  over: Partial<VehicleSnapshot> = {},
-): VehicleSnapshot => ({
-  id,
-  kind: "suv",
-  location: { x: 0, y: 0, z: 0 },
-  yaw: 0,
-  velocity: { x: 0, z: 0 },
-  velocityY: 0,
-  onGround: true,
-  waterDepth: 0,
-  waterBelow: false,
-  riders: [],
-  form: "car",
-  headlights: false,
-  ...over,
-});
+  over: Partial<VehicleSnapshot> & {
+    waterDepth?: number;
+    waterBelow?: boolean;
+  } = {},
+): VehicleSnapshot => {
+  const { waterDepth, waterBelow, ...fields } = over;
+  const sensors = waterSensors(waterDepth, waterBelow);
+  const snap: VehicleSnapshot = {
+    id,
+    kind: "suv",
+    location: sensors.location,
+    yaw: 0,
+    velocity: { x: 0, y: 0, z: 0 },
+    onGround: true,
+    riders: [],
+    form: "car",
+    headlights: false,
+    ...fields,
+  };
+  waterQueries.set(snap, sensors.waterAt);
+  return snap;
+};

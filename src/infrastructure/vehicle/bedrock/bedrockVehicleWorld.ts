@@ -26,7 +26,6 @@ import { PAINTS, type Paint } from "../../../domain/vehicle/paint";
 import type { RamHit, RamTarget } from "../../../domain/vehicle/ram";
 import { RAM_QUERY_RADIUS } from "../../../domain/vehicle/ramQuery";
 import type { RiderView } from "../../../domain/vehicle/vehicle";
-import { waterDepthFrom } from "../../../domain/vehicle/water";
 import type { TestInputStore } from "../testInput/testInputStore";
 import { HeadlightBlocks, isLightBlock } from "./headlightBlocks";
 import {
@@ -107,11 +106,8 @@ export class BedrockVehicleWorld
           kind,
           location: car.location,
           yaw: car.getRotation().y,
-          velocity: { x: v.x, z: v.z },
-          velocityY: v.y,
+          velocity: v,
           onGround: car.isOnGround,
-          waterDepth: this.waterDepth(car),
-          waterBelow: this.isWaterCell(car, Math.floor(car.location.y - 0.3)),
           riders: this.riders(car),
           form: isForm(form) ? form : "car",
           headlights: car.getProperty(HEADLIGHTS_PROPERTY) === true,
@@ -125,14 +121,14 @@ export class BedrockVehicleWorld
     return snapshots;
   }
 
-  private waterDepth(car: Entity): number {
-    return waterDepthFrom(car.location.y, (cellY) =>
-      this.isWaterCell(car, cellY),
-    );
-  }
-
-  private isWaterCell(car: Entity, cellY: number): boolean {
-    return isWaterAt(car.dimension, { ...car.location, y: cellY });
+  waterAt(vehicleId: string, offset: Vec3): boolean {
+    const car = this.entity(vehicleId);
+    if (!car) return false;
+    return isWaterAt(car.dimension, {
+      x: car.location.x + offset.x,
+      y: car.location.y + offset.y,
+      z: car.location.z + offset.z,
+    });
   }
 
   private riders(car: Entity): RiderView[] {

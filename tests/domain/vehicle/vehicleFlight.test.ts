@@ -16,6 +16,7 @@ import {
 import { SPEC } from "../../../src/domain/vehicle/spec";
 import type { Vehicle } from "../../../src/domain/vehicle/vehicle";
 import { AIR_DRAG, GRAVITY, VERTICAL_DRAG } from "../../support/engineModel";
+import { waterSensors } from "../../support/waterDepth";
 
 const GROUND_FRICTION = 0.688;
 const IDLE: RawInput = { moveX: 0, moveY: 0, jump: false };
@@ -54,9 +55,9 @@ class FlightSim {
       tick: this.tick++,
       riders: [],
       testInput: input,
-      velocity: this.vel,
-      velocityY: this.vy,
+      velocity: { ...this.vel, y: this.vy },
       onGround: this.onGround,
+      ...waterSensors(),
       // The ground is solid below y = 0.
       solidAt: (offset) => this.y + offset.y < 0,
       targets: () => [],
@@ -281,9 +282,9 @@ describe("Vehicle in flight (ADR 0021)", () => {
         tick: sim.tick++,
         riders: [],
         testInput: FORWARD,
-        velocity: { x: 0, z: 0 },
-        velocityY: 0,
+        velocity: { x: 0, y: 0, z: 0 },
         onGround: false,
+        ...waterSensors(),
         solidAt: () => false,
         targets: () => [
           {
@@ -353,9 +354,9 @@ describe("Vehicle landing gear (ADR 0033)", () => {
     const out = vehicle.tick({
       tick: 0,
       riders: [],
-      velocity: { x: 0, z: 0 },
-      velocityY: 0,
+      velocity: { x: 0, y: 0, z: 0 },
       onGround: false,
+      ...waterSensors(),
       solidAt,
       targets: () => [],
     });

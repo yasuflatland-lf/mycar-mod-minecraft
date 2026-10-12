@@ -43,6 +43,7 @@ import type {
   Vehicle,
 } from "../../../src/domain/vehicle/vehicle";
 import { type Body, engineStep } from "../../support/engineModel";
+import { waterSensors } from "../../support/waterDepth";
 
 const number = (min: number, max: number) =>
   fc.double({ min, max, noNaN: true });
@@ -120,9 +121,9 @@ function context(
     tick,
     riders: [],
     testInput: raw,
-    velocity,
+    velocity: { ...velocity, y: 0 },
     onGround: true,
-    ...water,
+    ...waterSensors(water.waterDepth, water.waterBelow),
     solidAt: () => false,
     targets,
   };
@@ -301,7 +302,7 @@ describe("BoatDrive (ADR 0051)", () => {
         const next = drive.step(
           a.motion,
           FULL_THROTTLE,
-          { ...ctx, velocity: observed },
+          { ...ctx, velocity: { ...observed, y: 0 } },
           SPORTSBOAT_PROFILE,
         );
         expect(next.motion.waterDrag).toBeCloseTo(low * 0.9 + 0.9 * 0.1, 12);
@@ -320,7 +321,11 @@ describe("BoatDrive (ADR 0051)", () => {
         const beached = drive.step(
           next.motion,
           FULL_THROTTLE,
-          { ...ctx, ...BEACHED, velocity: { x: 0, z: 0 } },
+          {
+            ...ctx,
+            ...waterSensors(BEACHED.waterDepth, BEACHED.waterBelow),
+            velocity: { y: 0, x: 0, z: 0 },
+          },
           SPORTSBOAT_PROFILE,
         );
         expect(beached.motion.waterDrag).toBe(next.motion.waterDrag);
@@ -697,4 +702,27 @@ describe("a sports boat Vehicle (ADR 0051)", () => {
       ),
     );
   });
+});
+
+it("queries below the boat only when its depth query is dry", () => {
+  fc.assert(
+    fc.property(fc.boolean(), fc.boolean(), (atFeet, below) => {
+      const drive = new BoatDrive();
+      const ctx = context(0, FULL_THROTTLE, { x: 0, z: 0 }, BEACHED);
+      const probes: number[] = [];
+      drive.step(
+        initialMotion(0),
+        FULL_THROTTLE,
+        {
+          ...ctx,
+          waterAt: (o) => {
+            probes.push(o.y);
+            return o.y === -0.3 ? below : atFeet;
+          },
+        },
+        SPORTSBOAT_PROFILE,
+      );
+      expect(probes.filter((y) => y === -0.3)).toEqual(atFeet ? [] : [-0.3]);
+    }),
+  );
 });
