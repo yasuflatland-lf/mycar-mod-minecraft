@@ -119,6 +119,17 @@ const terrain = fc
   );
 
 describe("updateSpeed / steerYaw", () => {
+  const forwardThrottle = fc.double({
+    min: 0,
+    max: 1,
+    minExcluded: true,
+    noNaN: true,
+  });
+  // maxExcluded still yields -0, which coasts instead of applying reverse throttle.
+  const reverseThrottle = fc
+    .double({ min: -1, max: 0, maxExcluded: true, noNaN: true })
+    .filter((t) => t < 0);
+
   it("reaches 95% of max speed in about 40 ticks at full throttle", () => {
     let s = 0;
     let t = 0;
@@ -165,6 +176,114 @@ describe("updateSpeed / steerYaw", () => {
           let s = start;
           for (let i = 0; i < 100; i++) s = updateSpeed(s, 0, true);
           expect(s).toBe(SPEC.creepSpeed);
+        },
+      ),
+    );
+  });
+
+  it("creeping below the creep speed changes speed as full throttle does, capped at the creep speed (ADR 0018)", () => {
+    const below = fc.oneof(
+      fc.constant(0),
+      fc.double({
+        min: -SPEC.maxReverse,
+        max: SPEC.creepSpeed,
+        maxExcluded: true,
+        noNaN: true,
+      }),
+    );
+    fc.assert(
+      fc.property(below, (s) => {
+        expect(updateSpeed(s, 0, true)).toBe(
+          Math.min(SPEC.creepSpeed, updateSpeed(s, 1)),
+        );
+      }),
+    );
+    expect(updateSpeed(0, 0, true)).toBe(SPEC.accel);
+    expect(updateSpeed(-0.1, 0, true)).toBeCloseTo(-0.1 + SPEC.brake, 12);
+  });
+
+  it("forward throttle accelerates by accel times throttle from a standstill or moving forward, up to max speed (ADR 0002)", () => {
+    const speed = fc.oneof(
+      fc.constant(0),
+      fc.double({ min: 0, max: SPEC.maxSpeed, noNaN: true }),
+    );
+    fc.assert(
+      fc.property(speed, forwardThrottle, (s, t) => {
+        expect(updateSpeed(s, t)).toBeCloseTo(
+          Math.min(SPEC.maxSpeed, s + SPEC.accel * t),
+          12,
+        );
+      }),
+    );
+  });
+
+  it("forward throttle while reversing brakes by brake times throttle (ADR 0002)", () => {
+    // A filter, because max: 0 also yields 0 and -0, which are a standstill, not reversing.
+    const speed = fc
+      .double({ min: -SPEC.maxReverse, max: 0, noNaN: true })
+      .filter((s) => s < 0);
+    fc.assert(
+      fc.property(speed, forwardThrottle, (s, t) => {
+        expect(updateSpeed(s, t)).toBeCloseTo(s + SPEC.brake * t, 12);
+      }),
+    );
+  });
+
+  it("reverse throttle while moving forward brakes by brake times throttle (ADR 0002)", () => {
+    const speed = fc
+      .double({ min: 0, max: SPEC.maxSpeed, noNaN: true })
+      .filter((s) => s > 0);
+    fc.assert(
+      fc.property(speed, reverseThrottle, (s, t) => {
+        expect(updateSpeed(s, t)).toBeCloseTo(s + SPEC.brake * t, 12);
+      }),
+    );
+  });
+
+  it("reverse throttle from a standstill or reversing accelerates backward by reverseAccel times throttle, down to the reverse limit (ADR 0002)", () => {
+    const speed = fc.oneof(
+      fc.constant(0),
+      fc.double({ min: -SPEC.maxReverse, max: 0, noNaN: true }),
+    );
+    fc.assert(
+      fc.property(speed, reverseThrottle, (s, t) => {
+        expect(updateSpeed(s, t)).toBeCloseTo(
+          Math.max(-SPEC.maxReverse, s + SPEC.reverseAccel * t),
+          12,
+        );
+      }),
+    );
+  });
+
+  it("turns at the full turn rate at or above steerFullSpeed, mirrored in reverse (ADR 0002)", () => {
+    const fwd = fc.double({
+      min: SPEC.steerFullSpeed,
+      max: SPEC.maxSpeed,
+      noNaN: true,
+    });
+    const rev = fc.double({
+      min: SPEC.steerFullSpeed,
+      max: SPEC.maxReverse,
+      noNaN: true,
+    });
+    const steer = fc.double({ min: -1, max: 1, noNaN: true });
+    fc.assert(
+      fc.property(fwd, rev, steer, (fwd, rev, st) => {
+        expect(steerYaw(0, fwd, st)).toBeCloseTo(-st * SPEC.turnRate, 9);
+        expect(steerYaw(0, -rev, st)).toBeCloseTo(st * SPEC.turnRate, 9);
+      }),
+    );
+  });
+
+  it("up to steerFullSpeed, turns forward in proportion to speed", () => {
+    fc.assert(
+      fc.property(
+        fc.double({ min: 0, max: SPEC.steerFullSpeed, noNaN: true }),
+        (s) => {
+          expect(steerYaw(0, s, 1)).toBeCloseTo(
+            (-SPEC.turnRate * s) / SPEC.steerFullSpeed,
+            9,
+          );
         },
       ),
     );
@@ -255,6 +374,71 @@ describe("stepMotion (properties, ADR 0002/0003)", () => {
         expect(landing?.blocked).toBe(false);
       }),
     );
+  });
+
+  it("on flat ground the friction estimate settles on the engine's friction whatever the heading (ADR 0003)", () => {
+    const yaw0 = fc.double({ min: -180, max: 180, noNaN: true });
+    fc.assert(
+      fc.property(yaw0, mu, (y, m) => {
+        const frames = simulate(repeat(FULL_THROTTLE, 60), { mu: m }, y);
+        expect(frames.at(-1)?.state.friction).toBeCloseTo(m, 9);
+      }),
+    );
+  });
+
+  it("moves the friction estimate frictionEma of the way toward the measured ratio (ADR 0003)", () => {
+    const given = { x: 0.5, z: 1 };
+    const r = stepMotion(
+      { speed: 0.5, yaw: 0, stepTicks: 0, friction: 0.7, expected: given },
+      FULL_THROTTLE,
+      { velocity: { x: given.x * 0.6, z: given.z * 0.6 }, onGround: true },
+      () => 0,
+    );
+    expect(r.blocked).toBe(false);
+    expect(r.state.friction).toBeCloseTo(
+      (1 - SPEC.frictionEma) * 0.7 + SPEC.frictionEma * 0.6,
+      12,
+    );
+  });
+
+  it("the step countdown stays between 0 and stepTicks - 1", () => {
+    fc.assert(
+      fc.property(inputs, mu, terrain, (ins, m, ter) => {
+        for (const fr of simulate(ins, { mu: m }, 0, ter)) {
+          expect(fr.state.stepTicks).toBeGreaterThanOrEqual(0);
+          expect(fr.state.stepTicks).toBeLessThan(SPEC.stepTicks);
+        }
+      }),
+    );
+  });
+
+  it("never jumps a step without forward throttle, even while creeping or coasting forward (ADR 0018)", () => {
+    fc.assert(
+      fc.property(
+        fc.double({ min: 0, max: SPEC.maxSpeed, noNaN: true }),
+        fc.boolean(),
+        (speed, creep) => {
+          const r = stepMotion(
+            { speed, yaw: 0, stepTicks: 0 },
+            { throttle: 0, steer: 0, handbrake: false, creep },
+            { velocity: { x: 0, z: 0 }, onGround: true },
+            () => 2,
+          );
+          expect(r.jumpVelocity).toBe(0);
+        },
+      ),
+    );
+  });
+
+  it("jumps a step when forward throttle brakes the vehicle out of reverse to a standstill", () => {
+    const r = stepMotion(
+      { speed: -SPEC.brake, yaw: 0, stepTicks: 0 },
+      FULL_THROTTLE,
+      { velocity: { x: 0, z: 0 }, onGround: true },
+      () => 2,
+    );
+    expect(r.jumpVelocity).toBe(SPEC.stepVelocity);
+    expect(r.state.speed).toBe(SPEC.stepMinSpeed);
   });
 
   it("in the air without a step jump, applies only airControl of the correction toward the target", () => {
