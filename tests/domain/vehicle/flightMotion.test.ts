@@ -145,3 +145,110 @@ describe("stepFlightMotion (ADR 0021)", () => {
     );
   });
 });
+
+describe("stepFlightMotion walls and sideways velocity (ADR 0002, 0003)", () => {
+  it("skips an axis whose given velocity is blockedAxisMin or less, whatever comes back on it (ADR 0003)", () => {
+    const small = fc.oneof(
+      fc.constantFrom(SPEC.blockedAxisMin, -SPEC.blockedAxisMin, 0),
+      fc.double({
+        min: -SPEC.blockedAxisMin,
+        max: SPEC.blockedAxisMin,
+        noNaN: true,
+      }),
+    );
+    fc.assert(
+      fc.property(
+        flyingState,
+        driveInput,
+        fc.boolean(),
+        small,
+        component,
+        (s, input, onX, tiny, back) => {
+          const e = onX
+            ? { x: tiny, z: s.airExpected.z }
+            : { x: s.airExpected.x, z: tiny };
+          const v = onX
+            ? { x: back, z: e.z * ENGINE_DRAG }
+            : { x: e.x * ENGINE_DRAG, z: back };
+          const r = stepFlightMotion(
+            prevState({ ...s, airExpected: e }),
+            input,
+            v,
+          );
+          expect(r.blocked).toBe(false);
+        },
+      ),
+    );
+  });
+
+  it("does not report a wall when an axis keeps exactly half the drag share (ADR 0003)", () => {
+    const kept = SPEC.flightDrag * SPEC.blockedRatio;
+    const r = stepFlightMotion(
+      prevState({ speed: 0.5, yaw: 0, airExpected: { x: 1, z: 1 } }),
+      { throttle: 0, steer: 0, handbrake: false, creep: false },
+      { x: kept, z: kept },
+    );
+    expect(r.blocked).toBe(false);
+  });
+
+  it("a wall never raises the internal speed (ADR 0003)", () => {
+    fc.assert(
+      fc.property(
+        flyingState,
+        driveInput,
+        fc.boolean(),
+        component,
+        component,
+        (s, input, onX, stopped, other) => {
+          fc.pre(Math.abs(stopped) > SPEC.blockedAxisMin);
+          const e = onX
+            ? { x: stopped, z: s.airExpected.z }
+            : { x: s.airExpected.x, z: stopped };
+          const v = onX ? { x: 0, z: other } : { x: other, z: 0 };
+          const r = stepFlightMotion(
+            prevState({ ...s, airExpected: e }),
+            input,
+            v,
+          );
+          const free = Math.min(
+            updateSpeed(s.speed, input.throttle, input.creep),
+            SPEC.maxSpeed,
+          );
+          expect(Math.abs(r.state.speed)).toBeLessThanOrEqual(
+            Math.abs(free) + 1e-12,
+          );
+        },
+      ),
+    );
+  });
+
+  it("aims for the internal speed forward and keeps 1 - grip of the sideways velocity (ADR 0002)", () => {
+    const small = fc.integer({ min: -300, max: 300 }).map((n) => n / 1000);
+    fc.assert(
+      fc.property(
+        fc.double({ min: -SPEC.maxReverse, max: 0.5, noNaN: true }),
+        fc.double({ min: -180, max: 180, noNaN: true }),
+        driveInput,
+        small,
+        small,
+        (speed, yaw, input, vx, vz) => {
+          const v = { x: vx, z: vz };
+          const r = stepFlightMotion({ speed, yaw, stepTicks: 0 }, input, v);
+          const f = forward(r.state.yaw);
+          const aimed = {
+            x: (v.x + r.impulse.x) * ENGINE_DRAG,
+            z: (v.z + r.impulse.z) * ENGINE_DRAG,
+          };
+          const side = (u: Vec2) => {
+            const l = dot(u, f);
+            return { x: u.x - f.x * l, z: u.z - f.z * l };
+          };
+          const keep = 1 - SPEC.grip;
+          expect(dot(aimed, f)).toBeCloseTo(r.state.speed, 9);
+          expect(side(aimed).x).toBeCloseTo(side(v).x * keep, 9);
+          expect(side(aimed).z).toBeCloseTo(side(v).z * keep, 9);
+        },
+      ),
+    );
+  });
+});

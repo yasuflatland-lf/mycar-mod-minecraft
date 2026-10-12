@@ -15,7 +15,9 @@ const location = fc.record({
   y: fc.double({ min: -64, max: 300, noNaN: true }),
   z: coord,
 });
-const yaw = fc.double({ min: -180, max: 180, noNaN: true });
+// fc.double draws most values within a hair of 0, so it barely turns the
+// vehicle off the z axis. Whole hundredths of a degree cover every heading.
+const yaw = fc.integer({ min: -18_000, max: 18_000 }).map((c) => c / 100);
 const cell = fc.record({
   x: fc.integer({ min: -3, max: 3 }),
   y: fc.integer({ min: -3, max: 3 }),
@@ -52,6 +54,14 @@ describe("headlightCells (ADR 0020)", () => {
         for (const c of out)
           expect([c.x, c.y, c.z].every(Number.isInteger)).toBe(true);
         expect(keys(out).size).toBe(out.length);
+      }),
+    );
+  });
+
+  it("lights one cell per reach, since the reaches are farther apart than a cell's diagonal", () => {
+    fc.assert(
+      fc.property(location, yaw, (at, y) => {
+        expect(headlightCells(at, y)).toHaveLength(SPEC.headlightReach.length);
       }),
     );
   });
