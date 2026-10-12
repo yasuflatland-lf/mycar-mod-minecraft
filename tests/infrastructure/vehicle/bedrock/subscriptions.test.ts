@@ -20,7 +20,14 @@ const game = vi.hoisted(() => ({
 vi.mock("@minecraft/server", () => {
   const signal = () => ({ subscribe: vi.fn() });
   return {
-    Direction: { Up: "Up" },
+    Direction: {
+      Up: "Up",
+      Down: "Down",
+      North: "North",
+      South: "South",
+      East: "East",
+      West: "West",
+    },
     GameMode: { Creative: "Creative" },
     EntityInitializationCause: {},
     ScriptEventSource: {},
@@ -49,25 +56,33 @@ vi.mock("@minecraft/server", () => {
   };
 });
 
+const FACES = ["Up", "Down", "North", "South", "East", "West"] as const;
+type At = { x: number; y: number; z: number };
+
+// The clicked block sits at y 5 with `depth` water cells above it at every x/z,
+// unless `water` says otherwise. The view ray hits the water cell at y 7.
 function fixture(
   typeId = ITEM_TYPE.sportsboat,
   depth = 3,
-  playerId = "player",
+  water = (at: At) => at.y > 5 && at.y <= 5 + depth,
 ) {
   const dimension = {
     id: "overworld",
-    getBlock: vi.fn(({ y }: { y: number }) => ({
-      typeId: y > 5 && y <= 5 + depth ? "minecraft:water" : "minecraft:air",
+    getBlock: vi.fn((at: At) => ({
+      typeId: water(at) ? "minecraft:water" : "minecraft:air",
       isWaterlogged: false,
     })),
   };
   const block = { dimension, location: { x: 2, y: 5, z: 3 } };
+  const rayBlock = { dimension, location: { x: 2, y: 7, z: 3 } };
   const player = {
-    id: playerId,
+    id: "player",
     selectedSlotIndex: 2,
     getRotation: () => ({ y: -90 }),
     getGameMode: () => "Survival",
-    getBlockFromViewDirection: vi.fn(() => ({ block })),
+    getBlockFromViewDirection: vi.fn<
+      () => { block: typeof block; face: string } | undefined
+    >(() => ({ block: rayBlock, face: "Up" })),
   };
   const place = { execute: vi.fn() };
   registerSubscriptions(
@@ -81,7 +96,7 @@ function fixture(
   const event = {
     isFirstEvent: true,
     itemStack: { typeId },
-    blockFace: "Down",
+    blockFace: "Up",
     cancel: false,
     block,
     player,
@@ -98,78 +113,97 @@ function fixture(
         itemStack: { typeId },
         source: player,
       } as unknown as ItemUseAfterEvent),
-    flush: () => {
+    // system.run callbacks run on the next tick.
+    nextTick: () => {
+      game.currentTick++;
       for (const [callback] of game.run.mock.calls) callback();
       game.run.mockClear();
     },
   };
 }
 
+const boatAt = (blockLocation: At) => ({
+  kind: "sportsboat",
+  playerId: "player",
+  dimensionId: "overworld",
+  blockLocation,
+  yaw: -90,
+  creative: false,
+  slot: 2,
+});
+
 beforeEach(() => {
   vi.clearAllMocks();
   game.currentTick = 10;
 });
 
-it("places the boat from any face on the next tick at the water surface", () => {
+it("places the boat at the water surface on the next tick from the bed's top face, and not from a dry side or bottom face", () => {
   fc.assert(
     fc.property(
-      fc.constantFrom("Up", "Down", "North", "South", "East", "West"),
+      fc.constantFrom(...FACES),
       fc.integer({ min: 0, max: 16 }),
       (face, depth) => {
         const f = fixture(ITEM_TYPE.sportsboat, depth);
         f.event.blockFace = face;
         f.interact();
-        expect(f.event.cancel).toBe(true);
+        expect(f.event.cancel).toBe(face === "Up");
         expect(f.place.execute).not.toHaveBeenCalled();
-        game.currentTick++;
-        f.flush();
-        expect(f.place.execute).toHaveBeenCalledExactlyOnceWith({
-          kind: "sportsboat",
-          playerId: "player",
-          dimensionId: "overworld",
-          blockLocation: { x: 2, y: 5 + depth, z: 3 },
-          yaw: -90,
-          creative: false,
-          slot: 2,
-        });
+        f.nextTick();
+        if (face === "Up")
+          expect(f.place.execute).toHaveBeenCalledExactlyOnceWith(
+            boatAt({ x: 2, y: 5 + depth, z: 3 }),
+          );
+        else expect(f.place.execute).not.toHaveBeenCalled();
       },
     ),
+  );
+});
+
+it("places the boat on the water beside a shore whose side is clicked", () => {
+  // Water fills x 3 from y 4 to y 6, beside the clicked block's east face.
+  const f = fixture(
+    ITEM_TYPE.sportsboat,
+    0,
+    (at) => at.x === 3 && at.y >= 4 && at.y <= 6,
+  );
+  f.event.blockFace = "East";
+  f.interact();
+  expect(f.event.cancel).toBe(true);
+  f.nextTick();
+  expect(f.place.execute).toHaveBeenCalledExactlyOnceWith(
+    boatAt({ x: 3, y: 6, z: 3 }),
   );
 });
 
 it("keeps SUV placement restricted to first events on the top face without climbing", () => {
   fc.assert(
-    fc.property(
-      fc.constantFrom("Up", "Down", "North", "South", "East", "West"),
-      fc.boolean(),
-      (face, first) => {
-        const f = fixture(ITEM_TYPE.suv);
-        f.event.blockFace = face;
-        f.event.isFirstEvent = first;
-        f.interact();
-        f.use();
-        f.flush();
-        expect(f.event.cancel).toBe(first && face === "Up");
-        expect(f.place.execute).toHaveBeenCalledTimes(
-          first && face === "Up" ? 1 : 0,
-        );
-        if (first && face === "Up")
-          expect(f.place.execute.mock.calls[0]?.[0].blockLocation).toEqual({
-            x: 2,
-            y: 5,
-            z: 3,
-          });
-        expect(f.player.getBlockFromViewDirection).not.toHaveBeenCalled();
-      },
-    ),
+    fc.property(fc.constantFrom(...FACES), fc.boolean(), (face, first) => {
+      const f = fixture(ITEM_TYPE.suv);
+      f.event.blockFace = face;
+      f.event.isFirstEvent = first;
+      f.interact();
+      f.use();
+      f.nextTick();
+      expect(f.event.cancel).toBe(first && face === "Up");
+      expect(f.place.execute).toHaveBeenCalledTimes(
+        first && face === "Up" ? 1 : 0,
+      );
+      if (first && face === "Up")
+        expect(f.place.execute.mock.calls[0]?.[0].blockLocation).toEqual({
+          x: 2,
+          y: 5,
+          z: 3,
+        });
+      expect(f.player.getBlockFromViewDirection).not.toHaveBeenCalled();
+    }),
   );
 });
 
-it("uses the liquid-inclusive ray and deduplicates both event orders per player and tick", () => {
+it("places one boat when one tap fires both the interaction and itemUse in the same tick", () => {
   fc.assert(
-    fc.property(fc.boolean(), (beforeFirst) => {
+    fc.property(fc.boolean(), (interactFirst) => {
       const f = fixture();
-      if (beforeFirst) {
+      if (interactFirst) {
         f.interact();
         f.use();
       } else {
@@ -177,9 +211,10 @@ it("uses the liquid-inclusive ray and deduplicates both event orders per player 
         f.interact();
       }
       f.use();
-      f.flush();
-      expect(f.place.execute).toHaveBeenCalledTimes(1);
-      expect(f.place.execute.mock.calls[0]?.[0].blockLocation.y).toBe(8);
+      f.nextTick();
+      expect(f.place.execute).toHaveBeenCalledExactlyOnceWith(
+        boatAt({ x: 2, y: 8, z: 3 }),
+      );
       expect(f.player.getBlockFromViewDirection).toHaveBeenCalledWith({
         includeLiquidBlocks: true,
         includePassableBlocks: true,
@@ -188,26 +223,43 @@ it("uses the liquid-inclusive ray and deduplicates both event orders per player 
       f.player.id = "other";
       f.use();
       expect(f.place.execute).toHaveBeenCalledTimes(2);
-      game.currentTick++;
+      f.nextTick();
       f.use();
       expect(f.place.execute).toHaveBeenCalledTimes(3);
     }),
   );
 });
 
-it("ignores a repeated boat interaction and a ray with no hit", () => {
+it("ignores a repeated boat interaction", () => {
   const f = fixture();
   f.event.isFirstEvent = false;
   f.interact();
-  f.player.getBlockFromViewDirection.mockReturnValue(
-    undefined as unknown as ReturnType<
-      typeof f.player.getBlockFromViewDirection
-    >,
-  );
-  f.use();
-  f.flush();
+  f.nextTick();
   expect(f.event.cancel).toBe(false);
   expect(f.place.execute).not.toHaveBeenCalled();
+});
+
+it("places nothing from an itemUse ray that misses or hits land, and leaves that tick's request to the interaction", () => {
+  fc.assert(
+    fc.property(fc.boolean(), (miss) => {
+      const f = fixture();
+      f.player.getBlockFromViewDirection.mockReturnValue(
+        miss
+          ? undefined
+          : {
+              block: { ...f.event.block, location: { x: 2, y: 2, z: 3 } },
+              face: "Up",
+            },
+      );
+      f.use();
+      expect(f.place.execute).not.toHaveBeenCalled();
+      f.interact();
+      f.nextTick();
+      expect(f.place.execute).toHaveBeenCalledExactlyOnceWith(
+        boatAt({ x: 2, y: 8, z: 3 }),
+      );
+    }),
+  );
 });
 
 it("limits deferred placement and itemUse to one placement on their execution tick", () => {
@@ -215,13 +267,14 @@ it("limits deferred placement and itemUse to one placement on their execution ti
     fc.property(fc.boolean(), (flushFirst) => {
       const f = fixture();
       f.interact();
-      game.currentTick++;
       if (flushFirst) {
-        f.flush();
+        f.nextTick();
         f.use();
       } else {
+        game.currentTick++;
         f.use();
-        f.flush();
+        game.currentTick--;
+        f.nextTick();
       }
       expect(f.place.execute).toHaveBeenCalledTimes(1);
     }),
