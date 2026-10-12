@@ -103,7 +103,7 @@ describe("DriveVehicles", () => {
     expect(world.calls).toContain("motion:a:0");
   });
 
-  it.each(["shineHeadlights", "layFloor", "holdAt"] as const)(
+  it.each(["shineHeadlights", "layFloor", "holdAt", "keepDeckSeats"] as const)(
     "clears all resources of a disappeared vehicle even when %s fails",
     (failed) => {
       const world = new FakeWorld();
@@ -113,6 +113,7 @@ describe("DriveVehicles", () => {
       const shine = vi.spyOn(world, "shineHeadlights");
       const floor = vi.spyOn(world, "layFloor");
       const hold = vi.spyOn(world, "holdAt");
+      const seats = vi.spyOn(world, "keepDeckSeats");
       vi.spyOn(world, failed).mockImplementation(() => {
         throw new Error("cleanup");
       });
@@ -120,6 +121,7 @@ describe("DriveVehicles", () => {
       expect(shine).toHaveBeenCalledWith("gone", []);
       expect(floor).toHaveBeenCalledWith("gone", []);
       expect(hold).toHaveBeenCalledWith("gone", undefined);
+      expect(seats).toHaveBeenCalledWith("gone", [], 0);
       expect(log.lines).toEqual(["gone: Error: cleanup"]);
       expect(repo.ids()).toEqual([]);
     },
@@ -722,4 +724,41 @@ it("reads restored properties only when an aggregate is missing", () => {
   uc.execute(0);
   uc.execute(1);
   expect(restored).toHaveBeenCalledTimes(1);
+});
+
+it("passes deck input through and boards before keeping deck seats", () => {
+  const world = new FakeWorld();
+  world.snapshots = [
+    snapshot("boat", {
+      kind: "sportsboat",
+      restored: () => ({ docked: true }),
+      deckSeatInputs: [FULL_THROTTLE],
+    }),
+  ];
+  const board = vi.spyOn(world, "boardDeckRiders");
+  const keep = vi.spyOn(world, "keepDeckSeats");
+  const log = logger();
+  new DriveVehicles(world, new InMemoryRepo(), log).execute(0);
+  expect(board).toHaveBeenCalledWith("boat");
+  expect(keep).toHaveBeenCalledWith(
+    "boat",
+    expect.arrayContaining([
+      expect.objectContaining({ y: world.snapshots[0]?.location.y }),
+    ]),
+    0,
+  );
+  expect(board.mock.invocationCallOrder[0]).toBeLessThan(
+    defined(keep.mock.invocationCallOrder[0], "keep order"),
+  );
+  expect(log.lines).toEqual([]);
+});
+
+it("clears deck seats without boarding for ordinary motion", () => {
+  const world = new FakeWorld();
+  world.snapshots = [snapshot("a")];
+  const board = vi.spyOn(world, "boardDeckRiders");
+  const keep = vi.spyOn(world, "keepDeckSeats");
+  new DriveVehicles(world, new InMemoryRepo(), logger()).execute(0);
+  expect(board).not.toHaveBeenCalled();
+  expect(keep).toHaveBeenCalledWith("a", [], 0);
 });

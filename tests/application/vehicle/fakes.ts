@@ -102,6 +102,8 @@ export class FakeWorld
   holdAt(id: string, pose: HoldPose | undefined) {
     this.held.set(id, pose);
   }
+  keepDeckSeats(_id: string, _positions: readonly Vec3[], _yaw: number) {}
+  boardDeckRiders(_id: string) {}
   layFloor(id: string, cells: readonly FloorCell[]) {
     this.floors.set(id, cells);
   }
@@ -222,6 +224,7 @@ export const snapshot = (
     velocity: { x: 0, y: 0, z: 0 },
     onGround: true,
     riders: [],
+    deckSeatInputs: [],
     restored: () => ({}),
     headlights: false,
     ...fields,

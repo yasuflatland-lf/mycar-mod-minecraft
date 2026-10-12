@@ -42,6 +42,7 @@ export class DriveVehicles {
         const out = vehicle.tick({
           tick,
           riders: snap.riders,
+          deckSeatInputs: snap.deckSeatInputs,
           testInput: snap.testInput,
           location: snap.location,
           velocity: snap.velocity,
@@ -58,6 +59,8 @@ export class DriveVehicles {
         if (out.riders.underwater)
           for (const rider of snap.riders) underwater.add(rider.id);
         if (!out.hold) this.world.applyMotion(snap.id, out.impulse, out.yaw);
+        if (out.boardDeckRiders) this.world.boardDeckRiders(snap.id);
+        this.world.keepDeckSeats(snap.id, out.deckSeats, out.yaw);
         this.world.layFloor(snap.id, out.floor);
         this.world.shineHeadlights(
           snap.id,
@@ -79,6 +82,11 @@ export class DriveVehicles {
     for (const id of this.repo.ids()) {
       if (seen.has(id)) continue;
       this.repo.remove(id);
+      try {
+        this.world.keepDeckSeats(id, [], 0);
+      } catch (e) {
+        this.log.warn(`${id}: ${e}`);
+      }
       try {
         this.world.shineHeadlights(id, []);
       } catch (e) {
