@@ -79,20 +79,17 @@ export class DriveVehicles {
     for (const id of this.repo.ids()) {
       if (seen.has(id)) continue;
       this.repo.remove(id);
-      try {
-        this.world.shineHeadlights(id, []);
-      } catch (e) {
-        this.log.warn(`${id}: ${e}`);
-      }
-      try {
-        this.world.layFloor(id, []);
-      } catch (e) {
-        this.log.warn(`${id}: ${e}`);
-      }
-      try {
-        this.world.holdAt(id, undefined);
-      } catch (e) {
-        this.log.warn(`${id}: ${e}`);
+      // Each release runs on its own so one failure does not skip the others.
+      for (const release of [
+        () => this.world.shineHeadlights(id, []),
+        () => this.world.layFloor(id, []),
+        () => this.world.holdAt(id, undefined),
+      ]) {
+        try {
+          release();
+        } catch (e) {
+          this.log.warn(`${id}: ${e}`);
+        }
       }
     }
     this.syncCameras(offRoad);
