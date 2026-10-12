@@ -4,6 +4,7 @@ import {
   forward,
   leftOf,
   length,
+  normalizeYaw,
   type Vec2,
   type Vec3,
 } from "../../../src/domain/shared/vec";
@@ -16,6 +17,7 @@ import { driveFor } from "../../../src/domain/vehicle/drive";
 import type { RawInput } from "../../../src/domain/vehicle/driveInput";
 import { FORMS } from "../../../src/domain/vehicle/form";
 import type { VehicleKind } from "../../../src/domain/vehicle/kind";
+import { initialMotion } from "../../../src/domain/vehicle/motion";
 import {
   SPORTSBOAT_PROFILE,
   SUV_PROFILE,
@@ -38,6 +40,18 @@ const rawInput: fc.Arbitrary<RawInput> = fc.record({
   jump: fc.boolean(),
 });
 const FULL_THROTTLE: RawInput = { moveX: 0, moveY: 1, jump: false };
+const steer = number(-1, 1);
+/** A stick held sideways: beyond the deadzone and within SPEC.sidewaysAngle of horizontal (ADR 0018). */
+const sideways: fc.Arbitrary<RawInput> = fc
+  .tuple(number(0.2, 1), fc.constantFrom(-1, 1), number(-0.9, 0.9))
+  .map(([x, sign, slope]) => ({
+    moveX: sign * x,
+    moveY: x * slope * Math.tan((SPEC.sidewaysAngle * Math.PI) / 180),
+    jump: false,
+  }));
+
+/** Signed difference between two yaws, in (-180, 180]. */
+const yawDelta = (from: number, to: number) => normalizeYaw(to - from);
 
 interface Water {
   waterDepth?: number;
@@ -202,6 +216,85 @@ describe("BoatDrive (ADR 0051)", () => {
           );
         }
       }),
+    );
+  });
+
+  it("afloat at speed, turns against the stick by the profile's turnRate, and the other way in reverse", () => {
+    fc.assert(
+      fc.property(
+        yaw,
+        steer,
+        fc.constantFrom(1, -1),
+        afloatWater,
+        (heading, s, direction, water) => {
+          const sim = new BoatSim(boat(heading), SPORTSBOAT_WATER.drag);
+          const stick = { moveX: 0, moveY: direction, jump: false };
+          // 20 ticks take the boat past steerFullSpeed both ways.
+          for (let i = 0; i < 20; i++) sim.step(stick, water);
+          const before = sim.vehicle.yaw;
+          sim.step({ ...stick, moveX: s }, water);
+          expect(
+            Math.abs(sim.vehicle.speed) /
+              SPORTSBOAT_PROFILE.motion.steerFullSpeed,
+          ).toBeGreaterThanOrEqual(1);
+          expect(yawDelta(before, sim.vehicle.yaw)).toBeCloseTo(
+            -direction * s * SPORTSBOAT_PROFILE.motion.turnRate,
+            9,
+          );
+        },
+      ),
+    );
+  });
+
+  it("steers by whatever turnRate the profile it is given holds", () => {
+    fc.assert(
+      fc.property(
+        yaw,
+        steer,
+        number(1, 12),
+        afloatWater,
+        (heading, s, turnRate, water) => {
+          const profile = {
+            ...SPORTSBOAT_PROFILE,
+            motion: { ...SPORTSBOAT_PROFILE.motion, turnRate },
+          };
+          const motion = { ...initialMotion(heading), speed: 0.5 };
+          const out = new BoatDrive().step(
+            motion,
+            { moveX: s, moveY: 1, jump: false },
+            context(0, undefined, { x: 0, z: 0 }, water),
+            profile,
+          );
+          expect(yawDelta(motion.yaw, out.motion.yaw)).toBeCloseTo(
+            -s * turnRate,
+            9,
+          );
+        },
+      ),
+    );
+  });
+
+  it("afloat with the stick held sideways, settles at creep speed from rest or from full speed and keeps turning", () => {
+    fc.assert(
+      fc.property(
+        yaw,
+        fc.integer({ min: 0, max: 120 }),
+        sideways,
+        afloatWater,
+        (heading, throttleTicks, stick, water) => {
+          const sim = new BoatSim(boat(heading), SPORTSBOAT_WATER.drag);
+          for (let i = 0; i < throttleTicks; i++)
+            sim.step(FULL_THROTTLE, water);
+          for (let i = 0; i < 100; i++) sim.step(stick, water);
+          expect(sim.vehicle.speed).toBe(SPORTSBOAT_PROFILE.motion.creepSpeed);
+          const before = sim.vehicle.yaw;
+          sim.step(stick, water);
+          expect(yawDelta(before, sim.vehicle.yaw)).toBeCloseTo(
+            -stick.moveX * SPORTSBOAT_PROFILE.motion.turnRate,
+            9,
+          );
+        },
+      ),
     );
   });
 
