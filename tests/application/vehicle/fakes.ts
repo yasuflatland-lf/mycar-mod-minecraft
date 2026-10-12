@@ -12,6 +12,7 @@ import type { Vec3 } from "../../../src/domain/shared/vec";
 import type { EngineCommand } from "../../../src/domain/vehicle/drive";
 import { Fleet, type FleetState } from "../../../src/domain/vehicle/fleet";
 import type { FleetRepository } from "../../../src/domain/vehicle/fleetRepository";
+import type { FloorCell, HoldPose } from "../../../src/domain/vehicle/floor";
 import type { Cell } from "../../../src/domain/vehicle/headlights";
 import type { VehicleKind } from "../../../src/domain/vehicle/kind";
 import type { Paint } from "../../../src/domain/vehicle/paint";
@@ -67,6 +68,8 @@ export class FakeWorld
   readonly starters = new Map<string, boolean>();
   /** The cells each vehicle was last told to light. */
   readonly shone = new Map<string, readonly Cell[]>();
+  readonly held = new Map<string, HoldPose | undefined>();
+  readonly floors = new Map<string, readonly FloorCell[]>();
   air = (_at: Vec3) => true;
   /** Whether the slot a vehicle item was used from still holds one. */
   itemInSlot = true;
@@ -95,6 +98,12 @@ export class FakeWorld
   }
   targetsNear() {
     return this.targets;
+  }
+  holdAt(id: string, pose: HoldPose | undefined) {
+    this.held.set(id, pose);
+  }
+  layFloor(id: string, cells: readonly FloorCell[]) {
+    this.floors.set(id, cells);
   }
   applyMotion(id: string, _impulse: Vec3, yaw: number) {
     if (id === this.failOn) throw new Error("boom");

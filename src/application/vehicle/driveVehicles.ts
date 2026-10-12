@@ -52,11 +52,13 @@ export class DriveVehicles {
         });
         // Commands are sent on change, so send them before anything else that could throw.
         this.world.run(snap.id, out.commands);
+        this.world.holdAt(snap.id, out.hold);
         if (out.riders.thirdPerson)
           for (const rider of snap.riders) offRoad.add(rider.id);
         if (out.riders.underwater)
           for (const rider of snap.riders) underwater.add(rider.id);
-        this.world.applyMotion(snap.id, out.impulse, out.yaw);
+        if (!out.hold) this.world.applyMotion(snap.id, out.impulse, out.yaw);
+        this.world.layFloor(snap.id, out.floor);
         this.world.shineHeadlights(
           snap.id,
           snap.headlights
@@ -79,6 +81,16 @@ export class DriveVehicles {
       this.repo.remove(id);
       try {
         this.world.shineHeadlights(id, []);
+      } catch (e) {
+        this.log.warn(`${id}: ${e}`);
+      }
+      try {
+        this.world.layFloor(id, []);
+      } catch (e) {
+        this.log.warn(`${id}: ${e}`);
+      }
+      try {
+        this.world.holdAt(id, undefined);
       } catch (e) {
         this.log.warn(`${id}: ${e}`);
       }

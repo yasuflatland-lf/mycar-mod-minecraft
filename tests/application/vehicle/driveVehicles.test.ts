@@ -2,6 +2,7 @@ import fc from "fast-check";
 import { describe, expect, it, vi } from "vitest";
 import { DriveVehicles } from "../../../src/application/vehicle/driveVehicles";
 import { forward } from "../../../src/domain/shared/vec";
+import type { Drive, DriveStep } from "../../../src/domain/vehicle/drive";
 import type { RawInput } from "../../../src/domain/vehicle/driveInput";
 import { headlightCells } from "../../../src/domain/vehicle/headlights";
 import {
@@ -11,6 +12,7 @@ import {
 import { SUV_PROFILE } from "../../../src/domain/vehicle/kinds/suv/profile";
 import { SUV_SPEC } from "../../../src/domain/vehicle/kinds/suv/spec";
 import { SPEC } from "../../../src/domain/vehicle/spec";
+import { Vehicle } from "../../../src/domain/vehicle/vehicle";
 import { defined } from "../../support/defined";
 import { FakeWorld, InMemoryRepo, snapshot } from "./fakes";
 
@@ -42,6 +44,87 @@ function ramAhead(over: Parameters<typeof snapshot>[1]): string[] {
 }
 
 describe("DriveVehicles", () => {
+  it("holds a vehicle and lays its requested floor instead of applying motion", () => {
+    fc.assert(
+      fc.property(
+        fc.record({
+          x: fc.integer(),
+          y: fc.integer({ min: -64, max: 300 }),
+          z: fc.integer(),
+          yaw: fc.integer({ min: -180, max: 180 }),
+        }),
+        fc.array(
+          fc.record({
+            x: fc.integer(),
+            y: fc.integer(),
+            z: fc.integer(),
+            height: fc.integer({ min: 1, max: 16 }),
+          }),
+        ),
+        (hold, floor) => {
+          const step: DriveStep = {
+            hold,
+            floor,
+            impulse: { x: 0, y: 0, z: 1 },
+            forward: { x: 0, z: 1 },
+            commands: [],
+            riders: { thirdPerson: false, underwater: false },
+          };
+          const drive: Drive = {
+            speed: 0,
+            yaw: hold.yaw,
+            onDriverMounted: () => {},
+            onSeatVacated: () => [],
+            step: () => step,
+          };
+          const world = new FakeWorld();
+          const repo = new InMemoryRepo();
+          repo.save(new Vehicle("held", SUV_PROFILE, drive));
+          world.snapshots = [snapshot("held")];
+          new DriveVehicles(world, repo, logger()).execute(0);
+          expect(world.held.get("held")).toEqual(hold);
+          expect(world.floors.get("held")).toEqual(floor);
+          expect(world.calls.some((c) => c.startsWith("motion:held:"))).toBe(
+            false,
+          );
+        },
+      ),
+    );
+  });
+
+  it("releases the hold and clears the floor when the drive does not request them", () => {
+    const world = new FakeWorld();
+    world.snapshots = [snapshot("a")];
+    const holdAt = vi.spyOn(world, "holdAt");
+    const layFloor = vi.spyOn(world, "layFloor");
+    new DriveVehicles(world, new InMemoryRepo(), logger()).execute(0);
+    expect(holdAt).toHaveBeenCalledWith("a", undefined);
+    expect(layFloor).toHaveBeenCalledWith("a", []);
+    expect(world.calls).toContain("motion:a:0");
+  });
+
+  it.each(["shineHeadlights", "layFloor", "holdAt"] as const)(
+    "clears all resources of a disappeared vehicle even when %s fails",
+    (failed) => {
+      const world = new FakeWorld();
+      const repo = new InMemoryRepo();
+      repo.save(createVehicle("suv", "gone", 0));
+      const log = logger();
+      const shine = vi.spyOn(world, "shineHeadlights");
+      const floor = vi.spyOn(world, "layFloor");
+      const hold = vi.spyOn(world, "holdAt");
+      vi.spyOn(world, failed).mockImplementation(() => {
+        throw new Error("cleanup");
+      });
+      new DriveVehicles(world, repo, log).execute(0);
+      expect(shine).toHaveBeenCalledWith("gone", []);
+      expect(floor).toHaveBeenCalledWith("gone", []);
+      expect(hold).toHaveBeenCalledWith("gone", undefined);
+      expect(log.lines).toEqual(["gone: Error: cleanup"]);
+      expect(repo.ids()).toEqual([]);
+    },
+  );
+
   it("forwards ram hits to the world with the driver as the attacker", () => {
     const driver = {
       id: "d",
@@ -101,6 +184,9 @@ describe("DriveVehicles", () => {
     world.snapshots = [snapshot("a")];
     new DriveVehicles(world, repo, logger()).execute(0);
     expect(repo.ids()).toEqual(["a"]);
+    expect(world.floors.get("gone")).toEqual([]);
+    expect(world.held.has("gone")).toBe(true);
+    expect(world.held.get("gone")).toBeUndefined();
   });
 
   it("keeps moving the other vehicles and logs the error when one vehicle throws", () => {
