@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { SwitchHeadlights } from "../../../src/application/vehicle/switchHeadlights";
-import { rebuildVehicle } from "../../../src/domain/vehicle/registry";
+import { rebuildVehicle } from "../../../src/domain/vehicle/kinds/index";
 import { SPEC } from "../../../src/domain/vehicle/spec";
 import type { RiderView } from "../../../src/domain/vehicle/vehicle";
 import { FakeWorld, InMemoryRepo } from "./fakes";

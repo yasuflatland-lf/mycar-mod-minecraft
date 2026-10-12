@@ -5,7 +5,7 @@ import type { EngineCommand } from "../../src/domain/vehicle/drive";
 import {
   createVehicle,
   rebuildVehicle,
-} from "../../src/domain/vehicle/registry";
+} from "../../src/domain/vehicle/kinds/index";
 import type {
   Vehicle,
   VehicleTickInput,

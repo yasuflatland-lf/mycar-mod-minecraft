@@ -1,13 +1,13 @@
 // The only way to build a vehicle: every caller names the kind, so none falls back to SUV values (ADR 0055).
-import { BoatDrive } from "./boatDrive";
-import type { Drive, RestoredValues } from "./drive";
-import type { EntityContract } from "./entityContract";
-import type { VehicleKind } from "./kind";
-import { profileOf } from "./profile";
-import { SPORTSBOAT_ENTITY } from "./sportsboatEntity";
-import { SuvDrive } from "./suvDrive";
-import { SUV_ENTITY } from "./suvEntity";
-import { type RiderView, Vehicle } from "./vehicle";
+import { BoatDrive } from "../boatDrive";
+import type { Drive, RestoredValues } from "../drive";
+import type { EntityContract } from "../entityContract";
+import type { VehicleKind } from "../kind";
+import { profileOf } from "../profile";
+import { SPORTSBOAT_ENTITY } from "../sportsboatEntity";
+import { SuvDrive } from "../suvDrive";
+import { SUV_ENTITY } from "../suvEntity";
+import { type RiderView, Vehicle } from "../vehicle";
 
 function driveOf(
   kind: VehicleKind,

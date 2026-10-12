@@ -9,6 +9,10 @@ import {
 } from "../../../src/domain/vehicle/headlights";
 import { isVehicleKind, VEHICLE_KINDS } from "../../../src/domain/vehicle/kind";
 import {
+  createVehicle,
+  rebuildVehicle,
+} from "../../../src/domain/vehicle/kinds/index";
+import {
   initialMotion,
   stepFlightMotion,
   stepMotion,
@@ -22,10 +26,6 @@ import {
 } from "../../../src/domain/vehicle/profile";
 import { selectHits } from "../../../src/domain/vehicle/ram";
 import { RAM_QUERY_RADIUS } from "../../../src/domain/vehicle/ramQuery";
-import {
-  createVehicle,
-  rebuildVehicle,
-} from "../../../src/domain/vehicle/registry";
 import { SEAT_POSITIONS } from "../../../src/domain/vehicle/seats";
 import { SPEC } from "../../../src/domain/vehicle/spec";
 import { SUV_MOTION } from "../../../src/domain/vehicle/suvDrive";

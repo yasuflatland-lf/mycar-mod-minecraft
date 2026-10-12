@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { SuvDrive } from "../../../src/domain/vehicle/suvDrive";
+import { SuvDrive } from "../../../../src/domain/vehicle/suvDrive";
 
 it("restores hover and falls back to car for invalid or missing forms", () => {
   expect(new SuvDrive(0, { form: "hover" }).form).toBe("hover");

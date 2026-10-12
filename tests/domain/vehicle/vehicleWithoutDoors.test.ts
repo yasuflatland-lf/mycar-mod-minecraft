@@ -1,6 +1,6 @@
 import { expect, it, vi } from "vitest";
+import { rebuildVehicle } from "../../../src/domain/vehicle/kinds/index";
 import { SUV_PROFILE } from "../../../src/domain/vehicle/profile";
-import { rebuildVehicle } from "../../../src/domain/vehicle/registry";
 import { defined } from "../../support/defined";
 import { waterSensors } from "../../support/waterDepth";
 

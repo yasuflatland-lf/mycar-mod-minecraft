@@ -12,16 +12,16 @@ import type {
 } from "../../../src/domain/vehicle/driveInput";
 import { type Form, verticalImpulse } from "../../../src/domain/vehicle/form";
 import {
+  createVehicle,
+  rebuildVehicle,
+} from "../../../src/domain/vehicle/kinds/index";
+import {
   AIR,
   initialMotion,
   stepFlightMotion,
   WATER,
 } from "../../../src/domain/vehicle/motion";
 import type { RamTarget } from "../../../src/domain/vehicle/ram";
-import {
-  createVehicle,
-  rebuildVehicle,
-} from "../../../src/domain/vehicle/registry";
 import { SPEC } from "../../../src/domain/vehicle/spec";
 import { SUV_MOTION } from "../../../src/domain/vehicle/suvDrive";
 import type { TickOutcome } from "../../../src/domain/vehicle/vehicle";

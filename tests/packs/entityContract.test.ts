@@ -5,7 +5,7 @@ import {
   CORE_PROPERTY_NAMES,
 } from "../../src/domain/vehicle/entityContract";
 import { VEHICLE_KINDS } from "../../src/domain/vehicle/kind";
-import { entityContractOf } from "../../src/domain/vehicle/registry";
+import { entityContractOf } from "../../src/domain/vehicle/kinds/index";
 import {
   ENTITY_TYPE,
   entityAnimationId,

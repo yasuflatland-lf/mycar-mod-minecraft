@@ -12,7 +12,7 @@ import type { Form } from "../../../src/domain/vehicle/form";
 import {
   createVehicle,
   rebuildVehicle,
-} from "../../../src/domain/vehicle/registry";
+} from "../../../src/domain/vehicle/kinds/index";
 import { SPEC } from "../../../src/domain/vehicle/spec";
 import { SuvDrive } from "../../../src/domain/vehicle/suvDrive";
 import type { Vehicle } from "../../../src/domain/vehicle/vehicle";

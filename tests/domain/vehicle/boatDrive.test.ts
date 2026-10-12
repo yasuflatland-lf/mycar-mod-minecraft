@@ -23,6 +23,10 @@ import {
 import { FORMS } from "../../../src/domain/vehicle/form";
 import type { VehicleKind } from "../../../src/domain/vehicle/kind";
 import {
+  createVehicle,
+  rebuildVehicle,
+} from "../../../src/domain/vehicle/kinds/index";
+import {
   initialMotion,
   type MotionState,
   stepFlightMotion,
@@ -32,10 +36,6 @@ import {
   SUV_PROFILE,
 } from "../../../src/domain/vehicle/profile";
 import type { RamTarget } from "../../../src/domain/vehicle/ram";
-import {
-  createVehicle,
-  rebuildVehicle,
-} from "../../../src/domain/vehicle/registry";
 import { SPEC } from "../../../src/domain/vehicle/spec";
 import { SUV_MOTION } from "../../../src/domain/vehicle/suvDrive";
 import type {

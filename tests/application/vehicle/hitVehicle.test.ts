@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { HitVehicle } from "../../../src/application/vehicle/hitVehicle";
-import { createVehicle } from "../../../src/domain/vehicle/registry";
+import { createVehicle } from "../../../src/domain/vehicle/kinds/index";
 import { FakeFleetRepository, FakeWorld, InMemoryRepo } from "./fakes";
 
 describe("HitVehicle (ADR 0008)", () => {

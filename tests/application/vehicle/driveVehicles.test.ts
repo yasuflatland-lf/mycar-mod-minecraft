@@ -4,8 +4,8 @@ import { DriveVehicles } from "../../../src/application/vehicle/driveVehicles";
 import { forward } from "../../../src/domain/shared/vec";
 import type { RawInput } from "../../../src/domain/vehicle/driveInput";
 import { headlightCells } from "../../../src/domain/vehicle/headlights";
+import { createVehicle } from "../../../src/domain/vehicle/kinds/index";
 import { SUV_PROFILE } from "../../../src/domain/vehicle/profile";
-import { createVehicle } from "../../../src/domain/vehicle/registry";
 import { SPEC } from "../../../src/domain/vehicle/spec";
 import { FakeWorld, InMemoryRepo, snapshot } from "./fakes";
 

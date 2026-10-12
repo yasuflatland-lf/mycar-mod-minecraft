@@ -1,7 +1,7 @@
 // Use case: every tick, move all loaded vehicles.
 import { headlightCells } from "../../domain/vehicle/headlights";
+import { rebuildVehicle } from "../../domain/vehicle/kinds/index";
 import { profileOf } from "../../domain/vehicle/profile";
-import { rebuildVehicle } from "../../domain/vehicle/registry";
 import { SPEC } from "../../domain/vehicle/spec";
 import type { VehicleRepository } from "../../domain/vehicle/vehicleRepository";
 import type { DriveWorld, Logger } from "./ports";

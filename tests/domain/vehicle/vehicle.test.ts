@@ -10,11 +10,11 @@ import {
   type Vec3,
 } from "../../../src/domain/shared/vec";
 import type { RawInput } from "../../../src/domain/vehicle/driveInput";
-import type { RamTarget } from "../../../src/domain/vehicle/ram";
 import {
   createVehicle,
   rebuildVehicle,
-} from "../../../src/domain/vehicle/registry";
+} from "../../../src/domain/vehicle/kinds/index";
+import type { RamTarget } from "../../../src/domain/vehicle/ram";
 import { SEAT_POSITIONS } from "../../../src/domain/vehicle/seats";
 import { SPEC } from "../../../src/domain/vehicle/spec";
 import { STEP_LANES } from "../../../src/domain/vehicle/stepUp";
