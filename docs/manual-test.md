@@ -44,6 +44,21 @@ To use commands, run `docker exec yasuflatland-ride-bds send-command op <player 
 | 36 | Drive into water deep enough for the submarine form, then get out while it floats | Under water a sonar ping, with a fainter echo about 1.6 seconds later, repeats every 4 seconds over a low rumble. After you get out no new ping starts, though the current one may finish (ADR 0041) | | |
 | 37 | While submerged, turn hard left and right | The body banks into the turn as in flight and keeps its depth (ADR 0044) | | |
 
+## Sports boat
+
+Setup: craft the "Sports Boat" item from 5 iron ingots and an oak boat, or use `/give @s yasu_ride:sportsboat_item`. Use a pool or lake at least 3 blocks deep.
+
+| # | Steps | Pass condition | PC | Mobile |
+|---|---|---|---|---|
+| B1 | Use the boat item on water by clicking the bed, the surface, and the shore | One boat appears at the water surface for each tap and one item is used (not in Creative) | | |
+| B2 | Use the boat item on dry land | The boat appears on the clicked block and cannot drive on land | | |
+| B3 | Seat four riders and look forward from the driver's seat | All four riders fit and the driver's eye level sees over the windshield | | |
+| B4 | Drive forward, reverse, turn, and drive into a shore level with the water | The boat responds on water and stops at the shore without leaving the water | | |
+| B5 | Tap (mobile) / left-click (PC) the boat with a dye, then brown dye | The hull turns the dye's color, then back to black; each repaint uses one dye (not in Creative) | | |
+| B6 | At night, drive with the headlight switch in hand and use it | Two beams light the water about 60 blocks ahead and follow the boat | | |
+| B7 | Place an empty boat and hit its bow 3 times; repeat with another boat's middle, then another boat's stern | Each boat breaks and drops one boat item | | |
+| B8 | Ram a mob at full throttle (Survival) | The mob takes damage and the boat and riders take none | | |
+
 ## Upgrading from MyCar 0.5.0 and earlier
 
 Setup: in a world that used MyCar 0.5.0, place two vehicles and switch the headlights of one of them off, then stop the server and replace the old pack folders with the new ones as described under "Upgrading from MyCar 0.5.0 and earlier" in the [README](../README.md).
