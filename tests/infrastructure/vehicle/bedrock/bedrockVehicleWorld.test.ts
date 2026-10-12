@@ -93,11 +93,14 @@ describe("BedrockVehicleWorld submarine wiring (ADR 0040)", () => {
     (typeId, isWaterlogged) => {
       const { dimension, world } = fixture();
       dimension.getBlock.mockReturnValue({ typeId, isWaterlogged });
-      expect(world.loadedVehicles()[0]?.waterDepth).toBe(SPEC.carHeight + 1);
+      const snap = world.loadedVehicles()[0];
+      expect(snap?.waterDepth).toBe(SPEC.carHeight + 1);
+      expect(snap?.waterBelow).toBe(true);
       expect(dimension.getBlock.mock.calls.map(([at]) => at)).toEqual([
         { x: -2, y: 64, z: 2 },
         { x: -2, y: 65, z: 2 },
         { x: -2, y: 66, z: 2 },
+        { x: -2, y: 63, z: 2 },
       ]);
     },
   );
@@ -107,7 +110,9 @@ describe("BedrockVehicleWorld submarine wiring (ADR 0040)", () => {
     (block) => {
       const { dimension, world } = fixture();
       dimension.getBlock.mockReturnValue(block);
-      expect(world.loadedVehicles()[0]?.waterDepth).toBe(0);
+      const snap = world.loadedVehicles()[0];
+      expect(snap?.waterDepth).toBe(0);
+      expect(snap?.waterBelow).toBe(false);
     },
   );
 
@@ -117,7 +122,36 @@ describe("BedrockVehicleWorld submarine wiring (ADR 0040)", () => {
     dimension.getBlock.mockImplementation(() => {
       throw new Error("unloaded");
     });
-    expect(world.loadedVehicles()[0]?.waterDepth).toBe(0.75);
+    const snap = world.loadedVehicles()[0];
+    expect(snap?.waterDepth).toBe(0.75);
+    expect(snap?.waterBelow).toBe(false);
+  });
+
+  it("reports water below feet less than 0.3 above a water cell, independently of waterDepth", () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: -60, max: 300 }),
+        // Exactly 0.3 is left out: y + 0.3 - 0.3 rounds below y for some y.
+        fc
+          .oneof(
+            fc.double({ min: 0, max: 0.999, noNaN: true }),
+            fc.constantFrom(0, 0.299, 0.301, 0.999),
+          )
+          .filter((fraction) => Math.abs(fraction - 0.3) > 1e-9),
+        (y, fraction) => {
+          const { car, dimension, world } = fixture();
+          car.location.y = y + fraction;
+          dimension.getBlock.mockImplementation((at: { y: number }) => ({
+            typeId: at.y === y - 1 ? "minecraft:water" : "minecraft:air",
+            isWaterlogged: false,
+          }));
+          const snap = world.loadedVehicles()[0];
+          expect(snap?.waterDepth).toBe(0);
+          // Feet 0.3 or more above the water cell are airborne, not afloat.
+          expect(snap?.waterBelow).toBe(fraction < 0.3);
+        },
+      ),
+    );
   });
 
   it("refreshes breathing without particles and ignores a missing player", () => {

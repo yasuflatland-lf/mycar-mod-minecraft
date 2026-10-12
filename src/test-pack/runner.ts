@@ -135,6 +135,7 @@ async function setupArena(): Promise<Arena> {
   // The flight tests climb up to about 8 blocks above the floor along z = 4.5.
   dim.runCommand(`fill ${minX} ${gy + 7} 0 60 ${gy + 20} 12 air`);
   dim.runCommand(`kill @e[type=${ENTITY_TYPE.suv}]`);
+  dim.runCommand(`kill @e[type=${ENTITY_TYPE.sportsboat}]`);
   dim.runCommand("kill @e[type=cow]");
   dim.runCommand(`kill @e[type=${SEAT_PROBE}]`);
   // The pool's water replaces the stone under passable_no_hop's carpets and
@@ -688,6 +689,141 @@ async function withPool<T>(
   }
 }
 
+async function withBoat<T>(
+  a: Arena,
+  run: (boat: Entity) => Promise<T>,
+): Promise<T> {
+  const x = POOL.minX + 5.5;
+  a.dim.runCommand(`summon ${ENTITY_TYPE.sportsboat} ${x} ${a.gy} ${POOL.z}`);
+  const boat = a.dim.getEntities({
+    type: ENTITY_TYPE.sportsboat,
+    location: { x, y: a.gy, z: POOL.z },
+    maxDistance: 1.5,
+  })[0];
+  if (!boat) throw new Error("boat not spawned at the pool surface");
+  boat.setRotation({ x: 0, y: -90 });
+  try {
+    await wait(40); // Let the boat settle on the water
+    return await run(boat);
+  } finally {
+    clearInput(boat);
+    if (boat.isValid) boat.remove();
+  }
+}
+
+function boatFloat(a: Arena): Promise<Outcome> {
+  return withPool(a, 3, () =>
+    withBoat(a, async (boat) => {
+      let minY = Number.POSITIVE_INFINITY;
+      let maxY = Number.NEGATIVE_INFINITY;
+      for (let t = 0; t < 60; t++) {
+        await wait(1);
+        minY = Math.min(minY, boat.location.y);
+        maxY = Math.max(maxY, boat.location.y);
+      }
+      const bob = maxY - minY;
+      const minDraft = a.gy - maxY;
+      const maxDraft = a.gy - minY;
+      return {
+        pass: bob <= 0.3 && minDraft >= 0.3 && maxDraft <= 0.6,
+        detail: `bob=${bob.toFixed(3)} draft=${minDraft.toFixed(3)}-${maxDraft.toFixed(3)}`,
+      };
+    }),
+  );
+}
+
+function boatCruise(a: Arena): Promise<Outcome> {
+  return withPool(a, 3, async () => {
+    const cruise = await withBoat(a, async (boat) => {
+      const x0 = boat.location.x;
+      drive(boat, 0, 1);
+      let topSpeed = 0;
+      for (let t = 0; t < 60; t++) {
+        await wait(1);
+        topSpeed = Math.max(topSpeed, hlen(boat.getVelocity()));
+      }
+      return { distance: boat.location.x - x0, topSpeed };
+    });
+    // Logged for tuning in 8/8, with no threshold yet. A separate start leaves
+    // room for the full turn within the pool.
+    const turn = await withBoat(a, async (boat) => {
+      drive(boat, 0, 1);
+      await wait(30);
+      drive(boat, -1, 1);
+      let yaw = boat.getRotation().y;
+      let degrees = 0;
+      let ticks = 0;
+      while (Math.abs(degrees) < 360 && ticks < 120) {
+        await wait(1);
+        const next = boat.getRotation().y;
+        degrees += ((next - yaw + 540) % 360) - 180;
+        yaw = next;
+        ticks++;
+      }
+      return { degrees, ticks, rate: degrees / ticks };
+    });
+    return {
+      pass: cruise.distance > 10,
+      detail: `distance=${cruise.distance.toFixed(2)} topSpeed=${cruise.topSpeed.toFixed(3)} turn=${turn.degrees.toFixed(1)} turnTicks=${turn.ticks} turnRate=${turn.rate.toFixed(3)}`,
+    };
+  });
+}
+
+function boatShore(a: Arena): Promise<Outcome> {
+  const shoreX = 40;
+  return withPool(a, 3, () => {
+    a.dim.runCommand(
+      `fill ${shoreX} ${a.gy - 3} ${POOL.minZ} ${POOL.maxX} ${a.gy - 1} ${POOL.maxZ} stone`,
+    );
+    return withBoat(a, async (boat) => {
+      const x0 = boat.location.x;
+      drive(boat, 0, 1);
+      await wait(120);
+      const x = boat.location.x;
+      const feet = boat.location.y - a.gy;
+      const speed = hlen(boat.getVelocity());
+      return {
+        pass: x - x0 > 10 && x < shoreX && feet < 0 && speed < 0.05,
+        detail: `x=${x.toFixed(2)} feet=${feet.toFixed(3)} speed=${speed.toFixed(3)}`,
+      };
+    });
+  });
+}
+
+function boatRam(a: Arena): Promise<Outcome> {
+  return withPool(a, 3, () =>
+    withBoat(a, async (boat) => {
+      const cow = summonCow(a, boat.location.x + 14, boat.location.z);
+      if (!cow) return { pass: false, detail: "cow not found" };
+      try {
+        cow.addEffect("slowness", 600, {
+          amplifier: 255,
+          showParticles: false,
+        });
+        const hp0 = cow.getComponent("minecraft:health")?.currentValue ?? 0;
+        const boatHp0 = boat.getComponent("minecraft:health")?.currentValue;
+        drive(boat, 0, 1);
+        let hp = hp0;
+        let hit = false;
+        for (let t = 0; t < 80 && !hit; t++) {
+          await wait(1);
+          hp = cow.isValid
+            ? (cow.getComponent("minecraft:health")?.currentValue ?? 0)
+            : 0;
+          hit = hp < hp0;
+        }
+        const boatHp = boat.getComponent("minecraft:health")?.currentValue;
+        return {
+          pass: hp0 > 0 && hit && boatHp0 !== undefined && boatHp === boatHp0,
+          detail: `cowHp=${hp0}->${hp} boatHp=${boatHp0}->${boatHp}`,
+        };
+      } finally {
+        if (cow.isValid) cow.remove();
+      }
+    }),
+  );
+}
+
 /** Runs `run` on a car heading +x along the pool, starting on dry ground. */
 function withPoolCar<T>(
   a: Arena,
@@ -998,6 +1134,10 @@ async function runAll(runId: string): Promise<void> {
     ["submarine_unmanned", () => submarineUnmanned(a)],
     ["submarine_shallow", () => submarineShallow(a)],
     ["vehicle_limit", () => vehicleLimit(a)],
+    ["boat_float", () => boatFloat(a)],
+    ["boat_cruise", () => boatCruise(a)],
+    ["boat_shore", () => boatShore(a)],
+    ["boat_ram", () => boatRam(a)],
   ];
   let passed = 0;
   const lines: string[] = [];
