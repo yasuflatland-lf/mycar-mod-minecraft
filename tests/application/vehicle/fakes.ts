@@ -71,6 +71,7 @@ export class FakeWorld
   /** Whether the slot a vehicle item was used from still holds one. */
   itemInSlot = true;
   failOn: string | undefined;
+  failRunOn: { id: string; name: string } | undefined;
   failCameraOn: string | undefined;
   failBreathingOn: string | undefined;
   failRemoveOn: string | undefined;
@@ -104,6 +105,8 @@ export class FakeWorld
   >();
   run(id: string, commands: readonly EngineCommand[]) {
     for (const command of commands) {
+      if (id === this.failRunOn?.id && command.name === this.failRunOn.name)
+        throw new Error(`command ${command.name}`);
       if (command.type === "setProperty") {
         const properties = this.properties.get(id) ?? {};
         properties[command.name] = command.value;
