@@ -43,10 +43,23 @@ export function runRequestFrom(message: string): RunRequest {
   return { runId: id, shard };
 }
 
-// Round robin keeps the slow groups (flight, submarine, boat), which sit next
-// to each other in the list, spread over the shards.
-export function inShard(position: number, shard: Shard): boolean {
-  return position % shard.total === shard.index - 1;
+/**
+ * The 1-based shard of each test, packing the slowest first into the shard
+ * with the fewest ticks so far (ADR 0054). Ties go to the earlier test and the
+ * lower shard, so every CI job computes the same split.
+ */
+export function shardsOf(ticks: readonly number[], total: number): number[] {
+  const load = new Array<number>(total).fill(0);
+  const shards = new Array<number>(ticks.length);
+  const slowestFirst = ticks
+    .map((t, position) => ({ t, position }))
+    .sort((a, b) => b.t - a.t || a.position - b.position);
+  for (const { t, position } of slowestFirst) {
+    const lightest = load.indexOf(Math.min(...load));
+    load[lightest] = (load[lightest] ?? 0) + t;
+    shards[position] = lightest + 1;
+  }
+  return shards;
 }
 
 export function linePrefix(runId: string): string {

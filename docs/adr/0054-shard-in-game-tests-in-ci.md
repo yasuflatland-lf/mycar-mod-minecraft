@@ -23,11 +23,13 @@ Each job pays about 20 s for checkout, install, build, and BDS start, and about 
 
 - Run the in-game tests as a matrix of three jobs, `in-game (1/3)` to `in-game (3/3)`, with `fail-fast: false` so one failing slice does not hide the others
 - `pnpm test:game` reads `GAME_TEST_SHARD=<index>/<total>` and sends it after the run id in the scriptevent message. Without it, and for a run started by hand, the whole suite runs
-- A slice keeps the tests whose position in the runner's list satisfies `position % total == index - 1`. Round robin spreads the flight, submarine, and boat groups, which sit next to each other in the list. In the spike the three slices took 930, 848, and 768 ticks
-- Every result line carries `ticks=` so the balance can be checked from the CI log
+- Each entry in the runner's test list carries its ticks as last logged in CI. `shardsOf` packs the tests slowest first, each into the slice with the fewest ticks so far, breaking ties by list position and then by the lower slice, so all three jobs compute the same split
+- Every result line carries `ticks=`. Update a test's number when it moves by more than about 50 ticks, and give a new test its measured ticks
 
 ## Consequences
 
 A pull request waits about 80 s instead of about 155 s for the in-game tests, and the unit test job (55 s) is close to becoming the slowest check. Runner time grows by about half, and a failure log is spread over three jobs. The job names change, but only `check` is a required status check, so the ruleset is unaffected.
 
-Revisit when the slowest slice exceeds the others by more than 10 s. Packing the tests by their logged ticks, slowest first, would have cut the 3-way split's slowest slice from 930 to 853 ticks; it gains more at four or more jobs (828 to 644 ticks at four) but needs a tick table that tracks every new test. A fourth job would save at most about 14 s, because the fixed 27 s per job stays.
+Round robin by list position was tried first and is fragile. It gave 930, 848, and 768 ticks in the spike. After `boat_drag` was inserted in the middle of the list, every later test moved to the next slice, and run 38212837415 took 937, 747, and 1035 ticks, so the slowest job took 86 s. Packing the same 29 tests by their ticks gives 900, 890, and 894. The cost is a tick number per test that can go stale; a stale number only unbalances the slices and never skips or repeats a test.
+
+Revisit when the slowest slice runs more than 10 s longer than the fastest. A fourth job would save at most about 14 s, because each job still pays the fixed 27 s.

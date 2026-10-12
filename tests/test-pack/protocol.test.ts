@@ -1,13 +1,13 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import {
-  inShard,
   LOG_TAG,
   linePrefix,
   linesOfRun,
   MANUAL_RUN_ID,
   runRequestFrom,
   shardFrom,
+  shardsOf,
   summaryOfRun,
   summaryPassed,
   TEST_EVENT,
@@ -80,29 +80,53 @@ describe("shardFrom", () => {
   });
 });
 
-describe("inShard", () => {
-  it("puts every test in exactly one shard", () => {
+const tickList = fc.array(fc.integer({ min: 1, max: 400 }), { maxLength: 60 });
+const shardCount = fc.integer({ min: 1, max: 8 });
+
+function loads(ticks: number[], shards: number[], total: number): number[] {
+  return Array.from({ length: total }, (_, k) =>
+    ticks.reduce((sum, t, i) => (shards[i] === k + 1 ? sum + t : sum), 0),
+  );
+}
+
+describe("shardsOf", () => {
+  it("puts every test in one shard between 1 and the total", () => {
     fc.assert(
-      fc.property(
-        fc.nat({ max: 200 }),
-        fc.integer({ min: 1, max: 99 }),
-        (position, total) => {
-          const owners = Array.from({ length: total }, (_, i) => i + 1).filter(
-            (index) => inShard(position, { index, total }),
-          );
-          expect(owners).toHaveLength(1);
-        },
-      ),
+      fc.property(tickList, shardCount, (ticks, total) => {
+        const shards = shardsOf(ticks, total);
+        expect(shards).toHaveLength(ticks.length);
+        for (const s of shards) {
+          expect(s).toBeGreaterThanOrEqual(1);
+          expect(s).toBeLessThanOrEqual(total);
+        }
+      }),
     );
   });
 
-  it("gives the shards counts that differ by at most one", () => {
+  it("keeps the slowest shard within one test of the average", () => {
     fc.assert(
-      fc.property(fc.nat({ max: 200 }), shard, (count, s) => {
-        const mine = Array.from({ length: count }, (_, i) => i).filter((i) =>
-          inShard(i, s),
-        ).length;
-        expect(Math.abs(mine - count / s.total)).toBeLessThan(1);
+      fc.property(tickList, shardCount, (ticks, total) => {
+        const load = loads(ticks, shardsOf(ticks, total), total);
+        const sum = ticks.reduce((a, b) => a + b, 0);
+        expect(Math.max(...load)).toBeLessThanOrEqual(
+          sum / total + Math.max(0, ...ticks),
+        );
+      }),
+    );
+  });
+
+  it("splits the same ticks the same way in every job", () => {
+    fc.assert(
+      fc.property(tickList, shardCount, (ticks, total) => {
+        expect(shardsOf(ticks, total)).toEqual(shardsOf([...ticks], total));
+      }),
+    );
+  });
+
+  it("puts everything in the only shard of a whole run", () => {
+    fc.assert(
+      fc.property(tickList, (ticks) => {
+        expect(shardsOf(ticks, 1).every((s) => s === 1)).toBe(true);
       }),
     );
   });

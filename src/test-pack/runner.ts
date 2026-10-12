@@ -22,11 +22,11 @@ import {
   paintEvent,
 } from "../infrastructure/vehicle/bedrock/identifiers";
 import {
-  inShard,
   LOG_TAG,
   linePrefix,
   type RunRequest,
   runRequestFrom,
+  shardsOf,
   TEST_EVENT,
 } from "./protocol";
 import { hitTick, judgeRam, PUSH_WINDOW, type RamSample } from "./ramJudge";
@@ -1253,41 +1253,47 @@ async function vehicleLimit(a: Arena): Promise<Outcome> {
 
 async function runAll({ runId, shard }: RunRequest): Promise<void> {
   const a = await setupArena();
-  const allTests: [string, () => Promise<Outcome>][] = [
-    ["accel_and_step1", () => accelAndStep1(a)],
-    ["passable_no_hop", () => passableNoHop(a)],
-    ["turn_and_handbrake", () => turnAndHandbrake(a)],
-    ["ram_cow", () => ramCow(a)],
-    ["wall_diagonal", () => wallDiagonal(a)],
-    ["step2_front", () => step2(a, 8, -90, 100)],
-    ["step2_diagonal", () => step2(a, 30, -60, 100)],
-    ["seats_after_driver_leaves", () => seatsAfterDriverLeaves(a)],
-    ["paint_events", () => paintEvents(a)],
-    ["headlights_follow_and_clear", () => headlightsFollowAndClear(a)],
-    ["flight_takeoff", () => flightTakeoff(a)],
-    ["flight_cruise", () => flightCruise(a)],
-    ["flight_climb_descend", () => flightClimbDescend(a)],
-    ["flight_bank", () => flightBank(a)],
-    ["flight_land", () => flightLand(a)],
-    ["flight_touchdown", () => flightTouchdown(a)],
-    ["flight_driverless", () => flightDriverless(a)],
-    ["submarine_dive", () => submarineDive(a)],
-    ["submarine_bank", () => submarineBank(a)],
-    ["submarine_breach", () => submarineBreach(a)],
-    ["submarine_shore", () => submarineShore(a)],
-    ["submarine_unmanned", () => submarineUnmanned(a)],
-    ["submarine_shallow", () => submarineShallow(a)],
-    ["vehicle_limit", () => vehicleLimit(a)],
-    ["boat_float", () => boatFloat(a)],
-    ["boat_drag", () => boatDrag(a)],
-    ["boat_cruise", () => boatCruise(a)],
-    ["boat_shore", () => boatShore(a)],
-    ["boat_ram", () => boatRam(a)],
+  // The middle number is the test's ticks as last logged in CI; shardsOf packs
+  // by it, so update it when a test gets much slower or faster (ADR 0054).
+  const allTests: [string, number, () => Promise<Outcome>][] = [
+    ["accel_and_step1", 85, () => accelAndStep1(a)],
+    ["passable_no_hop", 65, () => passableNoHop(a)],
+    ["turn_and_handbrake", 130, () => turnAndHandbrake(a)],
+    ["ram_cow", 44, () => ramCow(a)],
+    ["wall_diagonal", 120, () => wallDiagonal(a)],
+    ["step2_front", 52, () => step2(a, 8, -90, 100)],
+    ["step2_diagonal", 57, () => step2(a, 30, -60, 100)],
+    ["seats_after_driver_leaves", 20, () => seatsAfterDriverLeaves(a)],
+    ["paint_events", 16, () => paintEvents(a)],
+    ["headlights_follow_and_clear", 56, () => headlightsFollowAndClear(a)],
+    ["flight_takeoff", 33, () => flightTakeoff(a)],
+    ["flight_cruise", 93, () => flightCruise(a)],
+    ["flight_climb_descend", 63, () => flightClimbDescend(a)],
+    ["flight_bank", 73, () => flightBank(a)],
+    ["flight_land", 140, () => flightLand(a)],
+    ["flight_touchdown", 60, () => flightTouchdown(a)],
+    ["flight_driverless", 45, () => flightDriverless(a)],
+    ["submarine_dive", 136, () => submarineDive(a)],
+    ["submarine_bank", 91, () => submarineBank(a)],
+    ["submarine_breach", 59, () => submarineBreach(a)],
+    ["submarine_shore", 178, () => submarineShore(a)],
+    ["submarine_unmanned", 211, () => submarineUnmanned(a)],
+    ["submarine_shallow", 118, () => submarineShallow(a)],
+    ["vehicle_limit", 20, () => vehicleLimit(a)],
+    ["boat_float", 105, () => boatFloat(a)],
+    ["boat_drag", 138, () => boatDrag(a)],
+    ["boat_cruise", 235, () => boatCruise(a)],
+    ["boat_shore", 165, () => boatShore(a)],
+    ["boat_ram", 76, () => boatRam(a)],
   ];
-  const tests = allTests.filter((_, i) => inShard(i, shard));
+  const shards = shardsOf(
+    allTests.map(([, ticks]) => ticks),
+    shard.total,
+  );
+  const tests = allTests.filter((_, i) => shards[i] === shard.index);
   let passed = 0;
   const lines: string[] = [];
-  for (const [name, test] of tests) {
+  for (const [name, , test] of tests) {
     const start = system.currentTick;
     let outcome: Outcome;
     try {
