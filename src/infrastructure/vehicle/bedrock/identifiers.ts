@@ -10,9 +10,11 @@ import { id, NAMESPACE } from "../../shared/identifiers";
 export const VEHICLE_FAMILY = "yasu_ride_vehicle";
 export const ENTITY_TYPE: Readonly<Record<VehicleKind, string>> = {
   suv: id("suv"),
+  sportsboat: id("sportsboat"),
 };
 export const ITEM_TYPE: Readonly<Record<VehicleKind, string>> = {
   suv: id("suv_item"),
+  sportsboat: id("sportsboat_item"),
 };
 export function kindOfEntity(
   typeId: string | undefined,

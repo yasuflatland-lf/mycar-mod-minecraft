@@ -16,6 +16,7 @@ import {
 import {
   PROFILES,
   profileOf,
+  SPORTSBOAT_PROFILE,
   SUV_PROFILE,
 } from "../../../src/domain/vehicle/profile";
 import { selectHits } from "../../../src/domain/vehicle/ram";
@@ -73,6 +74,39 @@ describe("vehicle profiles (ADR 0050)", () => {
       seats: { positions: SEAT_POSITIONS, doors: DOOR_BY_SEAT },
       beams: { reach: SPEC.headlightReach, lanes: [0] },
     });
+  });
+
+  it("gives the sports boat its own values from ADR 0051", () => {
+    expect(SPORTSBOAT_PROFILE).toStrictEqual({
+      kind: "sportsboat",
+      motion: {
+        maxSpeed: 1.12,
+        maxReverse: 0.2,
+        accel: 0.0225,
+        reverseAccel: 0.01125,
+        brake: 0.04,
+        drag: 0.02,
+        turnRate: 6,
+        steerFullSpeed: 0.08,
+        grip: 0.6,
+        handbrakeGrip: 0.6,
+        creepSpeed: 0.12,
+      },
+      ram: { front: 3.0, halfWidth: 1.06 },
+      seats: {
+        positions: [
+          { x: -0.38, z: 0.35 },
+          { x: 0.38, z: 0.35 },
+          { x: -0.38, z: -0.8 },
+          { x: 0.38, z: -0.8 },
+        ],
+      },
+      beams: {
+        reach: Array.from({ length: 15 }, (_, i) => 4 * (i + 1)),
+        lanes: [-3, 3],
+      },
+    });
+    expect(PROFILES.sportsboat).toBe(SPORTSBOAT_PROFILE);
   });
 
   it("freezes every profile so a write cannot change all vehicles of a kind", () => {
