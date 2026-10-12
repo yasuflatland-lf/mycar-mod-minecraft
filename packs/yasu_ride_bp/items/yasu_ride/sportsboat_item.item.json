@@ -1,0 +1,20 @@
+{
+  "format_version": "1.21.80",
+  "minecraft:item": {
+    "description": {
+      "identifier": "yasu_ride:sportsboat_item",
+      "menu_category": { "category": "items" }
+    },
+    "components": {
+      "minecraft:icon": "yasu_ride_sportsboat_item",
+      "minecraft:max_stack_size": 1,
+      "minecraft:use_modifiers": {
+        "use_duration": 0.1,
+        "movement_modifier": 1.0
+      },
+      "minecraft:display_name": {
+        "value": "item.yasu_ride:sportsboat_item.name"
+      }
+    }
+  }
+}
