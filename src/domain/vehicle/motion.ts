@@ -33,8 +33,6 @@ export interface MotionState {
   speed: number; // Internal forward/reverse speed (blocks/tick; negative means reverse)
   yaw: number;
   friction?: number; // Ground friction estimate; undefined until estimated
-  /** Buoyant boat's water drag estimate (ADR 0053), retained while beached. */
-  waterDrag?: number;
   // Velocity the script aimed for in the previous tick. Kept only when that
   // tick was on the ground: in the air the engine applies airFriction and only
   // airControl of the impulse, so the ratio would not measure ground friction.
@@ -47,6 +45,16 @@ export interface MotionState {
 
 export function initialMotion(yaw: number): MotionState {
   return { speed: 0, yaw: normalizeYaw(yaw), stepTicks: 0 };
+}
+
+/** Turns to a boarding driver's yaw when nearly stopped (ADR 0019). */
+export function alignOnMount(
+  state: MotionState,
+  driverYaw: number,
+): MotionState {
+  return Math.abs(state.speed) < SPEC.mountAlignSpeed
+    ? { ...state, yaw: driverYaw }
+    : state;
 }
 
 export interface Observation {

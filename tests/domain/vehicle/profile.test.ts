@@ -1,6 +1,7 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { dot, forward, rightOf } from "../../../src/domain/shared/vec";
+import { SPORTSBOAT_MOTION } from "../../../src/domain/vehicle/boatDrive";
 import { NEUTRAL_INPUT } from "../../../src/domain/vehicle/driveInput";
 import {
   cellKey,
@@ -30,6 +31,7 @@ import {
   SEAT_POSITIONS,
 } from "../../../src/domain/vehicle/seats";
 import { SPEC } from "../../../src/domain/vehicle/spec";
+import { SUV_MOTION } from "../../../src/domain/vehicle/suvDrive";
 
 const number = (min: number, max: number) =>
   fc.double({ min, max, noNaN: true });
@@ -58,21 +60,21 @@ const velocity = fc.record({ x: number(-5, 5), z: number(-5, 5) });
 
 describe("vehicle profiles (ADR 0050)", () => {
   it("builds the SUV profile from the existing tuning and seat data", () => {
+    expect(SUV_MOTION).toEqual({
+      maxSpeed: SPEC.maxSpeed,
+      maxReverse: SPEC.maxReverse,
+      accel: SPEC.accel,
+      reverseAccel: SPEC.reverseAccel,
+      brake: SPEC.brake,
+      drag: SPEC.drag,
+      turnRate: SPEC.turnRate,
+      steerFullSpeed: SPEC.steerFullSpeed,
+      grip: SPEC.grip,
+      handbrakeGrip: SPEC.handbrakeGrip,
+      creepSpeed: SPEC.creepSpeed,
+    });
     expect(SUV_PROFILE).toEqual({
       kind: "suv",
-      motion: {
-        maxSpeed: SPEC.maxSpeed,
-        maxReverse: SPEC.maxReverse,
-        accel: SPEC.accel,
-        reverseAccel: SPEC.reverseAccel,
-        brake: SPEC.brake,
-        drag: SPEC.drag,
-        turnRate: SPEC.turnRate,
-        steerFullSpeed: SPEC.steerFullSpeed,
-        grip: SPEC.grip,
-        handbrakeGrip: SPEC.handbrakeGrip,
-        creepSpeed: SPEC.creepSpeed,
-      },
       ram: { front: SPEC.bodyFront, halfWidth: SPEC.bodyHalfWidth },
       seats: { positions: SEAT_POSITIONS, doors: DOOR_BY_SEAT },
       beams: { reach: SPEC.headlightReach, lanes: [0] },
@@ -81,21 +83,21 @@ describe("vehicle profiles (ADR 0050)", () => {
   });
 
   it("gives the sports boat its own values from ADR 0051", () => {
+    expect(SPORTSBOAT_MOTION).toStrictEqual({
+      maxSpeed: 1.12,
+      maxReverse: 0.2,
+      accel: 0.0225,
+      reverseAccel: 0.01125,
+      brake: 0.04,
+      drag: 0.02,
+      turnRate: 6,
+      steerFullSpeed: 0.08,
+      grip: 0.6,
+      handbrakeGrip: 0.6,
+      creepSpeed: 0.12,
+    });
     expect(SPORTSBOAT_PROFILE).toStrictEqual({
       kind: "sportsboat",
-      motion: {
-        maxSpeed: 1.12,
-        maxReverse: 0.2,
-        accel: 0.0225,
-        reverseAccel: 0.01125,
-        brake: 0.04,
-        drag: 0.02,
-        turnRate: 6,
-        steerFullSpeed: 0.08,
-        grip: 0.6,
-        handbrakeGrip: 0.6,
-        creepSpeed: 0.12,
-      },
       ram: { front: 3.0, halfWidth: 1.06 },
       seats: {
         positions: [
@@ -114,13 +116,14 @@ describe("vehicle profiles (ADR 0050)", () => {
     expect(PROFILES.sportsboat).toBe(SPORTSBOAT_PROFILE);
   });
 
-  it("freezes every profile so a write cannot change all vehicles of a kind", () => {
+  it("freezes every profile and motion limit so a write cannot change all vehicles of a kind", () => {
     expect(Object.isFrozen(PROFILES)).toBe(true);
+    expect(Object.isFrozen(SUV_MOTION)).toBe(true);
+    expect(Object.isFrozen(SPORTSBOAT_MOTION)).toBe(true);
     for (const kind of VEHICLE_KINDS) {
       const profile = profileOf(kind);
       for (const part of [
         profile,
-        profile.motion,
         profile.ram,
         profile.seats,
         profile.beams,
@@ -172,7 +175,7 @@ describe("vehicle profiles (ADR 0050)", () => {
   it("accelerates above the SUV maximum when the profile allows it", () => {
     fc.assert(
       fc.property(number(1, 4), number(0.001, 0.1), (maxSpeed, accel) => {
-        const motion = { ...SUV_PROFILE.motion, maxSpeed, accel };
+        const motion = { ...SUV_MOTION, maxSpeed, accel };
         expect(updateSpeed(SPEC.maxSpeed, 1, false, motion)).toBeGreaterThan(
           SPEC.maxSpeed,
         );

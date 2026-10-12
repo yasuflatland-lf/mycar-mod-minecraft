@@ -1,7 +1,7 @@
 // The SUV's transforming drivetrain: forms, landing gear, bank, and vertical motion (ADR 0050).
 import { clamp, rightOf, type Vec2 } from "../shared/vec";
 import { bankSink, stepBank } from "./bank";
-import type { Drive, DriveResult } from "./drive";
+import type { Drive, DriveStep, TickContext } from "./drive";
 import {
   type DriveInput,
   NEUTRAL_INPUT,
@@ -20,6 +20,8 @@ import {
 import { nextGearDown } from "./landingGear";
 import {
   AIR,
+  alignOnMount,
+  initialMotion,
   type MotionResult,
   type MotionState,
   type StepProbe,
@@ -27,12 +29,26 @@ import {
   stepMotion,
   WATER,
 } from "./motion";
-import type { VehicleProfile } from "./profile";
+import type { MotionLimits } from "./profile";
 import { SPEC } from "./spec";
 import { stepHeight } from "./stepUp";
 import { submarineVerticalSpeed } from "./submarine";
-import type { TickContext } from "./vehicle";
 import { waterDepthAt } from "./water";
+
+// Frozen because every SUV drive shares this one object.
+export const SUV_MOTION: MotionLimits = Object.freeze({
+  maxSpeed: SPEC.maxSpeed,
+  maxReverse: SPEC.maxReverse,
+  accel: SPEC.accel,
+  reverseAccel: SPEC.reverseAccel,
+  brake: SPEC.brake,
+  drag: SPEC.drag,
+  turnRate: SPEC.turnRate,
+  steerFullSpeed: SPEC.steerFullSpeed,
+  grip: SPEC.grip,
+  handbrakeGrip: SPEC.handbrakeGrip,
+  creepSpeed: SPEC.creepSpeed,
+});
 
 function stepProbe(ctx: TickContext, drop = 0): StepProbe {
   return (f, speed) => {
@@ -86,6 +102,7 @@ function driveInputFor(raw: RawInput | undefined, form: Form): DriveInput {
 }
 
 export class SuvDrive implements Drive {
+  private motion: MotionState;
   private formState: FormState;
   private bank = 0;
   // Undefined until the first tick, so a rebuilt vehicle clears a bank the
@@ -95,9 +112,18 @@ export class SuvDrive implements Drive {
   // Undefined until the first tick, like sentBank.
   private sentGearDown: boolean | undefined;
 
-  constructor(form: Form) {
+  constructor(yaw: number, form: Form) {
+    this.motion = initialMotion(yaw);
     this.formState = initialForm(form);
     this.gearDown = form === "car";
+  }
+
+  get speed(): number {
+    return this.motion.speed;
+  }
+
+  get yaw(): number {
+    return this.motion.yaw;
   }
 
   get form(): Form {
@@ -112,12 +138,12 @@ export class SuvDrive implements Drive {
     return this.bank;
   }
 
-  step(
-    motion: MotionState,
-    raw: RawInput | undefined,
-    ctx: TickContext,
-    profile: VehicleProfile,
-  ): DriveResult {
+  onDriverMounted(driverYaw: number): void {
+    this.motion = alignOnMount(this.motion, driverYaw);
+  }
+
+  step(raw: RawInput | undefined, ctx: TickContext): DriveStep {
+    const motion = this.motion;
     const waterDepth = waterDepthAt(ctx.location, ctx.waterAt, SPEC.carHeight);
     const velocity = { x: ctx.velocity.x, z: ctx.velocity.z };
     const before = this.formState.form;
@@ -138,14 +164,14 @@ export class SuvDrive implements Drive {
             input,
             { velocity, onGround: ctx.onGround },
             stepProbe(ctx),
-            profile.motion,
+            SUV_MOTION,
           )
         : stepFlightMotion(
             motion,
             input,
             velocity,
             form === "submarine" ? WATER : AIR,
-            profile.motion,
+            SUV_MOTION,
           );
     this.bank = stepBank(this.bank, form, yawBefore, step.state.yaw);
     let impulseY: number;
@@ -192,8 +218,8 @@ export class SuvDrive implements Drive {
       this.gearDown === this.sentGearDown ? undefined : this.gearDown;
     this.sentGearDown = this.gearDown;
 
+    this.motion = step.state;
     return {
-      motion: step.state,
       impulse: { x: step.impulse.x, y: impulseY, z: step.impulse.z },
       forward: step.forward,
       form: form === before ? undefined : form,

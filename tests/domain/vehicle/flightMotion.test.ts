@@ -15,8 +15,8 @@ import {
   stepFlightMotion,
   updateSpeed,
 } from "../../../src/domain/vehicle/motion";
-import { SUV_PROFILE } from "../../../src/domain/vehicle/profile";
 import { SPEC } from "../../../src/domain/vehicle/spec";
+import { SUV_MOTION } from "../../../src/domain/vehicle/suvDrive";
 
 // The in-game flight_cruise test checks this assumption against the engine.
 const ENGINE_DRAG = SPEC.flightDrag;
@@ -25,7 +25,7 @@ function fly(inputs: readonly DriveInput[]): { r: MotionResult; vel: Vec2 }[] {
   let state = initialMotion(0);
   let vel: Vec2 = { x: 0, z: 0 };
   return inputs.map((input) => {
-    const r = stepFlightMotion(state, input, vel, AIR, SUV_PROFILE.motion);
+    const r = stepFlightMotion(state, input, vel, AIR, SUV_MOTION);
     state = r.state;
     vel = {
       x: (vel.x + r.impulse.x) * ENGINE_DRAG,
@@ -123,7 +123,7 @@ describe("stepFlightMotion (ADR 0021)", () => {
             input,
             v,
             AIR,
-            SUV_PROFILE.motion,
+            SUV_MOTION,
           );
           expect(r.blocked).toBe(true);
           const vLong = dot(v, forward(r.state.yaw));
@@ -140,16 +140,10 @@ describe("stepFlightMotion (ADR 0021)", () => {
       fc.property(flyingState, driveInput, (s, input) => {
         const e = s.airExpected;
         const v = { x: e.x * ENGINE_DRAG, z: e.z * ENGINE_DRAG };
-        const r = stepFlightMotion(
-          prevState(s),
-          input,
-          v,
-          AIR,
-          SUV_PROFILE.motion,
-        );
+        const r = stepFlightMotion(prevState(s), input, v, AIR, SUV_MOTION);
         expect(r.blocked).toBe(false);
         expect(r.state.speed).toBe(
-          updateSpeed(s.speed, input.throttle, input.creep, SUV_PROFILE.motion),
+          updateSpeed(s.speed, input.throttle, input.creep, SUV_MOTION),
         );
       }),
     );
@@ -185,7 +179,7 @@ describe("stepFlightMotion walls and sideways velocity (ADR 0002, 0003)", () => 
             input,
             v,
             AIR,
-            SUV_PROFILE.motion,
+            SUV_MOTION,
           );
           expect(r.blocked).toBe(false);
         },
@@ -200,7 +194,7 @@ describe("stepFlightMotion walls and sideways velocity (ADR 0002, 0003)", () => 
       { throttle: 0, steer: 0, handbrake: false, creep: false },
       { x: kept, z: kept },
       AIR,
-      SUV_PROFILE.motion,
+      SUV_MOTION,
     );
     expect(r.blocked).toBe(false);
   });
@@ -211,7 +205,7 @@ describe("stepFlightMotion walls and sideways velocity (ADR 0002, 0003)", () => 
       { throttle: 0, steer: 0, handbrake: false, creep: false },
       { x: -0.5, z: ENGINE_DRAG },
       AIR,
-      SUV_PROFILE.motion,
+      SUV_MOTION,
     );
     expect(r.blocked).toBe(true);
   });
@@ -235,15 +229,10 @@ describe("stepFlightMotion walls and sideways velocity (ADR 0002, 0003)", () => 
             input,
             v,
             AIR,
-            SUV_PROFILE.motion,
+            SUV_MOTION,
           );
           const free = Math.min(
-            updateSpeed(
-              s.speed,
-              input.throttle,
-              input.creep,
-              SUV_PROFILE.motion,
-            ),
+            updateSpeed(s.speed, input.throttle, input.creep, SUV_MOTION),
             SPEC.maxSpeed,
           );
           expect(Math.abs(r.state.speed)).toBeLessThanOrEqual(
@@ -270,7 +259,7 @@ describe("stepFlightMotion walls and sideways velocity (ADR 0002, 0003)", () => 
             input,
             v,
             AIR,
-            SUV_PROFILE.motion,
+            SUV_MOTION,
           );
           const f = forward(r.state.yaw);
           const aimed = {
