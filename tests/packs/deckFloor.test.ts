@@ -1,16 +1,13 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { defined } from "../support/defined";
-import { type Json, jsonFileEntries } from "../support/packFiles";
+import type { Json } from "../support/packFiles";
+
+const read = (p: string) => JSON.parse(readFileSync(p, "utf8"));
 
 const BP = "packs/yasu_ride_bp";
 const RP = "packs/yasu_ride_rp";
-const blockFile = defined(
-  jsonFileEntries(`${BP}/blocks/yasu_ride`).find(
-    ({ path }) => path === "deck_floor.block.json",
-  ),
-  "deck floor block",
-).json;
+const blockFile = read(`${BP}/blocks/yasu_ride/deck_floor.block.json`);
 const block = blockFile["minecraft:block"] as {
   description: {
     identifier: string;
@@ -37,53 +34,37 @@ describe("Boat deck floor (ADR 0063)", () => {
     });
   });
 
-  it("defines exactly one collision height permutation for each pixel from 1 to 16", () => {
+  it("defines one collision height permutation for each pixel from 1 to 16", () => {
     expect(block.description.states).toEqual({ "yasu_ride:height": heights });
-    expect(block.permutations).toHaveLength(heights.length);
-    for (const height of heights) {
-      expect(
-        block.permutations.filter(
-          (p) =>
-            p.condition === `q.block_state('yasu_ride:height') == ${height}`,
-        ),
-      ).toEqual([
-        {
-          condition: `q.block_state('yasu_ride:height') == ${height}`,
-          components: {
-            "minecraft:collision_box": {
-              origin: [-8, 0, -8],
-              size: [16, height, 16],
-            },
+    expect(block.permutations).toEqual(
+      heights.map((height) => ({
+        condition: `q.block_state('yasu_ride:height') == ${height}`,
+        components: {
+          "minecraft:collision_box": {
+            origin: [-8, 0, -8],
+            size: [16, height, 16],
           },
         },
-      ]);
-    }
+      })),
+    );
   });
 
   it("references an invisible model with a root bone and no cubes", () => {
-    const file = defined(
-      jsonFileEntries(`${RP}/models/blocks/yasu_ride`).find(
-        ({ path }) => path === "deck_floor.geo.json",
-      ),
-      "deck floor model",
-    ).json;
+    const file = read(`${RP}/models/blocks/yasu_ride/deck_floor.geo.json`);
     expect(file.format_version).toBe("1.12.0");
-    const geometries = file["minecraft:geometry"] as {
-      description: Json;
-      bones: { name: string; pivot: number[]; cubes?: unknown[] }[];
-    }[];
-    expect(geometries).toHaveLength(1);
-    const geometry = defined(geometries[0], "deck floor geometry");
     expect(block.components["minecraft:geometry"]).toBe(
       "geometry.yasu_ride.deck_floor",
     );
-    expect(geometry.description).toEqual({
-      identifier: block.components["minecraft:geometry"],
-      texture_width: 16,
-      texture_height: 16,
-    });
-    expect(geometry.bones).toEqual([{ name: "root", pivot: [0, 0, 0] }]);
-    for (const bone of geometry.bones) expect(bone.cubes ?? []).toEqual([]);
+    expect(file["minecraft:geometry"]).toEqual([
+      {
+        description: {
+          identifier: "geometry.yasu_ride.deck_floor",
+          texture_width: 16,
+          texture_height: 16,
+        },
+        bones: [{ name: "root", pivot: [0, 0, 0] }],
+      },
+    ]);
   });
 
   it.each(["en_US", "ja_JP"])("names the block in %s", (locale) => {
