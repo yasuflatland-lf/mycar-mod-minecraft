@@ -1,0 +1,63 @@
+{
+  "format_version": "1.10.0",
+  "animation_controllers": {
+    "controller.animation.yasu_ride.suv.form": {
+      "initial_state": "ground",
+      "states": {
+        "ground": {
+          "animations": ["wheels"],
+          "transitions": [
+            {
+              "dive": "query.property('yasu_ride:form') == 'submarine'"
+            },
+            { "deploy": "!query.property('yasu_ride:gear_down')" }
+          ]
+        },
+        "deploy": {
+          "animations": ["wheels_deploy"],
+          "transitions": [{ "hover": "query.all_animations_finished" }]
+        },
+        "hover": {
+          "animations": [
+            "wheels_folded",
+            "hover_glow",
+            { "hover_sound_0": "query.ground_speed < 2" },
+            {
+              "hover_sound_1": "query.ground_speed >= 2 && query.ground_speed < 6"
+            },
+            {
+              "hover_sound_2": "query.ground_speed >= 6 && query.ground_speed < 10"
+            },
+            {
+              "hover_sound_3": "query.ground_speed >= 10 && query.ground_speed < 14"
+            },
+            { "hover_sound_4": "query.ground_speed >= 14" }
+          ],
+          "transitions": [
+            { "retract": "query.property('yasu_ride:gear_down')" }
+          ]
+        },
+        "retract": {
+          "animations": ["wheels_retract"],
+          "transitions": [{ "ground": "query.all_animations_finished" }]
+        },
+        "dive": {
+          "animations": ["dive"],
+          "transitions": [{ "submarine": "query.all_animations_finished" }]
+        },
+        "submarine": {
+          "animations": ["submerged", { "submarine_sound": "query.has_rider" }],
+          "transitions": [
+            {
+              "surface": "query.property('yasu_ride:form') != 'submarine'"
+            }
+          ]
+        },
+        "surface": {
+          "animations": ["surface"],
+          "transitions": [{ "ground": "query.all_animations_finished" }]
+        }
+      }
+    }
+  }
+}

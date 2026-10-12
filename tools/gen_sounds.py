@@ -24,7 +24,7 @@ import wave
 from pathlib import Path
 
 RATE = 22050
-OUT = Path(sys.argv[1]) / "sounds/yasuflatland"
+OUT = Path(sys.argv[1]) / "sounds/yasu_ride"
 # Power strokes per second of each engine level, from idle to full speed: a four-stroke single fires
 # once every 2 turns, so 8 Hz is about 960 rpm and 20 Hz about 2400 rpm. The 1 s loop holds whole strokes.
 ENGINE_FIRING_RATES = [8, 10, 12, 14, 17, 20]

@@ -1,0 +1,12 @@
+{
+  "resource_pack_name": "yasu_ride",
+  "texture_name": "atlas.items",
+  "texture_data": {
+    "yasu_ride_suv_item": {
+      "textures": "textures/items/yasu_ride/suv_item"
+    },
+    "yasu_ride_headlight_switch": {
+      "textures": "textures/items/yasu_ride/headlight_switch"
+    }
+  }
+}
