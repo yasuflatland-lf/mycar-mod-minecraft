@@ -120,13 +120,12 @@ export class DeckSeats {
     const rideable = car.getComponent("minecraft:rideable");
     if (!rideable) return;
     for (const id of this.ids(car)) {
-      const seat = seatEntity(id, car.id)?.getComponent("minecraft:rideable");
-      const player = seat
-        ?.getRiders()
-        .find((rider) => rider.typeId === PLAYER_TYPE);
-      if (!player || !seat) continue;
-      seat.ejectRider(player);
-      if (!rideable.addRider(player)) seat.addRider(player);
+      const seat = seatEntity(id, car.id);
+      const seatRideable = seat?.getComponent("minecraft:rideable");
+      const player = seatedPlayer(seat);
+      if (!player || !seatRideable) continue;
+      seatRideable.ejectRider(player);
+      if (!rideable.addRider(player)) seatRideable.addRider(player);
     }
   }
 
