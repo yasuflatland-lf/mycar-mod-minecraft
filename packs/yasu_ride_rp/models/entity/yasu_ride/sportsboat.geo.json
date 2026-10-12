@@ -11,7 +11,7 @@
         "visible_bounds_offset": [0, 1.5, 0]
       },
       "bones": [
-        { "name": "root", "pivot": [0, 12, 0] },
+        { "name": "root", "pivot": [0, 7, 20] },
         {
           "name": "body",
           "parent": "root",
@@ -12835,7 +12835,11 @@
                 "down": { "uv": [65, 1], "uv_size": [2, 2] }
               }
             }
-          ]
+          ],
+          "locators": {
+            "jet_left": [5.0, 3.0, 52.0],
+            "jet_right": [-5.0, 3.0, 52.0]
+          }
         },
         {
           "name": "headlights",

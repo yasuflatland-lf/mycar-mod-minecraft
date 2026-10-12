@@ -32,6 +32,7 @@ The boat seats 4. The first player to get in drives from the front-right seat an
 ## How it moves
 
 - **On water.** The boat floats on the surface and speeds up, coasts, and turns on the water
+- **Wake and attitude.** While it moves faster than 2 blocks a second, bubbles and foam stream from the jet nozzles under the stern. The bow lifts while the boat gains speed and settles once it reaches a steady speed, and the hull leans into turns, more at higher speed
 - **Shores.** It cannot leave the water: shores stop it, and it cannot drive on land. A boat placed on land coasts to a stop
 - **Ramming.** It damages mobs it hits at speed. The boat and the people inside take no damage
 - **Headlights.** Two beams light the water up to about 60 blocks ahead

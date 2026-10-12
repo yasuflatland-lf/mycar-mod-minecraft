@@ -544,8 +544,12 @@ geo = {
             "visible_bounds_width": 8, "visible_bounds_height": 4, "visible_bounds_offset": [0, 1.5, 0],
         },
         "bones": [
-            {"name": "root", "pivot": [0, 12, 0]},
-            {"name": "body", "parent": "root", "pivot": [0, 7, 0], "cubes": body},
+            # The bow rise and the roll turn the whole boat about this point, in the aft third
+            # at the waterline, so the bow lifts and the stern squats a little (ADR 0059)
+            {"name": "root", "pivot": [0, 7, -20]},
+            # Where the wake leaves each jet nozzle's bore
+            {"name": "body", "parent": "root", "pivot": [0, 7, 0], "cubes": body,
+             "locators": {"jet_left": [-5.0, 3.0, -52.0], "jet_right": [5.0, 3.0, -52.0]}},
             {"name": "headlights", "parent": "body", "pivot": [0, 7, 0], "cubes": headlights},
             {"name": "windshield", "parent": "body", "pivot": [0, 7, 0], "cubes": glass},
         ],
@@ -558,6 +562,8 @@ def turn_around(bones):
     for bone in bones:
         if "pivot" in bone:
             bone["pivot"] = [-bone["pivot"][0], bone["pivot"][1], -bone["pivot"][2]]
+        for name, (lx, ly, lz) in bone.get("locators", {}).items():
+            bone["locators"][name] = [-lx, ly, -lz]
         for cube in bone.get("cubes", []):
             (x, y, z), (w, h, d) = cube["origin"], cube["size"]
             cube["origin"] = [-(x + w), y, -(z + d)]

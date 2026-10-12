@@ -17,6 +17,7 @@ import {
   createVehicle,
   rebuildVehicle,
 } from "../../../../../src/domain/vehicle/kinds/index";
+import { SPORTSBOAT_ATTITUDE } from "../../../../../src/domain/vehicle/kinds/sportsboat/attitude";
 import {
   BoatDrive,
   estimateWaterDrag,
@@ -24,6 +25,7 @@ import {
   SPORTSBOAT_DRAG,
   SPORTSBOAT_WATER,
 } from "../../../../../src/domain/vehicle/kinds/sportsboat/drive";
+import { SPORTSBOAT_ENTITY } from "../../../../../src/domain/vehicle/kinds/sportsboat/entity";
 import {
   SPORTSBOAT_MOTION,
   SPORTSBOAT_PROFILE,
@@ -132,6 +134,11 @@ function context(
     targets,
   };
 }
+
+const LEVEL = [
+  { type: "setProperty", name: "trim", value: 0 },
+  { type: "setProperty", name: "roll", value: 0 },
+];
 
 function boat(heading: number): Vehicle {
   return createVehicle("sportsboat", "boat", heading);
@@ -384,7 +391,8 @@ describe("BoatDrive (ADR 0051)", () => {
           undefined,
           context(0, undefined, { x: 0, z: 0 }, AFLOAT),
         );
-        expect(step.commands).toStrictEqual([]);
+        // At rest the first tick only levels the hull (ADR 0059)
+        expect(step.commands).toStrictEqual(LEVEL);
         expect(step.riders).toStrictEqual({
           thirdPerson: false,
           underwater: false,
@@ -393,7 +401,7 @@ describe("BoatDrive (ADR 0051)", () => {
           form,
         });
         const out = rebuilt.tick(context(0, undefined, { x: 0, z: 0 }, AFLOAT));
-        expect(out.commands).toStrictEqual([]);
+        expect(out.commands).toStrictEqual(LEVEL);
         expect(out.riders).toStrictEqual({
           thirdPerson: false,
           underwater: false,
@@ -557,7 +565,7 @@ describe("BoatDrive (ADR 0051)", () => {
     );
   });
 
-  it("never pushes vertically and never sends a form, bank, or gear, for any inputs and surroundings", () => {
+  it("never pushes vertically and sends only its trim and roll within their ranges, never a form, bank, or gear, for any inputs and surroundings", () => {
     const tick = fc.record({
       raw: fc.option(rawInput, { nil: undefined }),
       waterDepth: fc.option(number(0, 5), { nil: undefined }),
@@ -582,7 +590,16 @@ describe("BoatDrive (ADR 0051)", () => {
               solidAt: () => t.solid,
             });
             expect(out.impulse.y).toBe(0);
-            expect(out.commands).toStrictEqual([]);
+            for (const command of out.commands) {
+              expect(command).toMatchObject({ type: "setProperty" });
+              const { name, value } = command as {
+                name: "trim" | "roll";
+                value: number;
+              };
+              const [min, max] = SPORTSBOAT_ENTITY.properties[name].range;
+              expect(value).toBeGreaterThanOrEqual(min);
+              expect(value).toBeLessThanOrEqual(max);
+            }
             expect(out.riders).toStrictEqual({
               thirdPerson: false,
               underwater: false,
@@ -723,4 +740,93 @@ it("queries below the boat only when its depth query is dry", () => {
       expect(probes.filter((y) => y === -0.3)).toEqual(atFeet ? [] : [-0.3]);
     }),
   );
+});
+
+/** The trim and roll a vehicle last sent, starting level. */
+class Attitude {
+  trim = 0;
+  roll = 0;
+
+  read(out: TickOutcome): void {
+    for (const command of out.commands) {
+      if (command.type !== "setProperty") continue;
+      if (command.name === "trim") this.trim = command.value as number;
+      if (command.name === "roll") this.roll = command.value as number;
+    }
+  }
+}
+
+describe("a sports boat's trim and roll (ADR 0059)", () => {
+  it("afloat at full throttle, lifts the bow fully while gaining speed and levels it at top speed", () => {
+    fc.assert(
+      fc.property(yaw, afloatWater, (heading, water) => {
+        const sim = new BoatSim(boat(heading), SPORTSBOAT_WATER.drag);
+        const attitude = new Attitude();
+        let peak = 0;
+        for (let i = 0; i < 40; i++) {
+          attitude.read(sim.step(FULL_THROTTLE, water));
+          peak = Math.max(peak, attitude.trim);
+        }
+        expect(peak).toBe(SPORTSBOAT_ATTITUDE.maxTrim);
+        for (let i = 0; i < 80; i++)
+          attitude.read(sim.step(FULL_THROTTLE, water));
+        expect(sim.vehicle.speed).toBe(SPORTSBOAT_MOTION.maxSpeed);
+        expect(attitude.trim).toBe(0);
+        expect(attitude.roll).toBe(0);
+      }),
+    );
+  });
+
+  it("beached, keeps the hull level whatever the input", () => {
+    fc.assert(
+      fc.property(
+        yaw,
+        fc.array(rawInput, { maxLength: 40 }),
+        (heading, inputs) => {
+          const sim = new BoatSim(boat(heading), SPORTSBOAT_WATER.drag);
+          const attitude = new Attitude();
+          for (const raw of inputs) {
+            attitude.read(sim.step(raw, BEACHED));
+            expect(attitude.trim).toBe(0);
+            expect(attitude.roll).toBe(0);
+          }
+        },
+      ),
+    );
+  });
+
+  it("at top speed, rolls into a full turn, right side down when the heading turns right, then levels after it", () => {
+    fc.assert(
+      fc.property(
+        yaw,
+        fc.constantFrom(1, -1),
+        afloatWater,
+        (heading, side, water) => {
+          const sim = new BoatSim(boat(heading), SPORTSBOAT_WATER.drag);
+          const attitude = new Attitude();
+          for (let i = 0; i < 120; i++)
+            attitude.read(sim.step(FULL_THROTTLE, water));
+          const turning = { ...FULL_THROTTLE, moveX: side };
+          const before = sim.vehicle.yaw;
+          attitude.read(sim.step(turning, water));
+          const right = yawDelta(before, sim.vehicle.yaw) > 0;
+          for (let i = 0; i < 20; i++) attitude.read(sim.step(turning, water));
+          expect(Math.abs(attitude.roll)).toBeGreaterThan(
+            SPORTSBOAT_ATTITUDE.maxRoll * 0.8,
+          );
+          expect(attitude.roll > 0).toBe(right);
+          for (let i = 0; i < 20; i++)
+            attitude.read(sim.step(FULL_THROTTLE, water));
+          expect(attitude.roll).toBe(0);
+        },
+      ),
+    );
+  });
+
+  it("sends trim and roll only when they change", () => {
+    const sim = new BoatSim(boat(0), SPORTSBOAT_WATER.drag);
+    expect(sim.step(undefined, AFLOAT).commands).toStrictEqual(LEVEL);
+    for (let i = 0; i < 10; i++)
+      expect(sim.step(undefined, AFLOAT).commands).toStrictEqual([]);
+  });
 });
