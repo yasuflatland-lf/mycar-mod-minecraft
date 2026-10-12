@@ -14,6 +14,13 @@ import { SPEC } from "./spec";
 export interface Medium {
   readonly drag: number;
   readonly maxSpeed: number;
+  /**
+   * Drag the per-axis wall check compares against, `drag` when absent. A
+   * medium whose drag is estimated each tick sets it to the estimate the
+   * estimator checked walls against, so one tick gets one wall decision
+   * (ADR 0053).
+   */
+  readonly wallDrag?: number;
 }
 
 export const AIR: Medium = { drag: SPEC.flightDrag, maxSpeed: SPEC.maxSpeed };
@@ -26,6 +33,8 @@ export interface MotionState {
   speed: number; // Internal forward/reverse speed (blocks/tick; negative means reverse)
   yaw: number;
   friction?: number; // Ground friction estimate; undefined until estimated
+  /** Buoyant boat's water drag estimate (ADR 0053), retained while beached. */
+  waterDrag?: number;
   // Velocity the script aimed for in the previous tick. Kept only when that
   // tick was on the ground: in the air the engine applies airFriction and only
   // airControl of the impulse, so the ratio would not measure ground friction.
@@ -94,7 +103,7 @@ export function steerYaw(
  * on either axis. The engine zeroes velocity per axis at walls, so x and z
  * are checked separately (ADR 0003).
  */
-function hitWall(v: Vec2, given: Vec2, keptRatio: number): boolean {
+export function hitWall(v: Vec2, given: Vec2, keptRatio: number): boolean {
   const axisBlocked = (ve: number, ee: number) =>
     Math.abs(ee) > SPEC.blockedAxisMin && ve / ee < keptRatio;
   return axisBlocked(v.x, given.x) || axisBlocked(v.z, given.z);
@@ -194,7 +203,7 @@ export function stepMotion(
  * ground friction to estimate, so the impulse is pre-divided by the medium's
  * drag and applied in full. The handbrake does not exist in the air or under
  * water. Walls are detected per axis as on the ground (ADR 0003), against the
- * medium's drag. Step rise is handled by the aggregate.
+ * medium's wall drag. Step rise is handled by the aggregate.
  */
 export function stepFlightMotion(
   prev: MotionState,
@@ -216,7 +225,11 @@ export function stepFlightMotion(
   const vLong = dot(v, f);
   const blocked =
     prev.airExpected !== undefined &&
-    hitWall(v, prev.airExpected, medium.drag * SPEC.blockedRatio);
+    hitWall(
+      v,
+      prev.airExpected,
+      (medium.wallDrag ?? medium.drag) * SPEC.blockedRatio,
+    );
   if (blocked) speed = speedAfterWall(speed, vLong, limits);
   const keepLat = 1 - limits.grip;
   const target = clampLength(

@@ -1,10 +1,13 @@
 // In-game tests (ADR 0010). They run in a script environment separate from the
 // main Behavior Pack, so they drive the vehicle through script events.
 import { type Dimension, type Entity, system, world } from "@minecraft/server";
-import { forward } from "../domain/shared/vec";
+import { dot, forward } from "../domain/shared/vec";
+import { BoatDrive } from "../domain/vehicle/boatDrive";
 import { type Form, isForm } from "../domain/vehicle/form";
 import { headlightCells } from "../domain/vehicle/headlights";
+import { initialMotion } from "../domain/vehicle/motion";
 import { PAINTS } from "../domain/vehicle/paint";
+import { SPORTSBOAT_PROFILE } from "../domain/vehicle/profile";
 import { nearestSeat, toLocal } from "../domain/vehicle/seats";
 import { SPEC } from "../domain/vehicle/spec";
 import {
@@ -38,6 +41,7 @@ const SEAT_PROBE = "yasu_ride_test:seat_probe";
 interface Outcome {
   pass: boolean;
   detail: string;
+  lines?: string[];
 }
 interface Arena {
   dim: Dimension;
@@ -58,6 +62,10 @@ function wait(ticks: number): Promise<void> {
 
 function hlen(v: Horizontal): number {
   return Math.hypot(v.x, v.z);
+}
+
+function mean(values: number[]): number {
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
 function slipAngleDeg(v: Horizontal, yaw: number): number {
@@ -634,6 +642,9 @@ function flightDriverless(a: Arena): Promise<Outcome> {
 // 80 blocks across z, so a submarine has room to turn (submarine_bank); the
 // lane runs along the low-z edge and right turns head into the open water.
 const POOL = { minX: 15, maxX: 85, minZ: 2, maxZ: 81, z: 7.5 } as const;
+// Along +z at x = 20.5 the pool is clear for a full throttle and coast;
+// wall_diagonal's wall stands at x = 45.
+const POOL_SOUTH_LANE = { x: POOL.minX + 5.5, z: POOL.minZ + 2.5, yaw: 0 };
 // Deep enough for a full car height of water with a block under it. In the
 // flat dev world (gy = -60) this puts the pool's stone floor at -64, the
 // bottom of the world, so a carHeight above 2 no longer fits; withPool throws
@@ -699,16 +710,21 @@ async function withPool<T>(
 async function withBoat<T>(
   a: Arena,
   run: (boat: Entity) => Promise<T>,
+  start: Horizontal & { yaw: number } = {
+    x: POOL.minX + 5.5,
+    z: POOL.z,
+    yaw: -90,
+  },
 ): Promise<T> {
-  const x = POOL.minX + 5.5;
-  a.dim.runCommand(`summon ${ENTITY_TYPE.sportsboat} ${x} ${a.gy} ${POOL.z}`);
+  const { x, z } = start;
+  a.dim.runCommand(`summon ${ENTITY_TYPE.sportsboat} ${x} ${a.gy} ${z}`);
   const boat = a.dim.getEntities({
     type: ENTITY_TYPE.sportsboat,
-    location: { x, y: a.gy, z: POOL.z },
+    location: { x, y: a.gy, z },
     maxDistance: 1.5,
   })[0];
   if (!boat) throw new Error("boat not spawned at the pool surface");
-  boat.setRotation({ x: 0, y: -90 });
+  boat.setRotation({ x: 0, y: start.yaw });
   try {
     await wait(40); // Let the boat settle on the water
     return await run(boat);
@@ -739,39 +755,160 @@ function boatFloat(a: Arena): Promise<Outcome> {
   );
 }
 
+function feetInWater(boat: Entity): boolean {
+  const { x, y, z } = boat.location;
+  const block = boat.dimension.getBlock({
+    x: Math.floor(x),
+    y: Math.floor(y),
+    z: Math.floor(z),
+  });
+  return (
+    block?.typeId === "minecraft:water" ||
+    block?.typeId === "minecraft:flowing_water"
+  );
+}
+
+function boatDrag(a: Arena): Promise<Outcome> {
+  return withPool(a, 3, () =>
+    withBoat(
+      a,
+      async (boat) => {
+        const start = boat.location;
+        let motion = initialMotion(boat.getRotation().y);
+        let observed = boat.getVelocity();
+        const waterRatios: number[] = [];
+        const airRatios: number[] = [];
+        const steadySpeeds: number[] = [];
+        const coastRatios: number[] = [];
+        const steadyDrag: number[] = [];
+        const replica = new BoatDrive();
+        const lines: string[] = [];
+        drive(boat, 0, 1);
+        for (let t = 0; t < 93; t++) {
+          // The main pack acts on a script event one tick after it is sent:
+          // without this lag the replica's estimate drifted to 0.72 while the
+          // boat held 1.11 blocks/tick, which needs about 0.84.
+          const throttle = t >= 1 && t <= 80;
+          if (t === 80) clearInput(boat);
+          const step = replica.step(
+            motion,
+            { moveX: 0, moveY: throttle ? 1 : 0, jump: false },
+            {
+              tick: t,
+              riders: [],
+              velocity: observed,
+              onGround: false,
+              waterDepth: Math.max(0.01, a.gy - boat.location.y),
+              solidAt: () => false,
+              targets: () => [],
+            },
+            SPORTSBOAT_PROFILE,
+          );
+          motion = step.motion;
+          const given = {
+            x: observed.x + step.impulse.x,
+            z: observed.z + step.impulse.z,
+          };
+          const previousSpeed = hlen(observed);
+          // Each row pairs the given velocity at t with the observation at t+1.
+          await wait(1);
+          observed = boat.getVelocity();
+          const speed = hlen(observed);
+          const water = feetInWater(boat);
+          const denominator = throttle ? dot(given, given) : previousSpeed;
+          const ratio =
+            denominator > 0
+              ? (throttle ? dot(observed, given) : speed) / denominator
+              : undefined;
+          if (ratio !== undefined) {
+            if (throttle && t >= 5)
+              (water ? waterRatios : airRatios).push(ratio);
+            if (!throttle) coastRatios.push(ratio);
+          }
+          if (throttle && t >= 60) {
+            steadySpeeds.push(speed);
+            if (motion.waterDrag !== undefined)
+              steadyDrag.push(motion.waterDrag);
+          }
+          lines.push(
+            `tick=${t + 1} ${throttle ? "throttle" : "coast"} impulse=${hlen(step.impulse).toFixed(3)} given=${hlen(given).toFixed(3)} observed=${speed.toFixed(3)} feet=${(boat.location.y - a.gy).toFixed(3)} water=${water ? 1 : 0} drag=${motion.waterDrag?.toFixed(3) ?? "n/a"} ratio=${ratio?.toFixed(3) ?? "n/a"}`,
+          );
+        }
+        const meanText = (values: number[]) =>
+          values.length > 0 ? mean(values).toFixed(3) : "n/a";
+        const summary = (values: number[]) =>
+          `mean=${meanText(values)} spread=${values.length > 0 ? (Math.max(...values) - Math.min(...values)).toFixed(3) : "n/a"} n=${values.length}`;
+        const distance = hlen({
+          x: boat.location.x - start.x,
+          z: boat.location.z - start.z,
+        });
+        return {
+          pass: distance >= 5,
+          detail: `distance=${distance.toFixed(3)} water(${summary(waterRatios)}) air(${summary(airRatios)}) steadySpeed=${meanText(steadySpeeds)} coastRatio=${meanText(coastRatios)} finalDrag=${motion.waterDrag?.toFixed(3) ?? "n/a"} steadyDrag=${Math.min(...steadyDrag).toFixed(3)}-${Math.max(...steadyDrag).toFixed(3)}`,
+          lines,
+        };
+      },
+      POOL_SOUTH_LANE,
+    ),
+  );
+}
+
 function boatCruise(a: Arena): Promise<Outcome> {
   return withPool(a, 3, async () => {
-    const cruise = await withBoat(a, async (boat) => {
-      const x0 = boat.location.x;
-      drive(boat, 0, 1);
-      let topSpeed = 0;
-      for (let t = 0; t < 60; t++) {
-        await wait(1);
-        topSpeed = Math.max(topSpeed, hlen(boat.getVelocity()));
-      }
-      return { distance: boat.location.x - x0, topSpeed };
-    });
-    // Logged for tuning in 8/8, with no threshold yet. A separate start leaves
-    // room for the full turn within the pool.
-    const turn = await withBoat(a, async (boat) => {
-      drive(boat, 0, 1);
-      await wait(30);
-      drive(boat, -1, 1);
-      let yaw = boat.getRotation().y;
-      let degrees = 0;
-      let ticks = 0;
-      while (Math.abs(degrees) < 360 && ticks < 120) {
-        await wait(1);
-        const next = boat.getRotation().y;
-        degrees += ((next - yaw + 540) % 360) - 180;
-        yaw = next;
-        ticks++;
-      }
-      return { degrees, ticks, rate: degrees / ticks };
-    });
+    const steadySpeed = await withBoat(
+      a,
+      async (boat) => {
+        drive(boat, 0, 1);
+        const speeds: number[] = [];
+        for (let t = 1; t <= 70; t++) {
+          await wait(1);
+          if (t >= 51) speeds.push(hlen(boat.getVelocity()));
+        }
+        return mean(speeds);
+      },
+      POOL_SOUTH_LANE,
+    );
+    const turn = await withBoat(
+      a,
+      async (boat) => {
+        drive(boat, 0, 1);
+        const cruiseSpeeds: number[] = [];
+        for (let t = 1; t <= 55; t++) {
+          await wait(1);
+          if (t >= 51) cruiseSpeeds.push(hlen(boat.getVelocity()));
+        }
+        const cruiseSpeed = mean(cruiseSpeeds);
+        drive(boat, -1, 1);
+        let yaw = boat.getRotation().y;
+        let degrees = 0;
+        let ticks = 0;
+        const speeds: number[] = [];
+        while (Math.abs(degrees) < 360 && ticks < 120) {
+          await wait(1);
+          const next = boat.getRotation().y;
+          degrees += ((next - yaw + 540) % 360) - 180;
+          yaw = next;
+          ticks++;
+          speeds.push(hlen(boat.getVelocity()));
+        }
+        return {
+          cruiseSpeed,
+          minSpeed: Math.min(...speeds),
+          endSpeed: mean(speeds.slice(-5)),
+          degrees,
+          ticks,
+          rate: degrees / ticks,
+        };
+      },
+      // A right turn heads toward -x; this lane clears the pad and diagonal wall.
+      { x: 75.5, z: POOL.minZ + 2.5, yaw: 0 },
+    );
     return {
-      pass: cruise.distance > 10,
-      detail: `distance=${cruise.distance.toFixed(2)} topSpeed=${cruise.topSpeed.toFixed(3)} turn=${turn.degrees.toFixed(1)} turnTicks=${turn.ticks} turnRate=${turn.rate.toFixed(3)}`,
+      pass:
+        steadySpeed >= 0.95 * SPORTSBOAT_PROFILE.motion.maxSpeed &&
+        Math.abs(turn.degrees) >= 360 &&
+        turn.endSpeed >= 0.8 * turn.cruiseSpeed,
+      detail: `steadySpeed=${steadySpeed.toFixed(3)} cruiseSpeed=${turn.cruiseSpeed.toFixed(3)} turnMinSpeed=${turn.minSpeed.toFixed(3)} turnEndSpeed=${turn.endSpeed.toFixed(3)} kept=${(turn.endSpeed / turn.cruiseSpeed).toFixed(3)} turn=${turn.degrees.toFixed(1)} turnTicks=${turn.ticks} turnRate=${turn.rate.toFixed(3)}`,
     };
   });
 }
@@ -1142,6 +1279,7 @@ async function runAll({ runId, shard }: RunRequest): Promise<void> {
     ["submarine_shallow", () => submarineShallow(a)],
     ["vehicle_limit", () => vehicleLimit(a)],
     ["boat_float", () => boatFloat(a)],
+    ["boat_drag", () => boatDrag(a)],
     ["boat_cruise", () => boatCruise(a)],
     ["boat_shore", () => boatShore(a)],
     ["boat_ram", () => boatRam(a)],
@@ -1162,6 +1300,7 @@ async function runAll({ runId, shard }: RunRequest): Promise<void> {
     lines.push(
       `${outcome.pass ? "PASS" : "FAIL"} ${name} ticks=${system.currentTick - start} ${outcome.detail}`,
     );
+    for (const line of outcome.lines ?? []) lines.push(`${name} ${line}`);
   }
   for (const line of lines) log(runId, line);
   log(runId, `SUMMARY pass=${passed} fail=${tests.length - passed}`);

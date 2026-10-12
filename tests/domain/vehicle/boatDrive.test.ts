@@ -10,14 +10,23 @@ import {
 } from "../../../src/domain/shared/vec";
 import {
   BoatDrive,
+  estimateWaterDrag,
   isAfloat,
+  SPORTSBOAT_DRAG,
   SPORTSBOAT_WATER,
 } from "../../../src/domain/vehicle/boatDrive";
 import { driveFor } from "../../../src/domain/vehicle/drive";
-import type { RawInput } from "../../../src/domain/vehicle/driveInput";
+import {
+  type RawInput,
+  toDriveInput,
+} from "../../../src/domain/vehicle/driveInput";
 import { FORMS } from "../../../src/domain/vehicle/form";
 import type { VehicleKind } from "../../../src/domain/vehicle/kind";
-import { initialMotion } from "../../../src/domain/vehicle/motion";
+import {
+  initialMotion,
+  type MotionState,
+  stepFlightMotion,
+} from "../../../src/domain/vehicle/motion";
 import {
   SPORTSBOAT_PROFILE,
   SUV_PROFILE,
@@ -135,7 +144,230 @@ describe("isAfloat (ADR 0051)", () => {
   });
 });
 
+describe("estimateWaterDrag (ADR 0053)", () => {
+  const estimate = number(SPORTSBOAT_DRAG.min, SPORTSBOAT_DRAG.max);
+  const vector = fc.record({ x: number(-3, 3), z: number(-3, 3) });
+  const given = fc.tuple(yaw, number(0.1, 3)).map(([heading, speed]) => {
+    const f = forward(heading);
+    return { x: f.x * speed, z: f.z * speed };
+  });
+
+  it("stays within the bounds for every sample and previous estimate", () => {
+    fc.assert(
+      fc.property(
+        fc.option(number(-2, 2), { nil: undefined }),
+        fc.option(vector, { nil: undefined }),
+        vector,
+        (prev, given, observed) => {
+          const next = estimateWaterDrag(prev, given, observed);
+          expect(next).toBeGreaterThanOrEqual(SPORTSBOAT_DRAG.min);
+          expect(next).toBeLessThanOrEqual(SPORTSBOAT_DRAG.max);
+        },
+      ),
+    );
+  });
+
+  it("converges to a constant true ratio at every heading", () => {
+    fc.assert(
+      fc.property(estimate, estimate, given, (prev, ratio, given) => {
+        let drag = prev;
+        const observed = { x: ratio * given.x, z: ratio * given.z };
+        for (let t = 0; t < 60; t++)
+          drag = estimateWaterDrag(drag, given, observed);
+        expect(Math.abs(drag - ratio)).toBeLessThan(0.01);
+      }),
+    );
+  });
+
+  it("ignores a wall hit on either axis even when the other axis keeps its velocity", () => {
+    fc.assert(
+      fc.property(
+        estimate,
+        number(0.1, 3),
+        number(0, 0.49),
+        fc.boolean(),
+        fc.boolean(),
+        (prev, magnitude, kept, onX, reverse) => {
+          const axis = reverse ? -magnitude : magnitude;
+          const given = { x: axis, z: axis };
+          const observed = onX
+            ? { x: axis * prev * kept, z: axis * prev }
+            : { x: axis * prev, z: axis * prev * kept };
+          expect(estimateWaterDrag(prev, given, observed)).toBe(prev);
+        },
+      ),
+    );
+  });
+
+  it("samples an axis that keeps just over half the estimate and skips one just under it, so the threshold follows the estimate", () => {
+    // Every ratio drawn here lies under the fixed 0.5 of SPEC.blockedRatio, so
+    // a threshold that ignored the estimate would skip the sampled side too.
+    fc.assert(
+      fc.property(
+        number(SPORTSBOAT_DRAG.min, SPORTSBOAT_DRAG.max),
+        number(0.1, 3),
+        number(0.01, 0.99),
+        fc.boolean(),
+        fc.boolean(),
+        (prev, magnitude, t, onX, reverse) => {
+          const threshold = prev * SPEC.blockedRatio;
+          const axis = reverse ? -magnitude : magnitude;
+          const given = { x: axis, z: axis };
+          // The other axis sets the sample to the bound farther from prev.
+          const sample =
+            prev < (SPORTSBOAT_DRAG.min + SPORTSBOAT_DRAG.max) / 2
+              ? SPORTSBOAT_DRAG.max
+              : SPORTSBOAT_DRAG.min;
+          const at = (ratio: number) => {
+            const other = 2 * sample - ratio;
+            return onX
+              ? { x: axis * ratio, z: axis * other }
+              : { x: axis * other, z: axis * ratio };
+          };
+          const above = threshold + t * (SPEC.blockedRatio - threshold);
+          const sampled = estimateWaterDrag(prev, given, at(above));
+          expect(sampled).toBeCloseTo(prev * 0.9 + sample * 0.1, 12);
+          expect(Math.abs(sampled - prev)).toBeGreaterThan(0.01);
+          expect(estimateWaterDrag(prev, given, at(threshold * t))).toBe(prev);
+        },
+      ),
+    );
+  });
+
+  it("keeps the estimate without a previous given velocity or below the sampling threshold", () => {
+    fc.assert(
+      fc.property(
+        estimate,
+        yaw,
+        number(0, SPORTSBOAT_DRAG.minGiven * 0.99),
+        vector,
+        (prev, heading, speed, observed) => {
+          const f = forward(heading);
+          expect(estimateWaterDrag(prev, undefined, observed)).toBe(prev);
+          expect(
+            estimateWaterDrag(
+              prev,
+              { x: f.x * speed, z: f.z * speed },
+              observed,
+            ),
+          ).toBe(prev);
+        },
+      ),
+    );
+    expect(estimateWaterDrag(undefined, undefined, { x: 0, z: 0 })).toBe(
+      SPORTSBOAT_DRAG.initial,
+    );
+  });
+
+  it("clamps the sample before averaging rather than only clamping the result", () => {
+    expect(estimateWaterDrag(0.83, { x: 1, z: 0 }, { x: 2, z: 0 })).toBeCloseTo(
+      0.842,
+      12,
+    );
+    expect(
+      estimateWaterDrag(0.83, { x: 1, z: 0 }, { x: 0.5, z: 0 }),
+    ).toBeCloseTo(0.817, 12);
+  });
+});
+
 describe("BoatDrive (ADR 0051)", () => {
+  it("carries the water estimate afloat and beached, and a higher estimate gives less velocity for the same target", () => {
+    fc.assert(
+      fc.property(yaw, number(SPORTSBOAT_DRAG.min, 0.89), (heading, low) => {
+        const drive = new BoatDrive();
+        const motion = {
+          ...initialMotion(heading),
+          speed: 0.5,
+          waterDrag: low,
+        };
+        const ctx = context(0, FULL_THROTTLE, { x: 0, z: 0 }, AFLOAT);
+        const a = drive.step(motion, FULL_THROTTLE, ctx, SPORTSBOAT_PROFILE);
+        const b = drive.step(
+          { ...motion, waterDrag: low + 0.04 },
+          FULL_THROTTLE,
+          ctx,
+          SPORTSBOAT_PROFILE,
+        );
+        expect(a.motion.waterDrag).toBe(low);
+        expect(b.motion.waterDrag).toBeCloseTo(low + 0.04, 12);
+        expect(length(b.impulse)).toBeLessThan(length(a.impulse));
+        const given = a.motion.airExpected;
+        if (!given) throw new Error("missing afloat given velocity");
+        const observed = { x: given.x * 0.9, z: given.z * 0.9 };
+        const next = drive.step(
+          a.motion,
+          FULL_THROTTLE,
+          { ...ctx, velocity: observed },
+          SPORTSBOAT_PROFILE,
+        );
+        expect(next.motion.waterDrag).toBeCloseTo(low * 0.9 + 0.9 * 0.1, 12);
+        // The impulse divides by the updated estimate, not the one stored in a.
+        const updated = next.motion.waterDrag ?? 0;
+        expect(updated).not.toBeCloseTo(low, 6);
+        const expected = stepFlightMotion(
+          { ...a.motion, waterDrag: updated },
+          toDriveInput(FULL_THROTTLE),
+          observed,
+          { ...SPORTSBOAT_WATER, drag: updated },
+          SPORTSBOAT_PROFILE.motion,
+        );
+        expect(next.impulse.x).toBeCloseTo(expected.impulse.x, 12);
+        expect(next.impulse.z).toBeCloseTo(expected.impulse.z, 12);
+        const beached = drive.step(
+          next.motion,
+          FULL_THROTTLE,
+          { ...ctx, ...BEACHED, velocity: { x: 0, z: 0 } },
+          SPORTSBOAT_PROFILE,
+        );
+        expect(beached.motion.waterDrag).toBe(next.motion.waterDrag);
+        expect(beached.motion.airExpected).toBeUndefined();
+      }),
+    );
+  });
+
+  it("makes one wall decision per tick: a tick taken as a drag sample never lowers the speed, and a skipped one does", () => {
+    // Heading +z at speed 1 and given (0.1, 1.0): the z axis keeps 0.95, so the
+    // sample is about 0.945 and raises any estimate up to 0.9. The x axis keeps
+    // just over half the stored estimate, which is under half the raised one.
+    fc.assert(
+      fc.property(
+        number(SPORTSBOAT_DRAG.min, 0.9),
+        number(0.0002, 0.002),
+        (prev, over) => {
+          const drive = new BoatDrive();
+          const motion: MotionState = {
+            ...initialMotion(0),
+            speed: 1,
+            waterDrag: prev,
+            airExpected: { x: 0.1, z: 1 },
+          };
+          const velocity = (xRatio: number) => ({ x: 0.1 * xRatio, z: 0.95 });
+          const step = (v: Vec2, m = motion) =>
+            drive.step(
+              m,
+              FULL_THROTTLE,
+              context(0, FULL_THROTTLE, v, AFLOAT),
+              SPORTSBOAT_PROFILE,
+            );
+          const unblocked = step(velocity(0.5), {
+            ...motion,
+            airExpected: undefined,
+          }).motion.speed;
+          const sampled = step(velocity(prev * SPEC.blockedRatio + over));
+          const raised = sampled.motion.waterDrag ?? 0;
+          expect(raised).toBeGreaterThan(prev);
+          expect(0.1 * (prev * SPEC.blockedRatio + over)).toBeLessThan(
+            0.1 * raised * SPEC.blockedRatio,
+          );
+          expect(sampled.motion.speed).toBe(unblocked);
+          const skipped = step(velocity(prev * SPEC.blockedRatio - over));
+          expect(skipped.motion.waterDrag).toBe(prev);
+          expect(skipped.motion.speed).toBeCloseTo(0.95, 12);
+        },
+      ),
+    );
+  });
+
   it("is the sports boat's drive and keeps no form, gear, or bank whatever form it is given", () => {
     fc.assert(
       fc.property(fc.constantFrom(...FORMS), yaw, (form, heading) => {

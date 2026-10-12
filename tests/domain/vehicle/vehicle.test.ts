@@ -331,6 +331,21 @@ describe("Vehicle (aggregate)", () => {
     expect(slower.yaw).toBeCloseTo(90);
   });
 
+  it("keeps the heading when a driver boards a vehicle reversing faster than mountAlignSpeed (ADR 0019)", () => {
+    const sim = new Sim();
+    const v = Vehicle.create("car", 0);
+    sim.testInput = { moveX: 0, moveY: -1, jump: false };
+    let tick = 0;
+    for (; tick < 40 && v.speed >= -SPEC.mountAlignSpeed; tick++) {
+      sim.run(v, 1, tick);
+    }
+    expect(v.speed).toBeLessThan(-SPEC.mountAlignSpeed);
+    const yaw = v.yaw;
+    sim.riders = [{ id: "d", seat: 0, yaw: yaw + 90, raw: IDLE }];
+    sim.run(v, 1, tick);
+    expect(v.yaw).toBe(yaw);
+  });
+
   it("does not query nearby targets at exactly ramMinSpeed, as when creeping up a step (ADR 0006)", () => {
     // A step jump raises a slower vehicle to stepMinSpeed, which equals
     // ramMinSpeed, so creeping up a step reaches the threshold exactly.

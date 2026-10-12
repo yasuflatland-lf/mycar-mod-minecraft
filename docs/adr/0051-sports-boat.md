@@ -28,3 +28,5 @@ The [sports boat spike](../spike-sportsboat.md) tried a separate driven entity m
 - B's engine cap near 1.02 blocks/tick remains until drag is measured and tuned in 8/8. The target speed and turn rate are requirements, not achieved measurements; revisit B if that work cannot reach 1.12 blocks/tick
 - The boat cannot leave the water by itself: a flush beach and a one-block bank both stop it, so no separate beaching rule is needed
 - The square collision box lets the bow overlap a shore. The lowered seats and the three hit boxes still need in-game confirmation
+
+[0053](0053-estimate-buoyant-boat-water-drag.md) measures the water drag and estimates it every tick.
