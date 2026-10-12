@@ -28,6 +28,8 @@ export interface TickContext {
   onGround: boolean;
   /** Blocks of water above the feet; absent or 0 out of water. */
   waterDepth?: number;
+  /** Whether the cell 0.3 blocks below the feet holds water; a floating hull's feet can sit above the water cell (ADR 0051). */
+  waterBelow?: boolean;
   /** Vertical velocity from the engine (blocks/tick). Read whenever the form is not car, including the tick takeoff starts. */
   velocityY?: number;
   /** Whether the block at entity location + offset (world axes, y from the feet) is solid; air, liquids and blocks without a collision box (flowers, grass, carpets) are not (ADR 0035). */
@@ -80,7 +82,8 @@ export class Vehicle {
    * riders may already be seated. Seeding the seats and the driver keeps the
    * first tick from treating the current driver as newly mounted, which would
    * snap the heading to the driver's view. The vehicle form comes from the
-   * entity, so a vehicle in the air keeps flying (ADR 0021).
+   * entity, so a vehicle in the air keeps flying (ADR 0021); kinds without
+   * forms ignore it.
    */
   static rebuild(
     id: string,
