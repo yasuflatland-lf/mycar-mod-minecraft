@@ -1,5 +1,5 @@
 import fc from "fast-check";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { Vec3 } from "../../../src/domain/shared/vec";
 import { SPORTSBOAT_PROFILE } from "../../../src/domain/vehicle/kinds/sportsboat/profile";
 import { SUV_PROFILE } from "../../../src/domain/vehicle/kinds/suv/profile";
@@ -59,29 +59,47 @@ describe("canPlaceAt (ADR 0008, collision box from ADR 0009)", () => {
   });
 });
 
-describe("clearance query order (ADR 0055)", () => {
-  const legacyCells = [-1, 0, 1].flatMap((dx) =>
-    [-1, 0, 1].flatMap((dz) => [1, 2].map((dy) => [dx, dy, dz])),
-  );
-
-  it("visits exactly the original eighteen cells, stopping at the first obstruction", () => {
+describe("clearance queries (ADR 0055)", () => {
+  it("checks only distinct clearance cells and stops at the first obstruction", () => {
+    const clearance = fc.record({
+      halfX: fc.integer({ min: 0, max: 4 }),
+      halfZ: fc.integer({ min: 0, max: 4 }),
+      height: fc.integer({ min: 1, max: 5 }),
+    });
     fc.assert(
       fc.property(
-        fc.array(fc.boolean(), { minLength: 18, maxLength: 18 }),
-        (air) => {
-          for (const profile of [SUV_PROFILE, SPORTSBOAT_PROFILE]) {
-            for (const layout of [air, Array<boolean>(18).fill(true)]) {
-              const queries: number[][] = [];
-              const result = canPlaceAt((dx, dy, dz) => {
-                queries.push([dx, dy, dz]);
-                return layout[queries.length - 1] ?? false;
-              }, profile.placement.clearance);
-              const blocked = layout.indexOf(false);
-              expect(result).toBe(blocked === -1);
-              expect(queries).toEqual(
-                legacyCells.slice(0, blocked === -1 ? 18 : blocked + 1),
-              );
-            }
+        clearance.chain((box) => {
+          const size = (2 * box.halfX + 1) * (2 * box.halfZ + 1) * box.height;
+          return fc.tuple(
+            fc.constant(box),
+            fc.array(fc.boolean(), { minLength: size, maxLength: size }),
+          );
+        }),
+        ([box, air]) => {
+          for (const layout of [air, air.map(() => true)]) {
+            const queries: string[] = [];
+            const answers: boolean[] = [];
+            const result = canPlaceAt((dx, dy, dz) => {
+              expect(Math.abs(dx)).toBeLessThanOrEqual(box.halfX);
+              expect(Math.abs(dz)).toBeLessThanOrEqual(box.halfZ);
+              expect(dy).toBeGreaterThanOrEqual(1);
+              expect(dy).toBeLessThanOrEqual(box.height);
+              expect([dx, dy, dz].every(Number.isInteger)).toBe(true);
+              queries.push(`${dx},${dy},${dz}`);
+              const index =
+                ((dx + box.halfX) * (2 * box.halfZ + 1) + dz + box.halfZ) *
+                  box.height +
+                dy -
+                1;
+              const clear = layout[index] ?? false;
+              answers.push(clear);
+              return clear;
+            }, box);
+            expect(result).toBe(layout.every(Boolean));
+            expect(new Set(queries).size).toBe(queries.length);
+            expect(answers.slice(0, -1).every(Boolean)).toBe(true);
+            if (result) expect(queries).toHaveLength(layout.length);
+            else expect(answers.at(-1)).toBe(false);
           }
         },
       ),
@@ -191,53 +209,66 @@ const waterOf = (clicked: Vec3, offsets: Vec3[]) => {
 };
 
 describe("placementCell (ADR 0050, ADR 0051)", () => {
-  it("preserves legacy results and water queries for both kinds on every face", () => {
+  it("bounds water placement by the contiguous column and the requested or default climb", () => {
+    const column = fc.oneof(
+      fc.array(fc.boolean(), { minLength: 43, maxLength: 43 }),
+      fc
+        .integer({ min: 0, max: 43 })
+        .map((length) => Array.from({ length: 43 }, (_, i) => i < length)),
+    );
     fc.assert(
       fc.property(
         cell,
-        fc.array(fc.boolean(), { minLength: 43, maxLength: 43 }),
-        fc.array(fc.boolean(), { minLength: 43, maxLength: 43 }),
-        fc.option(fc.integer({ min: 0, max: 40 }), { nil: undefined }),
-        (clicked, clickedColumn, adjacentColumn, maxClimb) => {
+        column,
+        fc.integer({ min: 0, max: 40 }),
+        (clicked, above, limit) => {
+          const gap = above.indexOf(false);
+          const height = gap === -1 ? above.length : gap;
           for (const face of FACES) {
-            const next = add(clicked, FACE_OFFSET[face]);
-            const columnAt = (at: Vec3): boolean[] => {
-              if (at.x === clicked.x && at.z === clicked.z)
-                return clickedColumn;
-              if (at.x === next.x && at.z === next.z) return adjacentColumn;
-              return [];
-            };
-            const isWater = (at: Vec3) =>
-              columnAt(at)[at.y - clicked.y + 1] ?? false;
-            for (const [profile, legacyRule] of [
-              [SUV_PROFILE, { onWater: false, anyFace: false }],
-              [SPORTSBOAT_PROFILE, { onWater: true, anyFace: true }],
-            ] as const) {
-              const queries: Vec3[] = [];
-              const legacyQueries: Vec3[] = [];
-              const actual = placementCell(
-                profile.placement,
-                clicked,
-                face,
-                (at) => {
-                  queries.push(at);
-                  return isWater(at);
-                },
-                maxClimb,
-              );
-              const expected = legacyPlacementCell(
-                legacyRule,
-                clicked,
-                face,
-                (at) => {
-                  legacyQueries.push(at);
-                  return isWater(at);
-                },
-                maxClimb,
-              );
-              expect(actual).toEqual(expected);
-              expect(queries).toEqual(legacyQueries);
+            for (const wet of [clicked, add(clicked, FACE_OFFSET[face])]) {
+              const isWater = (at: Vec3) =>
+                at.x === wet.x &&
+                at.z === wet.z &&
+                (at.y === wet.y || (above[at.y - wet.y - 1] ?? false));
+              // An adjacent upward column can also contain the clicked cell on a down click.
+              if (key(wet) !== key(clicked) && isWater(clicked)) continue;
+              for (const maxClimb of [limit, undefined]) {
+                expect(
+                  placementCell(
+                    SPORTSBOAT_PROFILE.placement,
+                    clicked,
+                    face,
+                    isWater,
+                    maxClimb,
+                  ),
+                ).toEqual({
+                  ...wet,
+                  y: wet.y + Math.min(height, maxClimb ?? 16),
+                });
+              }
             }
+          }
+        },
+      ),
+    );
+  });
+
+  it("prefers the clicked water cell when the adjacent cell is also wet", () => {
+    fc.assert(
+      fc.property(
+        cell,
+        fc.integer({ min: 0, max: 40 }),
+        (clicked, maxClimb) => {
+          for (const face of FACES) {
+            expect(
+              placementCell(
+                SPORTSBOAT_PROFILE.placement,
+                clicked,
+                face,
+                () => true,
+                maxClimb,
+              ),
+            ).toEqual({ ...clicked, y: clicked.y + maxClimb });
           }
         },
       ),
@@ -286,14 +317,11 @@ describe("placementCell (ADR 0050, ADR 0051)", () => {
         fc.constantFrom(...FACES),
         near,
         (clicked, face, offsets) => {
+          const waterAt = vi.fn(waterOf(clicked, offsets));
           expect(
-            placementCell(
-              SUV_PROFILE.placement,
-              clicked,
-              face,
-              waterOf(clicked, offsets),
-            ),
+            placementCell(SUV_PROFILE.placement, clicked, face, waterAt),
           ).toEqual(face === "up" ? clicked : undefined);
+          expect(waterAt).not.toHaveBeenCalled();
         },
       ),
     );
@@ -356,32 +384,3 @@ describe("placementCell (ADR 0050, ADR 0051)", () => {
     });
   });
 });
-
-// Pre-refactor placement logic is the behavior oracle for ADR 0055.
-function legacyPlacementCell(
-  rule: { onWater: boolean; anyFace: boolean },
-  clicked: Vec3,
-  face: BlockFace,
-  isWaterAt: (at: Vec3) => boolean,
-  maxClimb = 16,
-): Vec3 | undefined {
-  if (!rule.anyFace && face !== "up") return undefined;
-  if (rule.onWater) {
-    const offset = FACE_OFFSET[face];
-    const next = {
-      x: clicked.x + offset.x,
-      y: clicked.y + offset.y,
-      z: clicked.z + offset.z,
-    };
-    for (const cell of [clicked, next]) {
-      if (!isWaterAt(cell)) continue;
-      const { x, z } = cell;
-      return {
-        x,
-        y: surfaceCellY(cell.y, (y) => isWaterAt({ x, y, z }), maxClimb),
-        z,
-      };
-    }
-  }
-  return face === "up" ? clicked : undefined;
-}

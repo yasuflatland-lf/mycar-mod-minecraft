@@ -6,12 +6,28 @@ import {
   waterDepthAt,
 } from "../../../../src/domain/vehicle/motion/water";
 
-const feet = fc.double({
+const fractionalFeet = fc.double({
   min: -256,
   max: 256,
   noNaN: true,
   noDefaultInfinity: true,
 });
+
+const nearInteger = fc
+  .tuple(
+    fc.integer({ min: -256, max: 256 }),
+    fc.constantFrom(
+      -1e-9,
+      -1e-12,
+      -Number.EPSILON,
+      0,
+      Number.EPSILON,
+      1e-12,
+      1e-9,
+    ),
+  )
+  .map(([y, delta]) => y + delta);
+const feet = fc.oneof(fractionalFeet, nearInteger);
 
 describe("waterDepthAt", () => {
   it("is zero when no cell is water", () => {
@@ -124,6 +140,55 @@ describe("waterDepthAt", () => {
     );
   });
 
+  it("measures arbitrary columns only to their first gap, including feet near cell boundaries", () => {
+    fc.assert(
+      fc.property(
+        feet,
+        fc.array(fc.boolean(), { minLength: 6, maxLength: 6 }),
+        fc.double({ min: 0.1, max: 5, noNaN: true }),
+        (feetY, column, maxHeight) => {
+          const feetCell = Math.floor(feetY);
+          const start = column[0] ? 0 : 1;
+          const run = column.slice(start);
+          const gap = run.indexOf(false);
+          const length = gap === -1 ? run.length : gap;
+          const reachable = column[0] || feetY > feetCell;
+          const counted = Math.min(length, Math.ceil(maxHeight) + 1);
+          const expected =
+            reachable && counted > 0
+              ? Math.min(feetCell + start + counted - feetY, maxHeight + 1)
+              : 0;
+          const checked: number[] = [];
+          const depth = depthFromCells(
+            feetY,
+            (y) => {
+              checked.push(y);
+              return column[y - feetCell] ?? false;
+            },
+            maxHeight,
+          );
+          expect(depth).toBe(expected);
+          expect(
+            depthFromCells(
+              feetY,
+              (y) =>
+                y < feetCell + start + length &&
+                (column[y - feetCell] ?? false),
+              maxHeight,
+            ),
+          ).toBe(depth);
+          // A dry feet cell is an extra probe before the run above a partial block.
+          expect(checked.length).toBeLessThanOrEqual(
+            Math.ceil(maxHeight) + 1 + (column[0] ? 0 : 1),
+          );
+          expect(checked.every((y) => y <= feetCell + start + length)).toBe(
+            true,
+          );
+        },
+      ),
+    );
+  });
+
   it("counts the surface cell as full", () => {
     expect(depthFromCells(10.75, (y) => y === 10)).toBe(0.25);
   });
@@ -140,51 +205,6 @@ function depthFromCells(
     maxHeight,
   );
 }
-
-function referenceDepth(
-  feetY: number,
-  isWater: (cellY: number) => boolean,
-): number {
-  let bottom = Math.floor(feetY);
-  let cells = 0;
-  if (isWater(bottom)) cells = 1;
-  // Feet resting on a partial block that cannot be waterlogged (mud and soul
-  // sand top out at 0.875, dirt path and farmland at 0.9375) sit inside that
-  // block's cell, so the water starts in the cell above it.
-  else if (feetY > bottom) bottom += 1;
-  else return 0;
-  const maxCells = Math.ceil(SUV_SPEC.carHeight) + 1;
-  while (cells < maxCells && isWater(bottom + cells)) cells++;
-  if (cells === 0) return 0;
-  return Math.min(bottom + cells - feetY, SUV_SPEC.carHeight + 1);
-}
-
-it("matches the previous depth algorithm, including feet within 1e-9 of a cell boundary", () => {
-  const nearInteger = fc
-    .tuple(
-      fc.integer({ min: -256, max: 256 }),
-      fc.constantFrom(
-        -1e-9,
-        -1e-12,
-        -Number.EPSILON,
-        0,
-        Number.EPSILON,
-        1e-12,
-        1e-9,
-      ),
-    )
-    .map(([y, delta]) => y + delta);
-  fc.assert(
-    fc.property(
-      fc.oneof(feet, nearInteger),
-      fc.array(fc.boolean(), { minLength: 6, maxLength: 6 }),
-      (y, column) => {
-        const isWater = (cell: number) => column[cell - Math.floor(y)] ?? false;
-        expect(depthFromCells(y, isWater)).toBe(referenceDepth(y, isWater));
-      },
-    ),
-  );
-});
 
 it("uses the requested maximum height for both the depth and probe cap", () => {
   fc.assert(
