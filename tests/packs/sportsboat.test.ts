@@ -99,14 +99,51 @@ describe("sports boat Behavior Pack entity (ADR 0051)", () => {
     }
   });
 
-  it("has only the headlights property: no form, bank, or gear", () => {
-    expect(Object.keys(entity.description.properties)).toEqual([
-      HEADLIGHTS_PROPERTY,
-    ]);
+  it("has only the headlights property, off by default and synced to the client: no form, bank, or gear", () => {
+    expect(entity.description.properties).toEqual({
+      [HEADLIGHTS_PROPERTY]: {
+        type: "bool",
+        default: false,
+        client_sync: true,
+      },
+    });
+  });
+
+  it("is crafted on a crafting table from an oak boat and iron ingots, unlocked from the start (ADR 0008)", () => {
+    const item = read(
+      "packs/yasu_ride_bp/items/yasu_ride/sportsboat_item.item.json",
+    )["minecraft:item"];
+    expect(item.description.identifier).toBe("yasu_ride:sportsboat_item");
+    const recipe = read(
+      "packs/yasu_ride_bp/recipes/yasu_ride/sportsboat_item.recipe.json",
+    )["minecraft:recipe_shaped"];
+    expect(recipe.tags).toEqual(["crafting_table"]);
+    expect(recipe.unlock).toEqual({ context: "AlwaysUnlocked" });
+    expect(recipe.pattern).toEqual(["IBI", "III"]);
+    expect(recipe.key).toEqual({
+      I: { item: "minecraft:iron_ingot" },
+      B: { item: "minecraft:oak_boat" },
+    });
+    expect(recipe.result).toEqual({
+      item: "yasu_ride:sportsboat_item",
+      count: 1,
+    });
   });
 });
 
 describe("sports boat Resource Pack (ADR 0051)", () => {
+  it("the client entity draws the sports boat geometry with the sports boat render controller", () => {
+    expect(geometry.description.identifier).toBe(
+      "geometry.yasu_ride.sportsboat",
+    );
+    expect(client.geometry).toEqual({
+      default: "geometry.yasu_ride.sportsboat",
+    });
+    expect(client.render_controllers).toEqual([
+      "controller.render.yasu_ride.sportsboat",
+    ]);
+  });
+
   it("picks one of 16 paint textures by variant, black (variant 0) as sportsboat.png", () => {
     expect(controller.textures).toEqual(["Array.paints[query.variant]"]);
     const slots: string[] = controller.arrays.textures["Array.paints"];
