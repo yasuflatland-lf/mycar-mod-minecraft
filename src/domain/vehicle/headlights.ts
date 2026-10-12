@@ -1,6 +1,6 @@
 // Where a vehicle with its headlights on puts light blocks (ADR 0020).
-import { forward, type Vec3 } from "../shared/vec";
-import { SPEC } from "./spec";
+import { forward, rightOf, type Vec3 } from "../shared/vec";
+import { type BeamPattern, SUV_PROFILE } from "./profile";
 
 /** Block cell, as integer coordinates. */
 export type Cell = Vec3;
@@ -8,20 +8,28 @@ export type Cell = Vec3;
 export const cellKey = (c: Cell): string => `${c.x},${c.y},${c.z}`;
 
 /**
- * Cells ahead of a vehicle at `location` facing `yaw`, one per reach in
- * SPEC.headlightReach, one block above the ground the vehicle stands on.
+ * Cells ahead of a vehicle at `location` facing `yaw`: the distinct cells
+ * reached by each reach and lane in `beams` (pairs that floor to the same
+ * block share one cell), one block above the ground the vehicle stands on.
  */
-export function headlightCells(location: Vec3, yaw: number): Cell[] {
+export function headlightCells(
+  location: Vec3,
+  yaw: number,
+  beams: BeamPattern = SUV_PROFILE.beams,
+): Cell[] {
   const f = forward(yaw);
+  const right = rightOf(f);
   const y = Math.floor(location.y) + 1;
   const cells = new Map<string, Cell>();
-  for (const reach of SPEC.headlightReach) {
-    const c = {
-      x: Math.floor(location.x + f.x * reach),
-      y,
-      z: Math.floor(location.z + f.z * reach),
-    };
-    cells.set(cellKey(c), c);
+  for (const reach of beams.reach) {
+    for (const lane of beams.lanes) {
+      const c = {
+        x: Math.floor(location.x + f.x * reach + right.x * lane),
+        y,
+        z: Math.floor(location.z + f.z * reach + right.z * lane),
+      };
+      cells.set(cellKey(c), c);
+    }
   }
   return [...cells.values()];
 }

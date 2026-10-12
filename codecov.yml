@@ -25,3 +25,24 @@ component_management:
       name: in-game test pack
       paths:
         - src/test-pack/**
+
+# The in-game test pack is checked by the in-game tests, not by unit tests, so
+# a pull request that adds in-game tests would always fail a patch or project
+# status that counts it. The statuses judge the unit-tested code only; the
+# test pack stays in the totals and in its own component above.
+coverage:
+  status:
+    project:
+      default:
+        paths:
+          - src/domain/**
+          - src/application/**
+          - src/infrastructure/**
+          - src/main.ts
+    patch:
+      default:
+        paths:
+          - src/domain/**
+          - src/application/**
+          - src/infrastructure/**
+          - src/main.ts

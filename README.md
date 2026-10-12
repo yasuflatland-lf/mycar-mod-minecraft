@@ -12,14 +12,15 @@
 
 A vehicle add-on for Minecraft Bedrock Edition. It is built as a Behavior Pack + Resource Pack driven by the stable Script API (`@minecraft/server` 2.x), with no experimental toggles required.
 
-This add-on holds only rides: the SUV now and boats later. House-building parts will ship as a separate add-on with their own namespace. The `yasu_ride` namespace never changes once Yasuflatland Ride is first released ([ADR 0047](docs/adr/0047-rename-to-yasuflatland-ride.md)).
+This add-on holds only rides: the SUV and the sports boat. House-building parts will ship as a separate add-on with their own namespace. The `yasu_ride` namespace never changes once Yasuflatland Ride is first released ([ADR 0047](docs/adr/0047-rename-to-yasuflatland-ride.md)).
 
 The target setup is a Bedrock Dedicated Server on a home LAN, with players joining from PC (keyboard) and mobile (touch).
 
 ## Status
 
-The [latest release](https://github.com/yasuflatland-lf/yasuflatland-ride-minecraft/releases/latest) has one vehicle, the **SUV**, that drives, flies, and dives:
+The **SUV** drives, flies, and dives; the **sports boat** drives on water:
 
+- A **sports boat** with four seats, water placement, dye paint with a black default, two headlight beams reaching about 60 blocks, and ram damage; shores stop it from leaving the water
 - Getting in and out, with a driver seat and three passenger seats; a passenger moves up when the driver gets out
 - Arcade-style acceleration, inertia, steering, and a handbrake slide, tuned so touch players get full throttle like keyboard players
 - Climbing steps up to two blocks high
@@ -57,8 +58,10 @@ Download `yasuflatland-ride-<version>.mcaddon` from the [latest release](https:/
 ### Getting a vehicle
 
 - Every player gets one **SUV** item the first time they join the world
-- More can be crafted at a crafting table from 5 iron ingots, 1 iron block, and 2 coal blocks
+- More SUVs can be crafted at a crafting table from 5 iron ingots, 1 iron block, and 2 coal blocks
+- The **Sports Boat** item is crafted from 5 iron ingots and an oak boat
 - Use the item on the top of a block to place the vehicle. Hit an empty vehicle 3 times, without a dye in hand, to break it back into the item
+- Use the boat item on water to place it at the water surface: tap the bed under the water, the water itself (up to 12 blocks away), or the side of a shore block that has water next to that side. On land, use it on the top of a block, as with the SUV. Tapping the side of a block with no water next to it places nothing. Hit an empty boat 3 times to get its item back
 - The **headlight switch** is crafted from a lever and glowstone dust
 
 ### Controls
@@ -79,7 +82,9 @@ Download `yasuflatland-ride-<version>.mcaddon` from the [latest release](https:/
 | Headlights on / off | Right-click with the switch in hand (driver only) | Tap with the switch in hand (driver only) |
 | Repaint | Left-click the vehicle with a dye | Tap the vehicle with a dye |
 
-The vehicle seats 4. The first player to get in drives and the others ride as passengers. When the driver gets out, a passenger moves up to the driver's seat.
+The sports boat uses the same accelerate, reverse, steer, headlight, and repaint controls on water. It cannot leave the water: shores stop it, and it cannot drive on land. It has no handbrake, flying, or diving controls. Its hull starts black; brown dye restores black.
+
+Each vehicle seats 4. The first player to get in drives and the others ride as passengers. When the driver gets out, a passenger moves up to the driver's seat.
 
 ### How it moves
 
@@ -110,7 +115,7 @@ pnpm lint            # format and lint check with Biome
 pnpm test            # unit tests, property-based tests, and the layer dependency check
 pnpm build           # bundle the TypeScript into the Behavior Pack
 pnpm package         # zip the packs into dist/yasuflatland-ride-<version>.mcaddon (run after build)
-pnpm model           # generate the vehicle model, texture, README previews, and pack icons
+pnpm model           # generate the SUV and sports boat models and textures, the SUV README previews, and pack icons
 pnpm model:check     # fail if the README previews or pack icons are out of date with the model
 pnpm server:up       # start the dev BDS in Docker
 pnpm test:game       # in-game tests

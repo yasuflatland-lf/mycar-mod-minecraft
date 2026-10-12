@@ -1,3 +1,4 @@
+import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { DriveVehicles } from "../../../src/application/vehicle/driveVehicles";
 import { forward } from "../../../src/domain/shared/vec";
@@ -502,4 +503,28 @@ describe("DriveVehicles submarine riders (ADR 0040)", () => {
     expect(breathingCalls(world)).toEqual([breathing("p")]);
     expect(world.calls).toContain("camera:p:own");
   });
+});
+
+it("drives a boat with water below high feet and leaves a dry boat still", () => {
+  fc.assert(
+    fc.property(fc.boolean(), (waterBelow) => {
+      const world = new FakeWorld();
+      const repo = new InMemoryRepo();
+      const log = logger();
+      world.snapshots = [
+        snapshot("boat", {
+          kind: "sportsboat",
+          waterDepth: 0,
+          waterBelow,
+          onGround: false,
+          testInput: FULL_THROTTLE,
+        }),
+      ];
+      new DriveVehicles(world, repo, log).execute(0);
+      const speed = repo.get("boat")?.speed;
+      if (waterBelow) expect(speed).toBeGreaterThan(0);
+      else expect(speed).toBe(0);
+      expect(log.lines).toEqual([]);
+    }),
+  );
 });

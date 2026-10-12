@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { PlaceVehicle } from "../../../src/application/vehicle/placeVehicle";
+import {
+  PlaceVehicle,
+  type PlaceVehicleCommand,
+} from "../../../src/application/vehicle/placeVehicle";
 import { FakeWorld, InMemoryRepo } from "./fakes";
 
-const cmd = {
+const cmd: PlaceVehicleCommand = {
+  kind: "suv",
   playerId: "p",
   dimensionId: "minecraft:overworld",
   blockLocation: { x: 10, y: 64, z: -3 },
@@ -12,14 +16,15 @@ const cmd = {
 };
 
 describe("PlaceVehicle (ADR 0008)", () => {
-  it("consumes one item from the slot it was used from, then places a vehicle on the block and saves the aggregate", () => {
+  it("consumes one item of the command's kind from the slot it was used from, then places a vehicle on the block and saves the aggregate", () => {
     const world = new FakeWorld();
     const repo = new InMemoryRepo();
     expect(new PlaceVehicle(world, repo).execute(cmd)).toBe(true);
     expect(world.calls).toEqual([
-      "consume:p:2",
-      "spawn:minecraft:overworld:10.5,65,-2.5:45",
+      "consume:p:2:suv",
+      "spawn:minecraft:overworld:10.5,65,-2.5:45:suv",
     ]);
+    expect(repo.get("v1")?.kind).toBe(cmd.kind);
     expect(repo.get("v1")?.yaw).toBeCloseTo(45);
   });
 
