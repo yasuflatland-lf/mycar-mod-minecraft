@@ -195,7 +195,7 @@ describe("stepFlightMotion walls and sideways velocity (ADR 0002, 0003)", () => 
     const r = stepFlightMotion(
       prevState({ speed: 0.5, yaw: 0, airExpected: { x: 1, z: 1 } }),
       { throttle: 0, steer: 0, handbrake: false, creep: false },
-      { x: -0.5, z: 0.91 },
+      { x: -0.5, z: ENGINE_DRAG },
     );
     expect(r.blocked).toBe(true);
   });
