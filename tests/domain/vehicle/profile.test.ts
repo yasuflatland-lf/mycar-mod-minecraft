@@ -75,6 +75,23 @@ describe("vehicle profiles (ADR 0050)", () => {
     });
   });
 
+  it("freezes every profile so a write cannot change all vehicles of a kind", () => {
+    expect(Object.isFrozen(PROFILES)).toBe(true);
+    for (const kind of VEHICLE_KINDS) {
+      const profile = profileOf(kind);
+      for (const part of [
+        profile,
+        profile.motion,
+        profile.ram,
+        profile.seats,
+        profile.beams,
+        profile.beams.lanes,
+      ]) {
+        expect(Object.isFrozen(part)).toBe(true);
+      }
+    }
+  });
+
   it("recognizes exactly the registered kinds and preserves kind when creating or rebuilding", () => {
     fc.assert(
       fc.property(fc.anything(), (value) => {
