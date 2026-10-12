@@ -337,12 +337,19 @@ for x0, y0, z0, size in ((9.6, F + 8, 10.4, 1.3), (3.9, F + 7, 9.0, 1.0)):
 # chrome strips along the lower edges of the side spokes, small buttons, one blue
 # LED, and a plain silver cap with no emblem (ADR 0009). The column sits under a thick glossy cowl.
 WX, WY, WZ = 7.6, F + 7.5, 7.0  # wheel center; the driver faces its -z side
-for i in range(16):
-    ang = i * 22.5
-    cx = WX + 2.7 * math.cos(math.radians(ang))
-    cy = WY + 2.7 * math.sin(math.radians(ang))
-    body.append(box(cx - 0.6, cy - 0.45, WZ, cx + 0.6, cy + 0.45, WZ + 0.8, "gloss",
-                    pivot=[cx, cy, WZ + 0.4], rotation=[0, 0, ang + 90]))
+# The rim is 40 short segments, so its outline reads as a circle rather than a polygon. A full-depth
+# core with thinner bands along its inner and outer edges rounds off the rim's cross-section.
+RIM_SEGMENTS = 40
+for r, half, z0, z1 in ((2.7, 0.3, WZ, WZ + 0.8), (2.325, 0.075, WZ + 0.15, WZ + 0.65),
+                        (3.075, 0.075, WZ + 0.15, WZ + 0.65)):
+    # Long enough to meet the next segment along the band's outer edge
+    half_len = math.pi * (r + half) / RIM_SEGMENTS
+    for i in range(RIM_SEGMENTS):
+        ang = i * 360 / RIM_SEGMENTS
+        cx = WX + r * math.cos(math.radians(ang))
+        cy = WY + r * math.sin(math.radians(ang))
+        body.append(box(cx - half_len, cy - half, z0, cx + half_len, cy + half, z1, "gloss",
+                        pivot=[cx, cy, (z0 + z1) / 2], rotation=[0, 0, ang + 90]))
 for ang in (20, 160, 270):
     ca, sa = math.cos(math.radians(ang)), math.sin(math.radians(ang))
     cx, cy = WX + 1.3 * ca, WY + 1.3 * sa
