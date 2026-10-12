@@ -25,6 +25,8 @@ jobs:
       tag: ${{ steps.tag.outputs.tag }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       # A manual run derives the tag from the manifest and refuses to reuse one,
       # so a release always points at the commit that was built.
@@ -58,6 +60,13 @@ jobs:
       # Install Node and pnpm as pinned in mise.toml. Pinned to a commit
       # because the tag would otherwise feed code into a release build.
       - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+
+      # Devices keep a cached Resource Pack with the same UUID and version, so a
+      # changed Resource Pack needs a new version (ADR 0015). On a tag push the
+      # tag being released already points at HEAD, so describe from HEAD^ to
+      # find the previous release. On a manual run the release job creates the
+      # tag later, and HEAD^ gives the same answer as HEAD.
+      - run: node scripts/check-rp-version.mjs "$(git describe --tags --abbrev=0 --match 'v*' HEAD^ 2>/dev/null || true)"
 
       - run: pnpm install --frozen-lockfile
 
