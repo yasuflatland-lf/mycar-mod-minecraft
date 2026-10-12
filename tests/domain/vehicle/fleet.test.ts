@@ -108,6 +108,19 @@ describe("Fleet (ADR 0038)", () => {
     );
   });
 
+  it("restores the stored evictions once each, without the vehicles it still tracks", () => {
+    const fleet = Fleet.restore({
+      order: ["v0", "v1"],
+      evicted: ["old", "v1", "old", "older"],
+    });
+    expect(fleet.state()).toEqual({
+      order: ["v0", "v1"],
+      evicted: ["old", "older"],
+    });
+    expect(fleet.isEvicted("old")).toBe(true);
+    expect(fleet.isEvicted("v1")).toBe(false);
+  });
+
   it("restores a state above the limit by evicting its oldest entries", () => {
     const fleet = Fleet.restore({ order: ids(12), evicted: [] });
     expect(fleet.state().order).toEqual(ids(12).slice(2));

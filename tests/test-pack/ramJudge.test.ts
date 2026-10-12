@@ -63,6 +63,44 @@ describe("judgeRam", () => {
     );
   });
 
+  it("measures the push from where the cow stood just before the hit, not from its spawn", () => {
+    fc.assert(
+      fc.property(
+        hp0,
+        x,
+        // Not `lead`: with no idle tick there is no sample before the hit, so
+        // the spawn is the right baseline and `walked` would count as the push.
+        fc.integer({ min: 1, max: 50 }),
+        fc.double({ min: MIN_PUSH + 0.01, max: 10, noNaN: true }),
+        (hp, g, before, walked) => {
+          // The cow idles at its spawn and walks only on the tick before the
+          // hit, so the baseline is neither the spawn nor the first sample.
+          const samples = rammed(hp, g + walked, before, 0).map((s, i) =>
+            i < before - 1 ? { ...s, x: g } : s,
+          );
+          expect(judgeRam(hp, g, samples).pass).toBe(false);
+        },
+      ),
+    );
+  });
+
+  it("fails a knockback of exactly MIN_PUSH", () => {
+    fc.assert(
+      fc.property(
+        hp0,
+        // With an integer MIN_PUSH, an integer spawn keeps the measured push
+        // exactly MIN_PUSH. A fractional MIN_PUSH such as 0.1 rounds above it
+        // for some spawns, so this test has to change with it.
+        fc.integer({ min: 1, max: 30 }),
+        lead,
+        (hp, g, before) => {
+          const samples = rammed(hp, g, before, MIN_PUSH);
+          expect(judgeRam(hp, g, samples).pass).toBe(false);
+        },
+      ),
+    );
+  });
+
   it("does not count a cow that vanished without losing health as hit", () => {
     fc.assert(
       fc.property(hp0, x, lead, (hp, g, before) => {

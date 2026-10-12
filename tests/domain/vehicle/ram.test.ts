@@ -9,7 +9,9 @@ import {
 } from "../../../src/domain/vehicle/ram";
 import { SPEC } from "../../../src/domain/vehicle/spec";
 
-const yaw = fc.double({ min: -180, max: 180, noNaN: true });
+// fc.double draws most values within a hair of 0, so it barely turns the
+// vehicle off the z axis. Whole hundredths of a degree cover every heading.
+const yaw = fc.integer({ min: -18_000, max: 18_000 }).map((c) => c / 100);
 const fastSpeed = fc.double({
   min: SPEC.ramMinSpeed + 0.001,
   max: SPEC.maxSpeed,
@@ -213,6 +215,23 @@ describe("selectHits (ADR 0006)", () => {
         100 + SPEC.ramCooldown,
       ),
     ).toHaveLength(1);
+  });
+
+  it("hits a target on any edge of the detection area", () => {
+    const f = forward(0);
+    const edges: RamTarget[] = [
+      at(0, 0, 0),
+      at(0, reach, 0),
+      at(0, 1, halfWidth),
+      at(0, 1, -halfWidth),
+      at(0, 1, 0, SPEC.ramMinDy),
+      at(0, 1, 0, SPEC.ramMaxDy),
+    ];
+    for (const target of edges)
+      expect(
+        selectHits(f, 0.5, [target], new Map(), 0),
+        JSON.stringify(target),
+      ).toHaveLength(1);
   });
 
   it("does not hit at speeds of 0.15 or below", () => {
