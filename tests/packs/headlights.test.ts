@@ -6,20 +6,20 @@ import {
 } from "../../src/infrastructure/vehicle/bedrock/identifiers";
 
 const read = (p: string) => JSON.parse(readFileSync(p, "utf8"));
-const entity = read("packs/yasu_ride_bp/entities/yasu_ride/suv.se.json")[
-  "minecraft:entity"
-];
-const client = read("packs/yasu_ride_rp/entity/yasu_ride/suv.ce.json")[
-  "minecraft:client_entity"
-].description;
-const controller = read(
-  "packs/yasu_ride_rp/render_controllers/yasu_ride/suv.rc.json",
-).render_controllers["controller.render.yasu_ride.suv"];
-const bones: { name: string; parent?: string; cubes?: unknown[] }[] = read(
-  "packs/yasu_ride_rp/models/entity/yasu_ride/suv.geo.json",
-)["minecraft:geometry"][0].bones;
+describe.each(["suv", "sportsboat"])("%s headlights (ADR 0020)", (vehicle) => {
+  const entity = read(
+    `packs/yasu_ride_bp/entities/yasu_ride/${vehicle}.se.json`,
+  )["minecraft:entity"];
+  const client = read(`packs/yasu_ride_rp/entity/yasu_ride/${vehicle}.ce.json`)[
+    "minecraft:client_entity"
+  ].description;
+  const controller = read(
+    `packs/yasu_ride_rp/render_controllers/yasu_ride/${vehicle}.rc.json`,
+  ).render_controllers[`controller.render.yasu_ride.${vehicle}`];
+  const bones: { name: string; parent?: string; cubes?: unknown[] }[] = read(
+    `packs/yasu_ride_rp/models/entity/yasu_ride/${vehicle}.geo.json`,
+  )["minecraft:geometry"][0].bones;
 
-describe("headlights (ADR 0020)", () => {
   it("the vehicle starts with its headlights off, and the client sees the property", () => {
     expect(entity.description.properties[HEADLIGHTS_PROPERTY]).toEqual({
       type: "bool",
@@ -45,7 +45,9 @@ describe("headlights (ADR 0020)", () => {
     expect(client.materials.lamp).toBe("entity");
     expect(client.materials.lamp_lit).toBe("entity_emissive");
   });
+});
 
+describe("headlight switch (ADR 0020)", () => {
   it("has a switch item with an icon, a name, and a recipe unlocked from the start", () => {
     const item = read(
       "packs/yasu_ride_bp/items/yasu_ride/headlight_switch.item.json",

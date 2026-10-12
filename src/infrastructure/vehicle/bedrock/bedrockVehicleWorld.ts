@@ -21,6 +21,7 @@ import type {
 import type { Vec3 } from "../../../domain/shared/vec";
 import { type Form, isForm } from "../../../domain/vehicle/form";
 import type { Cell } from "../../../domain/vehicle/headlights";
+import type { VehicleKind } from "../../../domain/vehicle/kind";
 import { PAINTS, type Paint } from "../../../domain/vehicle/paint";
 import type { RamHit, RamTarget } from "../../../domain/vehicle/ram";
 import { RAM_QUERY_RADIUS } from "../../../domain/vehicle/ramQuery";
@@ -32,19 +33,23 @@ import {
   BANK_PROPERTY,
   doorAnimation,
   dyeOf,
+  ENTITY_TYPE,
   FORM_PROPERTY,
   GEAR_DOWN_PROPERTY,
   GRAVITY_OFF_EVENT,
   GRAVITY_ON_EVENT,
   HEADLIGHTS_PROPERTY,
   ITEM_TYPE,
+  isVehicleEntity,
+  kindOfEntity,
   PAINT_VARIANT,
   PLAYER_TYPE,
   paintEvent,
   STARTER_RECEIVED_PROPERTY,
   THIRD_PERSON_CAMERA,
-  VEHICLE_TYPE,
+  VEHICLE_FAMILY,
 } from "./identifiers";
+import { isWaterAt } from "./water";
 
 const DIMENSIONS = ["overworld", "nether", "the_end"] as const;
 const isPlayer = (e: Entity): e is Player => e.typeId === PLAYER_TYPE;
@@ -79,7 +84,8 @@ export class BedrockVehicleWorld
     return DIMENSIONS.flatMap((dimId) =>
       world
         .getDimension(dimId)
-        .getEntities({ type: VEHICLE_TYPE })
+        .getEntities({ families: [VEHICLE_FAMILY] })
+        .filter((car) => isVehicleEntity(car.typeId))
         .map((car) => car.id),
     );
   }
@@ -90,18 +96,22 @@ export class BedrockVehicleWorld
     for (const dimId of DIMENSIONS) {
       for (const car of world
         .getDimension(dimId)
-        .getEntities({ type: VEHICLE_TYPE })) {
+        .getEntities({ families: [VEHICLE_FAMILY] })) {
+        const kind = kindOfEntity(car.typeId);
+        if (kind === undefined) continue;
         this.current.set(car.id, car);
         const v = car.getVelocity();
         const form = car.getProperty(FORM_PROPERTY);
         snapshots.push({
           id: car.id,
+          kind,
           location: car.location,
           yaw: car.getRotation().y,
           velocity: { x: v.x, z: v.z },
           velocityY: v.y,
           onGround: car.isOnGround,
           waterDepth: this.waterDepth(car),
+          waterBelow: this.isWaterCell(car, Math.floor(car.location.y - 0.3)),
           riders: this.riders(car),
           form: isForm(form) ? form : "car",
           headlights: car.getProperty(HEADLIGHTS_PROPERTY) === true,
@@ -116,25 +126,13 @@ export class BedrockVehicleWorld
   }
 
   private waterDepth(car: Entity): number {
-    const { x, y, z } = car.location;
-    return waterDepthFrom(y, (cellY) => {
-      try {
-        const block = car.dimension.getBlock({
-          x: Math.floor(x),
-          y: cellY,
-          z: Math.floor(z),
-        });
-        return (
-          block !== undefined &&
-          (block.typeId === "minecraft:water" ||
-            block.typeId === "minecraft:flowing_water" ||
-            block.typeId === "minecraft:bubble_column" ||
-            block.isWaterlogged)
-        );
-      } catch {
-        return false; // Unloaded chunk or outside the world
-      }
-    });
+    return waterDepthFrom(car.location.y, (cellY) =>
+      this.isWaterCell(car, cellY),
+    );
+  }
+
+  private isWaterCell(car: Entity, cellY: number): boolean {
+    return isWaterAt(car.dimension, { ...car.location, y: cellY });
   }
 
   private riders(car: Entity): RiderView[] {
@@ -210,9 +208,9 @@ export class BedrockVehicleWorld
           y: e.location.y - car.location.y,
           z: e.location.z - car.location.z,
         },
-        protectedOccupant:
-          e.getComponent("minecraft:riding")?.entityRidingOn?.typeId ===
-          VEHICLE_TYPE,
+        protectedOccupant: isVehicleEntity(
+          e.getComponent("minecraft:riding")?.entityRidingOn?.typeId,
+        ),
       }));
   }
 
@@ -269,7 +267,9 @@ export class BedrockVehicleWorld
   playDoor(vehicleId: string, door: string): void {
     const car = this.entity(vehicleId);
     if (!car) return;
-    car.playAnimation(doorAnimation(door));
+    const kind = kindOfEntity(car.typeId);
+    if (kind === undefined) return;
+    car.playAnimation(doorAnimation(kind, door));
     car.dimension.playSound("random.door_open", car.location);
   }
 
@@ -282,14 +282,25 @@ export class BedrockVehicleWorld
     }
   }
 
-  spawnVehicle(dimensionId: string, at: Vec3, yaw: number): string {
-    const car = world.getDimension(dimensionId).spawnEntity(VEHICLE_TYPE, at);
+  spawnVehicle(
+    dimensionId: string,
+    at: Vec3,
+    yaw: number,
+    kind: VehicleKind,
+  ): string {
+    const car = world
+      .getDimension(dimensionId)
+      .spawnEntity(ENTITY_TYPE[kind], at);
     car.setRotation({ x: 0, y: yaw });
     return car.id;
   }
 
-  consumeVehicleItem(playerId: string, slot: number): boolean {
-    return this.consumeHeld(playerId, ITEM_TYPE, slot);
+  consumeVehicleItem(
+    playerId: string,
+    slot: number,
+    kind: VehicleKind,
+  ): boolean {
+    return this.consumeHeld(playerId, ITEM_TYPE[kind], slot);
   }
 
   /** Takes one item from `slot` (the selected one by default), but only if it still holds `typeId`. */
@@ -324,7 +335,7 @@ export class BedrockVehicleWorld
     const player = this.player(playerId);
     if (!player) return;
     const inv = player.getComponent("minecraft:inventory")?.container;
-    const item = new ItemStack(ITEM_TYPE, 1);
+    const item = new ItemStack(ITEM_TYPE.suv, 1);
     const leftover = inv ? inv.addItem(item) : item;
     if (leftover) player.dimension.spawnItem(leftover, player.location);
   }
@@ -336,7 +347,9 @@ export class BedrockVehicleWorld
   dropVehicleItem(vehicleId: string): void {
     const car = this.entity(vehicleId);
     if (!car) return;
-    car.dimension.spawnItem(new ItemStack(ITEM_TYPE, 1), car.location);
+    const kind = kindOfEntity(car.typeId);
+    if (kind === undefined) return;
+    car.dimension.spawnItem(new ItemStack(ITEM_TYPE[kind], 1), car.location);
   }
 
   removeVehicle(vehicleId: string): void {

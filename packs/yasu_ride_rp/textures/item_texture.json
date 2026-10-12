@@ -7,6 +7,9 @@
     },
     "yasu_ride_headlight_switch": {
       "textures": "textures/items/yasu_ride/headlight_switch"
+    },
+    "yasu_ride_sportsboat_item": {
+      "textures": "textures/items/yasu_ride/sportsboat_item"
     }
   }
 }
