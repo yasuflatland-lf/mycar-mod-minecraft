@@ -1,6 +1,6 @@
 // Where a vehicle with its headlights on puts light blocks (ADR 0020).
 import { forward, rightOf, type Vec3 } from "../shared/vec";
-import { type BeamPattern, SUV_PROFILE } from "./profile";
+import type { BeamPattern } from "./profile";
 
 /** Block cell, as integer coordinates. */
 export type Cell = Vec3;
@@ -15,7 +15,7 @@ export const cellKey = (c: Cell): string => `${c.x},${c.y},${c.z}`;
 export function headlightCells(
   location: Vec3,
   yaw: number,
-  beams: BeamPattern = SUV_PROFILE.beams,
+  beams: BeamPattern,
 ): Cell[] {
   const f = forward(yaw);
   const right = rightOf(f);

@@ -20,7 +20,7 @@ export const DOOR_BY_SEAT: readonly string[] = [
 
 export function doorOf(
   seat: number,
-  doors: readonly string[] = DOOR_BY_SEAT,
+  doors: readonly string[],
 ): string | undefined {
   return doors[seat];
 }

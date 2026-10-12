@@ -7,7 +7,7 @@ import { type Form, isForm } from "../domain/vehicle/form";
 import { headlightCells } from "../domain/vehicle/headlights";
 import { initialMotion } from "../domain/vehicle/motion";
 import { PAINTS } from "../domain/vehicle/paint";
-import { SPORTSBOAT_PROFILE } from "../domain/vehicle/profile";
+import { SPORTSBOAT_PROFILE, SUV_PROFILE } from "../domain/vehicle/profile";
 import { nearestSeat, toLocal } from "../domain/vehicle/seats";
 import { SPEC } from "../domain/vehicle/spec";
 import {
@@ -427,13 +427,21 @@ function headlightsFollowAndClear(a: Arena): Promise<Outcome> {
     };
     car.setProperty(HEADLIGHTS_PROPERTY, true);
     await wait(3);
-    const parked = headlightCells(car.location, car.getRotation().y);
+    const parked = headlightCells(
+      car.location,
+      car.getRotation().y,
+      SUV_PROFILE.beams,
+    );
     const litParked = parked.filter(lightAt).length;
     drive(car, 0, 1);
     await wait(30);
     drive(car, 0, 0);
     await wait(20);
-    const moved = headlightCells(car.location, car.getRotation().y);
+    const moved = headlightCells(
+      car.location,
+      car.getRotation().y,
+      SUV_PROFILE.beams,
+    );
     const litMoved = moved.filter(lightAt).length;
     const whileOn = lightsAround();
     const level = Math.abs(car.location.y - a.gy) < 0.1;

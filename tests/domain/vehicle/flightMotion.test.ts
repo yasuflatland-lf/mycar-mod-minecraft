@@ -8,12 +8,14 @@ import {
 } from "../../../src/domain/shared/vec";
 import type { DriveInput } from "../../../src/domain/vehicle/driveInput";
 import {
+  AIR,
   initialMotion,
   type MotionResult,
   type MotionState,
   stepFlightMotion,
   updateSpeed,
 } from "../../../src/domain/vehicle/motion";
+import { SUV_PROFILE } from "../../../src/domain/vehicle/profile";
 import { SPEC } from "../../../src/domain/vehicle/spec";
 
 // The in-game flight_cruise test checks this assumption against the engine.
@@ -23,7 +25,7 @@ function fly(inputs: readonly DriveInput[]): { r: MotionResult; vel: Vec2 }[] {
   let state = initialMotion(0);
   let vel: Vec2 = { x: 0, z: 0 };
   return inputs.map((input) => {
-    const r = stepFlightMotion(state, input, vel);
+    const r = stepFlightMotion(state, input, vel, AIR, SUV_PROFILE.motion);
     state = r.state;
     vel = {
       x: (vel.x + r.impulse.x) * ENGINE_DRAG,
@@ -120,6 +122,8 @@ describe("stepFlightMotion (ADR 0021)", () => {
             prevState({ ...s, airExpected: e }),
             input,
             v,
+            AIR,
+            SUV_PROFILE.motion,
           );
           expect(r.blocked).toBe(true);
           const vLong = dot(v, forward(r.state.yaw));
@@ -136,10 +140,16 @@ describe("stepFlightMotion (ADR 0021)", () => {
       fc.property(flyingState, driveInput, (s, input) => {
         const e = s.airExpected;
         const v = { x: e.x * ENGINE_DRAG, z: e.z * ENGINE_DRAG };
-        const r = stepFlightMotion(prevState(s), input, v);
+        const r = stepFlightMotion(
+          prevState(s),
+          input,
+          v,
+          AIR,
+          SUV_PROFILE.motion,
+        );
         expect(r.blocked).toBe(false);
         expect(r.state.speed).toBe(
-          updateSpeed(s.speed, input.throttle, input.creep),
+          updateSpeed(s.speed, input.throttle, input.creep, SUV_PROFILE.motion),
         );
       }),
     );
@@ -174,6 +184,8 @@ describe("stepFlightMotion walls and sideways velocity (ADR 0002, 0003)", () => 
             prevState({ ...s, airExpected: e }),
             input,
             v,
+            AIR,
+            SUV_PROFILE.motion,
           );
           expect(r.blocked).toBe(false);
         },
@@ -187,6 +199,8 @@ describe("stepFlightMotion walls and sideways velocity (ADR 0002, 0003)", () => 
       prevState({ speed: 0.5, yaw: 0, airExpected: { x: 1, z: 1 } }),
       { throttle: 0, steer: 0, handbrake: false, creep: false },
       { x: kept, z: kept },
+      AIR,
+      SUV_PROFILE.motion,
     );
     expect(r.blocked).toBe(false);
   });
@@ -196,6 +210,8 @@ describe("stepFlightMotion walls and sideways velocity (ADR 0002, 0003)", () => 
       prevState({ speed: 0.5, yaw: 0, airExpected: { x: 1, z: 1 } }),
       { throttle: 0, steer: 0, handbrake: false, creep: false },
       { x: -0.5, z: ENGINE_DRAG },
+      AIR,
+      SUV_PROFILE.motion,
     );
     expect(r.blocked).toBe(true);
   });
@@ -218,9 +234,16 @@ describe("stepFlightMotion walls and sideways velocity (ADR 0002, 0003)", () => 
             prevState({ ...s, airExpected: e }),
             input,
             v,
+            AIR,
+            SUV_PROFILE.motion,
           );
           const free = Math.min(
-            updateSpeed(s.speed, input.throttle, input.creep),
+            updateSpeed(
+              s.speed,
+              input.throttle,
+              input.creep,
+              SUV_PROFILE.motion,
+            ),
             SPEC.maxSpeed,
           );
           expect(Math.abs(r.state.speed)).toBeLessThanOrEqual(
@@ -242,7 +265,13 @@ describe("stepFlightMotion walls and sideways velocity (ADR 0002, 0003)", () => 
         small,
         (speed, yaw, input, vx, vz) => {
           const v = { x: vx, z: vz };
-          const r = stepFlightMotion({ speed, yaw, stepTicks: 0 }, input, v);
+          const r = stepFlightMotion(
+            { speed, yaw, stepTicks: 0 },
+            input,
+            v,
+            AIR,
+            SUV_PROFILE.motion,
+          );
           const f = forward(r.state.yaw);
           const aimed = {
             x: (v.x + r.impulse.x) * ENGINE_DRAG,
