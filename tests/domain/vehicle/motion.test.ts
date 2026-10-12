@@ -18,6 +18,7 @@ import {
   stepMotion,
   updateSpeed,
 } from "../../../src/domain/vehicle/motion";
+import { SUV_PROFILE } from "../../../src/domain/vehicle/profile";
 import { SPEC } from "../../../src/domain/vehicle/spec";
 import { defined } from "../../support/defined";
 import { type Body, type Engine, engineStep } from "../../support/engineModel";
@@ -65,6 +66,7 @@ function simulate(
       input,
       { velocity: body.vel, onGround: t.onGround },
       () => (t.step ? 2 : 0),
+      SUV_PROFILE.motion,
     );
     state = r.state;
     const e = engineStep(body, r.impulse, engine, t.onGround);
@@ -134,7 +136,7 @@ describe("updateSpeed / steerYaw", () => {
     let s = 0;
     let t = 0;
     while (s < SPEC.maxSpeed * 0.95) {
-      s = updateSpeed(s, 1);
+      s = updateSpeed(s, 1, false, SUV_PROFILE.motion);
       t++;
     }
     expect(t).toBeGreaterThanOrEqual(35);
@@ -143,7 +145,8 @@ describe("updateSpeed / steerYaw", () => {
 
   it("coasts to a stop without input and without reversing the sign of speed", () => {
     let s: number = SPEC.maxSpeed;
-    for (let i = 0; i < 100; i++) s = updateSpeed(s, 0);
+    for (let i = 0; i < 100; i++)
+      s = updateSpeed(s, 0, false, SUV_PROFILE.motion);
     expect(s).toBe(0);
   });
 
@@ -154,7 +157,7 @@ describe("updateSpeed / steerYaw", () => {
         (start) => {
           let s = start;
           for (let i = 0; i < 100; i++) {
-            const next = updateSpeed(s, 0, true);
+            const next = updateSpeed(s, 0, true, SUV_PROFILE.motion);
             expect(next).toBeGreaterThanOrEqual(s);
             expect(next).toBeLessThanOrEqual(SPEC.creepSpeed);
             s = next;
@@ -170,11 +173,15 @@ describe("updateSpeed / steerYaw", () => {
       fc.property(
         fc.double({ min: SPEC.creepSpeed, max: SPEC.maxSpeed, noNaN: true }),
         (start) => {
-          expect(updateSpeed(start, 0, true)).toBe(
-            Math.max(SPEC.creepSpeed, updateSpeed(start, 0)),
+          expect(updateSpeed(start, 0, true, SUV_PROFILE.motion)).toBe(
+            Math.max(
+              SPEC.creepSpeed,
+              updateSpeed(start, 0, false, SUV_PROFILE.motion),
+            ),
           );
           let s = start;
-          for (let i = 0; i < 100; i++) s = updateSpeed(s, 0, true);
+          for (let i = 0; i < 100; i++)
+            s = updateSpeed(s, 0, true, SUV_PROFILE.motion);
           expect(s).toBe(SPEC.creepSpeed);
         },
       ),
@@ -193,13 +200,19 @@ describe("updateSpeed / steerYaw", () => {
     );
     fc.assert(
       fc.property(below, (s) => {
-        expect(updateSpeed(s, 0, true)).toBe(
-          Math.min(SPEC.creepSpeed, updateSpeed(s, 1)),
+        expect(updateSpeed(s, 0, true, SUV_PROFILE.motion)).toBe(
+          Math.min(
+            SPEC.creepSpeed,
+            updateSpeed(s, 1, false, SUV_PROFILE.motion),
+          ),
         );
       }),
     );
-    expect(updateSpeed(0, 0, true)).toBe(SPEC.accel);
-    expect(updateSpeed(-0.1, 0, true)).toBeCloseTo(-0.1 + SPEC.brake, 12);
+    expect(updateSpeed(0, 0, true, SUV_PROFILE.motion)).toBe(SPEC.accel);
+    expect(updateSpeed(-0.1, 0, true, SUV_PROFILE.motion)).toBeCloseTo(
+      -0.1 + SPEC.brake,
+      12,
+    );
   });
 
   it("forward throttle accelerates by accel times throttle from a standstill or moving forward, up to max speed (ADR 0002)", () => {
@@ -209,7 +222,7 @@ describe("updateSpeed / steerYaw", () => {
     );
     fc.assert(
       fc.property(speed, forwardThrottle, (s, t) => {
-        expect(updateSpeed(s, t)).toBeCloseTo(
+        expect(updateSpeed(s, t, false, SUV_PROFILE.motion)).toBeCloseTo(
           Math.min(SPEC.maxSpeed, s + SPEC.accel * t),
           12,
         );
@@ -224,7 +237,10 @@ describe("updateSpeed / steerYaw", () => {
       .filter((s) => s < 0);
     fc.assert(
       fc.property(speed, forwardThrottle, (s, t) => {
-        expect(updateSpeed(s, t)).toBeCloseTo(s + SPEC.brake * t, 12);
+        expect(updateSpeed(s, t, false, SUV_PROFILE.motion)).toBeCloseTo(
+          s + SPEC.brake * t,
+          12,
+        );
       }),
     );
   });
@@ -235,7 +251,10 @@ describe("updateSpeed / steerYaw", () => {
       .filter((s) => s > 0);
     fc.assert(
       fc.property(speed, reverseThrottle, (s, t) => {
-        expect(updateSpeed(s, t)).toBeCloseTo(s + SPEC.brake * t, 12);
+        expect(updateSpeed(s, t, false, SUV_PROFILE.motion)).toBeCloseTo(
+          s + SPEC.brake * t,
+          12,
+        );
       }),
     );
   });
@@ -247,7 +266,7 @@ describe("updateSpeed / steerYaw", () => {
     );
     fc.assert(
       fc.property(speed, reverseThrottle, (s, t) => {
-        expect(updateSpeed(s, t)).toBeCloseTo(
+        expect(updateSpeed(s, t, false, SUV_PROFILE.motion)).toBeCloseTo(
           Math.max(-SPEC.maxReverse, s + SPEC.reverseAccel * t),
           12,
         );
@@ -269,8 +288,14 @@ describe("updateSpeed / steerYaw", () => {
     const steer = fc.double({ min: -1, max: 1, noNaN: true });
     fc.assert(
       fc.property(fwd, rev, steer, (fwd, rev, st) => {
-        expect(steerYaw(0, fwd, st)).toBeCloseTo(-st * SPEC.turnRate, 9);
-        expect(steerYaw(0, -rev, st)).toBeCloseTo(st * SPEC.turnRate, 9);
+        expect(steerYaw(0, fwd, st, SUV_PROFILE.motion)).toBeCloseTo(
+          -st * SPEC.turnRate,
+          9,
+        );
+        expect(steerYaw(0, -rev, st, SUV_PROFILE.motion)).toBeCloseTo(
+          st * SPEC.turnRate,
+          9,
+        );
       }),
     );
   });
@@ -280,7 +305,7 @@ describe("updateSpeed / steerYaw", () => {
       fc.property(
         fc.double({ min: 0, max: SPEC.steerFullSpeed, noNaN: true }),
         (s) => {
-          expect(steerYaw(0, s, 1)).toBeCloseTo(
+          expect(steerYaw(0, s, 1, SUV_PROFILE.motion)).toBeCloseTo(
             (-SPEC.turnRate * s) / SPEC.steerFullSpeed,
             9,
           );
@@ -294,14 +319,15 @@ describe("updateSpeed / steerYaw", () => {
   });
 
   it("steering does not change heading when stopped and turns the opposite way in reverse", () => {
-    expect(steerYaw(10, 0, 1)).toBe(10);
-    expect(steerYaw(10, 0.5, 1)).toBeLessThan(10);
-    expect(steerYaw(10, -0.1, 1)).toBeGreaterThan(10);
+    expect(steerYaw(10, 0, 1, SUV_PROFILE.motion)).toBe(10);
+    expect(steerYaw(10, 0.5, 1, SUV_PROFILE.motion)).toBeLessThan(10);
+    expect(steerYaw(10, -0.1, 1, SUV_PROFILE.motion)).toBeGreaterThan(10);
   });
 
   it("keeps heading within (-180, 180] regardless of how many turns it makes", () => {
     let yaw = 0;
-    for (let i = 0; i < 10_000; i++) yaw = steerYaw(yaw, SPEC.maxSpeed, 1);
+    for (let i = 0; i < 10_000; i++)
+      yaw = steerYaw(yaw, SPEC.maxSpeed, 1, SUV_PROFILE.motion);
     expect(yaw).toBeGreaterThan(-180);
     expect(yaw).toBeLessThanOrEqual(180);
   });
@@ -393,6 +419,7 @@ describe("stepMotion (properties, ADR 0002/0003)", () => {
       FULL_THROTTLE,
       { velocity: { x: given.x * 0.6, z: given.z * 0.6 }, onGround: true },
       () => 0,
+      SUV_PROFILE.motion,
     );
     expect(r.blocked).toBe(false);
     expect(r.state.friction).toBeCloseTo(
@@ -423,6 +450,7 @@ describe("stepMotion (properties, ADR 0002/0003)", () => {
             { throttle: 0, steer: 0, handbrake: false, creep },
             { velocity: { x: 0, z: 0 }, onGround: true },
             () => 2,
+            SUV_PROFILE.motion,
           );
           expect(r.jumpVelocity).toBe(0);
         },
@@ -436,6 +464,7 @@ describe("stepMotion (properties, ADR 0002/0003)", () => {
       FULL_THROTTLE,
       { velocity: { x: 0, z: 0 }, onGround: true },
       () => 2,
+      SUV_PROFILE.motion,
     );
     expect(r.jumpVelocity).toBe(SPEC.stepVelocity);
     expect(r.state.speed).toBe(SPEC.stepMinSpeed);
@@ -466,6 +495,7 @@ describe("stepMotion (properties, ADR 0002/0003)", () => {
           input,
           { velocity: v, onGround: false },
           () => 2,
+          SUV_PROFILE.motion,
         );
         expect(r.jumpVelocity).toBe(0);
         expect(r.blocked).toBe(false);
@@ -509,8 +539,14 @@ describe("stepMotion (properties, ADR 0002/0003)", () => {
           input,
           { velocity: { x: 0, z: 0 }, onGround },
           () => 2,
+          SUV_PROFILE.motion,
         );
-        const speed = updateSpeed(p.speed, input.throttle, input.creep);
+        const speed = updateSpeed(
+          p.speed,
+          input.throttle,
+          input.creep,
+          SUV_PROFILE.motion,
+        );
         expect(r.jumpVelocity > 0).toBe(
           onGround && input.throttle > 0 && speed >= 0,
         );
@@ -604,6 +640,7 @@ describe("stepMotion (properties, ADR 0002/0003)", () => {
       FULL_THROTTLE,
       { velocity: { x: 0, z: 0 }, onGround: true },
       () => 2,
+      SUV_PROFILE.motion,
     );
     expect(r.jumpVelocity).toBe(SPEC.stepVelocity);
     expect(r.state.speed).toBeGreaterThanOrEqual(SPEC.stepMinSpeed);
@@ -616,6 +653,7 @@ describe("stepMotion (properties, ADR 0002/0003)", () => {
       FULL_THROTTLE,
       { velocity: { x: 0, z: 0 }, onGround: true },
       () => 1,
+      SUV_PROFILE.motion,
     );
     expect(r.jumpVelocity).toBe(SPEC.oneStepVelocity);
     expect(r.state.speed).toBeGreaterThanOrEqual(SPEC.stepMinSpeed);

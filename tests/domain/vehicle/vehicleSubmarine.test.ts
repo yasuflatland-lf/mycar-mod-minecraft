@@ -17,9 +17,14 @@ import {
   stepFlightMotion,
   WATER,
 } from "../../../src/domain/vehicle/motion";
+import { SUV_PROFILE } from "../../../src/domain/vehicle/profile";
 import type { RamTarget } from "../../../src/domain/vehicle/ram";
+import {
+  createVehicle,
+  rebuildVehicle,
+} from "../../../src/domain/vehicle/registry";
 import { SPEC } from "../../../src/domain/vehicle/spec";
-import { type TickOutcome, Vehicle } from "../../../src/domain/vehicle/vehicle";
+import type { TickOutcome } from "../../../src/domain/vehicle/vehicle";
 import {
   type Body,
   engineStep,
@@ -64,7 +69,7 @@ class DiveSim {
 
   constructor(
     readonly surface: number,
-    readonly vehicle = Vehicle.create("vehicle", 0),
+    readonly vehicle = createVehicle("suv", "vehicle", 0),
   ) {}
 
   get waterDepth(): number {
@@ -111,7 +116,7 @@ describe("Vehicle as a submarine", () => {
   it("enters submarine once and holds depth on a submerged floor without ping-pong", () => {
     fc.assert(
       fc.property(depth, yaw, (d, heading) => {
-        const sim = new DiveSim(d, Vehicle.create("vehicle", heading));
+        const sim = new DiveSim(d, createVehicle("suv", "vehicle", heading));
         sim.run(IDLE, 300);
         expect(sim.changes).toEqual(["submarine"]);
         expect(sim.vehicle.form).toBe("submarine");
@@ -134,7 +139,7 @@ describe("Vehicle as a submarine", () => {
   it("levels off at water speed and coasts without reversing when the stick is pulled back", () => {
     fc.assert(
       fc.property(yaw, (heading) => {
-        const sim = new DiveSim(100, Vehicle.create("vehicle", heading));
+        const sim = new DiveSim(100, createVehicle("suv", "vehicle", heading));
         sim.y = 50;
         sim.run(FORWARD, 100);
         expect(length(sim.body.vel)).toBeCloseTo(SPEC.maxWaterSpeed, 6);
@@ -157,7 +162,7 @@ describe("Vehicle as a submarine", () => {
       fc.property(depth, (d) => {
         const sim = new DiveSim(
           100,
-          Vehicle.rebuild("vehicle", 0, [], "submarine"),
+          rebuildVehicle("suv", "vehicle", 0, [], { form: "submarine" }),
         );
         sim.y = 100 - d;
         sim.vy = -0.1;
@@ -234,7 +239,9 @@ describe("Vehicle as a submarine", () => {
         (gap, heading) => {
           const sim = new DiveSim(
             100,
-            Vehicle.rebuild("vehicle", heading, [], "submarine"),
+            rebuildVehicle("suv", "vehicle", heading, [], {
+              form: "submarine",
+            }),
           );
           sim.y = gap;
           for (let i = 0; i < 60; i++) {
@@ -393,7 +400,7 @@ describe("Vehicle as a submarine", () => {
       fc.property(shallowDepth, (d) => {
         const beached = new DiveSim(
           d,
-          Vehicle.rebuild("vehicle", 0, [], "submarine"),
+          rebuildVehicle("suv", "vehicle", 0, [], { form: "submarine" }),
         );
         beached.step(IDLE);
         expect(beached.changes).toEqual(["car"]);
@@ -416,21 +423,12 @@ describe("Vehicle as a submarine", () => {
 });
 
 describe("Motion medium contract", () => {
-  it("exposes air and water tuning and preserves air as the default", () => {
+  it("exposes air and water tuning", () => {
     expect(AIR).toEqual({ drag: SPEC.flightDrag, maxSpeed: SPEC.maxSpeed });
     expect(WATER).toEqual({
       drag: SPEC.waterDrag,
       maxSpeed: SPEC.maxWaterSpeed,
     });
-    fc.assert(
-      fc.property(yaw, (heading) => {
-        const state = initialMotion(heading);
-        const velocity = { x: 0, z: 0 };
-        expect(stepFlightMotion(state, FULL_THROTTLE, velocity)).toEqual(
-          stepFlightMotion(state, FULL_THROTTLE, velocity, AIR),
-        );
-      }),
-    );
   });
 
   it("uses water drag for the per-axis wall threshold", () => {
@@ -446,13 +444,31 @@ describe("Motion medium contract", () => {
           airExpected: expected,
         };
         expect(
-          stepFlightMotion(state, FULL_THROTTLE, velocity, WATER).blocked,
+          stepFlightMotion(
+            state,
+            FULL_THROTTLE,
+            velocity,
+            WATER,
+            SUV_PROFILE.motion,
+          ).blocked,
         ).toBe(false);
         expect(
-          stepFlightMotion(state, FULL_THROTTLE, velocity, AIR).blocked,
+          stepFlightMotion(
+            state,
+            FULL_THROTTLE,
+            velocity,
+            AIR,
+            SUV_PROFILE.motion,
+          ).blocked,
         ).toBe(true);
         expect(
-          stepFlightMotion(state, FULL_THROTTLE, { x: 0, z: 0 }, WATER).blocked,
+          stepFlightMotion(
+            state,
+            FULL_THROTTLE,
+            { x: 0, z: 0 },
+            WATER,
+            SUV_PROFILE.motion,
+          ).blocked,
         ).toBe(true);
       }),
     );

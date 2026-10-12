@@ -8,7 +8,7 @@ import {
   type Vec2,
 } from "../shared/vec";
 import type { DriveInput } from "./driveInput";
-import { type MotionLimits, SUV_PROFILE } from "./profile";
+import type { MotionLimits } from "./profile";
 import { SPEC } from "./spec";
 
 export interface Medium {
@@ -68,7 +68,7 @@ export function updateSpeed(
   speed: number,
   throttle: number,
   creep = false,
-  limits: MotionLimits = SUV_PROFILE.motion,
+  limits: MotionLimits,
 ): number {
   if (creep) {
     if (speed >= limits.creepSpeed)
@@ -91,7 +91,7 @@ export function steerYaw(
   yaw: number,
   speed: number,
   steer: number,
-  limits: MotionLimits = SUV_PROFILE.motion,
+  limits: MotionLimits,
 ): number {
   const factor =
     Math.min(1, Math.abs(speed) / limits.steerFullSpeed) * Math.sign(speed);
@@ -124,7 +124,7 @@ export function stepMotion(
   input: DriveInput,
   obs: Observation,
   probe: StepProbe,
-  limits: MotionLimits = SUV_PROFILE.motion,
+  limits: MotionLimits,
 ): MotionResult {
   const st: MotionState = { ...prev, airExpected: undefined };
   st.speed = updateSpeed(st.speed, input.throttle, input.creep, limits);
@@ -209,8 +209,8 @@ export function stepFlightMotion(
   prev: MotionState,
   input: DriveInput,
   v: Vec2,
-  medium: Medium = AIR,
-  limits: MotionLimits = SUV_PROFILE.motion,
+  medium: Medium,
+  limits: MotionLimits,
 ): MotionResult {
   // Without the cap, speed keeps climbing toward limits.maxSpeed under water
   // while clampLength hides it, and a released throttle coasts at full water

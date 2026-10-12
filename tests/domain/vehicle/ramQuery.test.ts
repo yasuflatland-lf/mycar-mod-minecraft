@@ -1,6 +1,7 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { forward, rightOf } from "../../../src/domain/shared/vec";
+import { SUV_PROFILE } from "../../../src/domain/vehicle/profile";
 import { selectHits } from "../../../src/domain/vehicle/ram";
 import { RAM_QUERY_RADIUS } from "../../../src/domain/vehicle/ramQuery";
 import { SPEC } from "../../../src/domain/vehicle/spec";
@@ -48,6 +49,7 @@ describe("RAM_QUERY_RADIUS", () => {
             [{ id: "t", offset, protectedOccupant: false }],
             new Map(),
             0,
+            SUV_PROFILE.ram,
           );
           fc.pre(hits.length === 1);
           expect(Math.hypot(offset.x, offset.y, offset.z)).toBeLessThanOrEqual(
@@ -68,6 +70,7 @@ describe("RAM_QUERY_RADIUS", () => {
         [{ id: "t", offset, protectedOccupant: false }],
         new Map(),
         0,
+        SUV_PROFILE.ram,
       ),
     ).toHaveLength(1);
     expect(Math.hypot(offset.x, offset.y, offset.z)).toBeLessThanOrEqual(

@@ -1,8 +1,8 @@
 // Use case: every tick, move all loaded vehicles.
 import { headlightCells } from "../../domain/vehicle/headlights";
 import { profileOf } from "../../domain/vehicle/profile";
+import { rebuildVehicle } from "../../domain/vehicle/registry";
 import { SPEC } from "../../domain/vehicle/spec";
-import { Vehicle } from "../../domain/vehicle/vehicle";
 import type { VehicleRepository } from "../../domain/vehicle/vehicleRepository";
 import type { DriveWorld, Logger } from "./ports";
 
@@ -32,13 +32,9 @@ export class DriveVehicles {
           // the entity's heading, the riders already seated (so the current
           // driver is not treated as newly mounted), and the vehicle form
           // stored on the entity (ADR 0021, 0039).
-          vehicle = Vehicle.rebuild(
-            snap.id,
-            snap.yaw,
-            snap.riders,
-            snap.form,
-            snap.kind,
-          );
+          vehicle = rebuildVehicle(snap.kind, snap.id, snap.yaw, snap.riders, {
+            form: snap.form,
+          });
           this.repo.save(vehicle);
         }
         const out = vehicle.tick({

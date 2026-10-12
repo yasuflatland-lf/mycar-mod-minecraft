@@ -104,7 +104,7 @@ describe("doorOf", () => {
   it("returns the door bone of each seat", () => {
     fc.assert(
       fc.property(seat, (i) => {
-        expect(doorOf(i)).toBe(DOOR_BY_SEAT[i]);
+        expect(doorOf(i, DOOR_BY_SEAT)).toBe(DOOR_BY_SEAT[i]);
       }),
     );
   });
@@ -127,7 +127,7 @@ describe("doorOf", () => {
       fc.property(
         fc.oneof(fc.integer({ max: -1 }), fc.integer({ min: 4 })),
         (i) => {
-          expect(doorOf(i)).toBeUndefined();
+          expect(doorOf(i, DOOR_BY_SEAT)).toBeUndefined();
         },
       ),
     );

@@ -7,6 +7,7 @@ import {
   headlightCells,
   relight,
 } from "../../../src/domain/vehicle/headlights";
+import { SUV_PROFILE } from "../../../src/domain/vehicle/profile";
 import { SPEC } from "../../../src/domain/vehicle/spec";
 
 const coord = fc.double({ min: -1e5, max: 1e5, noNaN: true });
@@ -31,7 +32,7 @@ describe("headlightCells (ADR 0020)", () => {
     fc.assert(
       fc.property(location, yaw, (at, y) => {
         const f = forward(y);
-        const out = headlightCells(at, y);
+        const out = headlightCells(at, y, SUV_PROFILE.beams);
         expect(out.length).toBeGreaterThan(0);
         expect(out.length).toBeLessThanOrEqual(SPEC.headlightReach.length);
         for (const c of out) {
@@ -50,7 +51,7 @@ describe("headlightCells (ADR 0020)", () => {
   it("returns integer cells without duplicates", () => {
     fc.assert(
       fc.property(location, yaw, (at, y) => {
-        const out = headlightCells(at, y);
+        const out = headlightCells(at, y, SUV_PROFILE.beams);
         for (const c of out)
           expect([c.x, c.y, c.z].every(Number.isInteger)).toBe(true);
         expect(keys(out).size).toBe(out.length);
@@ -61,7 +62,9 @@ describe("headlightCells (ADR 0020)", () => {
   it("lights one cell per reach, since the reaches are farther apart than a cell's diagonal", () => {
     fc.assert(
       fc.property(location, yaw, (at, y) => {
-        expect(headlightCells(at, y)).toHaveLength(SPEC.headlightReach.length);
+        expect(headlightCells(at, y, SUV_PROFILE.beams)).toHaveLength(
+          SPEC.headlightReach.length,
+        );
       }),
     );
   });

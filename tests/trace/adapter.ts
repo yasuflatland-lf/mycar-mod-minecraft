@@ -2,7 +2,11 @@ import { DriveVehicles } from "../../src/application/vehicle/driveVehicles";
 import type { DriveWorld } from "../../src/application/vehicle/ports";
 import type { Vec2, Vec3 } from "../../src/domain/shared/vec";
 import { type Form, isForm } from "../../src/domain/vehicle/form";
-import { type TickContext, Vehicle } from "../../src/domain/vehicle/vehicle";
+import {
+  createVehicle,
+  rebuildVehicle,
+} from "../../src/domain/vehicle/registry";
+import type { TickContext, Vehicle } from "../../src/domain/vehicle/vehicle";
 import type { VehicleRepository } from "../../src/domain/vehicle/vehicleRepository";
 import { waterDepthFrom } from "../../src/domain/vehicle/water";
 
@@ -126,7 +130,7 @@ export function createTraceVehicle(
   id: string,
   yaw: number,
 ): TraceVehicle {
-  return wrap(Vehicle.create(id, yaw, kind));
+  return wrap(createVehicle(kind, id, yaw));
 }
 export function rebuildTraceVehicle(
   kind: TraceKind,
@@ -135,7 +139,7 @@ export function rebuildTraceVehicle(
   riders: readonly TraceRider[],
   properties: Readonly<Record<string, PropertyValue>>,
 ): TraceVehicle {
-  return wrap(Vehicle.rebuild(id, yaw, riders, formOf(properties), kind));
+  return wrap(rebuildVehicle(kind, id, yaw, riders, properties));
 }
 export interface TraceAppVehicle {
   id: string;

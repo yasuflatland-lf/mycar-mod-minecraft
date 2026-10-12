@@ -22,11 +22,14 @@ import {
 import { selectHits } from "../../../src/domain/vehicle/ram";
 import { RAM_QUERY_RADIUS } from "../../../src/domain/vehicle/ramQuery";
 import {
+  createVehicle,
+  rebuildVehicle,
+} from "../../../src/domain/vehicle/registry";
+import {
   DOOR_BY_SEAT,
   SEAT_POSITIONS,
 } from "../../../src/domain/vehicle/seats";
 import { SPEC } from "../../../src/domain/vehicle/spec";
-import { Vehicle } from "../../../src/domain/vehicle/vehicle";
 
 const number = (min: number, max: number) =>
   fc.double({ min, max, noNaN: true });
@@ -141,8 +144,10 @@ describe("vehicle profiles (ADR 0050)", () => {
       fc.property(fc.constantFrom(...VEHICLE_KINDS), yaw, (kind, heading) => {
         expect(isVehicleKind(kind)).toBe(true);
         expect(profileOf(kind)).toBe(PROFILES[kind]);
-        expect(Vehicle.create("v", heading, kind).kind).toBe(kind);
-        expect(Vehicle.rebuild("v", heading, [], "car", kind).kind).toBe(kind);
+        expect(createVehicle(kind, "v", heading).kind).toBe(kind);
+        expect(
+          rebuildVehicle(kind, "v", heading, [], { form: "car" }).kind,
+        ).toBe(kind);
       }),
     );
   });
@@ -333,7 +338,14 @@ describe("vehicle profiles (ADR 0050)", () => {
             }).map((hit) => hit.id),
           ).toEqual(["inside"]);
           expect(
-            selectHits(f, direction * SPEC.maxReverse, targets, new Map(), 0),
+            selectHits(
+              f,
+              direction * SPEC.maxReverse,
+              targets,
+              new Map(),
+              0,
+              SUV_PROFILE.ram,
+            ),
           ).toEqual([]);
         },
       ),
