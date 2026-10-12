@@ -756,27 +756,39 @@ async function withBoat<T>(
 
 function boatFloat(a: Arena): Promise<Outcome> {
   return withPool(a, 3, () =>
-    withBoat(a, async (boat) => {
-      let minY = Number.POSITIVE_INFINITY;
-      let maxY = Number.NEGATIVE_INFINITY;
-      for (let t = 0; t < 60; t++) {
-        await wait(1);
-        minY = Math.min(minY, boat.location.y);
-        maxY = Math.max(maxY, boat.location.y);
-      }
-      const bob = maxY - minY;
-      const minDraft = a.gy - maxY;
-      const maxDraft = a.gy - minY;
-      return {
-        pass: bob <= 0.3 && minDraft >= 0.3 && maxDraft <= 0.6,
-        detail: `bob=${bob.toFixed(3)} draft=${minDraft.toFixed(3)}-${maxDraft.toFixed(3)}`,
-      };
-    }),
+    withBoat(
+      a,
+      async (boat) => {
+        // Any input, even a centered stick, keeps the boat from docking, so the
+        // engine floats it here instead of the hold pose (ADR 0063).
+        drive(boat, 0, 0);
+        await wait(40); // Let the boat settle on the water
+        let minY = Number.POSITIVE_INFINITY;
+        let maxY = Number.NEGATIVE_INFINITY;
+        let docked = false;
+        for (let t = 0; t < 60; t++) {
+          await wait(1);
+          minY = Math.min(minY, boat.location.y);
+          maxY = Math.max(maxY, boat.location.y);
+          docked ||= boat.getProperty(entityPropertyId("docked")) === true;
+        }
+        const bob = maxY - minY;
+        const minDraft = a.gy - maxY;
+        const maxDraft = a.gy - minY;
+        return {
+          pass: !docked && bob <= 0.3 && minDraft >= 0.3 && maxDraft <= 0.6,
+          detail: `docked=${docked} bob=${bob.toFixed(3)} draft=${minDraft.toFixed(3)}-${maxDraft.toFixed(3)}`,
+        };
+      },
+      undefined,
+      0,
+    ),
   );
 }
 
-// A docked boat holds still for 2 s, undocks within 0.5 s of input, and leaves
-// within 2 s (ADR 0063).
+// Acceptance bounds from issue #198, not ADR 0063 (which sets only when a boat
+// docks and undocks): a docked boat holds still for 2 s, undocks within 0.5 s
+// of input, and leaves within 2 s.
 const BOAT_DOCK_TEST = {
   timeout: 120,
   holdTicks: 40,

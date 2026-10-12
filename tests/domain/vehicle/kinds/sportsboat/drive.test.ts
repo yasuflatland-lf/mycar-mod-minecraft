@@ -457,6 +457,55 @@ describe("sports boat docking (ADR 0063)", () => {
       }),
     );
   });
+  it("keeps the hold yaw when a driver mounts a docked or restored docked boat", () => {
+    const smallStick = number(-DOCK.stick, DOCK.stick);
+    fc.assert(
+      fc.property(
+        yaw,
+        yaw,
+        afloatWater,
+        smallStick,
+        smallStick,
+        fc.boolean(),
+        (heading, driverYaw, water, moveX, moveY, restored) => {
+          const vehicle = restored
+            ? rebuildVehicle("sportsboat", "boat", heading, [], {
+                docked: true,
+              })
+            : boat(heading);
+          if (!restored)
+            for (let tick = 0; tick < DOCK.ticks; tick++)
+              vehicle.tick(context(tick, undefined, { x: 0, z: 0 }, water));
+          const seat = SPORTSBOAT_PROFILE.seats.positions[0];
+          if (seat === undefined) throw new Error("no driver seat");
+          const f = forward(heading);
+          const left = leftOf(f);
+          const driver = {
+            id: "driver",
+            offset: {
+              x: left.x * seat.x + f.x * seat.z,
+              z: left.z * seat.x + f.z * seat.z,
+            },
+            yaw: driverYaw,
+            raw: { moveX, moveY, jump: false },
+          };
+          let hold: TickOutcome["hold"];
+          for (let tick = 0; tick < DOCK.ticks; tick++) {
+            const out = vehicle.tick({
+              ...context(tick, undefined, { x: 0, z: 0 }, water),
+              riders: [driver],
+            });
+            if (!out.hold) throw new Error("the boat undocked");
+            hold ??= out.hold;
+            expect(out.hold).toBe(hold);
+            expect(out.yaw).toBe(hold.yaw);
+            expect(out.yaw).toBe(normalizeYaw(heading));
+            expect(out.driverId).toBe("driver");
+          }
+        },
+      ),
+    );
+  });
 });
 
 describe("isAfloat (ADR 0051)", () => {
