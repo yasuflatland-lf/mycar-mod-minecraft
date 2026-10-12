@@ -1,11 +1,11 @@
-// Bundle the built Behavior Pack and Resource Pack into dist/yasuflatland-addon-<version>.mcaddon.
-// yasuflatland_test_bp is left out: it runs in-game tests and belongs in the dev world only.
+// Bundle the built Behavior Pack and Resource Pack into dist/yasuflatland-ride-<version>.mcaddon.
+// yasu_ride_test_bp is left out: it runs in-game tests and belongs in the dev world only.
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { resolve } from "node:path";
 
-const BP = "yasuflatland_bp";
-const RP = "yasuflatland_rp";
+const BP = "yasu_ride_bp";
+const RP = "yasu_ride_rp";
 const readManifest = (pack) =>
   JSON.parse(readFileSync(`packs/${pack}/manifest.json`, "utf8"));
 const bp = readManifest(BP);
@@ -40,7 +40,7 @@ if (expected && expected !== version) {
 }
 
 mkdirSync("dist", { recursive: true });
-const out = resolve(`dist/yasuflatland-addon-${version}.mcaddon`);
+const out = resolve(`dist/yasuflatland-ride-${version}.mcaddon`);
 rmSync(out, { force: true });
 execFileSync("zip", ["-r", "-X", "-q", out, BP, RP, "-x", "*.DS_Store"], {
   cwd: "packs",
