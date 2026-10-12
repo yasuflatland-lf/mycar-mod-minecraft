@@ -1,14 +1,14 @@
 # Dev Bedrock Dedicated Server (ADR 0015). Start it with `pnpm server:up`,
 # which sets BDS_TRANSPORT and BDS_UDP_PORTS.
-name: yasuflatland-dev
+name: yasuflatland-ride-dev
 services:
   bds:
     image: itzg/minecraft-bedrock-server
-    container_name: yasuflatland-bds
+    container_name: yasuflatland-ride-bds
     environment:
       EULA: "TRUE"
       VERSION: "LATEST"
-      LEVEL_NAME: "yasuflatland-dev"
+      LEVEL_NAME: "yasuflatland-ride-dev"
       LEVEL_TYPE: "FLAT"
       GAMEMODE: "creative"
       ALLOW_CHEATS: "true"
@@ -28,9 +28,9 @@ services:
       - "19132:19132/udp"
     volumes:
       - ./data:/data
-      - ../packs/yasuflatland_bp:/data/behavior_packs/yasuflatland_bp:ro
-      - ../packs/yasuflatland_test_bp:/data/behavior_packs/yasuflatland_test_bp:ro
-      - ../packs/yasuflatland_rp:/data/resource_packs/yasuflatland_rp:ro
+      - ../packs/yasu_ride_bp:/data/behavior_packs/yasu_ride_bp:ro
+      - ../packs/yasu_ride_test_bp:/data/behavior_packs/yasu_ride_test_bp:ro
+      - ../packs/yasu_ride_rp:/data/resource_packs/yasu_ride_rp:ro
     network_mode: bridge
     stdin_open: true
     tty: true

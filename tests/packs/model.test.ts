@@ -21,7 +21,7 @@ interface Bone {
 
 const geo = JSON.parse(
   readFileSync(
-    "packs/yasuflatland_rp/models/entity/yasuflatland/suv.geo.json",
+    "packs/yasu_ride_rp/models/entity/yasu_ride/suv.geo.json",
     "utf8",
   ),
 );
@@ -30,17 +30,14 @@ const bones = new Map<string, Bone>(
   geometry.bones.map((b: Bone) => [b.name, b]),
 );
 const anims = JSON.parse(
-  readFileSync(
-    "packs/yasuflatland_rp/animations/yasuflatland/suv.animation.json",
-    "utf8",
-  ),
+  readFileSync("packs/yasu_ride_rp/animations/yasu_ride/suv.anim.json", "utf8"),
 ).animations;
 
 // How far the hover animation moves each folded wheel out (ADR 0043). Read
 // from the hand-written animation, so the generated glow and arms must follow
 // it.
 const FOLD_OUT = Math.abs(
-  anims["animation.yasuflatland.suv.wheels_folded"].bones.wheel_fl.position[0],
+  anims["animation.yasu_ride.suv.wheels_folded"].bones.wheel_fl.position[0],
 );
 
 function pivot(name: string): Vec3 {
@@ -51,7 +48,7 @@ function pivot(name: string): Vec3 {
 
 describe("SUV model (ADR 0009)", () => {
   it("has the geometry identifier", () => {
-    expect(geometry.description.identifier).toBe("geometry.yasuflatland.suv");
+    expect(geometry.description.identifier).toBe("geometry.yasu_ride.suv");
   });
 
   it("has all the conventional bones", () => {
@@ -108,7 +105,7 @@ describe("SUV model (ADR 0009)", () => {
 
   it("has an open/close animation for each door", () => {
     for (const d of DOOR_BY_SEAT)
-      expect(anims[`animation.yasuflatland.suv.${d}`].bones[d]).toBeDefined();
+      expect(anims[`animation.yasu_ride.suv.${d}`].bones[d]).toBeDefined();
   });
 
   // A positive y rotation turns +z toward +x, as seen in game: +70 on the right
@@ -116,7 +113,7 @@ describe("SUV model (ADR 0009)", () => {
   it("swings each door outward from the body", () => {
     for (const d of DOOR_BY_SEAT) {
       const keys = Object.values<Vec3>(
-        anims[`animation.yasuflatland.suv.${d}`].bones[d].rotation,
+        anims[`animation.yasu_ride.suv.${d}`].bones[d].rotation,
       );
       const openY = keys.reduce(
         (a, k) => (Math.abs(k[1]) > Math.abs(a) ? k[1] : a),
