@@ -1,3 +1,4 @@
+import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { LimitVehicles } from "../../../src/application/vehicle/limitVehicles";
 import { SPEC } from "../../../src/domain/vehicle/spec";
@@ -85,6 +86,7 @@ describe("LimitVehicles (ADR 0038)", () => {
     expect(world.calls).toEqual(["remove:v1"]);
     expect(fleets.state.evicted).toEqual(["v0"]);
     expect(warnings.some((w) => w.includes("v0"))).toBe(true);
+    expect(warnings.some((w) => w.includes("v1"))).toBe(true);
   });
 
   it("counts a vehicle it never saw spawn as older than the ones it did", () => {
@@ -102,5 +104,19 @@ describe("LimitVehicles (ADR 0038)", () => {
     world.loadedIds = ["a"];
     uc.found(["a"]);
     expect(fleets.saves).toBe(0);
+  });
+
+  it("saves the vehicles it finds for the first time even when none is over the limit", () => {
+    fc.assert(
+      fc.property(fc.integer({ min: 1, max: SPEC.maxVehicles }), (n) => {
+        const { world, fleets, uc } = setup();
+        world.loadedIds = ids(n);
+        uc.found(ids(n));
+        expect(world.calls).toEqual([]);
+        expect(fleets.saves).toBe(1);
+        // Within one scan a later id counts as older.
+        expect(fleets.state.order).toEqual(ids(n).reverse());
+      }),
+    );
   });
 });
