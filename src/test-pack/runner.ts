@@ -1029,7 +1029,8 @@ function submarineDive(a: Arena): Promise<Outcome> {
       // near the bottom of the world, so the pool is only a few blocks deep
       // and the rise is sampled in its first ticks, while still submerged.
       // The first ticks overshoot (the input lands a tick late and the
-      // impulse assumes SPEC's drag), so only the last two samples count.
+      // impulse assumes SUV_SPEC.waterVerticalDrag), so only the last two
+      // samples count.
       drive(car, 0, -1);
       await wait(20);
       drive(car, 0, 0, true);
@@ -1044,8 +1045,9 @@ function submarineDive(a: Arena): Promise<Outcome> {
         steady.length === 2
           ? steady.reduce((sum, v) => sum + v, 0) / steady.length
           : Number.NaN;
-      // As in flight_cruise, the steady speed is target * engineDrag / SPEC drag,
-      // so the ratio reveals the engine's drag in water.
+      // As in flight_cruise, steady speed is target * engineDrag / the SUV_SPEC
+      // drag: SUV_SPEC.waterDrag horizontally, SUV_SPEC.waterVerticalDrag
+      // vertically. The ratio reveals the engine's drag in water.
       const measuredDrag =
         (SUV_SPEC.waterDrag * speed) / SUV_SPEC.maxWaterSpeed;
       const measuredVerticalDrag =
