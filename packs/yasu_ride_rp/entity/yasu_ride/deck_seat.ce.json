@@ -1,0 +1,12 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "yasu_ride:deck_seat",
+      "materials": { "default": "entity" },
+      "textures": { "default": "textures/entity/yasu_ride/sportsboat" },
+      "geometry": { "default": "geometry.yasu_ride.deck_seat" },
+      "render_controllers": ["controller.render.default"]
+    }
+  }
+}
