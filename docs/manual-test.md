@@ -59,6 +59,9 @@ Setup: craft the "Sports Boat" item from 5 iron ingots and an oak boat, or use `
 | B6 | At night, drive with the headlight switch in hand and use it | Two beams light the water about 60 blocks ahead and follow the boat | | |
 | B7 | Place an empty boat and hit its bow 3 times; repeat with another boat's middle, then another boat's stern | Each boat breaks and drops one boat item | | |
 | B8 | Ram a mob at full throttle (Survival) | The mob takes damage and the boat and riders take none | | |
+| B9 | Stop a boat and get off onto the deck | After a second with no driver, the boat stays still and you can walk at the deck's height | | |
+| B10 | Walk around the deck and jump into the water | You can walk across the deck and fall into the water at the edge | | |
+| B11 | Get back in from the water and drive off | The boat leaves and the invisible floor disappears | | |
 
 ## Upgrading from MyCar 0.5.0 and earlier
 
