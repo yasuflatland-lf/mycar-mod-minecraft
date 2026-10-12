@@ -26,7 +26,7 @@ export interface MotionState {
   speed: number; // Internal forward/reverse speed (blocks/tick; negative means reverse)
   yaw: number;
   friction?: number; // Ground friction estimate; undefined until estimated
-  /** Buoyant boat's water drag estimate (ADR 0052), retained while beached. */
+  /** Buoyant boat's water drag estimate (ADR 0053), retained while beached. */
   waterDrag?: number;
   // Velocity the script aimed for in the previous tick. Kept only when that
   // tick was on the ground: in the air the engine applies airFriction and only

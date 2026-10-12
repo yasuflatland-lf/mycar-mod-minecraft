@@ -137,7 +137,7 @@ describe("isAfloat (ADR 0051)", () => {
   });
 });
 
-describe("estimateWaterDrag (ADR 0052)", () => {
+describe("estimateWaterDrag (ADR 0053)", () => {
   const estimate = number(SPORTSBOAT_DRAG.min, SPORTSBOAT_DRAG.max);
   const vector = fc.record({ x: number(-3, 3), z: number(-3, 3) });
   const given = fc.tuple(yaw, number(0.1, 3)).map(([heading, speed]) => {

@@ -22,7 +22,7 @@ import type { TickContext } from "./vehicle";
 
 // boat_drag measured 0.833 at full speed, 0.916-0.927 on the 3 ticks of every
 // 14 at the top of the bob, and 0.815 the tick after; weight 0.1 keeps one bump
-// to about +0.02 on the estimate (ADR 0052).
+// to about +0.02 on the estimate (ADR 0053).
 export const SPORTSBOAT_DRAG = {
   initial: 0.83,
   min: 0.7,

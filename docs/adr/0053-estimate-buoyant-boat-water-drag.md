@@ -1,4 +1,4 @@
-# 0052. Estimate the buoyant boat's water drag
+# 0053. Estimate the buoyant boat's water drag
 
 - Status: Accepted
 - Date: 2026-10-12
