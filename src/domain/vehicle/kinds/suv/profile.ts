@@ -1,6 +1,5 @@
 import type { PlacementSurface } from "../../placement";
 import type { MotionLimits, VehicleProfile } from "../../profile";
-import { SEAT_POSITIONS } from "../../seats";
 import { SUV_SPEC } from "./spec";
 
 // Frozen because this one object is shared by every SUV; a write would change
@@ -11,7 +10,20 @@ export const SUV_PROFILE: VehicleProfile = Object.freeze({
     front: SUV_SPEC.bodyFront,
     halfWidth: SUV_SPEC.bodyHalfWidth,
   }),
-  seats: Object.freeze({ positions: SEAT_POSITIONS }),
+  /**
+   * Coordinates aligned with the vehicle's facing (x = left, z = forward).
+   * 0 = driver's seat (front right), 1 = front passenger, 2 = behind the driver,
+   * 3 = behind the front passenger. Must match minecraft:rideable in
+   * packs/yasu_ride_bp/entities/yasu_ride/suv.se.json (ADR 0019).
+   */
+  seats: Object.freeze({
+    positions: Object.freeze([
+      { x: -0.38, z: 0.35 },
+      { x: 0.38, z: 0.35 },
+      { x: -0.38, z: -0.8 },
+      { x: 0.38, z: -0.8 },
+    ]),
+  }),
   beams: Object.freeze({
     reach: SUV_SPEC.headlightReach,
     lanes: Object.freeze([0]),

@@ -348,7 +348,10 @@ function seatOf(vehicle: Entity, rider: Entity): number {
     x: rider.location.x - vehicle.location.x,
     z: rider.location.z - vehicle.location.z,
   };
-  return nearestSeat(toLocal(offset, forward(vehicle.getRotation().y)));
+  return nearestSeat(
+    toLocal(offset, forward(vehicle.getRotation().y)),
+    SUV_PROFILE.seats.positions,
+  );
 }
 
 // Bedrock seats riders by their index in the rider list, so a passenger moves

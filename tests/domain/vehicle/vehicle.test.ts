@@ -20,7 +20,6 @@ import { SUV_SPEC } from "../../../src/domain/vehicle/kinds/suv/spec";
 import { MOTION } from "../../../src/domain/vehicle/motion/constants";
 import { STEP_LANES } from "../../../src/domain/vehicle/motion/stepUp";
 import type { RamTarget } from "../../../src/domain/vehicle/ram";
-import { SEAT_POSITIONS } from "../../../src/domain/vehicle/seats";
 import { SPEC } from "../../../src/domain/vehicle/spec";
 import type {
   RiderView,
@@ -45,7 +44,7 @@ const STEP_REACH_TICKS = 19;
 function seatOffset(yaw: number, seat: number): Vec2 {
   const f = forward(yaw);
   const l = leftOf(f);
-  const s = defined(SEAT_POSITIONS[seat], `seat ${seat}`);
+  const s = defined(SUV_PROFILE.seats.positions[seat], `seat ${seat}`);
   return { x: l.x * s.x + f.x * s.z, z: l.z * s.x + f.z * s.z };
 }
 

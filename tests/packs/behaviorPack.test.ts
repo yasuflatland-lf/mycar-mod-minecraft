@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { SEAT_POSITIONS } from "../../src/domain/vehicle/seats";
+import { SUV_PROFILE } from "../../src/domain/vehicle/kinds/suv/profile";
 import {
   entityEventId,
   entityPropertyId,
@@ -20,12 +20,12 @@ describe("packs/yasu_ride_bp", () => {
     expect(c["minecraft:collision_box"]).toEqual({ width: 1.8, height: 1.6 });
   });
 
-  it("seat positions and order match SEAT_POSITIONS, with the driver's seat at 0 (ADR 0019)", () => {
+  it("seat positions and order match SUV_PROFILE.seats.positions, with the driver's seat at 0 (ADR 0019)", () => {
     const seats = c["minecraft:rideable"].seats;
     expect(c["minecraft:rideable"].controlling_seat).toBe(0);
     expect(
       seats.map((s: { position: number[] }) => [s.position[0], s.position[2]]),
-    ).toEqual(SEAT_POSITIONS.map((p) => [p.x, p.z]));
+    ).toEqual(SUV_PROFILE.seats.positions.map((p) => [p.x, p.z]));
     expect(seats[0].lock_rider_rotation).toBe(90);
   });
 
