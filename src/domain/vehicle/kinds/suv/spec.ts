@@ -18,8 +18,8 @@ export const SUV_SPEC = {
   hitboxFront: 0.9,
   carHeight: 1.6,
   // Collisions (ADR 0006)
-  bodyFront: 1.65,
-  bodyHalfWidth: 1.0,
+  bodyFront: 1.85, // the front bumper and fog lamps
+  bodyHalfWidth: 1.1, // the tires' outer faces
   // Headlights (ADR 0020)
   headlightReach: [4, 9, 15, 21, 27], // blocks ahead of the vehicle's center, one light block each; 6 apart, the road surface between them stays at level 10 or brighter (ADR 0024)
   // Flight (ADR 0021)

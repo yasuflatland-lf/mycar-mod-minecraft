@@ -471,6 +471,47 @@ describe("Resource Pack submarine visuals (ADR 0040)", () => {
     .filter(descendsFromBody)
     .flatMap((b) => b.cubes ?? []);
 
+  type Box = { min: Vec3; max: Vec3 };
+  const boxOf = (points: Vec3[]): Box => ({
+    min: [0, 1, 2].map((i) =>
+      Math.min(...points.map((p) => p[i] ?? 0)),
+    ) as Vec3,
+    max: [0, 1, 2].map((i) =>
+      Math.max(...points.map((p) => p[i] ?? 0)),
+    ) as Vec3,
+  });
+  const inBox = (p: Vec3, b: Box) =>
+    [0, 1, 2].every(
+      (i) => (b.min[i] ?? 0) <= (p[i] ?? 0) && (p[i] ?? 0) <= (b.max[i] ?? 0),
+    );
+  const overlaps = (a: Box, b: Box) =>
+    [0, 1, 2].every(
+      (i) =>
+        (a.min[i] ?? 0) <= (b.max[i] ?? 0) &&
+        (b.min[i] ?? 0) <= (a.max[i] ?? 0),
+    );
+  // The detailed wheels make the point-by-cube check slow, so each body cube is
+  // first bounded by a box around its turned corners: a point outside the box
+  // cannot be inside the cube.
+  const boundedBodyCubes = bodyCubes.map((c) => {
+    const corners: Vec3[] = [];
+    for (const i of [0, 1])
+      for (const j of [0, 1])
+        for (const k of [0, 1]) {
+          const p: Vec3 = [
+            c.origin[0] + c.size[0] * i,
+            c.origin[1] + c.size[1] * j,
+            c.origin[2] + c.size[2] * k,
+          ];
+          corners.push(
+            c.rotation
+              ? rotate(p, c.rotation, defined(c.pivot, "cube pivot"))
+              : p,
+          );
+        }
+    return { cube: c, box: boxOf(corners) };
+  });
+
   it("registers the three submarine animations", () => {
     for (const name of ["dive", "submerged", "surface"]) {
       expect(client.animations[name]).toBe(`animation.yasu_ride.suv.${name}`);
@@ -575,8 +616,11 @@ describe("Resource Pack submarine visuals (ADR 0040)", () => {
     for (const name of TURNED) {
       const outward = Math.sign(bone(name).pivot[0]);
       expect(Math.sign(submerged.bones[name].position[0]), name).toBe(outward);
-      const clash = posed(name).find((p) =>
-        bodyCubes.some((c) => insideCube(p, c)),
+      const points = posed(name);
+      const reach = boxOf(points);
+      const near = boundedBodyCubes.filter((b) => overlaps(b.box, reach));
+      const clash = points.find((p) =>
+        near.some((b) => inBox(p, b.box) && insideCube(p, b.cube)),
       );
       expect(clash, name).toBeUndefined();
     }

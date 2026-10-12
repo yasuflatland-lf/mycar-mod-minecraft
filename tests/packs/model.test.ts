@@ -179,30 +179,81 @@ describe("SUV model (ADR 0009)", () => {
   });
 
   // The window openings have no glass of their own (ADR 0026), so the plates
-  // fill them: each is thin, sits on the body's outer surface, and overlaps no
-  // body cube.
+  // fill them: the windshield plate leans with the A-pillars, and the side
+  // plates are thin, sit in the window frames, and overlap no body cube.
   describe("windows_sealed", () => {
     const sealed = bones.get("windows_sealed");
     const plates = sealed?.cubes ?? [];
-    const bodyCubes = (bones.get("body")?.cubes ?? []).filter(
-      (c) => !c.rotation,
-    );
+    const sidePlates = plates.filter((c) => !c.rotation);
+    const allBodyCubes = bones.get("body")?.cubes ?? [];
+    const bodyCubes = allBodyCubes.filter((c) => !c.rotation);
+    const doorCubes = DOOR_BY_SEAT.flatMap((d) => bones.get(d)?.cubes ?? []);
+    const frame = [...bodyCubes, ...doorCubes.filter((c) => !c.rotation)];
+    const EPS = 1e-6;
     const span = (c: Cube, a: number): [number, number] => [
       c.origin[a] ?? 0,
       (c.origin[a] ?? 0) + (c.size[a] ?? 0),
     ];
+    const thinAxis = (c: Cube) => c.size.indexOf(Math.min(...c.size));
+    // A right-handed x rotation. The game turns a cube's x rotation the other
+    // way (ADR 0051): a written -25 leans the A-pillars' tops back toward +z,
+    // the cabin. So inside() undoes a cube's rotation with +rx.
+    const turnX = (p: Vec3, pivot: Vec3, degrees: number): Vec3 => {
+      const r = (degrees * Math.PI) / 180;
+      const [y, z] = [p[1] - pivot[1], p[2] - pivot[2]];
+      return [
+        p[0],
+        y * Math.cos(r) - z * Math.sin(r) + pivot[1],
+        y * Math.sin(r) + z * Math.cos(r) + pivot[2],
+      ];
+    };
+    const inside = (c: Cube, p: Vec3) => {
+      const local = turnX(p, c.pivot ?? [0, 0, 0], c.rotation?.[0] ?? 0);
+      return local.every((v, a) => {
+        const [c0, c1] = span(c, a);
+        return c0 - EPS <= v && v <= c1 + EPS;
+      });
+    };
 
     it("is a child of body with the pivot of rear_glass", () => {
       expect(sealed?.parent).toBe("body");
       expect(sealed?.pivot).toEqual(pivot("rear_glass"));
     });
 
-    it("covers the windshield and the four side windows", () => {
-      expect(plates).toHaveLength(5);
+    it("has one windshield plate, leaning with the A-pillars", () => {
+      const leaning = plates.filter((c) => c.rotation);
+      expect(leaning).toHaveLength(1);
+      const [windshield] = leaning;
+      const pillars = allBodyCubes.filter(
+        (c) => c.rotation && c.size[0] === 1 && c.size[1] > 10,
+      );
+      expect(pillars).toHaveLength(2);
+      // In game a negative x rotation leans the top back toward +z, the cabin
+      expect(windshield?.rotation?.[0]).toBeLessThan(0);
+      for (const pillar of pillars) {
+        expect(windshield?.rotation).toEqual(pillar.rotation);
+        expect(windshield?.pivot).toEqual(pillar.pivot);
+      }
     });
 
-    it("has thin plates that overlap no body cube", () => {
-      for (const p of plates) {
+    it("covers the window above each door", () => {
+      for (const d of DOOR_BY_SEAT) {
+        const panel = bones.get(d)?.cubes?.[0];
+        if (!panel) throw new Error(`${d} has no cube`);
+        const [z0, z1] = span(panel, 2);
+        const side = Math.sign(pivot(d)[0]);
+        const covered = sidePlates.some(
+          (p) =>
+            Math.sign(p.origin[0]) === side &&
+            z0 <= p.origin[2] &&
+            p.origin[2] + p.size[2] <= z1,
+        );
+        expect(covered, d).toBe(true);
+      }
+    });
+
+    it("has thin side plates that overlap no body cube", () => {
+      for (const p of sidePlates) {
         expect(Math.min(...p.size)).toBeLessThanOrEqual(0.1);
         for (const c of bodyCubes) {
           const overlaps = [0, 1, 2].every((a) => {
@@ -215,35 +266,38 @@ describe("SUV model (ADR 0009)", () => {
       }
     });
 
-    // Each plate is flush with the outer face of a pillar it touches, so it
-    // reads as glass set in the window frame.
-    it("sits flush with the outside of the window frame", () => {
-      for (const p of plates) {
-        const thin = p.size.indexOf(Math.min(...p.size));
+    // Each side plate sits at most 0.05 px inside the outer face of a frame
+    // piece it touches, so it reads as glass set in the window frame.
+    it("sits in the window frame, at its outer face", () => {
+      for (const p of sidePlates) {
+        const thin = thinAxis(p);
         const [p0, p1] = span(p, thin);
-        const outer = Math.abs(p0) > Math.abs(p1) ? p0 : p1;
-        const flush = bodyCubes.some((c) => {
+        const outer = Math.max(Math.abs(p0), Math.abs(p1));
+        const flush = frame.some((c) => {
           const touches = [0, 1, 2].every((a) => {
             const [c0, c1] = span(c, a);
             const [q0, q1] = span(p, a);
             return q0 <= c1 && c0 <= q1;
           });
           const [c0, c1] = span(c, thin);
-          return touches && (Math.abs(c0) > Math.abs(c1) ? c0 : c1) === outer;
+          const gap = Math.max(Math.abs(c0), Math.abs(c1)) - outer;
+          return touches && gap > -EPS && gap <= 0.05 + EPS;
         });
         expect(flush, JSON.stringify(p)).toBe(true);
       }
     });
 
-    // Every edge of a plate meets the face of a pillar, the lower frame, a
-    // door top or the roof along its whole length, so the plate fills the
-    // opening rather than a corner of it.
+    // Every edge of a side plate meets the face of a pillar, a door frame or
+    // the roof along its whole length, so the plates fill the opening rather
+    // than a corner of it. The front side windows are trapezoids under the
+    // leaning front post, built from strips: a strip's front end reaches into
+    // that post, and where a strip meets the next one, the part the next one
+    // does not cover lies inside the post.
     it("fills its opening from frame to frame", () => {
-      const doors = DOOR_BY_SEAT.flatMap((d) => bones.get(d)?.cubes ?? []);
-      const frame = [...bodyCubes, ...doors];
-      const near = (a: number, b: number) => Math.abs(a - b) < 1e-6;
-      for (const p of plates) {
-        const thin = p.size.indexOf(Math.min(...p.size));
+      const posts = doorCubes.filter((c) => c.rotation);
+      const near = (a: number, b: number) => Math.abs(a - b) < EPS;
+      for (const p of sidePlates) {
+        const thin = thinAxis(p);
         const [t0, t1] = span(p, thin);
         const inPlane = [0, 1, 2].filter((a) => a !== thin);
         for (const a of inPlane) {
@@ -256,13 +310,37 @@ describe("SUV model (ADR 0009)", () => {
               const [co0, co1] = span(c, other);
               return (
                 (near(c0, edge) || near(c1, edge)) &&
-                ct0 <= t1 + 1e-6 &&
-                t0 <= ct1 + 1e-6 &&
+                ct0 <= t1 + EPS &&
+                t0 <= ct1 + EPS &&
                 co0 <= o0 &&
                 o1 <= co1
               );
             });
-            expect(met, `${JSON.stringify(p)} edge ${a}=${edge}`).toBe(true);
+            const at = (o: number): Vec3 => {
+              const point: Vec3 = [0, 0, 0];
+              point[thin] = (t0 + t1) / 2;
+              point[a] = edge;
+              point[other] = o;
+              return point;
+            };
+            const inPost = (from: number, to: number) =>
+              posts.some((c) => inside(c, at(from)) && inside(c, at(to)));
+            const byNeighbor = sidePlates.some((n) => {
+              if (n === p || !span(n, a).some((e) => near(e, edge)))
+                return false;
+              // The mirrored plate on the other side has the same spans
+              if (Math.sign(n.origin[0]) !== Math.sign(p.origin[0]))
+                return false;
+              const [n0, n1] = span(n, other);
+              if (n1 <= o0 || o1 <= n0) return false;
+              return (
+                (n0 <= o0 || inPost(o0, n0)) && (o1 <= n1 || inPost(n1, o1))
+              );
+            });
+            expect(
+              met || inPost(o0, o1) || byNeighbor,
+              `${JSON.stringify(p)} edge ${a}=${edge}`,
+            ).toBe(true);
           }
         }
       }
