@@ -7,9 +7,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { VEHICLE_KINDS } from "../../src/domain/vehicle/kind";
-import { profileOf } from "../../src/domain/vehicle/profile";
 import {
-  doorAnimation,
   ENTITY_TYPE,
   HEADLIGHT_SWITCH_TYPE,
   ITEM_TYPE,
@@ -169,7 +167,7 @@ describe("Resource Pack and Behavior Pack references", () => {
     );
   });
 
-  it("defines the identifiers and door animations the script uses", () => {
+  it("defines the identifiers the script uses", () => {
     expect(bpEntityIds).toEqual(
       expect.arrayContaining(Object.values(ENTITY_TYPE)),
     );
@@ -179,11 +177,6 @@ describe("Resource Pack and Behavior Pack references", () => {
         HEADLIGHT_SWITCH_TYPE,
       ]),
     );
-    for (const kind of VEHICLE_KINDS)
-      for (const door of profileOf(kind).seats.doors ?? [])
-        expect(animations, `${kind}: ${door}`).toContain(
-          doorAnimation(kind, door),
-        );
   });
 
   // The adapter finds vehicles by this family and skips an entity without it

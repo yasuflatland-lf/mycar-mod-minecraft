@@ -1,8 +1,7 @@
 // Use case: every tick, move all loaded vehicles.
 import { headlightCells } from "../../domain/vehicle/headlights";
-import { profileOf } from "../../domain/vehicle/profile";
+import { profileOf, rebuildVehicle } from "../../domain/vehicle/kinds/index";
 import { SPEC } from "../../domain/vehicle/spec";
-import { Vehicle } from "../../domain/vehicle/vehicle";
 import type { VehicleRepository } from "../../domain/vehicle/vehicleRepository";
 import type { DriveWorld, Logger } from "./ports";
 
@@ -20,7 +19,6 @@ export class DriveVehicles {
 
   execute(tick: number): void {
     const seen = new Set<string>();
-    // Riders of any form but car use third person (ADR 0028 + 0039).
     const offRoad = new Set<string>();
     const underwater = new Set<string>();
     for (const snap of this.world.loadedVehicles()) {
@@ -30,14 +28,14 @@ export class DriveVehicles {
         if (!vehicle) {
           // The aggregate is lost after a reload: rebuild it with zero speed,
           // the entity's heading, the riders already seated (so the current
-          // driver is not treated as newly mounted), and the vehicle form
+          // driver is not treated as newly mounted), and its restored properties
           // stored on the entity (ADR 0021, 0039).
-          vehicle = Vehicle.rebuild(
+          vehicle = rebuildVehicle(
+            snap.kind,
             snap.id,
             snap.yaw,
             snap.riders,
-            snap.form,
-            snap.kind,
+            snap.restored(),
           );
           this.repo.save(vehicle);
         }
@@ -45,23 +43,18 @@ export class DriveVehicles {
           tick,
           riders: snap.riders,
           testInput: snap.testInput,
+          location: snap.location,
           velocity: snap.velocity,
-          velocityY: snap.velocityY,
           onGround: snap.onGround,
-          waterDepth: snap.waterDepth,
-          waterBelow: snap.waterBelow,
+          waterAt: (offset) => this.world.waterAt(snap.id, offset),
           solidAt: (offset) => this.world.solidAt(snap.id, offset),
           targets: () => this.world.targetsNear(snap.id),
         });
-        // The form, the bank, and the gear are sent only on the tick they change, so
-        // send them before anything else that could throw and skip them.
-        if (out.form) this.world.setForm(snap.id, out.form);
-        if (out.bank !== undefined) this.world.setBank(snap.id, out.bank);
-        if (out.gearDown !== undefined)
-          this.world.setGearDown(snap.id, out.gearDown);
-        if (vehicle.form !== "car")
+        // Commands are sent on change, so send them before anything else that could throw.
+        this.world.run(snap.id, out.commands);
+        if (out.riders.thirdPerson)
           for (const rider of snap.riders) offRoad.add(rider.id);
-        if (vehicle.form === "submarine")
+        if (out.riders.underwater)
           for (const rider of snap.riders) underwater.add(rider.id);
         this.world.applyMotion(snap.id, out.impulse, out.yaw);
         this.world.shineHeadlights(
@@ -75,11 +68,7 @@ export class DriveVehicles {
             : [],
         );
         for (const hit of out.hits) this.world.damage(hit, out.driverId);
-        for (const event of out.events) {
-          if (event.type === "SeatVacated" && event.door !== undefined) {
-            this.world.playDoor(snap.id, event.door);
-          }
-        }
+        this.world.run(snap.id, out.seatCommands);
       } catch (e) {
         // A failure in one vehicle must not stop the others.
         this.log.warn(`${snap.id}: ${e}`);
@@ -111,8 +100,8 @@ export class DriveVehicles {
   }
 
   /**
-   * Riders of any form but car see the vehicle from behind; everyone this use
-   * case switched gets their own view back once they land or get off. A failed
+   * Each drive chooses its riders' view; everyone this use case switched
+   * gets their own view back when requested or when they get off. A failed
    * switch either way is retried on the next tick. A player who left needs no
    * clearing: the world does nothing for a missing player, so they are dropped.
    */

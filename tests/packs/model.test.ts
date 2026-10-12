@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { DOOR_BY_SEAT, SEAT_POSITIONS } from "../../src/domain/vehicle/seats";
+import { DOOR_BY_SEAT } from "../../src/domain/vehicle/kinds/suv/entity";
+import { SUV_PROFILE } from "../../src/domain/vehicle/kinds/suv/profile";
 
 type Vec3 = [number, number, number];
 
@@ -86,9 +87,9 @@ describe("SUV model (ADR 0009)", () => {
     expect(pivot("seat_1")[2]).toBeLessThan(pivot("seat_3")[2]);
   });
 
-  // SEAT_POSITIONS uses x = left, and so does the model once it faces -z.
-  it("puts each seat, its door and the same-side wheels on the side SEAT_POSITIONS names", () => {
-    for (const [i, seat] of SEAT_POSITIONS.entries()) {
+  // SUV_PROFILE.seats.positions uses x = left, and so does the model once it faces -z.
+  it("puts each seat, its door and the same-side wheels on the side SUV_PROFILE.seats.positions names", () => {
+    for (const [i, seat] of SUV_PROFILE.seats.positions.entries()) {
       const side = Math.sign(seat.x);
       const door = DOOR_BY_SEAT[i] ?? "";
       const letter = door.at(-1);

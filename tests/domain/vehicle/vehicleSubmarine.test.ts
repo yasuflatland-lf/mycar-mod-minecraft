@@ -10,16 +10,32 @@ import type {
   DriveInput,
   RawInput,
 } from "../../../src/domain/vehicle/driveInput";
-import { type Form, verticalImpulse } from "../../../src/domain/vehicle/form";
+import {
+  createVehicle,
+  rebuildVehicle,
+} from "../../../src/domain/vehicle/kinds/index";
+import { SuvDrive } from "../../../src/domain/vehicle/kinds/suv/drive";
+import {
+  type Form,
+  verticalImpulse,
+} from "../../../src/domain/vehicle/kinds/suv/form";
+import {
+  SUV_MOTION,
+  SUV_PROFILE,
+} from "../../../src/domain/vehicle/kinds/suv/profile";
 import {
   AIR,
+  SUV_SPEC,
+  WATER,
+} from "../../../src/domain/vehicle/kinds/suv/spec";
+import { MOTION } from "../../../src/domain/vehicle/motion/constants";
+import {
   initialMotion,
   stepFlightMotion,
-  WATER,
-} from "../../../src/domain/vehicle/motion";
+} from "../../../src/domain/vehicle/motion/motion";
 import type { RamTarget } from "../../../src/domain/vehicle/ram";
-import { SPEC } from "../../../src/domain/vehicle/spec";
 import { type TickOutcome, Vehicle } from "../../../src/domain/vehicle/vehicle";
+import { propertyValue } from "../../support/engineCommands";
 import {
   type Body,
   engineStep,
@@ -28,6 +44,7 @@ import {
   WATER_DRAG,
   WATER_VERTICAL_DRAG,
 } from "../../support/engineModel";
+import { waterSensors } from "../../support/waterDepth";
 
 const IDLE: RawInput = { moveX: 0, moveY: 0, jump: false };
 const FORWARD: RawInput = { ...IDLE, moveY: 1 };
@@ -37,10 +54,10 @@ const FULL_THROTTLE: DriveInput = {
   handbrake: false,
   creep: false,
 };
-const depth = fc.double({ min: SPEC.carHeight, max: 10, noNaN: true });
+const depth = fc.double({ min: SUV_SPEC.carHeight, max: 10, noNaN: true });
 const shallowDepth = fc
-  .double({ min: 0, max: SPEC.carHeight, noNaN: true })
-  .filter((d) => d < SPEC.carHeight);
+  .double({ min: 0, max: SUV_SPEC.carHeight, noNaN: true })
+  .filter((d) => d < SUV_SPEC.carHeight);
 const yaw = fc.double({ min: -180, max: 180, noNaN: true });
 const rawInput = fc.record({
   moveX: fc.double({ min: -1, max: 1, noNaN: true }),
@@ -50,10 +67,14 @@ const rawInput = fc.record({
 
 function stepAhead(height: number): (offset: Vec3) => boolean {
   return (offset) =>
-    offset.z >= SPEC.hitboxFront && offset.y >= 0 && offset.y < height;
+    offset.z >= SUV_SPEC.hitboxFront && offset.y >= 0 && offset.y < height;
 }
 
 class DiveSim {
+  form: Form;
+  gravity: boolean;
+  bankAngle = 0;
+  wheelsDown = true;
   tick = 0;
   y = 0;
   vy = 0;
@@ -64,8 +85,12 @@ class DiveSim {
 
   constructor(
     readonly surface: number,
-    readonly vehicle = Vehicle.create("vehicle", 0),
-  ) {}
+    readonly vehicle = createVehicle("suv", "vehicle", 0),
+    form: Form = "car",
+  ) {
+    this.form = form;
+    this.gravity = form === "car";
+  }
 
   get waterDepth(): number {
     return Math.max(0, this.surface - this.y);
@@ -76,22 +101,32 @@ class DiveSim {
       tick: this.tick++,
       riders: [],
       testInput: input,
-      velocity: this.body.vel,
-      velocityY: this.vy,
+      velocity: { ...this.body.vel, y: this.vy },
       onGround: this.y <= 0,
-      waterDepth: this.waterDepth,
+      ...waterSensors(this.waterDepth),
       solidAt: (offset) => this.y + offset.y < 0 || this.obstacle(offset),
       targets: this.targets,
     });
-    if (out.form) this.changes.push(out.form);
-    const underwater = this.vehicle.form === "submarine";
+    const form = propertyValue(out.commands, "form") as Form | undefined;
+    if (form) {
+      this.changes.push(form);
+      this.form = form;
+    }
+    const gear = propertyValue(out.commands, "gear_down");
+    if (typeof gear === "boolean") this.wheelsDown = gear;
+    const bank = propertyValue(out.commands, "bank");
+    if (typeof bank === "number") this.bankAngle = bank;
+    for (const command of out.commands)
+      if (command.type === "triggerEvent")
+        this.gravity = command.name === "gravity_on";
+    const underwater = this.form === "submarine";
     this.body = engineStep(
       this.body,
       { x: out.impulse.x, z: out.impulse.z },
-      { mu: SPEC.defaultFriction, drag: underwater ? WATER_DRAG : undefined },
+      { mu: MOTION.defaultFriction, drag: underwater ? WATER_DRAG : undefined },
       this.y <= 0,
     ).body;
-    const gravity = this.vehicle.form === "car" ? GRAVITY : 0;
+    const gravity = this.gravity ? GRAVITY : 0;
     let vy = this.vy + out.impulse.y - gravity;
     this.y += vy;
     if (this.y <= 0) {
@@ -111,10 +146,10 @@ describe("Vehicle as a submarine", () => {
   it("enters submarine once and holds depth on a submerged floor without ping-pong", () => {
     fc.assert(
       fc.property(depth, yaw, (d, heading) => {
-        const sim = new DiveSim(d, Vehicle.create("vehicle", heading));
+        const sim = new DiveSim(d, createVehicle("suv", "vehicle", heading));
         sim.run(IDLE, 300);
         expect(sim.changes).toEqual(["submarine"]);
-        expect(sim.vehicle.form).toBe("submarine");
+        expect(sim.form).toBe("submarine");
         expect(sim.y).toBe(0);
       }),
     );
@@ -126,7 +161,7 @@ describe("Vehicle as a submarine", () => {
         const sim = new DiveSim(d);
         sim.run(IDLE, 100);
         expect(sim.changes).toEqual([]);
-        expect(sim.vehicle.form).toBe("car");
+        expect(sim.form).toBe("car");
       }),
     );
   });
@@ -134,17 +169,17 @@ describe("Vehicle as a submarine", () => {
   it("levels off at water speed and coasts without reversing when the stick is pulled back", () => {
     fc.assert(
       fc.property(yaw, (heading) => {
-        const sim = new DiveSim(100, Vehicle.create("vehicle", heading));
+        const sim = new DiveSim(100, createVehicle("suv", "vehicle", heading));
         sim.y = 50;
         sim.run(FORWARD, 100);
-        expect(length(sim.body.vel)).toBeCloseTo(SPEC.maxWaterSpeed, 6);
+        expect(length(sim.body.vel)).toBeCloseTo(SUV_SPEC.maxWaterSpeed, 6);
         for (let i = 0; i < 100; i++) {
           sim.step({ ...IDLE, moveY: -1 });
           expect(
             dot(sim.body.vel, forward(sim.vehicle.yaw)),
           ).toBeGreaterThanOrEqual(-1e-9);
           expect(length(sim.body.vel)).toBeLessThanOrEqual(
-            SPEC.maxWaterSpeed + 1e-9,
+            SUV_SPEC.maxWaterSpeed + 1e-9,
           );
         }
         expect(length(sim.body.vel)).toBeCloseTo(0, 6);
@@ -157,16 +192,17 @@ describe("Vehicle as a submarine", () => {
       fc.property(depth, (d) => {
         const sim = new DiveSim(
           100,
-          Vehicle.rebuild("vehicle", 0, [], "submarine"),
+          rebuildVehicle("suv", "vehicle", 0, [], { form: "submarine" }),
+          "submarine",
         );
         sim.y = 100 - d;
         sim.vy = -0.1;
         sim.run(IDLE, 50);
         expect(sim.waterDepth).toBeCloseTo(d, 6);
         sim.step({ ...IDLE, jump: true });
-        expect(sim.vy).toBeCloseTo(SPEC.maxClimb, 6);
+        expect(sim.vy).toBeCloseTo(SUV_SPEC.maxClimb, 6);
         sim.step({ ...IDLE, moveY: -1 });
-        expect(sim.vy).toBeCloseTo(-SPEC.maxClimb, 6);
+        expect(sim.vy).toBeCloseTo(-SUV_SPEC.maxClimb, 6);
       }),
     );
   });
@@ -178,7 +214,7 @@ describe("Vehicle as a submarine", () => {
         const first = sim.step(undefined);
         expect(first.impulse.y).toBeGreaterThan(0);
         sim.run(undefined, 400);
-        expect(sim.waterDepth).toBeCloseTo(SPEC.floatDraft, 6);
+        expect(sim.waterDepth).toBeCloseTo(SUV_SPEC.floatDraft, 6);
         expect(sim.vy).toBeCloseTo(0, 6);
         expect(sim.changes).toEqual(["submarine"]);
         expect(sim.y).toBeGreaterThan(0);
@@ -195,7 +231,7 @@ describe("Vehicle as a submarine", () => {
         sim.step(IDLE);
         expect(sim.vy).toBe(0);
         const rising = sim.step(FORWARD);
-        expect(sim.vy).toBeCloseTo(SPEC.maxClimb, 6);
+        expect(sim.vy).toBeCloseTo(SUV_SPEC.maxClimb, 6);
         expect(rising.impulse.y).toBeGreaterThan(0);
         sim.obstacle = () => false;
         sim.vy = 0;
@@ -204,7 +240,7 @@ describe("Vehicle as a submarine", () => {
         sim.obstacle = stepAhead(height);
         sim.y = 50;
         sim.step({ ...IDLE, moveY: -1 });
-        expect(sim.vy).toBeCloseTo(-SPEC.maxClimb, 6);
+        expect(sim.vy).toBeCloseTo(-SUV_SPEC.maxClimb, 6);
       }),
     );
   });
@@ -217,10 +253,10 @@ describe("Vehicle as a submarine", () => {
           const sim = new DiveSim(100);
           sim.y = 50;
           sim.obstacle = (offset) =>
-            offset.z >= SPEC.hitboxFront && offset.y < stepTop;
+            offset.z >= SUV_SPEC.hitboxFront && offset.y < stepTop;
           sim.step(IDLE);
           sim.step(FORWARD);
-          expect(sim.vy).toBeCloseTo(SPEC.maxClimb, 6);
+          expect(sim.vy).toBeCloseTo(SUV_SPEC.maxClimb, 6);
         },
       ),
     );
@@ -234,7 +270,10 @@ describe("Vehicle as a submarine", () => {
         (gap, heading) => {
           const sim = new DiveSim(
             100,
-            Vehicle.rebuild("vehicle", heading, [], "submarine"),
+            rebuildVehicle("suv", "vehicle", heading, [], {
+              form: "submarine",
+            }),
+            "submarine",
           );
           sim.y = gap;
           for (let i = 0; i < 60; i++) {
@@ -254,7 +293,7 @@ describe("Vehicle as a submarine", () => {
         const sim = new DiveSim(100);
         sim.y = stepTop - below;
         sim.obstacle = (offset) =>
-          offset.z >= SPEC.hitboxFront && sim.y + offset.y < stepTop;
+          offset.z >= SUV_SPEC.hitboxFront && sim.y + offset.y < stepTop;
         sim.run(FORWARD, 40);
         expect(sim.y).toBeGreaterThanOrEqual(stepTop);
       }),
@@ -267,11 +306,13 @@ describe("Vehicle as a submarine", () => {
         const sim = new DiveSim(100);
         sim.y = 50;
         sim.obstacle = (offset) =>
-          offset.z >= SPEC.hitboxFront + face && offset.y >= 0 && offset.y < 1;
+          offset.z >= SUV_SPEC.hitboxFront + face &&
+          offset.y >= 0 &&
+          offset.y < 1;
         sim.step(IDLE);
         sim.step(FORWARD);
-        expect(sim.vehicle.speed).toBeLessThan(SPEC.stepMinSpeed);
-        expect(sim.vy).toBeCloseTo(SPEC.maxClimb, 6);
+        expect(sim.vehicle.speed).toBeLessThan(MOTION.stepMinSpeed);
+        expect(sim.vy).toBeCloseTo(SUV_SPEC.maxClimb, 6);
       }),
     );
   });
@@ -293,7 +334,7 @@ describe("Vehicle as a submarine", () => {
     }
     expect(reversingTicks).toBeGreaterThan(0);
     expect(sim.vehicle.speed).toBeGreaterThanOrEqual(0);
-    expect(sim.vy).toBeCloseTo(SPEC.maxClimb, 6);
+    expect(sim.vy).toBeCloseTo(SUV_SPEC.maxClimb, 6);
   });
 
   it("caps speed at water speed so a released throttle slows down at once", () => {
@@ -308,10 +349,12 @@ describe("Vehicle as a submarine", () => {
           sim.y = 500;
           for (const moveY of throttles) {
             sim.step({ ...IDLE, moveY });
-            expect(sim.vehicle.speed).toBeLessThanOrEqual(SPEC.maxWaterSpeed);
+            expect(sim.vehicle.speed).toBeLessThanOrEqual(
+              SUV_SPEC.maxWaterSpeed,
+            );
           }
           sim.run(FORWARD, 100);
-          expect(sim.vehicle.speed).toBe(SPEC.maxWaterSpeed);
+          expect(sim.vehicle.speed).toBe(SUV_SPEC.maxWaterSpeed);
           let previous = length(sim.body.vel);
           for (let i = 0; i < 5; i++) {
             sim.step(IDLE);
@@ -332,8 +375,8 @@ describe("Vehicle as a submarine", () => {
     sim.vy = 0;
     sim.body.vel = { x: 0, z: 0 };
     sim.step(FORWARD);
-    expect(sim.vehicle.speed).toBeLessThan(SPEC.stepMinSpeed);
-    expect(sim.vy).toBeCloseTo(SPEC.maxClimb, 6);
+    expect(sim.vehicle.speed).toBeLessThan(MOTION.stepMinSpeed);
+    expect(sim.vy).toBeCloseTo(SUV_SPEC.maxClimb, 6);
   });
 
   // The submarine rolls into turns like the hover form (ADR 0044), within the
@@ -343,26 +386,51 @@ describe("Vehicle as a submarine", () => {
       fc.property(
         fc.array(rawInput, { minLength: 1, maxLength: 200 }),
         (inputs) => {
-          const sim = new DiveSim(1000);
+          const drive = new SuvDrive(0, {});
+          const sim = new DiveSim(
+            1000,
+            new Vehicle("vehicle", SUV_PROFILE, drive),
+          );
           sim.y = 500;
           let sent: number | undefined;
-          for (const input of inputs) {
+          let intermediateChanges = 0;
+          const controls = [
+            ...Array<RawInput>(40).fill(FORWARD),
+            ...Array<RawInput>(12).fill({ ...FORWARD, moveX: 1 }),
+            ...Array<RawInput>(12).fill(FORWARD),
+            ...inputs,
+          ];
+          for (const input of controls) {
             const out = sim.step(input);
-            expect(Math.abs(sim.vehicle.bankAngle)).toBeLessThanOrEqual(
-              SPEC.maxBank + 1e-9,
+            expect(Math.abs(drive.bankAngle)).toBeLessThanOrEqual(
+              SUV_SPEC.maxBank + 1e-9,
             );
-            expect(sim.vehicle.wheelsDown).toBe(true);
+            expect(sim.wheelsDown).toBe(true);
             // The client sees every new angle: it is sent on the tick it
-            // changes, and on the first tick (ADR 0026).
-            if (sim.vehicle.bankAngle !== sent)
-              expect(out.bank).toBe(sim.vehicle.bankAngle);
-            sent = sim.vehicle.bankAngle;
-            expect(out.gearDown === undefined || out.gearDown).toBe(true);
+            // changes, and on the first tick (ADR 0026). The drive's own
+            // angle is the reference, so a skipped send cannot hide.
+            const bank = propertyValue(out.commands, "bank");
+            if (drive.bankAngle !== sent) {
+              expect(bank).toBe(drive.bankAngle);
+              if (
+                Math.abs(drive.bankAngle) > 0 &&
+                Math.abs(drive.bankAngle) < SUV_SPEC.maxBank
+              )
+                intermediateChanges++;
+            }
+            if (typeof bank === "number") sent = bank;
+            expect(
+              propertyValue(out.commands, "gear_down") === undefined ||
+                propertyValue(out.commands, "gear_down"),
+            ).toBe(true);
             expect(length(sim.body.vel)).toBeLessThanOrEqual(
-              SPEC.maxWaterSpeed + 1e-9,
+              SUV_SPEC.maxWaterSpeed + 1e-9,
             );
-            expect(Math.abs(sim.vy)).toBeLessThanOrEqual(SPEC.maxClimb + 1e-9);
+            expect(Math.abs(sim.vy)).toBeLessThanOrEqual(
+              SUV_SPEC.maxClimb + 1e-9,
+            );
           }
+          expect(intermediateChanges).toBeGreaterThan(1);
         },
       ),
     );
@@ -374,26 +442,27 @@ describe("Vehicle as a submarine", () => {
     const sim = new DiveSim(1000);
     sim.y = 500;
     sim.run(FORWARD, 40);
-    expect(sim.vehicle.form).toBe("submarine");
+    expect(sim.form).toBe("submarine");
     const depth = sim.y;
     sim.run({ ...FORWARD, moveX: 1 }, 20);
-    expect(sim.vehicle.bankAngle).toBeLessThan(-SPEC.maxBank / 2);
+    expect(sim.bankAngle).toBeLessThan(-SUV_SPEC.maxBank / 2);
     expect(Math.abs(sim.y - depth)).toBeLessThan(0.05);
     sim.run(FORWARD, 20);
-    expect(sim.vehicle.bankAngle).toBe(0);
+    expect(sim.bankAngle).toBe(0);
   });
 
   it("breaches into hover with Jump held and becomes a car on a shallow shore", () => {
     const sim = new DiveSim(5);
     sim.run({ ...IDLE, jump: true }, 30);
     expect(sim.changes).toEqual(["submarine", "hover"]);
-    expect(sim.vehicle.form).toBe("hover");
+    expect(sim.form).toBe("hover");
 
     fc.assert(
       fc.property(shallowDepth, (d) => {
         const beached = new DiveSim(
           d,
-          Vehicle.rebuild("vehicle", 0, [], "submarine"),
+          rebuildVehicle("suv", "vehicle", 0, [], { form: "submarine" }),
+          "submarine",
         );
         beached.step(IDLE);
         expect(beached.changes).toEqual(["car"]);
@@ -416,21 +485,15 @@ describe("Vehicle as a submarine", () => {
 });
 
 describe("Motion medium contract", () => {
-  it("exposes air and water tuning and preserves air as the default", () => {
-    expect(AIR).toEqual({ drag: SPEC.flightDrag, maxSpeed: SPEC.maxSpeed });
-    expect(WATER).toEqual({
-      drag: SPEC.waterDrag,
-      maxSpeed: SPEC.maxWaterSpeed,
+  it("exposes air and water tuning", () => {
+    expect(AIR).toEqual({
+      drag: SUV_SPEC.flightDrag,
+      maxSpeed: SUV_SPEC.maxSpeed,
     });
-    fc.assert(
-      fc.property(yaw, (heading) => {
-        const state = initialMotion(heading);
-        const velocity = { x: 0, z: 0 };
-        expect(stepFlightMotion(state, FULL_THROTTLE, velocity)).toEqual(
-          stepFlightMotion(state, FULL_THROTTLE, velocity, AIR),
-        );
-      }),
-    );
+    expect(WATER).toEqual({
+      drag: SUV_SPEC.waterDrag,
+      maxSpeed: SUV_SPEC.maxWaterSpeed,
+    });
   });
 
   it("uses water drag for the per-axis wall threshold", () => {
@@ -438,21 +501,29 @@ describe("Motion medium contract", () => {
       fc.property(fc.boolean(), (onX) => {
         const expected = onX ? { x: 1, z: 0 } : { x: 0, z: 1 };
         // Between the air and water wall thresholds, only air reports a wall.
-        const kept = ((AIR.drag + WATER.drag) / 2) * SPEC.blockedRatio;
+        const kept = ((AIR.drag + WATER.drag) / 2) * MOTION.blockedRatio;
         const velocity = { x: expected.x * kept, z: expected.z * kept };
         const state = {
           ...initialMotion(onX ? -90 : 0),
-          speed: SPEC.maxWaterSpeed,
+          speed: SUV_SPEC.maxWaterSpeed,
           airExpected: expected,
         };
         expect(
-          stepFlightMotion(state, FULL_THROTTLE, velocity, WATER).blocked,
+          stepFlightMotion(state, FULL_THROTTLE, velocity, WATER, SUV_MOTION)
+            .blocked,
         ).toBe(false);
         expect(
-          stepFlightMotion(state, FULL_THROTTLE, velocity, AIR).blocked,
+          stepFlightMotion(state, FULL_THROTTLE, velocity, AIR, SUV_MOTION)
+            .blocked,
         ).toBe(true);
         expect(
-          stepFlightMotion(state, FULL_THROTTLE, { x: 0, z: 0 }, WATER).blocked,
+          stepFlightMotion(
+            state,
+            FULL_THROTTLE,
+            { x: 0, z: 0 },
+            WATER,
+            SUV_MOTION,
+          ).blocked,
         ).toBe(true);
       }),
     );
@@ -461,7 +532,11 @@ describe("Motion medium contract", () => {
   it("pre-divides vertical impulses by the supplied drag and keeps the air default", () => {
     fc.assert(
       fc.property(
-        fc.double({ min: -SPEC.maxClimb, max: SPEC.maxClimb, noNaN: true }),
+        fc.double({
+          min: -SUV_SPEC.maxClimb,
+          max: SUV_SPEC.maxClimb,
+          noNaN: true,
+        }),
         fc.double({ min: -1, max: 1, noNaN: true }),
         (target, observed) => {
           expect(
@@ -470,7 +545,7 @@ describe("Motion medium contract", () => {
               WATER_VERTICAL_DRAG,
           ).toBeCloseTo(target, 12);
           expect(verticalImpulse(target, observed)).toBe(
-            verticalImpulse(target, observed, SPEC.flightVerticalDrag),
+            verticalImpulse(target, observed, SUV_SPEC.flightVerticalDrag),
           );
         },
       ),

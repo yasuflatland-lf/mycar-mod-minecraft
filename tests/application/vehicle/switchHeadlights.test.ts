@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { SwitchHeadlights } from "../../../src/application/vehicle/switchHeadlights";
+import { rebuildVehicle } from "../../../src/domain/vehicle/kinds/index";
 import { SPEC } from "../../../src/domain/vehicle/spec";
-import { type RiderView, Vehicle } from "../../../src/domain/vehicle/vehicle";
+import type { RiderView } from "../../../src/domain/vehicle/vehicle";
 import { FakeWorld, InMemoryRepo } from "./fakes";
 
 // Seat positions of the driver (0) and front passenger (1) with the vehicle heading +z.
@@ -20,7 +21,7 @@ const rider = (id: string, seat: 0 | 1): RiderView => ({
 function setup() {
   const world = new FakeWorld();
   const repo = new InMemoryRepo();
-  repo.save(Vehicle.rebuild("a", 0, [rider("d", 0), rider("p", 1)]));
+  repo.save(rebuildVehicle("suv", "a", 0, [rider("d", 0), rider("p", 1)], {}));
   world.headlights.set("a", false);
   return { world, uc: new SwitchHeadlights(world, repo) };
 }

@@ -60,6 +60,54 @@ function allowsFeatureImport(
   return source === undefined || source === target;
 }
 
+function startsWith(path: readonly string[], ...prefix: string[]): boolean {
+  return prefix.every((segment, i) => path[i] === segment);
+}
+
+/** The kind and motion rules of ADR 0055, on paths split into segments under src/. */
+function allowsKindImport(file: string, specifier: string): boolean {
+  const source = relative(SRC, file).split(sep);
+  if (!LAYERS.includes(source[0] ?? "")) return true;
+  // kind.ts imports nothing, not even a package.
+  if (source.join("/") === "domain/vehicle/kind.ts") return false;
+  if (!specifier.startsWith(".")) return true;
+  const target = relative(SRC, resolve(dirname(file), specifier)).split(sep);
+  if (!LAYERS.includes(target[0] ?? "")) return true;
+  const sourceKinds = source.indexOf("kinds");
+  const targetKinds = target.indexOf("kinds");
+  const sourceKind = source[sourceKinds + 1];
+
+  // One kind never imports another; kinds/index.ts wires them all.
+  if (
+    sourceKinds >= 0 &&
+    targetKinds >= 0 &&
+    sourceKind !== "index.ts" &&
+    sourceKind !== target[targetKinds + 1]
+  )
+    return false;
+
+  // The core and motion/ never import kinds/, and the core never imports motion/.
+  if (startsWith(source, "domain", "vehicle") && sourceKinds < 0) {
+    if (targetKinds >= 0) return false;
+    if (
+      !startsWith(source, "domain", "vehicle", "motion") &&
+      startsWith(target, "domain", "vehicle", "motion")
+    )
+      return false;
+  }
+
+  // Application and infrastructure reach kinds/ only through kinds/index.ts.
+  if (
+    (startsWith(source, "application") ||
+      startsWith(source, "infrastructure")) &&
+    targetKinds >= 0
+  ) {
+    const entry = target.slice(targetKinds + 1).join("/");
+    return entry === "index" || entry === "index.ts" || entry === "";
+  }
+  return true;
+}
+
 const RULES = [
   {
     layer: "src/domain",
@@ -115,6 +163,120 @@ describe("allowsFeatureImport", () => {
       ),
     ).toBe(allowed);
   });
+});
+
+describe("allowsKindImport", () => {
+  it.each([
+    ["same kind", "domain/vehicle/kinds/suv/drive.ts", "./form", true],
+    [
+      "other kind",
+      "domain/vehicle/kinds/suv/drive.ts",
+      "../sportsboat/drive",
+      false,
+    ],
+    ["core contract", "domain/vehicle/vehicle.ts", "./drive", true],
+    [
+      "core importing kind",
+      "domain/vehicle/vehicle.ts",
+      "./kinds/index",
+      false,
+    ],
+    ["motion contract", "domain/vehicle/motion/motion.ts", "../profile", true],
+    [
+      "motion importing kind",
+      "domain/vehicle/motion/motion.ts",
+      "../kinds/suv/spec",
+      false,
+    ],
+    ["core tuning", "domain/vehicle/vehicle.ts", "./spec", true],
+    [
+      "core importing motion",
+      "domain/vehicle/vehicle.ts",
+      "./motion/motion",
+      false,
+    ],
+    [
+      "application entry",
+      "application/vehicle/place.ts",
+      "../../domain/vehicle/kinds/index",
+      true,
+    ],
+    [
+      "application folder entry",
+      "application/vehicle/place.ts",
+      "../../domain/vehicle/kinds",
+      true,
+    ],
+    [
+      "application kind",
+      "application/vehicle/place.ts",
+      "../../domain/vehicle/kinds/suv/drive",
+      false,
+    ],
+    [
+      "infrastructure entry",
+      "infrastructure/vehicle/world.ts",
+      "../../domain/vehicle/kinds/index.ts",
+      true,
+    ],
+    [
+      "infrastructure kind",
+      "infrastructure/vehicle/world.ts",
+      "../../domain/vehicle/kinds/sportsboat/profile",
+      false,
+    ],
+    ["kind names without imports", "domain/vehicle/kind.ts", undefined, true],
+    [
+      "kind names importing a type",
+      "domain/vehicle/kind.ts",
+      "./profile",
+      false,
+    ],
+    [
+      "kind names importing a package",
+      "domain/vehicle/kind.ts",
+      "some-package",
+      false,
+    ],
+    ["registry wiring", "domain/vehicle/kinds/index.ts", "./suv/drive", true],
+    [
+      "normalized other kind",
+      "domain/vehicle/kinds/suv/drive.ts",
+      "./nested/../../sportsboat/drive",
+      false,
+    ],
+    [
+      "test pack excluded",
+      "test-pack/runner.ts",
+      "../domain/vehicle/kinds/suv/spec",
+      true,
+    ],
+  ])(
+    "%s: %s importing %s is allowed: %s",
+    (_rule, file, specifier, allowed) => {
+      const imports = specifier === undefined ? [] : [specifier];
+      expect(
+        imports.every((imp) => allowsKindImport(join(SRC, file), imp)),
+      ).toBe(allowed);
+    },
+  );
+});
+
+describe("Vehicle kind boundaries (ADR 0055)", () => {
+  for (const layer of LAYERS) {
+    it(`${layer} respects kind and motion boundaries`, () => {
+      const files = tsFiles(join(SRC, layer));
+      expect(files.length).toBeGreaterThan(0);
+      for (const file of files) {
+        for (const specifier of importsOf(readFileSync(file, "utf8"))) {
+          expect(
+            allowsKindImport(file, specifier),
+            `${file} imports ${specifier}`,
+          ).toBe(true);
+        }
+      }
+    });
+  }
 });
 
 describe("Feature boundaries (ADR 0046)", () => {

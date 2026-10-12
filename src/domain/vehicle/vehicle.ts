@@ -1,15 +1,13 @@
-// Aggregate for one vehicle: motion, driver, seats, ram cooldowns, and the hit count.
+// Aggregate for one vehicle: its drive, driver, seats, ram cooldowns, and the hit count.
 import { forward, type Vec2, type Vec3 } from "../shared/vec";
-import { type Drive, driveFor } from "./drive";
+import type { Drive, EngineCommand, RiderState, TickContext } from "./drive";
 import type { RawInput } from "./driveInput";
 import type { VehicleEvent } from "./events";
-import type { Form } from "./form";
 import { EMPTY_COUNTER, type HitCounter, registerHit } from "./hitCounter";
 import type { VehicleKind } from "./kind";
-import { initialMotion, type MotionState } from "./motion";
-import { profileOf, type VehicleProfile } from "./profile";
-import { type RamHit, type RamTarget, selectHits } from "./ram";
-import { doorOf, occupiedSeats, vacatedSeats } from "./seats";
+import type { VehicleProfile } from "./profile";
+import { type RamHit, selectHits } from "./ram";
+import { occupiedSeats, vacatedSeats } from "./seats";
 import { SPEC } from "./spec";
 
 export interface RiderView {
@@ -19,23 +17,10 @@ export interface RiderView {
   raw: RawInput;
 }
 
-export interface TickContext {
-  tick: number;
+export interface VehicleTickInput extends TickContext {
   riders: readonly RiderView[];
   /** Input used only when there is no driver (for in-game tests). */
   testInput?: RawInput;
-  velocity: Vec2;
-  onGround: boolean;
-  /** Blocks of water above the feet; absent or 0 out of water. */
-  waterDepth?: number;
-  /** Whether the cell 0.3 blocks below the feet holds water; a floating hull's feet can sit above the water cell (ADR 0051). */
-  waterBelow?: boolean;
-  /** Vertical velocity from the engine (blocks/tick). Read whenever the form is not car, including the tick takeoff starts. */
-  velocityY?: number;
-  /** Whether the block at entity location + offset (world axes, y from the feet) is solid; air, liquids and blocks without a collision box (flowers, grass, carpets) are not (ADR 0035). */
-  solidAt(offset: Vec3): boolean;
-  /** Nearby targets. Called only when the speed exceeds the ram threshold. */
-  targets(): readonly RamTarget[];
 }
 
 export interface TickOutcome {
@@ -43,59 +28,39 @@ export interface TickOutcome {
   yaw: number;
   hits: RamHit[];
   driverId?: string;
-  events: VehicleEvent[];
-  /** The new vehicle form, only on the tick it changes (ADR 0021). */
-  form?: Form;
-  /** The new bank angle in degrees, only on the tick it changes and on the first tick (ADR 0026). */
-  bank?: number;
-  /** Whether the wheels are in the driving pose, only on the tick it changes and on the first tick (ADR 0033). */
-  gearDown?: boolean;
+  commands: readonly EngineCommand[];
+  seatCommands: readonly EngineCommand[];
+  riders: RiderState;
 }
 
 export class Vehicle {
-  private readonly profile: VehicleProfile;
-  private motion: MotionState;
-  private readonly drive: Drive;
   private driverId: string | undefined;
   private seats = new Map<string, number>();
   private readonly lastHit = new Map<string, number>();
   private hitCounter: HitCounter = EMPTY_COUNTER;
   private lastSwitchUseTick = Number.NEGATIVE_INFINITY;
 
-  private constructor(
+  /** Called only by kinds/index.ts, which picks the drive for the kind. */
+  constructor(
     readonly id: string,
-    yaw: number,
-    form: Form = "car",
-    kind: VehicleKind = "suv",
-  ) {
-    this.profile = profileOf(kind);
-    this.motion = initialMotion(yaw);
-    this.drive = driveFor(kind, form);
-  }
-
-  static create(id: string, yaw: number, kind: VehicleKind = "suv"): Vehicle {
-    return new Vehicle(id, yaw, "car", kind);
-  }
+    private readonly profile: VehicleProfile,
+    private readonly drive: Drive,
+  ) {}
 
   /**
-   * Rebuilds a vehicle whose aggregate was lost (e.g. after `/reload`) while
-   * riders may already be seated. Seeding the seats and the driver keeps the
-   * first tick from treating the current driver as newly mounted, which would
-   * snap the heading to the driver's view. The vehicle form comes from the
-   * entity, so a vehicle in the air keeps flying (ADR 0021); kinds without
-   * forms ignore it.
+   * Seats riders who were already aboard when the aggregate was lost (e.g.
+   * after `/reload`), so the first tick does not treat the current driver as
+   * newly mounted, which would snap the heading to the driver's view. Called
+   * only by kinds/index.ts. `yaw` is the entity's heading as read, before the
+   * drive normalizes it.
    */
-  static rebuild(
-    id: string,
-    yaw: number,
-    riders: readonly RiderView[],
-    form: Form = "car",
-    kind: VehicleKind = "suv",
-  ): Vehicle {
-    const v = new Vehicle(id, yaw, form, kind);
-    v.seats = occupiedSeats(riders, forward(yaw), v.profile.seats.positions);
-    v.driverId = riders.find((r) => v.seats.get(r.id) === 0)?.id;
-    return v;
+  seatRiders(riders: readonly RiderView[], yaw: number): void {
+    this.seats = occupiedSeats(
+      riders,
+      forward(yaw),
+      this.profile.seats.positions,
+    );
+    this.driverId = riders.find((r) => this.seats.get(r.id) === 0)?.id;
   }
 
   get kind(): VehicleKind {
@@ -103,66 +68,42 @@ export class Vehicle {
   }
 
   get speed(): number {
-    return this.motion.speed;
+    return this.drive.speed;
   }
 
   get yaw(): number {
-    return this.motion.yaw;
+    return this.drive.yaw;
   }
 
-  get form(): Form {
-    return this.drive.form;
-  }
+  tick(input: VehicleTickInput): TickOutcome {
+    const seatCommands = this.updateSeats(input.riders);
+    const driver = this.updateDriver(input.riders);
 
-  /** Whether the wheels are in the driving pose (ADR 0033). */
-  get wheelsDown(): boolean {
-    return this.drive.wheelsDown;
-  }
-
-  /** Bank angle in degrees; positive lowers the right side (ADR 0026). */
-  get bankAngle(): number {
-    return this.drive.bankAngle;
-  }
-
-  tick(ctx: TickContext): TickOutcome {
-    const events = this.updateSeats(ctx.riders);
-    const driver = this.updateDriver(ctx.riders);
-
-    const raw = driver?.raw ?? ctx.testInput;
-    const r = this.drive.step(this.motion, raw, ctx, this.profile);
-    this.motion = r.motion;
+    const raw = driver?.raw ?? input.testInput;
+    const step = this.drive.step(raw, input);
 
     return {
-      impulse: r.impulse,
-      yaw: this.motion.yaw,
-      hits: this.ram(ctx, r.forward),
+      impulse: step.impulse,
+      yaw: this.drive.yaw,
+      hits: this.ram(input, step.forward),
       driverId: driver?.id,
-      events,
-      form: r.form,
-      bank: r.bank,
-      gearDown: r.gearDown,
+      commands: step.commands,
+      seatCommands,
+      riders: step.riders,
     };
   }
 
-  private updateSeats(riders: readonly RiderView[]): VehicleEvent[] {
+  private updateSeats(riders: readonly RiderView[]): readonly EngineCommand[] {
     const seats = occupiedSeats(
       riders,
-      forward(this.motion.yaw),
+      forward(this.drive.yaw),
       this.profile.seats.positions,
     );
-    const events: VehicleEvent[] = vacatedSeats(this.seats, seats).map(
-      (seat) => {
-        const door = doorOf(seat, this.profile.seats.doors ?? []);
-        return {
-          type: "SeatVacated",
-          vehicleId: this.id,
-          seat,
-          ...(door !== undefined ? { door } : {}),
-        };
-      },
-    );
+    const commands = vacatedSeats(this.seats, seats)
+      .sort((a, b) => a - b)
+      .flatMap((seat) => this.drive.onSeatVacated(seat));
     this.seats = seats;
-    return events;
+    return commands;
   }
 
   private updateDriver(riders: readonly RiderView[]): RiderView | undefined {
@@ -173,13 +114,8 @@ export class Vehicle {
     const driver =
       riders.find((r) => r.id === this.driverId) ??
       riders.find((r) => this.seats.get(r.id) === 0);
-    if (
-      driver &&
-      this.driverId !== driver.id &&
-      Math.abs(this.motion.speed) < SPEC.mountAlignSpeed
-    ) {
-      this.motion = { ...this.motion, yaw: driver.yaw };
-    }
+    if (driver && this.driverId !== driver.id)
+      this.drive.onDriverMounted(driver.yaw);
     this.driverId = driver?.id;
     return driver;
   }
@@ -188,10 +124,10 @@ export class Vehicle {
     for (const [id, t] of this.lastHit)
       if (ctx.tick - t >= SPEC.ramCooldown) this.lastHit.delete(id);
     // selectHits checks the speed too; checking here skips the targets() query.
-    if (Math.abs(this.motion.speed) <= SPEC.ramMinSpeed) return [];
+    if (Math.abs(this.drive.speed) <= SPEC.ramMinSpeed) return [];
     const hits = selectHits(
       f,
-      this.motion.speed,
+      this.drive.speed,
       ctx.targets(),
       this.lastHit,
       ctx.tick,

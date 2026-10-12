@@ -1,28 +1,32 @@
 import { expect, it, vi } from "vitest";
 import { DriveVehicles } from "../../../src/application/vehicle/driveVehicles";
-import { SUV_PROFILE } from "../../../src/domain/vehicle/profile";
+import { SUV_PROFILE } from "../../../src/domain/vehicle/kinds/suv/profile";
 import { defined } from "../../support/defined";
 import { FakeWorld, InMemoryRepo, snapshot } from "./fakes";
 
-vi.mock("../../../src/domain/vehicle/profile", async (importOriginal) => {
-  const original =
-    await importOriginal<
-      typeof import("../../../src/domain/vehicle/profile")
-    >();
-  return {
-    ...original,
-    profileOf: () => ({
-      ...original.SUV_PROFILE,
-      seats: { positions: original.SUV_PROFILE.seats.positions },
-    }),
-  };
-});
+vi.mock(
+  "../../../src/domain/vehicle/kinds/suv/drive",
+  async (importOriginal) => {
+    const original =
+      await importOriginal<
+        typeof import("../../../src/domain/vehicle/kinds/suv/drive")
+      >();
+    return {
+      ...original,
+      SuvDrive: class extends original.SuvDrive {
+        onSeatVacated() {
+          return [];
+        }
+      },
+    };
+  },
+);
 
-it("plays no door when a rider leaves a vehicle whose profile has no doors", () => {
+it("plays no door when a rider leaves a vehicle whose drive has no doors", () => {
   const world = new FakeWorld();
   const log = { warn: vi.fn() };
   const drive = new DriveVehicles(world, new InMemoryRepo(), log);
-  const playDoor = vi.spyOn(world, "playDoor");
+  const run = vi.spyOn(world, "run");
   world.snapshots = [
     snapshot("v", {
       riders: [
@@ -38,6 +42,6 @@ it("plays no door when a rider leaves a vehicle whose profile has no doors", () 
   drive.execute(0);
   world.snapshots = [snapshot("v")];
   drive.execute(1);
-  expect(playDoor).not.toHaveBeenCalled();
+  expect(run).toHaveBeenLastCalledWith("v", []);
   expect(log.warn).not.toHaveBeenCalled();
 });

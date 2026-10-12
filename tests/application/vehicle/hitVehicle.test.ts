@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { HitVehicle } from "../../../src/application/vehicle/hitVehicle";
-import { Vehicle } from "../../../src/domain/vehicle/vehicle";
+import { createVehicle } from "../../../src/domain/vehicle/kinds/index";
 import { FakeFleetRepository, FakeWorld, InMemoryRepo } from "./fakes";
 
 describe("HitVehicle (ADR 0008)", () => {
   it("on the third hit, drops the item, removes the vehicle, and discards the aggregate", () => {
     const world = new FakeWorld();
     const repo = new InMemoryRepo();
-    repo.save(Vehicle.create("a", 0));
+    repo.save(createVehicle("suv", "a", 0));
     const fleets = new FakeFleetRepository();
     fleets.state = { order: ["a", "b"], evicted: [] };
     const uc = new HitVehicle(world, repo, fleets);

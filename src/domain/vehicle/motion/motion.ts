@@ -6,10 +6,10 @@ import {
   forward,
   normalizeYaw,
   type Vec2,
-} from "../shared/vec";
-import type { DriveInput } from "./driveInput";
-import { type MotionLimits, SUV_PROFILE } from "./profile";
-import { SPEC } from "./spec";
+} from "../../shared/vec";
+import type { DriveInput } from "../driveInput";
+import type { MotionLimits } from "../profile";
+import { MOTION } from "./constants";
 
 export interface Medium {
   readonly drag: number;
@@ -23,18 +23,10 @@ export interface Medium {
   readonly wallDrag?: number;
 }
 
-export const AIR: Medium = { drag: SPEC.flightDrag, maxSpeed: SPEC.maxSpeed };
-export const WATER: Medium = {
-  drag: SPEC.waterDrag,
-  maxSpeed: SPEC.maxWaterSpeed,
-};
-
 export interface MotionState {
   speed: number; // Internal forward/reverse speed (blocks/tick; negative means reverse)
   yaw: number;
   friction?: number; // Ground friction estimate; undefined until estimated
-  /** Buoyant boat's water drag estimate (ADR 0053), retained while beached. */
-  waterDrag?: number;
   // Velocity the script aimed for in the previous tick. Kept only when that
   // tick was on the ground: in the air the engine applies airFriction and only
   // airControl of the impulse, so the ratio would not measure ground friction.
@@ -47,6 +39,16 @@ export interface MotionState {
 
 export function initialMotion(yaw: number): MotionState {
   return { speed: 0, yaw: normalizeYaw(yaw), stepTicks: 0 };
+}
+
+/** Turns to a boarding driver's yaw when nearly stopped (ADR 0019). */
+export function alignOnMount(
+  state: MotionState,
+  driverYaw: number,
+): MotionState {
+  return Math.abs(state.speed) < MOTION.mountAlignSpeed
+    ? { ...state, yaw: driverYaw }
+    : state;
 }
 
 export interface Observation {
@@ -67,8 +69,8 @@ export interface MotionResult {
 export function updateSpeed(
   speed: number,
   throttle: number,
-  creep = false,
-  limits: MotionLimits = SUV_PROFILE.motion,
+  creep: boolean,
+  limits: MotionLimits,
 ): number {
   if (creep) {
     if (speed >= limits.creepSpeed)
@@ -91,7 +93,7 @@ export function steerYaw(
   yaw: number,
   speed: number,
   steer: number,
-  limits: MotionLimits = SUV_PROFILE.motion,
+  limits: MotionLimits,
 ): number {
   const factor =
     Math.min(1, Math.abs(speed) / limits.steerFullSpeed) * Math.sign(speed);
@@ -105,7 +107,7 @@ export function steerYaw(
  */
 export function hitWall(v: Vec2, given: Vec2, keptRatio: number): boolean {
   const axisBlocked = (ve: number, ee: number) =>
-    Math.abs(ee) > SPEC.blockedAxisMin && ve / ee < keptRatio;
+    Math.abs(ee) > MOTION.blockedAxisMin && ve / ee < keptRatio;
   return axisBlocked(v.x, given.x) || axisBlocked(v.z, given.z);
 }
 
@@ -124,7 +126,7 @@ export function stepMotion(
   input: DriveInput,
   obs: Observation,
   probe: StepProbe,
-  limits: MotionLimits = SUV_PROFILE.motion,
+  limits: MotionLimits,
 ): MotionResult {
   const st: MotionState = { ...prev, airExpected: undefined };
   st.speed = updateSpeed(st.speed, input.throttle, input.creep, limits);
@@ -138,25 +140,29 @@ export function stepMotion(
   let blocked = false;
   if (st.expected && obs.onGround) {
     const e = st.expected;
-    const limit = (st.friction ?? SPEC.defaultFriction) * SPEC.blockedRatio;
+    const limit = (st.friction ?? MOTION.defaultFriction) * MOTION.blockedRatio;
     blocked = hitWall(v, e, limit);
     if (blocked) {
       // While colliding, freeze the friction estimate.
       st.speed = speedAfterWall(st.speed, vLong, limits);
     } else {
       const eLen2 = e.x * e.x + e.z * e.z;
-      if (eLen2 > SPEC.minExpectedForFriction ** 2) {
-        const r = clamp(dot(v, e) / eLen2, SPEC.frictionMin, SPEC.frictionMax);
+      if (eLen2 > MOTION.minExpectedForFriction ** 2) {
+        const r = clamp(
+          dot(v, e) / eLen2,
+          MOTION.frictionMin,
+          MOTION.frictionMax,
+        );
         st.friction =
           st.friction === undefined
             ? r
-            : st.friction * (1 - SPEC.frictionEma) + r * SPEC.frictionEma;
+            : st.friction * (1 - MOTION.frictionEma) + r * MOTION.frictionEma;
       }
     }
   }
   const friction = obs.onGround
-    ? (st.friction ?? SPEC.defaultFriction)
-    : SPEC.airFriction;
+    ? (st.friction ?? MOTION.defaultFriction)
+    : MOTION.airFriction;
 
   // Steps (ADR 0004, 0035)
   let jumpVelocity = 0;
@@ -165,9 +171,9 @@ export function stepMotion(
       ? probe(f, st.speed)
       : 0;
   if (height > 0) {
-    jumpVelocity = height === 2 ? SPEC.stepVelocity : SPEC.oneStepVelocity;
-    st.speed = Math.max(st.speed, SPEC.stepMinSpeed);
-    st.stepTicks = SPEC.stepTicks;
+    jumpVelocity = height === 2 ? MOTION.stepVelocity : MOTION.oneStepVelocity;
+    st.speed = Math.max(st.speed, MOTION.stepMinSpeed);
+    st.stepTicks = MOTION.stepTicks;
   }
   const stepping = st.stepTicks > 0;
   if (stepping) st.stepTicks--;
@@ -188,7 +194,7 @@ export function stepMotion(
   // friction this tick is the target.
   const given = { x: target.x / friction, z: target.z / friction };
   st.expected = obs.onGround ? given : undefined;
-  const control = obs.onGround || stepping ? 1 : SPEC.airControl;
+  const control = obs.onGround || stepping ? 1 : MOTION.airControl;
   return {
     state: st,
     forward: f,
@@ -209,8 +215,8 @@ export function stepFlightMotion(
   prev: MotionState,
   input: DriveInput,
   v: Vec2,
-  medium: Medium = AIR,
-  limits: MotionLimits = SUV_PROFILE.motion,
+  medium: Medium,
+  limits: MotionLimits,
 ): MotionResult {
   // Without the cap, speed keeps climbing toward limits.maxSpeed under water
   // while clampLength hides it, and a released throttle coasts at full water
@@ -228,7 +234,7 @@ export function stepFlightMotion(
     hitWall(
       v,
       prev.airExpected,
-      (medium.wallDrag ?? medium.drag) * SPEC.blockedRatio,
+      (medium.wallDrag ?? medium.drag) * MOTION.blockedRatio,
     );
   if (blocked) speed = speedAfterWall(speed, vLong, limits);
   const keepLat = 1 - limits.grip;

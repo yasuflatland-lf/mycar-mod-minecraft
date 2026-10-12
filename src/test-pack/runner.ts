@@ -2,19 +2,19 @@
 // main Behavior Pack, so they drive the vehicle through script events.
 import { type Dimension, type Entity, system, world } from "@minecraft/server";
 import { dot, forward } from "../domain/shared/vec";
-import { BoatDrive } from "../domain/vehicle/boatDrive";
-import { type Form, isForm } from "../domain/vehicle/form";
 import { headlightCells } from "../domain/vehicle/headlights";
-import { initialMotion } from "../domain/vehicle/motion";
+import { BoatDrive } from "../domain/vehicle/kinds/sportsboat/drive";
+import { SPORTSBOAT_MOTION } from "../domain/vehicle/kinds/sportsboat/profile";
+import type { SUV_ENTITY } from "../domain/vehicle/kinds/suv/entity";
+import { type Form, isForm } from "../domain/vehicle/kinds/suv/form";
+import { SUV_PROFILE } from "../domain/vehicle/kinds/suv/profile";
+import { SUV_SPEC } from "../domain/vehicle/kinds/suv/spec";
 import { PAINTS } from "../domain/vehicle/paint";
-import { SPORTSBOAT_PROFILE } from "../domain/vehicle/profile";
 import { nearestSeat, toLocal } from "../domain/vehicle/seats";
 import { SPEC } from "../domain/vehicle/spec";
 import {
-  BANK_PROPERTY,
   ENTITY_TYPE,
-  FORM_PROPERTY,
-  GEAR_DOWN_PROPERTY,
+  entityPropertyId,
   HEADLIGHTS_PROPERTY,
   TEST_INPUT_EVENT as INPUT_EVENT,
   LIGHT_BLOCK,
@@ -75,7 +75,7 @@ function slipAngleDeg(v: Horizontal, yaw: number): number {
 }
 
 function insideArena(p: Horizontal): boolean {
-  const m = SPEC.bodyHalfWidth;
+  const m = SUV_SPEC.bodyHalfWidth;
   return (
     p.x >= ARENA.minX + m &&
     p.x <= ARENA.maxX + 1 - m &&
@@ -167,7 +167,7 @@ function accelAndStep1(a: Arena): Promise<Outcome> {
     let reach = -1;
     for (let t = 0; t < 200; t++) {
       await wait(1);
-      if (reach < 0 && hlen(car.getVelocity()) >= SPEC.maxSpeed * 0.95)
+      if (reach < 0 && hlen(car.getVelocity()) >= SUV_SPEC.maxSpeed * 0.95)
         reach = t;
       if (car.location.x > 63) break;
     }
@@ -236,7 +236,7 @@ async function turnAndHandbrake(a: Arena): Promise<Outcome> {
       grip.inside &&
       hb.inside &&
       hb.maxSlip > grip.maxSlip &&
-      hb.maxSpeed <= SPEC.maxSpeed * 1.02,
+      hb.maxSpeed <= SUV_SPEC.maxSpeed * 1.02,
     detail: `inside=${grip.inside && hb.inside} slip grip=${grip.maxSlip.toFixed(1)} hb=${hb.maxSlip.toFixed(1)} hbMaxSpeed=${hb.maxSpeed.toFixed(3)}`,
   };
 }
@@ -348,7 +348,10 @@ function seatOf(vehicle: Entity, rider: Entity): number {
     x: rider.location.x - vehicle.location.x,
     z: rider.location.z - vehicle.location.z,
   };
-  return nearestSeat(toLocal(offset, forward(vehicle.getRotation().y)));
+  return nearestSeat(
+    toLocal(offset, forward(vehicle.getRotation().y)),
+    SUV_PROFILE.seats.positions,
+  );
 }
 
 // Bedrock seats riders by their index in the rider list, so a passenger moves
@@ -427,13 +430,21 @@ function headlightsFollowAndClear(a: Arena): Promise<Outcome> {
     };
     car.setProperty(HEADLIGHTS_PROPERTY, true);
     await wait(3);
-    const parked = headlightCells(car.location, car.getRotation().y);
+    const parked = headlightCells(
+      car.location,
+      car.getRotation().y,
+      SUV_PROFILE.beams,
+    );
     const litParked = parked.filter(lightAt).length;
     drive(car, 0, 1);
     await wait(30);
     drive(car, 0, 0);
     await wait(20);
-    const moved = headlightCells(car.location, car.getRotation().y);
+    const moved = headlightCells(
+      car.location,
+      car.getRotation().y,
+      SUV_PROFILE.beams,
+    );
     const litMoved = moved.filter(lightAt).length;
     const whileOn = lightsAround();
     const level = Math.abs(car.location.y - a.gy) < 0.1;
@@ -454,8 +465,15 @@ function headlightsFollowAndClear(a: Arena): Promise<Outcome> {
 
 const FLIGHT_LANE = { x: 5.5, z: 4.5 } as const;
 
+function suvProperty(
+  car: Entity,
+  name: keyof typeof SUV_ENTITY.properties,
+): ReturnType<Entity["getProperty"]> {
+  return car.getProperty(entityPropertyId(name));
+}
+
 function vehicleForm(car: Entity): Form | undefined {
-  const form = car.getProperty(FORM_PROPERTY);
+  const form = suvProperty(car, "form");
   return isForm(form) ? form : undefined;
 }
 
@@ -476,7 +494,7 @@ function withAirborneCar<T>(
 ): Promise<T> {
   return withCar(a, FLIGHT_LANE.x, FLIGHT_LANE.z, -90, async (car) => {
     await doubleTap(car);
-    await wait(SPEC.takeoffTicks + 5);
+    await wait(SUV_SPEC.takeoffTicks + 5);
     return run(car);
   });
 }
@@ -524,14 +542,14 @@ function flightCruise(a: Arena): Promise<Outcome> {
       if (t >= 50) speed = Math.max(speed, hlen(car.getVelocity()));
     }
     const altRange = maxY - minY;
-    // At steady state the speed is maxSpeed * engineDrag / SPEC.flightDrag,
+    // At steady state the speed is maxSpeed * engineDrag / SUV_SPEC.flightDrag,
     // so the ratio reveals the engine's drag with gravity off.
-    const measuredDrag = (SPEC.flightDrag * speed) / SPEC.maxSpeed;
+    const measuredDrag = (SUV_SPEC.flightDrag * speed) / SUV_SPEC.maxSpeed;
     return {
       pass:
         altRange <= 0.5 &&
-        speed >= SPEC.maxSpeed * 0.95 &&
-        speed <= SPEC.maxSpeed * 1.05,
+        speed >= SUV_SPEC.maxSpeed * 0.95 &&
+        speed <= SUV_SPEC.maxSpeed * 1.05,
       detail: `altRange=${altRange.toFixed(3)} speed=${speed.toFixed(3)} measuredDrag=${measuredDrag.toFixed(3)}`,
     };
   });
@@ -555,7 +573,7 @@ function flightClimbDescend(a: Arena): Promise<Outcome> {
 
 function flightBank(a: Arena): Promise<Outcome> {
   return withAirborneCar(a, async (car) => {
-    const bank = () => Number(car.getProperty(BANK_PROPERTY));
+    const bank = () => Number(suvProperty(car, "bank"));
     // Turn right: the lane runs along the arena's low-z edge, and a car that
     // leaves the ticking area stops updating.
     drive(car, -1, 1);
@@ -566,7 +584,7 @@ function flightBank(a: Arena): Promise<Outcome> {
     const straight = bank();
     return {
       // Steering right lowers the right side, so the angle is positive (ADR 0026).
-      pass: turning >= SPEC.maxBank / 2 && straight === 0,
+      pass: turning >= SUV_SPEC.maxBank / 2 && straight === 0,
       detail: `turning=${turning.toFixed(1)} straight=${straight.toFixed(1)}`,
     };
   });
@@ -585,7 +603,7 @@ function flightLand(a: Arena): Promise<Outcome> {
     let landedAt = -1;
     for (let t = 0; t < 80; t++) {
       await wait(1);
-      if (Number.isNaN(gearY) && car.getProperty(GEAR_DOWN_PROPERTY) === true)
+      if (Number.isNaN(gearY) && suvProperty(car, "gear_down") === true)
         gearY = car.location.y - a.gy;
       if (vehicleForm(car) === "car") {
         landedAt = t;
@@ -602,7 +620,7 @@ function flightLand(a: Arena): Promise<Outcome> {
         afterTap === "landing" &&
         landedAt >= 0 &&
         gearY >= 2 &&
-        gearY <= SPEC.gearDownHeight + 0.5 &&
+        gearY <= SUV_SPEC.gearDownHeight + 0.5 &&
         Math.abs(restY) <= 0.1 &&
         Math.abs(afterHop) <= 0.1,
       detail: `afterTap=${afterTap} gearY=${gearY.toFixed(2)} landedAt=${landedAt} restY=${restY.toFixed(2)} afterHop=${afterHop.toFixed(2)}`,
@@ -618,7 +636,7 @@ function flightTouchdown(a: Arena): Promise<Outcome> {
     drive(car, 0, 0);
     await wait(20);
     const restY = car.location.y - a.gy;
-    const gearDown = car.getProperty(GEAR_DOWN_PROPERTY) === true;
+    const gearDown = suvProperty(car, "gear_down") === true;
     return {
       pass: landedAt >= 0 && Math.abs(restY) <= 0.1 && gearDown,
       detail: `landedAt=${landedAt} restY=${restY.toFixed(2)} gearDown=${gearDown}`,
@@ -649,7 +667,7 @@ const POOL_SOUTH_LANE = { x: POOL.minX + 5.5, z: POOL.minZ + 2.5, yaw: 0 };
 // flat dev world (gy = -60) this puts the pool's stone floor at -64, the
 // bottom of the world, so a carHeight above 2 no longer fits; withPool throws
 // instead of filling below the world.
-const DIVE_DEPTH = Math.ceil(SPEC.carHeight + 1);
+const DIVE_DEPTH = Math.ceil(SUV_SPEC.carHeight + 1);
 // The car holds depth exactly once it is a submarine (submarine_dive measured
 // a range of 0.000), so 0.1 only absorbs float noise in the reported position.
 // The same margin keeps the held depth clear of the bed and the float line, so
@@ -774,14 +792,13 @@ function boatDrag(a: Arena): Promise<Outcome> {
       a,
       async (boat) => {
         const start = boat.location;
-        let motion = initialMotion(boat.getRotation().y);
         let observed = boat.getVelocity();
         const waterRatios: number[] = [];
         const airRatios: number[] = [];
         const steadySpeeds: number[] = [];
         const coastRatios: number[] = [];
         const steadyDrag: number[] = [];
-        const replica = new BoatDrive();
+        const replica = new BoatDrive(boat.getRotation().y, {});
         const lines: string[] = [];
         drive(boat, 0, 1);
         for (let t = 0; t < 93; t++) {
@@ -791,20 +808,18 @@ function boatDrag(a: Arena): Promise<Outcome> {
           const throttle = t >= 1 && t <= 80;
           if (t === 80) clearInput(boat);
           const step = replica.step(
-            motion,
             { moveX: 0, moveY: throttle ? 1 : 0, jump: false },
             {
               tick: t,
-              riders: [],
               velocity: observed,
               onGround: false,
-              waterDepth: Math.max(0.01, a.gy - boat.location.y),
+              // The replica stays afloat for the whole run.
+              location: boat.location,
+              waterAt: () => true,
               solidAt: () => false,
               targets: () => [],
             },
-            SPORTSBOAT_PROFILE,
           );
-          motion = step.motion;
           const given = {
             x: observed.x + step.impulse.x,
             z: observed.z + step.impulse.z,
@@ -827,11 +842,11 @@ function boatDrag(a: Arena): Promise<Outcome> {
           }
           if (throttle && t >= 60) {
             steadySpeeds.push(speed);
-            if (motion.waterDrag !== undefined)
-              steadyDrag.push(motion.waterDrag);
+            if (replica.waterDrag !== undefined)
+              steadyDrag.push(replica.waterDrag);
           }
           lines.push(
-            `tick=${t + 1} ${throttle ? "throttle" : "coast"} impulse=${hlen(step.impulse).toFixed(3)} given=${hlen(given).toFixed(3)} observed=${speed.toFixed(3)} feet=${(boat.location.y - a.gy).toFixed(3)} water=${water ? 1 : 0} drag=${motion.waterDrag?.toFixed(3) ?? "n/a"} ratio=${ratio?.toFixed(3) ?? "n/a"}`,
+            `tick=${t + 1} ${throttle ? "throttle" : "coast"} impulse=${hlen(step.impulse).toFixed(3)} given=${hlen(given).toFixed(3)} observed=${speed.toFixed(3)} feet=${(boat.location.y - a.gy).toFixed(3)} water=${water ? 1 : 0} drag=${replica.waterDrag?.toFixed(3) ?? "n/a"} ratio=${ratio?.toFixed(3) ?? "n/a"}`,
           );
         }
         const meanText = (values: number[]) =>
@@ -844,7 +859,7 @@ function boatDrag(a: Arena): Promise<Outcome> {
         });
         return {
           pass: distance >= 5,
-          detail: `distance=${distance.toFixed(3)} water(${summary(waterRatios)}) air(${summary(airRatios)}) steadySpeed=${meanText(steadySpeeds)} coastRatio=${meanText(coastRatios)} finalDrag=${motion.waterDrag?.toFixed(3) ?? "n/a"} steadyDrag=${Math.min(...steadyDrag).toFixed(3)}-${Math.max(...steadyDrag).toFixed(3)}`,
+          detail: `distance=${distance.toFixed(3)} water(${summary(waterRatios)}) air(${summary(airRatios)}) steadySpeed=${meanText(steadySpeeds)} coastRatio=${meanText(coastRatios)} finalDrag=${replica.waterDrag?.toFixed(3) ?? "n/a"} steadyDrag=${Math.min(...steadyDrag).toFixed(3)}-${Math.max(...steadyDrag).toFixed(3)}`,
           lines,
         };
       },
@@ -905,7 +920,7 @@ function boatCruise(a: Arena): Promise<Outcome> {
     );
     return {
       pass:
-        steadySpeed >= 0.95 * SPORTSBOAT_PROFILE.motion.maxSpeed &&
+        steadySpeed >= 0.95 * SPORTSBOAT_MOTION.maxSpeed &&
         Math.abs(turn.degrees) >= 360 &&
         turn.endSpeed >= 0.8 * turn.cruiseSpeed,
       detail: `steadySpeed=${steadySpeed.toFixed(3)} cruiseSpeed=${turn.cruiseSpeed.toFixed(3)} turnMinSpeed=${turn.minSpeed.toFixed(3)} turnEndSpeed=${turn.endSpeed.toFixed(3)} kept=${(turn.endSpeed / turn.cruiseSpeed).toFixed(3)} turn=${turn.degrees.toFixed(1)} turnTicks=${turn.ticks} turnRate=${turn.rate.toFixed(3)}`,
@@ -1008,7 +1023,7 @@ function submarineDive(a: Arena): Promise<Outcome> {
       }
       const drift = Math.max(y0 - minY, maxY - y0);
       const bed = a.gy - DIVE_DEPTH;
-      const floatLine = a.gy - SPEC.floatDraft;
+      const floatLine = a.gy - SUV_SPEC.floatDraft;
       const heldDepth =
         drift <= DEPTH_HOLD_TOLERANCE &&
         minY > bed + DEPTH_HOLD_TOLERANCE &&
@@ -1017,7 +1032,8 @@ function submarineDive(a: Arena): Promise<Outcome> {
       // near the bottom of the world, so the pool is only a few blocks deep
       // and the rise is sampled in its first ticks, while still submerged.
       // The first ticks overshoot (the input lands a tick late and the
-      // impulse assumes SPEC's drag), so only the last two samples count.
+      // impulse assumes SUV_SPEC.waterVerticalDrag), so only the last two
+      // samples count.
       drive(car, 0, -1);
       await wait(20);
       drive(car, 0, 0, true);
@@ -1032,17 +1048,19 @@ function submarineDive(a: Arena): Promise<Outcome> {
         steady.length === 2
           ? steady.reduce((sum, v) => sum + v, 0) / steady.length
           : Number.NaN;
-      // As in flight_cruise, the steady speed is target * engineDrag / SPEC drag,
-      // so the ratio reveals the engine's drag in water.
-      const measuredDrag = (SPEC.waterDrag * speed) / SPEC.maxWaterSpeed;
+      // As in flight_cruise, steady speed is target * engineDrag / the SUV_SPEC
+      // drag: SUV_SPEC.waterDrag horizontally, SUV_SPEC.waterVerticalDrag
+      // vertically. The ratio reveals the engine's drag in water.
+      const measuredDrag =
+        (SUV_SPEC.waterDrag * speed) / SUV_SPEC.maxWaterSpeed;
       const measuredVerticalDrag =
-        (SPEC.waterVerticalDrag * riseSpeed) / SPEC.maxClimb;
+        (SUV_SPEC.waterVerticalDrag * riseSpeed) / SUV_SPEC.maxClimb;
       return {
         pass:
           submerged &&
           heldDepth &&
-          withinFivePercent(speed, SPEC.maxWaterSpeed) &&
-          withinFivePercent(riseSpeed, SPEC.maxClimb),
+          withinFivePercent(speed, SUV_SPEC.maxWaterSpeed) &&
+          withinFivePercent(riseSpeed, SUV_SPEC.maxClimb),
         detail: `enteredAt=${enteredAt} submerged=${submerged} y0=${(y0 - a.gy).toFixed(3)} drift=${drift.toFixed(3)} speed=${speed.toFixed(3)} riseSpeed=${riseSpeed.toFixed(3)} measuredDrag=${measuredDrag.toFixed(3)} measuredVerticalDrag=${measuredVerticalDrag.toFixed(3)}`,
       };
     }),
@@ -1052,7 +1070,7 @@ function submarineDive(a: Arena): Promise<Outcome> {
 function submarineBank(a: Arena): Promise<Outcome> {
   return withPool(a, DIVE_DEPTH, () =>
     withDivingCar(a, async (car, enteredAt) => {
-      const bank = () => Number(car.getProperty(BANK_PROPERTY));
+      const bank = () => Number(suvProperty(car, "bank"));
       // Turn right into the open water, as flight_bank does in the air (ADR 0044).
       drive(car, -1, 1);
       await wait(20);
@@ -1064,7 +1082,7 @@ function submarineBank(a: Arena): Promise<Outcome> {
         pass:
           enteredAt >= 0 &&
           vehicleForm(car) === "submarine" &&
-          turning >= SPEC.maxBank / 2 &&
+          turning >= SUV_SPEC.maxBank / 2 &&
           straight === 0,
         detail: `enteredAt=${enteredAt} turning=${turning.toFixed(1)} straight=${straight.toFixed(1)}`,
       };
@@ -1103,7 +1121,7 @@ function submarineShore(a: Arena): Promise<Outcome> {
   // Wide enough that the car, coasting after it becomes a car with the
   // throttle off, settles on the last submerged step instead of reaching the
   // dry one. It becomes a car near the submarine's top speed (0.5) and loses
-  // only SPEC.drag (0.02) per tick: with tread 8 it became a car 1.9 blocks
+  // only SUV_SPEC.drag (0.02) per tick: with tread 8 it became a car 1.9 blocks
   // past the riser and coasted 7.75 blocks up onto the dry step; with tread
   // 14 it coasted 7.96 blocks and its front stopped 2.5 blocks short of the
   // next riser.
@@ -1182,7 +1200,7 @@ function submarineUnmanned(a: Arena): Promise<Outcome> {
         maxY = Math.max(maxY, car.location.y);
         maxFloatError = Math.max(
           maxFloatError,
-          Math.abs(a.gy - car.location.y - SPEC.floatDraft),
+          Math.abs(a.gy - car.location.y - SUV_SPEC.floatDraft),
         );
       }
       const rise = car.location.y - startY;

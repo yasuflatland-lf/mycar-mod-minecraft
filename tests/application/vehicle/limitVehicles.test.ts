@@ -1,8 +1,8 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { LimitVehicles } from "../../../src/application/vehicle/limitVehicles";
+import { createVehicle } from "../../../src/domain/vehicle/kinds/index";
 import { SPEC } from "../../../src/domain/vehicle/spec";
-import { Vehicle } from "../../../src/domain/vehicle/vehicle";
 import { FakeFleetRepository, FakeWorld, InMemoryRepo } from "./fakes";
 
 const ids = (n: number) => Array.from({ length: n }, (_, i) => `v${i}`);
@@ -27,7 +27,7 @@ describe("LimitVehicles (ADR 0038)", () => {
   it("removes the oldest loaded vehicle when a new one spawns over the limit", () => {
     const { world, repo, fleets, uc } = setup();
     fleets.state = { order: full, evicted: [] };
-    repo.save(Vehicle.create("v0", 0));
+    repo.save(createVehicle("suv", "v0", 0));
     world.loadedIds = [...full, "new"];
     uc.spawned("new");
     expect(world.calls).toEqual(["remove:v0"]);
@@ -62,7 +62,7 @@ describe("LimitVehicles (ADR 0038)", () => {
   it("trims a world that already has more vehicles than the limit", () => {
     const { world, repo, fleets, uc } = setup();
     world.loadedIds = ids(SPEC.maxVehicles + 3);
-    for (const id of world.loadedIds) repo.save(Vehicle.create(id, 0));
+    for (const id of world.loadedIds) repo.save(createVehicle("suv", id, 0));
     uc.start();
     // Within one scan a later id counts as older, so the last three go.
     const removed = world.loadedIds.slice(SPEC.maxVehicles);

@@ -23,11 +23,11 @@ import type {
 import type { SwitchHeadlights } from "../../../application/vehicle/switchHeadlights";
 import type { Vec3 } from "../../../domain/shared/vec";
 import type { VehicleKind } from "../../../domain/vehicle/kind";
+import { profileOf } from "../../../domain/vehicle/kinds/index";
 import {
   type BlockFace,
   placementCell,
 } from "../../../domain/vehicle/placement";
-import { profileOf } from "../../../domain/vehicle/profile";
 import { NAMESPACE } from "../../shared/identifiers";
 import { parseTestInputMessage } from "../testInput/testInputMessage";
 import type { TestInputStore } from "../testInput/testInputStore";
@@ -203,7 +203,10 @@ export function registerSubscriptions(
   // through the block interaction above, which keeps the normal reach.
   world.afterEvents.itemUse.subscribe((ev) => {
     const kind = kindOfItem(ev.itemStack.typeId);
-    if (kind !== undefined && profileOf(kind).placement.onWater) {
+    if (
+      kind !== undefined &&
+      profileOf(kind).placement.surfaces.includes("water")
+    ) {
       const player = ev.source;
       const hit = player.getBlockFromViewDirection({
         includeLiquidBlocks: true,

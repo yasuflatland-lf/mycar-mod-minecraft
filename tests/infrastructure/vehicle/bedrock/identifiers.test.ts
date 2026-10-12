@@ -1,15 +1,16 @@
 import { describe, expect, it } from "vitest";
+import {
+  CORE_EVENT_PREFIXES,
+  CORE_PROPERTY_NAMES,
+} from "../../../../src/domain/vehicle/entityContract";
 import { VEHICLE_KINDS } from "../../../../src/domain/vehicle/kind";
 import { PAINTS } from "../../../../src/domain/vehicle/paint";
 import { NAMESPACE } from "../../../../src/infrastructure/shared/identifiers";
 import {
-  BANK_PROPERTY,
   ENTITY_TYPE,
+  entityEventId,
+  entityPropertyId,
   FLEET_PROPERTY,
-  FORM_PROPERTY,
-  GEAR_DOWN_PROPERTY,
-  GRAVITY_OFF_EVENT,
-  GRAVITY_ON_EVENT,
   HEADLIGHT_SWITCH_TYPE,
   HEADLIGHTS_PROPERTY,
   ITEM_TYPE,
@@ -22,6 +23,21 @@ import {
 } from "../../../../src/infrastructure/vehicle/bedrock/identifiers";
 
 describe("identifiers (ADR 0047)", () => {
+  it("reserves the property identifiers the core writes (ADR 0055)", () => {
+    expect(CORE_PROPERTY_NAMES).toContain("headlights");
+    expect(entityPropertyId("headlights")).toBe(HEADLIGHTS_PROPERTY);
+    for (const name of CORE_PROPERTY_NAMES)
+      expect(entityPropertyId(name)).toBe(HEADLIGHTS_PROPERTY);
+  });
+
+  it.each(PAINTS)(
+    "reserves the core paint event prefix for %s (ADR 0055)",
+    (paint) => {
+      expect(CORE_EVENT_PREFIXES).toContain("paint_");
+      expect(paintEvent(paint).startsWith(entityEventId("paint_"))).toBe(true);
+    },
+  );
+
   it.each(VEHICLE_KINDS)(
     "round-trips the entity and item IDs of %s",
     (kind) => {
@@ -56,11 +72,8 @@ describe("identifiers (ADR 0047)", () => {
       HEADLIGHTS_PROPERTY,
       LIT_CELLS_PROPERTY,
       TEST_INPUT_EVENT,
-      FORM_PROPERTY,
-      BANK_PROPERTY,
-      GEAR_DOWN_PROPERTY,
-      GRAVITY_OFF_EVENT,
-      GRAVITY_ON_EVENT,
+      ...["form", "bank", "gear_down"].map(entityPropertyId),
+      ...["gravity_on", "gravity_off"].map(entityEventId),
       ...PAINTS.map(paintEvent),
     ];
     for (const id of ids) {

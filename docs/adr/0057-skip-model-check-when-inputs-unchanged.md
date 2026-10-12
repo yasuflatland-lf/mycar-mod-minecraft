@@ -1,11 +1,11 @@
-# 0056. Skip model:check on pull requests that leave the renderer's files alone
+# 0057. Skip model:check on pull requests that leave the renderer's files alone
 
 - Status: Accepted
 - Date: 2026-10-12
 
 ## Context
 
-0054 moved `pnpm model:check` into its own `model` job beside the unit tests, where it took about 27 s. The sports boat previews (0055) add four more images, and the check now runs in about 21 s on a Mac, longer on the CI runner. Most pull requests change scripts, tests, or docs, none of which the renderer reads, so they cannot make the previews or the pack icons stale.
+0054 moved `pnpm model:check` into its own `model` job beside the unit tests, where it took about 27 s. The sports boat previews (0056) add four more images, and the check now runs in about 21 s on a Mac, longer on the CI runner. Most pull requests change scripts, tests, or docs, none of which the renderer reads, so they cannot make the previews or the pack icons stale.
 
 ## Decision
 

@@ -71,7 +71,7 @@ jobs:
           fetch-depth: 2
 
       # A pull request that touches none of the renderer's inputs or outputs
-      # cannot make them stale, so it skips the render (ADR 0056). Pushes to
+      # cannot make them stale, so it skips the render (ADR 0057). Pushes to
       # main always render.
       - id: inputs
         env:

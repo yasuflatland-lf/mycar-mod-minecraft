@@ -10,17 +10,26 @@ import {
   type Vec3,
 } from "../../../src/domain/shared/vec";
 import type { RawInput } from "../../../src/domain/vehicle/driveInput";
-import type { RamTarget } from "../../../src/domain/vehicle/ram";
-import { SEAT_POSITIONS } from "../../../src/domain/vehicle/seats";
-import { SPEC } from "../../../src/domain/vehicle/spec";
-import { STEP_LANES } from "../../../src/domain/vehicle/stepUp";
 import {
-  type RiderView,
-  type TickContext,
+  createVehicle,
+  rebuildVehicle,
+} from "../../../src/domain/vehicle/kinds/index";
+import { DOOR_BY_SEAT } from "../../../src/domain/vehicle/kinds/suv/entity";
+import { SUV_PROFILE } from "../../../src/domain/vehicle/kinds/suv/profile";
+import { SUV_SPEC } from "../../../src/domain/vehicle/kinds/suv/spec";
+import { MOTION } from "../../../src/domain/vehicle/motion/constants";
+import { STEP_LANES } from "../../../src/domain/vehicle/motion/stepUp";
+import type { RamTarget } from "../../../src/domain/vehicle/ram";
+import { SPEC } from "../../../src/domain/vehicle/spec";
+import type {
+  RiderView,
   Vehicle,
+  VehicleTickInput,
 } from "../../../src/domain/vehicle/vehicle";
 import { defined } from "../../support/defined";
+import { propertyValue } from "../../support/engineCommands";
 import { engineStep } from "../../support/engineModel";
+import { waterSensors } from "../../support/waterDepth";
 
 const FORWARD: RawInput = { moveX: 0, moveY: 1, jump: false };
 const IDLE: RawInput = { moveX: 0, moveY: 0, jump: false };
@@ -35,7 +44,7 @@ const STEP_REACH_TICKS = 19;
 function seatOffset(yaw: number, seat: number): Vec2 {
   const f = forward(yaw);
   const l = leftOf(f);
-  const s = defined(SEAT_POSITIONS[seat], `seat ${seat}`);
+  const s = defined(SUV_PROFILE.seats.positions[seat], `seat ${seat}`);
   return { x: l.x * s.x + f.x * s.z, z: l.z * s.x + f.z * s.z };
 }
 
@@ -112,12 +121,13 @@ class Sim {
         yaw: r.yaw,
         raw: r.raw,
       }));
-      const ctx: TickContext = {
+      const ctx: VehicleTickInput = {
         tick: t,
         riders,
         testInput: this.testInput,
-        velocity: this.vel,
+        velocity: { ...this.vel, y: 0 },
         onGround: true,
+        ...waterSensors(),
         solidAt: (o) =>
           this.solid({ x: this.pos.x + o.x, y: o.y, z: this.pos.z + o.z }),
         targets: () => this.targets,
@@ -134,9 +144,12 @@ class Sim {
       this.impulseY.push(out.impulse.y);
       this.hits.push(...out.hits.map((h) => h.id));
       this.events.push(
-        ...out.events.map((e) =>
-          e.type === "SeatVacated" ? `vacated:${e.seat}:${e.door}` : e.type,
-        ),
+        ...out.seatCommands
+          .filter((c) => c.type === "playAnimation")
+          .map(
+            (c) =>
+              `vacated:${DOOR_BY_SEAT.indexOf(c.name as (typeof DOOR_BY_SEAT)[number])}:${c.name}`,
+          ),
       );
     }
   }
@@ -146,21 +159,49 @@ describe("Vehicle (aggregate)", () => {
   it("moves forward when the rider in the driver's seat presses the accelerator", () => {
     const sim = new Sim();
     sim.riders = [{ id: "d", seat: 0, yaw: 0, raw: FORWARD }];
-    sim.run(Vehicle.create("car", 0), 40);
+    sim.run(createVehicle("suv", "car", 0), 40);
     expect(sim.pos.z).toBeGreaterThan(5);
+  });
+
+  it("uses the driver's input ahead of conflicting test input", () => {
+    fc.assert(
+      fc.property(fc.double({ min: 0.5, max: 1, noNaN: true }), (throttle) => {
+        const vehicle = createVehicle("suv", "car", 0);
+        const out = vehicle.tick({
+          tick: 0,
+          riders: [
+            {
+              id: "driver",
+              offset: defined(SUV_PROFILE.seats.positions[0], "driver seat"),
+              yaw: 0,
+              raw: { ...FORWARD, moveY: throttle },
+            },
+          ],
+          testInput: { ...IDLE, moveY: -1 },
+          velocity: { x: 0, y: 0, z: 0 },
+          onGround: true,
+          ...waterSensors(),
+          solidAt: () => false,
+          targets: () => [],
+        });
+        expect(out.driverId).toBe("driver");
+        expect(vehicle.speed).toBeGreaterThan(0);
+        expect(out.impulse.z).toBeGreaterThan(0);
+      }),
+    );
   });
 
   it("cannot be driven by a passenger alone", () => {
     const sim = new Sim();
     sim.riders = [{ id: "p", seat: 1, yaw: 0, raw: FORWARD }];
-    sim.run(Vehicle.create("car", 0), 40);
+    sim.run(createVehicle("suv", "car", 0), 40);
     expect(Math.hypot(sim.pos.x, sim.pos.z)).toBeLessThan(0.01);
   });
 
   it("aligns the vehicle's heading with the driver's view when boarding while stopped", () => {
     const sim = new Sim();
     sim.riders = [{ id: "d", seat: 0, yaw: 120, raw: IDLE }];
-    const v = Vehicle.create("car", 0);
+    const v = createVehicle("suv", "car", 0);
     sim.run(v, 1);
     expect(v.yaw).toBeCloseTo(120);
   });
@@ -175,7 +216,7 @@ describe("Vehicle (aggregate)", () => {
         }),
         (boardYaw, laterYaws) => {
           const sim = new Sim();
-          const v = Vehicle.create("car", 0);
+          const v = createVehicle("suv", "car", 0);
           sim.riders = [{ id: "d", seat: 0, yaw: boardYaw, raw: IDLE }];
           sim.run(v, 1);
           laterYaws.forEach((yaw, i) => {
@@ -194,10 +235,10 @@ describe("Vehicle (aggregate)", () => {
         fc.double({ min: 10, max: 350, noNaN: true }),
         (viewOffset) => {
           const sim = new Sim();
-          const v = Vehicle.create("car", 0);
+          const v = createVehicle("suv", "car", 0);
           sim.riders = [{ id: "d", seat: 0, yaw: 0, raw: FORWARD }];
           sim.run(v, 20);
-          expect(Math.abs(v.speed)).toBeGreaterThan(SPEC.mountAlignSpeed);
+          expect(Math.abs(v.speed)).toBeGreaterThan(MOTION.mountAlignSpeed);
           sim.riders = [
             { id: "e", seat: 0, yaw: normalizeYaw(viewOffset), raw: FORWARD },
           ];
@@ -217,14 +258,14 @@ describe("Vehicle (aggregate)", () => {
           sim.yaw = yaw;
           sim.solid = stepAhead(yaw, stepDistance, height);
           sim.riders = [{ id: "d", seat: 0, yaw, raw: FORWARD }];
-          sim.run(Vehicle.create("car", yaw), STEP_REACH_TICKS);
+          sim.run(createVehicle("suv", "car", yaw), STEP_REACH_TICKS);
           expect(dot(sim.pos, forward(yaw))).toBeLessThan(
-            stepDistance - SPEC.hitboxFront,
+            stepDistance - SUV_SPEC.hitboxFront,
           );
           return sim.impulseY;
         };
-        expect(drive(2)).toContain(SPEC.stepVelocity);
-        expect(drive(1)).toContain(SPEC.oneStepVelocity);
+        expect(drive(2)).toContain(MOTION.stepVelocity);
+        expect(drive(1)).toContain(MOTION.oneStepVelocity);
         expect(drive(3).every((y) => y === 0)).toBe(true);
       }),
     );
@@ -240,9 +281,11 @@ describe("Vehicle (aggregate)", () => {
           sim.yaw = yaw;
           sim.solid = stepOnLane(yaw, 8, 2, lane);
           sim.riders = [{ id: "d", seat: 0, yaw, raw: FORWARD }];
-          sim.run(Vehicle.create("car", yaw), STEP_REACH_TICKS);
-          expect(dot(sim.pos, forward(yaw))).toBeLessThan(8 - SPEC.hitboxFront);
-          expect(sim.impulseY).toContain(SPEC.stepVelocity);
+          sim.run(createVehicle("suv", "car", yaw), STEP_REACH_TICKS);
+          expect(dot(sim.pos, forward(yaw))).toBeLessThan(
+            8 - SUV_SPEC.hitboxFront,
+          );
+          expect(sim.impulseY).toContain(MOTION.stepVelocity);
         },
       ),
     );
@@ -269,7 +312,7 @@ describe("Vehicle (aggregate)", () => {
           return ceiling || step(p);
         };
         sim.riders = [{ id: "d", seat: 0, yaw, raw: FORWARD }];
-        sim.run(Vehicle.create("car", yaw), STEP_REACH_TICKS);
+        sim.run(createVehicle("suv", "car", yaw), STEP_REACH_TICKS);
         expect(sim.impulseY.every((y) => y === 0)).toBe(true);
       }),
     );
@@ -300,7 +343,7 @@ describe("Vehicle (aggregate)", () => {
             yaw: r.yaw,
             raw: r.raw,
           }));
-          const v = Vehicle.rebuild("car", 0, riders);
+          const v = rebuildVehicle("suv", "car", 0, riders, {});
           sim.run(v, 40);
           expect(sim.pos.z).toBeGreaterThan(5);
         },
@@ -312,12 +355,12 @@ describe("Vehicle (aggregate)", () => {
     // One tick of this throttle from a standstill gives exactly mountAlignSpeed.
     const creep: RawInput = {
       moveX: 0,
-      moveY: (SPEC.mountAlignSpeed / SPEC.accel) * SPEC.throttleFullAt,
+      moveY: (MOTION.mountAlignSpeed / SUV_SPEC.accel) * SPEC.throttleFullAt,
       jump: false,
     };
     const board = (raw: RawInput) => {
       const sim = new Sim();
-      const v = Vehicle.create("car", 0);
+      const v = createVehicle("suv", "car", 0);
       sim.testInput = raw;
       sim.run(v, 1);
       const speed = v.speed;
@@ -325,21 +368,21 @@ describe("Vehicle (aggregate)", () => {
       sim.run(v, 1, 1);
       return { speed, yaw: v.yaw };
     };
-    expect(board(creep)).toEqual({ speed: SPEC.mountAlignSpeed, yaw: 0 });
+    expect(board(creep)).toEqual({ speed: MOTION.mountAlignSpeed, yaw: 0 });
     const slower = board({ ...creep, moveY: creep.moveY * 0.99 });
-    expect(slower.speed).toBeLessThan(SPEC.mountAlignSpeed);
+    expect(slower.speed).toBeLessThan(MOTION.mountAlignSpeed);
     expect(slower.yaw).toBeCloseTo(90);
   });
 
   it("keeps the heading when a driver boards a vehicle reversing faster than mountAlignSpeed (ADR 0019)", () => {
     const sim = new Sim();
-    const v = Vehicle.create("car", 0);
+    const v = createVehicle("suv", "car", 0);
     sim.testInput = { moveX: 0, moveY: -1, jump: false };
     let tick = 0;
-    for (; tick < 40 && v.speed >= -SPEC.mountAlignSpeed; tick++) {
+    for (; tick < 40 && v.speed >= -MOTION.mountAlignSpeed; tick++) {
       sim.run(v, 1, tick);
     }
-    expect(v.speed).toBeLessThan(-SPEC.mountAlignSpeed);
+    expect(v.speed).toBeLessThan(-MOTION.mountAlignSpeed);
     const yaw = v.yaw;
     sim.riders = [{ id: "d", seat: 0, yaw: yaw + 90, raw: IDLE }];
     sim.run(v, 1, tick);
@@ -349,7 +392,7 @@ describe("Vehicle (aggregate)", () => {
   it("does not query nearby targets at exactly ramMinSpeed, as when creeping up a step (ADR 0006)", () => {
     // A step jump raises a slower vehicle to stepMinSpeed, which equals
     // ramMinSpeed, so creeping up a step reaches the threshold exactly.
-    const v = Vehicle.create("car", 0);
+    const v = createVehicle("suv", "car", 0);
     let vel: Vec2 = { x: 0, z: 0 };
     let pos: Vec2 = { x: 0, z: 0 };
     const step = stepAhead(0, 3, 1);
@@ -360,8 +403,9 @@ describe("Vehicle (aggregate)", () => {
         tick,
         riders: [],
         testInput: { moveX: 0, moveY: 0.2, jump: false },
-        velocity: vel,
+        velocity: { ...vel, y: 0 },
         onGround: true,
+        ...waterSensors(),
         solidAt: (o) => step({ x: at.x + o.x, y: o.y, z: at.z + o.z }),
         targets: () => {
           queried = true;
@@ -403,7 +447,7 @@ describe("Vehicle (aggregate)", () => {
           const moveYs = phases.flatMap((p) =>
             Array<number>(p.ticks).fill(p.moveY),
           );
-          const v = Vehicle.create("car", 0);
+          const v = createVehicle("suv", "car", 0);
           let vel: Vec2 = { x: 0, z: 0 };
           let pos: Vec2 = { x: 0, z: 0 };
           moveYs.forEach((moveY, tick) => {
@@ -412,8 +456,9 @@ describe("Vehicle (aggregate)", () => {
               tick,
               riders: [],
               testInput: { moveX: 0, moveY, jump: false },
-              velocity: vel,
+              velocity: { ...vel, y: 0 },
               onGround: true,
+              ...waterSensors(),
               solidAt: () => false,
               targets: () => {
                 queried = true;
@@ -436,7 +481,7 @@ describe("Vehicle (aggregate)", () => {
 
   it("keeps the driver while they ride, even when their position reads as another seat for a tick (ADR 0025)", () => {
     const sim = new Sim();
-    const v = Vehicle.create("car", 0);
+    const v = createVehicle("suv", "car", 0);
     sim.riders = [{ id: "d", seat: 0, yaw: 0, raw: FORWARD }];
     sim.run(v, 10);
     sim.riders = [{ id: "d", seat: 1, yaw: 0, raw: FORWARD }];
@@ -446,7 +491,7 @@ describe("Vehicle (aggregate)", () => {
 
   it("makes the passenger who moved up to the driver's seat the driver once the driver leaves", () => {
     const sim = new Sim();
-    const v = Vehicle.create("car", 0);
+    const v = createVehicle("suv", "car", 0);
     sim.riders = [
       { id: "d", seat: 0, yaw: 0, raw: IDLE },
       { id: "p", seat: 1, yaw: 0, raw: IDLE },
@@ -459,7 +504,7 @@ describe("Vehicle (aggregate)", () => {
 
   it("when the driver disappears (e.g. disconnects), emits the driver's door event once and the vehicle coasts to a stop", () => {
     const sim = new Sim();
-    const v = Vehicle.create("car", 0);
+    const v = createVehicle("suv", "car", 0);
     sim.riders = [{ id: "d", seat: 0, yaw: 0, raw: FORWARD }];
     sim.run(v, 40);
     sim.riders = [];
@@ -471,7 +516,7 @@ describe("Vehicle (aggregate)", () => {
   it("moves on the test input when there is no driver", () => {
     const sim = new Sim();
     sim.testInput = FORWARD;
-    sim.run(Vehicle.create("car", 0), 40);
+    sim.run(createVehicle("suv", "car", 0), 40);
     expect(sim.pos.z).toBeGreaterThan(5);
   });
 
@@ -481,13 +526,13 @@ describe("Vehicle (aggregate)", () => {
     sim.targets = [
       { id: "cow", offset: { x: 0, y: 0, z: 1.5 }, protectedOccupant: false },
     ];
-    sim.run(Vehicle.create("car", 0), 40);
+    sim.run(createVehicle("suv", "car", 0), 40);
     expect(sim.hits.length).toBeGreaterThan(0);
     expect(sim.hits.length).toBeLessThanOrEqual(4);
   });
 
   it("an empty vehicle breaks after 3 hits, but not while occupied", () => {
-    const empty = Vehicle.create("a", 0);
+    const empty = createVehicle("suv", "a", 0);
     new Sim().run(empty, 1);
     expect(
       [empty.receiveHit(1), empty.receiveHit(2), empty.receiveHit(3)].map(
@@ -497,7 +542,7 @@ describe("Vehicle (aggregate)", () => {
 
     const sim = new Sim();
     sim.riders = [{ id: "d", seat: 0, yaw: 0, raw: IDLE }];
-    const occupied = Vehicle.create("b", 0);
+    const occupied = createVehicle("suv", "b", 0);
     sim.run(occupied, 1);
     expect([1, 2, 3, 4].flatMap((t) => occupied.receiveHit(t))).toEqual([]);
   });
@@ -526,7 +571,7 @@ describe("Vehicle (aggregate)", () => {
             yaw: r.yaw,
             raw: r.raw,
           }));
-          const v = Vehicle.rebuild("car", yaw, riders);
+          const v = rebuildVehicle("suv", "car", yaw, riders, {});
           sim.run(v, 1);
           const turned = ((((v.yaw - yaw) % 360) + 540) % 360) - 180;
           expect(turned).toBeCloseTo(0);
@@ -552,14 +597,16 @@ describe("Vehicle headlight switch (ADR 0020)", () => {
   };
 
   it("flips only for the driver", () => {
-    const v = Vehicle.rebuild("v", 0, [driver, passenger]);
+    const v = rebuildVehicle("suv", "v", 0, [driver, passenger], {});
     expect(v.flipHeadlightSwitch("p", 0)).toBe(false);
     expect(v.flipHeadlightSwitch("outsider", 0)).toBe(false);
     expect(v.flipHeadlightSwitch("d", 0)).toBe(true);
   });
 
   it("does not flip for anyone when nobody drives", () => {
-    expect(Vehicle.create("v", 0).flipHeadlightSwitch("d", 0)).toBe(false);
+    expect(createVehicle("suv", "v", 0).flipHeadlightSwitch("d", 0)).toBe(
+      false,
+    );
   });
 
   it("flips only on a use that follows a cooldown of idle switch", () => {
@@ -569,7 +616,7 @@ describe("Vehicle headlight switch (ADR 0020)", () => {
           .uniqueArray(fc.integer({ min: 0, max: 200 }))
           .map((t) => t.sort((a, b) => a - b)),
         (ticks) => {
-          const v = Vehicle.rebuild("v", 0, [driver]);
+          const v = rebuildVehicle("suv", "v", 0, [driver], {});
           ticks.forEach((t, i) => {
             const idle =
               i === 0 ||
@@ -588,40 +635,77 @@ describe("Vehicle water depth context", () => {
     fc.assert(
       fc.property(
         fc.double({
-          min: SPEC.carHeight,
-          max: SPEC.carHeight + 1,
+          min: SUV_SPEC.carHeight,
+          max: SUV_SPEC.carHeight + 1,
           noNaN: true,
         }),
         (waterDepth) => {
-          const vehicle = Vehicle.create("car", 0);
-          const ctx: TickContext = {
+          const vehicle = createVehicle("suv", "car", 0);
+          const ctx: VehicleTickInput = {
             tick: 0,
             riders: [],
-            velocity: { x: 0, z: 0 },
+            velocity: { x: 0, y: 0, z: 0 },
             onGround: true,
-            waterDepth,
+            ...waterSensors(waterDepth),
             solidAt: () => false,
             targets: () => [],
           };
-          expect(vehicle.tick(ctx).form).toBe("submarine");
-          expect(vehicle.form).toBe("submarine");
-          expect(vehicle.tick({ ...ctx, tick: 1 }).form).toBeUndefined();
+          const out = vehicle.tick(ctx);
+          expect(propertyValue(out.commands, "form")).toBe("submarine");
+          expect(out.riders.underwater).toBe(true);
+          expect(
+            propertyValue(vehicle.tick({ ...ctx, tick: 1 }).commands, "form"),
+          ).toBeUndefined();
         },
       ),
     );
   });
 
-  it("treats absent depth as dry", () => {
-    const vehicle = Vehicle.rebuild("car", 0, [], "submarine");
+  it("treats dry cells as dry", () => {
+    const vehicle = rebuildVehicle("suv", "car", 0, [], { form: "submarine" });
     expect(
-      vehicle.tick({
-        tick: 0,
-        riders: [],
-        velocity: { x: 0, z: 0 },
-        onGround: false,
-        solidAt: () => false,
-        targets: () => [],
-      }).form,
+      propertyValue(
+        vehicle.tick({
+          tick: 0,
+          riders: [],
+          velocity: { x: 0, y: 0, z: 0 },
+          onGround: false,
+          ...waterSensors(),
+          solidAt: () => false,
+          targets: () => [],
+        }).commands,
+        "form",
+      ),
     ).toBe("car");
   });
+});
+
+it("concatenates seat commands in seat order when multiple riders leave", () => {
+  const vehicle = rebuildVehicle(
+    "suv",
+    "v",
+    0,
+    [3, 1, 2, 0].map((seat) => ({
+      id: `r${seat}`,
+      offset: seatOffset(0, seat),
+      yaw: 0,
+      raw: IDLE,
+    })),
+    {},
+  );
+  const out = vehicle.tick({
+    tick: 0,
+    riders: [],
+    velocity: { x: 0, y: 0, z: 0 },
+    onGround: true,
+    ...waterSensors(),
+    solidAt: () => false,
+    targets: () => [],
+  });
+  expect(out.seatCommands).toStrictEqual(
+    DOOR_BY_SEAT.flatMap((name) => [
+      { type: "playAnimation", name },
+      { type: "playSound", name: "random.door_open" },
+    ]),
+  );
 });

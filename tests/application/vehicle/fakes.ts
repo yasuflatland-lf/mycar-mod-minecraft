@@ -9,15 +9,16 @@ import type {
   VehicleSnapshot,
 } from "../../../src/application/vehicle/ports";
 import type { Vec3 } from "../../../src/domain/shared/vec";
+import type { EngineCommand } from "../../../src/domain/vehicle/drive";
 import { Fleet, type FleetState } from "../../../src/domain/vehicle/fleet";
 import type { FleetRepository } from "../../../src/domain/vehicle/fleetRepository";
-import type { Form } from "../../../src/domain/vehicle/form";
 import type { Cell } from "../../../src/domain/vehicle/headlights";
 import type { VehicleKind } from "../../../src/domain/vehicle/kind";
 import type { Paint } from "../../../src/domain/vehicle/paint";
 import type { RamHit, RamTarget } from "../../../src/domain/vehicle/ram";
 import type { Vehicle } from "../../../src/domain/vehicle/vehicle";
 import type { VehicleRepository } from "../../../src/domain/vehicle/vehicleRepository";
+import { waterSensors } from "../../support/waterDepth";
 
 export class InMemoryRepo implements VehicleRepository {
   readonly map = new Map<string, Vehicle>();
@@ -70,9 +71,11 @@ export class FakeWorld
   /** Whether the slot a vehicle item was used from still holds one. */
   itemInSlot = true;
   failOn: string | undefined;
+  failRunOn: { id: string; name: string } | undefined;
   failCameraOn: string | undefined;
   failBreathingOn: string | undefined;
   failRemoveOn: string | undefined;
+  failShineOn: string | undefined;
   readonly calls: string[] = [];
   private nextId = 1;
 
@@ -85,6 +88,11 @@ export class FakeWorld
   solidAt() {
     return false;
   }
+  waterAt(id: string, offset: Vec3) {
+    const snap = this.snapshots.find((s) => s.id === id);
+    const waterAt = snap && waterQueries.get(snap);
+    return waterAt ? waterAt(offset) : false;
+  }
   targetsNear() {
     return this.targets;
   }
@@ -92,8 +100,35 @@ export class FakeWorld
     if (id === this.failOn) throw new Error("boom");
     this.calls.push(`motion:${id}:${yaw.toFixed(0)}`);
   }
-  setForm(id: string, form: Form) {
-    this.calls.push(`form:${id}:${form}`);
+  readonly properties = new Map<
+    string,
+    Record<string, string | number | boolean>
+  >();
+  run(id: string, commands: readonly EngineCommand[]) {
+    for (const command of commands) {
+      if (id === this.failRunOn?.id && command.name === this.failRunOn.name)
+        throw new Error(`command ${command.name}`);
+      if (command.type === "setProperty") {
+        const properties = this.properties.get(id) ?? {};
+        properties[command.name] = command.value;
+        this.properties.set(id, properties);
+        if (command.name === "form")
+          this.calls.push(`form:${id}:${command.value}`);
+        if (command.name === "bank")
+          this.calls.push(`bank:${id}:${command.value}`);
+        if (command.name === "gear_down")
+          this.calls.push(`gear:${id}:${command.value ? "down" : "up"}`);
+      }
+      if (command.type === "playAnimation")
+        this.calls.push(`door:${id}:${command.name}`);
+    }
+  }
+  formOf(id: string) {
+    return (
+      this.properties.get(id)?.form ??
+      this.snapshots.find((s) => s.id === id)?.restored().form ??
+      "car"
+    );
   }
   setThirdPerson(id: string, on: boolean) {
     if (id === this.failCameraOn) throw new Error("camera");
@@ -103,19 +138,11 @@ export class FakeWorld
     if (id === this.failBreathingOn) throw new Error("breathing");
     this.calls.push(`breathing:${id}:${ticks}`);
   }
-  setBank(id: string, degrees: number) {
-    this.calls.push(`bank:${id}:${degrees}`);
-  }
-  setGearDown(id: string, down: boolean) {
-    this.calls.push(`gear:${id}:${down ? "down" : "up"}`);
-  }
   damage(hit: RamHit, attackerId: string | undefined) {
     this.calls.push(`damage:${hit.id}:${attackerId ?? "-"}`);
   }
-  playDoor(id: string, door: string) {
-    this.calls.push(`door:${id}:${door}`);
-  }
   shineHeadlights(id: string, cells: readonly Cell[]) {
+    if (id === this.failShineOn) throw new Error("lights");
     this.shone.set(id, cells);
   }
   headlightsOn(id: string) {
@@ -167,21 +194,29 @@ export class FakeWorld
   }
 }
 
+const waterQueries = new WeakMap<VehicleSnapshot, (offset: Vec3) => boolean>();
+
 export const snapshot = (
   id: string,
-  over: Partial<VehicleSnapshot> = {},
-): VehicleSnapshot => ({
-  id,
-  kind: "suv",
-  location: { x: 0, y: 0, z: 0 },
-  yaw: 0,
-  velocity: { x: 0, z: 0 },
-  velocityY: 0,
-  onGround: true,
-  waterDepth: 0,
-  waterBelow: false,
-  riders: [],
-  form: "car",
-  headlights: false,
-  ...over,
-});
+  over: Partial<VehicleSnapshot> & {
+    waterDepth?: number;
+    waterBelow?: boolean;
+  } = {},
+): VehicleSnapshot => {
+  const { waterDepth, waterBelow, ...fields } = over;
+  const sensors = waterSensors(waterDepth, waterBelow);
+  const snap: VehicleSnapshot = {
+    id,
+    kind: "suv",
+    location: sensors.location,
+    yaw: 0,
+    velocity: { x: 0, y: 0, z: 0 },
+    onGround: true,
+    riders: [],
+    restored: () => ({}),
+    headlights: false,
+    ...fields,
+  };
+  waterQueries.set(snap, sensors.waterAt);
+  return snap;
+};

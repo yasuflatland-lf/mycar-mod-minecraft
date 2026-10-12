@@ -11,7 +11,7 @@ the test pack stands out in the pack list.
 Four SUV poses share one camera and one scale, so they line up side by side in the README: on the
 ground, with the headlights on at night, flying with the wheels folded (ADR 0027), and under water
 as a submarine (ADR 0045). Four sports boat poses share another camera and scale: afloat in its
-default black, with the headlights on at night, and in two paints (ADR 0055).
+default black, with the headlights on at night, and in two paints (ADR 0056).
 
 Only the standard library is used, like gen_model.py. The arithmetic avoids math.sin/cos (their
 last bit can differ between platforms' libm) so the same model renders to the same pixels on a Mac
