@@ -90,10 +90,10 @@ GLOW_DISC_REACH = 1.6  # rim radius in multiples of the wheel radius
 ICON_GRAYSCALE_PACK = "yasu_ride_test_bp"
 
 POSES = {
-    "suv-front-left.png": {"lamps": False, "hover": False, "submarine": False},
-    "suv-headlights.png": {"lamps": True, "hover": False, "submarine": False},
-    "suv-flying.png": {"lamps": False, "hover": True, "submarine": False},
-    "suv-submarine.png": {"lamps": False, "hover": False, "submarine": True},
+    "suv-front-left.png": {"lamps": False, "dusk": False, "hover": False, "submarine": False},
+    "suv-headlights.png": {"lamps": True, "dusk": True, "hover": False, "submarine": False},
+    "suv-flying.png": {"lamps": False, "dusk": False, "hover": True, "submarine": False},
+    "suv-submarine.png": {"lamps": False, "dusk": False, "hover": False, "submarine": True},
 }
 
 
@@ -257,7 +257,7 @@ def collect(geo, texture, folds, turns, pose):
     """Return the vehicle's faces as (quad, rgb, bloom group or None)."""
     desc = geo["description"]
     lift = FLIGHT_LIFT if pose["hover"] else 0.0
-    if pose["lamps"] and not pose.get("icon"):
+    if pose["dusk"]:
         tint = NIGHT_TINT
     elif pose["submarine"]:
         tint = WATER_TINT
@@ -435,7 +435,7 @@ def add_bloom(planes, body, source, config, width, height):
                 planes[c][o] += bloom[c][o] * k
 
 
-def rasterize(polygons, layers, to_screen, width=WIDTH, height=HEIGHT, background=None, bloom=True):
+def rasterize(polygons, layers, to_screen, width=WIDTH, height=HEIGHT, background=None, bloom=BLOOM):
     w, h = width * SUPERSAMPLE, height * SUPERSAMPLE
 
     # Premultiplied (r, g, b, a) under the vehicle: the shadow and light pools, laid over an
@@ -484,7 +484,7 @@ def rasterize(polygons, layers, to_screen, width=WIDTH, height=HEIGHT, backgroun
             planes[0][o], planes[1][o], planes[2][o], planes[3][o] = r / n, g / n, b / n, a / n
             body[o] = covered / n
 
-    for group, config in (BLOOM.items() if bloom else []):
+    for group, config in bloom.items():
         source = {}
         for quad, rgb, emissive in polygons:
             if emissive != group:
@@ -541,14 +541,15 @@ def render(rp, icons=False):
     images = {name: rasterize(scenes[name], layers[name], to_screen) for name in POSES}
     icon = None
     if icons:
-        pose = {**POSES["suv-flying.png"], "lamps": True, "icon": True}
+        # Lamps lit without the dusk tint, so the body keeps its daylight colors
+        pose = {**POSES["suv-flying.png"], "lamps": True}
         polygons = collect(geo, texture, folds, turns, pose)
         icon = render_icon(geo, polygons, camera)
     return images, icon
 
 
 def render_icon(geo, polygons, camera):
-    """Fit the flying vehicle to 80% width; composite radial wheel discs behind its faces."""
+    """Fit the vehicle to ICON_FILL of the width over the background and the wheel discs."""
     size = ICON_SIZE
     w = h = size * SUPERSAMPLE
     projected = [camera.project(p) for quad, _, _ in polygons for p in quad]
@@ -561,9 +562,14 @@ def render_icon(geo, polygons, camera):
     def to_screen(quad):
         return [(off_x + scale * x, off_y + scale * y, q) for x, y, q in map(camera.project, quad)]
 
+    half_band = h * ICON_BAND_HEIGHT / 2
+
+    def in_band(x, y):
+        # The band's center line runs from the lower-left corner to the middle of the right edge
+        return abs((y + 0.5) - (h - (x + 0.5) * 0.5)) < half_band
+
     background = [
-        (*(ICON_BAND_COLOR if abs((y + 0.5) - (h - (x + 0.5) * 0.5)) < h * ICON_BAND_HEIGHT / 2 else ICON_BACKGROUND), 1.0)
-        for y in range(h) for x in range(w)
+        (*(ICON_BAND_COLOR if in_band(x, y) else ICON_BACKGROUND), 1.0) for y in range(h) for x in range(w)
     ]
     bones = {bone["name"]: bone for bone in geo["bones"]}
     for name, bone in bones.items():
@@ -595,7 +601,16 @@ def render_icon(geo, polygons, camera):
                     i = py * w + px
                     background[i] = (*(background[i][c] * (1 - alpha) + GLOW_DISC_COLOR[c] * alpha for c in range(3)), 1.0)
     # Bloom would wash the lamp and disc halos over the orange band and blur the small icon.
-    return rasterize(polygons, [], to_screen, size, size, background, bloom=False)
+    return rasterize(polygons, [], to_screen, size, size, background, bloom={})
+
+
+def grayscale(rgba):
+    gray_rgba = bytearray(rgba)
+    for i in range(0, len(gray_rgba), 4):
+        # Integer Rec. 601 luminance, so no float rounding can differ between platforms
+        gray = (299 * gray_rgba[i] + 587 * gray_rgba[i + 1] + 114 * gray_rgba[i + 2] + 500) // 1000
+        gray_rgba[i : i + 3] = bytes((gray, gray, gray))
+    return gray_rgba
 
 
 def main():
@@ -608,13 +623,7 @@ def main():
     images, icon = render(args.resource_pack, bool(args.icons))
     targets = [(args.output_dir / name, WIDTH, HEIGHT, pixels, False) for name, pixels in images.items()]
     for pack in args.icons:
-        pixels = icon
-        if pack.name == ICON_GRAYSCALE_PACK:
-            pixels = bytearray(icon)
-            for i in range(0, len(pixels), 4):
-                # Integer Rec. 601 luminance keeps grayscale generation deterministic.
-                gray = (299 * pixels[i] + 587 * pixels[i + 1] + 114 * pixels[i + 2] + 500) // 1000
-                pixels[i:i + 3] = bytes((gray, gray, gray))
+        pixels = grayscale(icon) if pack.name == ICON_GRAYSCALE_PACK else icon
         targets.append((pack / "pack_icon.png", ICON_SIZE, ICON_SIZE, pixels, True))
     stale = []
     for target, width, height, pixels, rgb in targets:

@@ -11,6 +11,7 @@ describe.each(["yasu_ride_bp", "yasu_ride_rp", "yasu_ride_test_bp"])(
       expect(png.subarray(0, 8)).toEqual(
         Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
       );
+      // IHDR comes first: width, height, bit depth 8, and color type 2 (RGB without alpha)
       expect(png.readUInt32BE(8)).toBe(13);
       expect(png.toString("ascii", 12, 16)).toBe("IHDR");
       expect(png.readUInt32BE(16)).toBe(256);
