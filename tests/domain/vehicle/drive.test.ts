@@ -15,6 +15,18 @@ const number = (min: number, max: number) =>
   fc.double({ min, max, noNaN: true });
 const yaw = number(-180, 180);
 
+/** A stopped vehicle with no blocks or ram targets around it. */
+function stillContext(onGround: boolean, waterDepth = 0): TickContext {
+  return {
+    tick: 0,
+    velocity: { x: 0, y: 0, z: 0 },
+    onGround,
+    ...waterSensors(waterDepth),
+    solidAt: () => false,
+    targets: () => [],
+  };
+}
+
 /** Each kind's drive, on its own ground: the SUV on dry land, the boat afloat. */
 const KIND_DRIVES: Record<
   VehicleKind,
@@ -22,25 +34,11 @@ const KIND_DRIVES: Record<
 > = {
   suv: {
     drive: (heading) => new SuvDrive(heading, "car"),
-    ctx: {
-      tick: 0,
-      velocity: { x: 0, y: 0, z: 0 },
-      onGround: true,
-      ...waterSensors(),
-      solidAt: () => false,
-      targets: () => [],
-    },
+    ctx: stillContext(true),
   },
   sportsboat: {
     drive: (heading) => new BoatDrive(heading),
-    ctx: {
-      tick: 0,
-      velocity: { x: 0, y: 0, z: 0 },
-      onGround: false,
-      ...waterSensors(0.5),
-      solidAt: () => false,
-      targets: () => [],
-    },
+    ctx: stillContext(false, 0.5),
   },
 };
 
@@ -57,15 +55,10 @@ it("starts the SUV drive in the given form, unbanked, with the wheels down only 
 
 it("keeps an SUV drive started in hover hovering with the gear folded on its first airborne tick", () => {
   const drive = new SuvDrive(0, "hover");
-  const ctx: TickContext = {
-    tick: 0,
-    velocity: { x: 0, y: 0, z: 0 },
-    onGround: false,
-    ...waterSensors(),
-    solidAt: () => false,
-    targets: () => [],
-  };
-  const result = drive.step({ moveX: 0, moveY: 0, jump: false }, ctx);
+  const result = drive.step(
+    { moveX: 0, moveY: 0, jump: false },
+    stillContext(false),
+  );
   expect(result.form).toBeUndefined();
   expect(result.gearDown).toBe(false);
   expect(result.bank).toBe(0);
