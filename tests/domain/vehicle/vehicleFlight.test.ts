@@ -356,15 +356,15 @@ describe("Vehicle banking (ADR 0026)", () => {
             expect(Math.abs(drive.bankAngle)).toBeLessThanOrEqual(
               SUV_SPEC.maxBank + 1e-9,
             );
+            const bank = propertyValue(out.commands, "bank");
             if (drive.bankAngle !== sent) {
-              expect(propertyValue(out.commands, "bank")).toBe(drive.bankAngle);
+              expect(bank).toBe(drive.bankAngle);
               if (
                 Math.abs(drive.bankAngle) > 0 &&
                 Math.abs(drive.bankAngle) < SUV_SPEC.maxBank
               )
                 intermediateChanges++;
             }
-            const bank = propertyValue(out.commands, "bank");
             if (typeof bank === "number") sent = bank;
           }
           expect(intermediateChanges).toBeGreaterThan(1);

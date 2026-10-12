@@ -27,7 +27,7 @@ describe("identifiers (ADR 0047)", () => {
     expect(CORE_PROPERTY_NAMES).toContain("headlights");
     expect(entityPropertyId("headlights")).toBe(HEADLIGHTS_PROPERTY);
     for (const name of CORE_PROPERTY_NAMES)
-      expect([HEADLIGHTS_PROPERTY]).toContain(entityPropertyId(name));
+      expect(entityPropertyId(name)).toBe(HEADLIGHTS_PROPERTY);
   });
 
   it.each(PAINTS)(
@@ -35,11 +35,6 @@ describe("identifiers (ADR 0047)", () => {
     (paint) => {
       expect(CORE_EVENT_PREFIXES).toContain("paint_");
       expect(paintEvent(paint).startsWith(entityEventId("paint_"))).toBe(true);
-      expect(
-        CORE_EVENT_PREFIXES.some((prefix) =>
-          paintEvent(paint).startsWith(entityEventId(prefix)),
-        ),
-      ).toBe(true);
     },
   );
 

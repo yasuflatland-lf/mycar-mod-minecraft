@@ -12,28 +12,26 @@ import { defined } from "../../support/defined";
 
 const yaw = fc.double({ min: -180, max: 180, noNaN: true });
 const seat = fc.integer({ min: 0, max: 3 });
+const SEATS = SUV_PROFILE.seats.positions;
 
 function worldOffset(yawDeg: number, i: number): Vec2 {
   const f = forward(yawDeg);
   const l = leftOf(f);
-  const s = defined(SUV_PROFILE.seats.positions[i], `seat ${i}`);
+  const s = defined(SEATS[i], `seat ${i}`);
   return { x: l.x * s.x + f.x * s.z, z: l.z * s.x + f.z * s.z };
 }
 
 describe("seats (ADR 0019)", () => {
   it("seat 0 is front right (negative x = right, positive z = forward)", () => {
-    expect(SUV_PROFILE.seats.positions[0]).toEqual({ x: -0.38, z: 0.35 });
+    expect(SEATS[0]).toEqual({ x: -0.38, z: 0.35 });
   });
 
   it("assigns an occupant at a seat position to that seat for any facing", () => {
     fc.assert(
       fc.property(yaw, seat, (y, i) => {
-        expect(
-          nearestSeat(
-            toLocal(worldOffset(y, i), forward(y)),
-            SUV_PROFILE.seats.positions,
-          ),
-        ).toBe(i);
+        expect(nearestSeat(toLocal(worldOffset(y, i), forward(y)), SEATS)).toBe(
+          i,
+        );
       }),
     );
   });
@@ -48,11 +46,7 @@ describe("seats (ADR 0019)", () => {
             id: `p${i}`,
             offset: worldOffset(y, i),
           }));
-          const map = occupiedSeats(
-            riders,
-            forward(y),
-            SUV_PROFILE.seats.positions,
-          );
+          const map = occupiedSeats(riders, forward(y), SEATS);
           for (const i of seats) expect(map.get(`p${i}`)).toBe(i);
         },
       ),
@@ -90,13 +84,11 @@ describe("seats (ADR 0019)", () => {
   it("breaks an exact tie on the centerline toward the lower seat index, the driver's side", () => {
     fc.assert(
       fc.property(fc.double({ min: -3, max: 3, noNaN: true }), (z) => {
-        expect([0, 2]).toContain(
-          nearestSeat({ x: 0, z }, SUV_PROFILE.seats.positions),
-        );
+        expect([0, 2]).toContain(nearestSeat({ x: 0, z }, SEATS));
       }),
     );
-    expect(nearestSeat({ x: 0, z: 0.35 }, SUV_PROFILE.seats.positions)).toBe(0);
-    expect(nearestSeat({ x: 0, z: -0.8 }, SUV_PROFILE.seats.positions)).toBe(2);
+    expect(nearestSeat({ x: 0, z: 0.35 }, SEATS)).toBe(0);
+    expect(nearestSeat({ x: 0, z: -0.8 }, SEATS)).toBe(2);
   });
 
   it("returns the seats of occupants who left", () => {

@@ -409,15 +409,15 @@ describe("Vehicle as a submarine", () => {
             // The client sees every new angle: it is sent on the tick it
             // changes, and on the first tick (ADR 0026). The drive's own
             // angle is the reference, so a skipped send cannot hide.
+            const bank = propertyValue(out.commands, "bank");
             if (drive.bankAngle !== sent) {
-              expect(propertyValue(out.commands, "bank")).toBe(drive.bankAngle);
+              expect(bank).toBe(drive.bankAngle);
               if (
                 Math.abs(drive.bankAngle) > 0 &&
                 Math.abs(drive.bankAngle) < SUV_SPEC.maxBank
               )
                 intermediateChanges++;
             }
-            const bank = propertyValue(out.commands, "bank");
             if (typeof bank === "number") sent = bank;
             expect(
               propertyValue(out.commands, "gear_down") === undefined ||
