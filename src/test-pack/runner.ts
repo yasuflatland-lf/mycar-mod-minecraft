@@ -2,11 +2,10 @@
 // main Behavior Pack, so they drive the vehicle through script events.
 import { type Dimension, type Entity, system, world } from "@minecraft/server";
 import { dot, forward } from "../domain/shared/vec";
-import { SPORTSBOAT_WATER } from "../domain/vehicle/boatDrive";
-import { NEUTRAL_INPUT } from "../domain/vehicle/driveInput";
+import { BoatDrive } from "../domain/vehicle/boatDrive";
 import { type Form, isForm } from "../domain/vehicle/form";
 import { headlightCells } from "../domain/vehicle/headlights";
-import { initialMotion, stepFlightMotion } from "../domain/vehicle/motion";
+import { initialMotion } from "../domain/vehicle/motion";
 import { PAINTS } from "../domain/vehicle/paint";
 import { SPORTSBOAT_PROFILE } from "../domain/vehicle/profile";
 import { nearestSeat, toLocal } from "../domain/vehicle/seats";
@@ -768,19 +767,31 @@ function boatDrag(a: Arena): Promise<Outcome> {
         const airRatios: number[] = [];
         const steadySpeeds: number[] = [];
         const coastRatios: number[] = [];
+        const steadyDrag: number[] = [];
+        const replica = new BoatDrive();
         const lines: string[] = [];
         drive(boat, 0, 1);
-        for (let t = 0; t < 120; t++) {
-          const throttle = t < 80;
+        for (let t = 0; t < 93; t++) {
+          // The main pack acts on a script event one tick after it is sent:
+          // without this lag the replica's estimate drifted to 0.72 while the
+          // boat held 1.11 blocks/tick, which needs about 0.84.
+          const throttle = t >= 1 && t <= 80;
           if (t === 80) clearInput(boat);
-          const step = stepFlightMotion(
+          const step = replica.step(
             motion,
-            { ...NEUTRAL_INPUT, throttle: throttle ? 1 : 0 },
-            observed,
-            SPORTSBOAT_WATER,
-            SPORTSBOAT_PROFILE.motion,
+            { moveX: 0, moveY: throttle ? 1 : 0, jump: false },
+            {
+              tick: t,
+              riders: [],
+              velocity: observed,
+              onGround: false,
+              waterDepth: Math.max(0.01, a.gy - boat.location.y),
+              solidAt: () => false,
+              targets: () => [],
+            },
+            SPORTSBOAT_PROFILE,
           );
-          motion = step.state;
+          motion = step.motion;
           const given = {
             x: observed.x + step.impulse.x,
             z: observed.z + step.impulse.z,
@@ -801,9 +812,13 @@ function boatDrag(a: Arena): Promise<Outcome> {
               (water ? waterRatios : airRatios).push(ratio);
             if (!throttle) coastRatios.push(ratio);
           }
-          if (throttle && t >= 60) steadySpeeds.push(speed);
+          if (throttle && t >= 60) {
+            steadySpeeds.push(speed);
+            if (motion.waterDrag !== undefined)
+              steadyDrag.push(motion.waterDrag);
+          }
           lines.push(
-            `tick=${t + 1} ${throttle ? "throttle" : "coast"} impulse=${hlen(step.impulse).toFixed(3)} given=${hlen(given).toFixed(3)} observed=${speed.toFixed(3)} feet=${(boat.location.y - a.gy).toFixed(3)} water=${water ? 1 : 0} ratio=${ratio?.toFixed(3) ?? "n/a"}`,
+            `tick=${t + 1} ${throttle ? "throttle" : "coast"} impulse=${hlen(step.impulse).toFixed(3)} given=${hlen(given).toFixed(3)} observed=${speed.toFixed(3)} feet=${(boat.location.y - a.gy).toFixed(3)} water=${water ? 1 : 0} drag=${motion.waterDrag?.toFixed(3) ?? "n/a"} ratio=${ratio?.toFixed(3) ?? "n/a"}`,
           );
         }
         const mean = (values: number[]) =>
@@ -820,7 +835,7 @@ function boatDrag(a: Arena): Promise<Outcome> {
         });
         return {
           pass: distance >= 5,
-          detail: `distance=${distance.toFixed(3)} water(${summary(waterRatios)}) air(${summary(airRatios)}) steadySpeed=${mean(steadySpeeds)} coastRatio=${mean(coastRatios)}`,
+          detail: `distance=${distance.toFixed(3)} water(${summary(waterRatios)}) air(${summary(airRatios)}) steadySpeed=${mean(steadySpeeds)} coastRatio=${mean(coastRatios)} finalDrag=${motion.waterDrag?.toFixed(3) ?? "n/a"} steadyDrag=${Math.min(...steadyDrag).toFixed(3)}-${Math.max(...steadyDrag).toFixed(3)}`,
           lines,
         };
       },
@@ -833,39 +848,64 @@ function boatDrag(a: Arena): Promise<Outcome> {
 
 function boatCruise(a: Arena): Promise<Outcome> {
   return withPool(a, 3, async () => {
-    const cruise = await withBoat(a, async (boat) => {
-      await wait(40);
-      const x0 = boat.location.x;
-      drive(boat, 0, 1);
-      let topSpeed = 0;
-      for (let t = 0; t < 60; t++) {
-        await wait(1);
-        topSpeed = Math.max(topSpeed, hlen(boat.getVelocity()));
-      }
-      return { distance: boat.location.x - x0, topSpeed };
-    });
-    // Logged for tuning in 8/8, with no threshold yet. A separate start leaves
-    // room for the full turn within the pool.
-    const turn = await withBoat(a, async (boat) => {
-      await wait(40);
-      drive(boat, 0, 1);
-      await wait(30);
-      drive(boat, -1, 1);
-      let yaw = boat.getRotation().y;
-      let degrees = 0;
-      let ticks = 0;
-      while (Math.abs(degrees) < 360 && ticks < 120) {
-        await wait(1);
-        const next = boat.getRotation().y;
-        degrees += ((next - yaw + 540) % 360) - 180;
-        yaw = next;
-        ticks++;
-      }
-      return { degrees, ticks, rate: degrees / ticks };
-    });
+    const mean = (speeds: number[]) =>
+      speeds.reduce((sum, speed) => sum + speed, 0) / speeds.length;
+    const steadySpeed = await withBoat(
+      a,
+      async (boat) => {
+        await wait(40);
+        drive(boat, 0, 1);
+        const speeds: number[] = [];
+        for (let t = 1; t <= 70; t++) {
+          await wait(1);
+          if (t >= 51) speeds.push(hlen(boat.getVelocity()));
+        }
+        return mean(speeds);
+      },
+      { x: POOL.minX + 5.5, z: POOL.minZ + 2.5, yaw: 0 },
+    );
+    const turn = await withBoat(
+      a,
+      async (boat) => {
+        await wait(40);
+        drive(boat, 0, 1);
+        const cruiseSpeeds: number[] = [];
+        for (let t = 1; t <= 55; t++) {
+          await wait(1);
+          if (t >= 51) cruiseSpeeds.push(hlen(boat.getVelocity()));
+        }
+        const cruiseSpeed = mean(cruiseSpeeds);
+        drive(boat, -1, 1);
+        let yaw = boat.getRotation().y;
+        let degrees = 0;
+        let ticks = 0;
+        const speeds: number[] = [];
+        while (Math.abs(degrees) < 360 && ticks < 120) {
+          await wait(1);
+          const next = boat.getRotation().y;
+          degrees += ((next - yaw + 540) % 360) - 180;
+          yaw = next;
+          ticks++;
+          speeds.push(hlen(boat.getVelocity()));
+        }
+        return {
+          cruiseSpeed,
+          minSpeed: Math.min(...speeds),
+          endSpeed: mean(speeds.slice(-5)),
+          degrees,
+          ticks,
+          rate: degrees / ticks,
+        };
+      },
+      // A right turn heads toward -x; this lane clears the pad and diagonal wall.
+      { x: 75.5, z: POOL.minZ + 2.5, yaw: 0 },
+    );
     return {
-      pass: cruise.distance > 10,
-      detail: `distance=${cruise.distance.toFixed(2)} topSpeed=${cruise.topSpeed.toFixed(3)} turn=${turn.degrees.toFixed(1)} turnTicks=${turn.ticks} turnRate=${turn.rate.toFixed(3)}`,
+      pass:
+        steadySpeed >= 0.95 * SPORTSBOAT_PROFILE.motion.maxSpeed &&
+        Math.abs(turn.degrees) >= 360 &&
+        turn.endSpeed >= 0.8 * turn.cruiseSpeed,
+      detail: `steadySpeed=${steadySpeed.toFixed(3)} cruiseSpeed=${turn.cruiseSpeed.toFixed(3)} turnMinSpeed=${turn.minSpeed.toFixed(3)} turnEndSpeed=${turn.endSpeed.toFixed(3)} kept=${(turn.endSpeed / turn.cruiseSpeed).toFixed(3)} turn=${turn.degrees.toFixed(1)} turnTicks=${turn.ticks} turnRate=${turn.rate.toFixed(3)}`,
     };
   });
 }
