@@ -146,17 +146,31 @@ describe("stepHeight (ADR 0004, 0035)", () => {
     );
   });
 
-  it("jumps the higher step when rays at the same distance find heights 1 and 2", () => {
+  it("jumps the higher step whichever rays at the same distance find heights 1 and 2", () => {
     const start = SPEC.hitboxFront + 0.2;
-    expect(
-      stepHeight(
-        terrain([
-          { start, height: 1 },
-          { start, height: 2 },
-        ]),
-        0.5,
-      ),
-    ).toBe(2);
+    fc.assert(
+      fc.property(laneIndex, laneIndex, (low, high) => {
+        fc.pre(low !== high);
+        const lanes: (Lane | undefined)[] = [undefined, undefined, undefined];
+        lanes[low] = { start, height: 1 };
+        lanes[high] = { start, height: 2 };
+        expect(stepHeight(terrain(lanes), 0.5)).toBe(2);
+      }),
+    );
+  });
+
+  it("does not jump for a block the hitbox already reaches over, such as a step it is climbing", () => {
+    fc.assert(
+      fc.property(speed, laneIndex, fc.constantFrom(1, 2), (s, i, height) => {
+        const lane = STEP_LANES[i];
+        const underHitbox: SolidAt = (ahead, side, dy) =>
+          side === lane &&
+          ahead > SPEC.hitboxFront - 1 &&
+          ahead <= SPEC.hitboxFront &&
+          dy < height;
+        expect(stepHeight(underHitbox, s)).toBe(0);
+      }),
+    );
   });
 
   it("does not jump a height-1 step without room (SPEC.carHeight) above it, but does with the room", () => {

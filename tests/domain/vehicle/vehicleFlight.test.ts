@@ -1,5 +1,12 @@
+import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { forward, type Vec2 } from "../../../src/domain/shared/vec";
+import {
+  dot,
+  forward,
+  rightOf,
+  type Vec2,
+  type Vec3,
+} from "../../../src/domain/shared/vec";
 import type { RawInput } from "../../../src/domain/vehicle/driveInput";
 import type { Form } from "../../../src/domain/vehicle/form";
 import { SPEC } from "../../../src/domain/vehicle/spec";
@@ -12,7 +19,7 @@ const FORWARD: RawInput = { moveX: 0, moveY: 1, jump: false };
 
 /**
  * One vehicle driven by test input over flat ground at y = 0. Gravity follows
- * the form the vehicle reports, as the yasuflatland:weightless component group
+ * the form the vehicle reports, as the yasu_ride:weightless component group
  * does in game.
  */
 class FlightSim {
@@ -92,6 +99,64 @@ function flyingSim(): FlightSim {
 }
 
 describe("Vehicle in flight (ADR 0021)", () => {
+  it("ignores the controls during takeoff", () => {
+    fc.assert(
+      fc.property(
+        fc.record({
+          moveX: fc.double({ min: -1, max: 1, noNaN: true }),
+          moveY: fc.double({ min: -1, max: 1, noNaN: true }),
+          jump: fc.boolean(),
+        }),
+        (input) => {
+          const held = new FlightSim();
+          const idle = new FlightSim();
+          for (const sim of [held, idle]) {
+            sim.run(FORWARD, 20);
+            sim.doubleTap(FORWARD);
+          }
+          expect(held.vehicle.form).toBe("takeoff");
+          expect(held.vehicle.speed).toBeGreaterThan(0);
+          let ticks = 0;
+          for (; ticks <= SPEC.takeoffTicks; ticks++) {
+            held.step(input);
+            idle.step(IDLE);
+            if (held.vehicle.form !== "takeoff") break;
+            expect(held.vehicle.speed).toBe(idle.vehicle.speed);
+            expect(held.vehicle.yaw).toBe(idle.vehicle.yaw);
+          }
+          expect(ticks).toBeGreaterThan(0);
+          expect(held.vehicle.form).toBe("hover");
+        },
+      ),
+    );
+  });
+
+  it("does not count driverless ticks as a Jump press", () => {
+    fc.assert(
+      fc.property(
+        // The press comes within doubleTapTicks of every driverless tick, so
+        // a driverless tick read as a Jump press would always pair with it.
+        fc
+          .integer({ min: 1, max: SPEC.doubleTapTicks - 1 })
+          .chain((driverless) =>
+            fc.tuple(
+              fc.constant(driverless),
+              fc.integer({ min: 1, max: SPEC.doubleTapTicks - driverless }),
+            ),
+          ),
+        ([driverless, idle]) => {
+          const sim = new FlightSim();
+          sim.run(undefined, driverless);
+          sim.run(IDLE, idle);
+          sim.step({ ...IDLE, jump: true });
+          sim.run(IDLE, SPEC.takeoffTicks);
+          expect(sim.changes).toEqual([]);
+          expect(sim.vehicle.form).toBe("car");
+        },
+      ),
+    );
+  });
+
   it("takes off on a double tap and rises about 1.5 blocks before flying", () => {
     const sim = new FlightSim();
     sim.doubleTap();
@@ -270,5 +335,64 @@ describe("Vehicle banking (ADR 0026)", () => {
     bankOver(sim, FORWARD, 20);
     const turning = bankOver(sim, { ...FORWARD, moveX: 1 }, 20);
     expect(turning.every((b) => b === 0)).toBe(true);
+  });
+});
+
+describe("Vehicle landing gear (ADR 0033)", () => {
+  /** One airborne tick of a vehicle rebuilt mid-landing. */
+  function landOnce(yaw: number, solidAt: (offset: Vec3) => boolean) {
+    const vehicle = Vehicle.rebuild("car", yaw, [], "landing");
+    const out = vehicle.tick({
+      tick: 0,
+      riders: [],
+      velocity: { x: 0, z: 0 },
+      velocityY: 0,
+      onGround: false,
+      solidAt,
+      targets: () => [],
+    });
+    return { vehicle, gearDown: out.gearDown };
+  }
+
+  it("starts with the wheels down when placed", () => {
+    expect(Vehicle.create("car", 0).wheelsDown).toBe(true);
+  });
+
+  it("keeps the wheels folded when rebuilt while landing high above the ground", () => {
+    const { vehicle, gearDown } = landOnce(0, () => false);
+    expect(gearDown).toBe(false);
+    expect(vehicle.wheelsDown).toBe(false);
+  });
+
+  it("lowers the wheels while landing over ground within gearDownHeight under the center or any corner, and keeps them up over deeper ground, in any heading", () => {
+    const d = SPEC.gearProbeOffset;
+    const spots = [
+      [0, 0],
+      [d, d],
+      [d, -d],
+      [-d, d],
+      [-d, -d],
+    ] as const;
+    fc.assert(
+      fc.property(
+        fc.integer({ min: -180, max: 179 }),
+        fc.constantFrom(...spots),
+        fc.integer({ min: 1, max: SPEC.gearDownHeight + 1 }),
+        (yaw, [ahead, side], depth) => {
+          const f = forward(yaw);
+          const r = rightOf(f);
+          const { gearDown } = landOnce(
+            yaw,
+            // A one-block slab 0.4 blocks around one probe spot, `depth` blocks down.
+            (o) =>
+              Math.abs(dot(o, f) - ahead) <= 0.4 &&
+              Math.abs(dot(o, r) - side) <= 0.4 &&
+              o.y <= -depth &&
+              o.y > -depth - 1,
+          );
+          expect(gearDown).toBe(depth <= SPEC.gearDownHeight);
+        },
+      ),
+    );
   });
 });

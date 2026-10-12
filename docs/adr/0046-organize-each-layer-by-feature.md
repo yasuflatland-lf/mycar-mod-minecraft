@@ -5,7 +5,7 @@
 
 ## Context
 
-The add-on will grow beyond the SUV to include boats and building parts. The three layers (0012) separate domain rules, use cases, and game integration, but flat application and infrastructure folders do not separate kinds of content. Vehicle persistence, test input, and application ports all depend on the vehicle domain and belong to that feature.
+The add-on holds rides and will grow beyond the SUV to include boats. House-building parts will ship as a separate add-on with its own namespace, not as a feature of this one. The three layers (0012) separate domain rules, use cases, and game integration, but flat application and infrastructure folders do not separate kinds of content. Vehicle persistence, test input, and application ports all depend on the vehicle domain and belong to that feature.
 
 A pnpm workspace per feature would provide package boundaries, but adds package manifests, build wiring, and dependency management for content shipped together in one add-on. Keeping the flat layout avoids moves today but leaves future content mixed together without enforced feature boundaries.
 
