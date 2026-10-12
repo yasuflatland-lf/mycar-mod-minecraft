@@ -1,5 +1,5 @@
 // How the hull sits on the water as it drives: the bow rises while the boat
-// gains speed, and the hull rolls into a turn (ADR 0059).
+// gains speed, and the hull rolls into a turn (ADR 0059, ADR 0061).
 import { clamp, normalizeYaw } from "../../../shared/vec";
 import { SPORTSBOAT_MOTION } from "./profile";
 
@@ -12,10 +12,10 @@ export const SPORTSBOAT_ATTITUDE = {
   trimRiseRate: 0.5,
   /** Degrees per tick toward a lower trim, so the bow settles in about 1.4 s. */
   trimSettleRate: 0.25,
-  /** Degrees of roll in a turn at the full turn rate and top speed. */
-  maxRoll: 10,
-  /** Degrees per tick, so a full roll builds up in half a second. */
-  rollRate: 1,
+  /** Degrees of roll in a turn at the full turn rate and top speed (ADR 0061). */
+  maxRoll: 20,
+  /** Degrees per tick, so a full roll builds up in half a second (ADR 0061). */
+  rollRate: 2,
 } as const;
 
 /**
