@@ -213,6 +213,8 @@ body += both_sides([
 # Distance of the wheel hubs from the center line. The tires stand 1.5 px out from the body's side
 # (x 13), under over-fenders.
 HUB_X = 15.5
+# Outer face of the flares: 2.75 px out from the body's side, over the inner half of the tires
+FLARE_X = 15.75
 FRONT_AXLE_Z, REAR_AXLE_Z = 17, -21
 # Wheel arch: the inside of each flare. Its flat top's underside, the top's half length, and the inner
 # lower end of each slope, ahead of and behind the axle. The inner edge stays at least 6.3 px from the
@@ -234,7 +236,7 @@ def fender_flare(z_center, front_leg_bottom, rear_leg_bottom):
     thickness = 2
     length = math.hypot(ARCH_TOP_Y - ARCH_FOOT_Y, ARCH_FOOT_Z - ARCH_TOP_HALF) + 0.6  # closes the corner
     slope = round(math.degrees(math.atan(ARCH_RUN_PER_RISE)), 3)
-    x1 = HUB_X + 3  # past the tire's outer face, so the flare reads as an over-fender
+    x1 = FLARE_X
     cubes = [box(13, ARCH_TOP_Y, z_center - ARCH_TOP_HALF - 0.8, x1, ARCH_TOP_Y + thickness,
                  z_center + ARCH_TOP_HALF + 0.8, "trim")]
     # Each slope stands on its lower inner end and tips its top toward the wheel's center; a positive x
@@ -284,8 +286,8 @@ body += both_sides([
     *fender_flare(FRONT_AXLE_Z, 5, 4),
     *fender_flare(REAR_AXLE_Z, 4, 4),
     # Light strip across the front face of the front flare's leg, and the turn signal on its outer side
-    box(13.3, 7.4, 25.9, HUB_X + 2.8, 8.2, 26.1, "light"),
-    box(HUB_X + 3, 7.4, 24.4, HUB_X + 3.1, 8.2, 25.6, "amber"),
+    box(13.3, 7.4, 25.9, FLARE_X - 0.2, 8.2, 26.1, "light"),
+    box(FLARE_X, 7.4, 24.4, FLARE_X + 0.1, 8.2, 25.6, "amber"),
 ])
 
 
