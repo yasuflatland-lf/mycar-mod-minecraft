@@ -246,3 +246,57 @@ describe("sports boat Resource Pack (ADR 0051)", () => {
     ]);
   });
 });
+
+describe("sports boat engine sound (ADR 0060)", () => {
+  const defs = read(`${RP}/sounds/sound_definitions.json`).sound_definitions;
+  const animations = read(
+    `${RP}/animations/yasu_ride/sportsboat.anim.json`,
+  ).animations;
+  const levels: Record<string, string>[] = client.scripts.animate.filter(
+    (a: unknown) =>
+      typeof a === "object" &&
+      a !== null &&
+      (Object.keys(a)[0] ?? "").startsWith("engine_sound_"),
+  );
+  const GUARD = "query.has_rider";
+
+  it("plays one of eight levels by speed while ridden, over contiguous ranges from rest upward", () => {
+    expect(levels).toHaveLength(8);
+    let previous = 0;
+    levels.forEach((entry, level) => {
+      const [name, condition] = Object.entries(entry)[0] ?? ["", ""];
+      expect(name).toBe(`engine_sound_${level}`);
+      expect(condition.startsWith(GUARD), name).toBe(true);
+      const lo = /query\.ground_speed >= ([\d.]+)/.exec(condition)?.[1];
+      const hi = /query\.ground_speed < ([\d.]+)/.exec(condition)?.[1];
+      expect(lo ? Number(lo) : 0).toBe(previous);
+      previous = hi ? Number(hi) : Number.POSITIVE_INFINITY;
+      if (level < levels.length - 1)
+        expect(previous, name).toBeLessThan(Number.POSITIVE_INFINITY);
+    });
+    expect(previous).toBe(Number.POSITIVE_INFINITY);
+  });
+
+  it("loops each level's own clip for exactly its length, louder as the revs rise", () => {
+    let volume = 0;
+    levels.forEach((_, level) => {
+      const anim = animations[client.animations[`engine_sound_${level}`] ?? ""];
+      const [effect] = Object.values<{ effect: string }>(anim.sound_effects);
+      expect(effect?.effect).toBe(`engine_${level}`);
+      const event = client.sound_effects[`engine_${level}`];
+      expect(event).toBe(`yasu_ride.boat_engine_${level}`);
+      const [sound] = defs[event].sounds;
+      const path = `${RP}/${sound.name}.wav`;
+      expect(existsSync(path), path).toBe(true);
+      const wav = readFileSync(path);
+      // A canonical PCM WAV: byte rate at offset 28, data size at offset 40
+      expect(anim.loop).toBe(true);
+      expect(anim.animation_length).toBeCloseTo(
+        wav.readUInt32LE(40) / wav.readUInt32LE(28),
+        3,
+      );
+      expect(sound.volume).toBeGreaterThan(volume);
+      volume = sound.volume;
+    });
+  });
+});

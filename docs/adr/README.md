@@ -63,6 +63,7 @@ This directory records design decisions and the reasons behind them. The format 
 | [0057](0057-skip-model-check-when-inputs-unchanged.md) | Skip model:check on pull requests that leave the renderer's files alone | Accepted |
 | [0058](0058-refine-the-sports-boat-interior.md) | Refine the sports boat interior from reference photos | Accepted |
 | [0059](0059-sports-boat-wake-trim-and-roll.md) | Sports boat wake, bow rise, and roll | Accepted |
+| [0060](0060-sports-boat-engine-sound.md) | Sports boat engine sound | Accepted |
 
 The measurements and in-game tests behind these decisions are in [the driving-core spike findings](../spike-driving-core.md).
 
