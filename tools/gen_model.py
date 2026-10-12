@@ -224,26 +224,33 @@ ARCH_FOOT_Y, ARCH_FOOT_Z = 8, 7
 ARCH_RUN_PER_RISE = (ARCH_FOOT_Z - ARCH_TOP_HALF) / (ARCH_TOP_Y - ARCH_FOOT_Y)
 
 
+FLARE_THICKNESS = 2
+
+
 def arch_side_z(z_center, side, y):
     """z of the arch's inner edge at height y on its front (side +1) or rear (side -1) slope."""
     return z_center + side * (ARCH_FOOT_Z - (y - ARCH_FOOT_Y) * ARCH_RUN_PER_RISE)
+
+
+def flare_face_z(z_center, side, y):
+    """z of the flare's outer face at height y on its front (side +1) or rear (side -1) slope."""
+    return arch_side_z(z_center, side, y) + side * FLARE_THICKNESS * math.hypot(1, ARCH_RUN_PER_RISE)
 
 
 def fender_flare(z_center, front_leg_bottom, rear_leg_bottom):
     """A black trapezoid flare over a wheel on the +x side, like a Wrangler's: a flat top over the tire,
     a side sloping down and out at each end, and a leg under each slope that drops toward the bumper or
     the side step."""
-    thickness = 2
     length = math.hypot(ARCH_TOP_Y - ARCH_FOOT_Y, ARCH_FOOT_Z - ARCH_TOP_HALF) + 0.6  # closes the corner
     slope = round(math.degrees(math.atan(ARCH_RUN_PER_RISE)), 3)
     x1 = FLARE_X
-    cubes = [box(13, ARCH_TOP_Y, z_center - ARCH_TOP_HALF - 0.8, x1, ARCH_TOP_Y + thickness,
+    cubes = [box(13, ARCH_TOP_Y, z_center - ARCH_TOP_HALF - 0.8, x1, ARCH_TOP_Y + FLARE_THICKNESS,
                  z_center + ARCH_TOP_HALF + 0.8, "trim")]
     # Each slope stands on its lower inner end and tips its top toward the wheel's center; a positive x
     # rotation here tips +y toward -z in game (see WINDSHIELD_LEAN).
     for side in (1, -1):
         z0 = z_center + side * ARCH_FOOT_Z
-        z1 = z0 + side * thickness
+        z1 = z0 + side * FLARE_THICKNESS
         cubes.append(turned(box(13, ARCH_FOOT_Y, min(z0, z1), x1, ARCH_FOOT_Y + length, max(z0, z1), "trim"),
                             (13, ARCH_FOOT_Y, z0), (side * slope, 0, 0)))
     for side, leg_bottom in ((1, front_leg_bottom), (-1, rear_leg_bottom)):
@@ -282,12 +289,16 @@ body += both_sides([
     box(11.4, ARCH_FOOT_Y - 1, z - ARCH_FOOT_Z - 0.5, 11.6, ARCH_TOP_Y + 0.5, z + ARCH_FOOT_Z + 0.5, "grille")
     for z in (FRONT_AXLE_Z, REAR_AXLE_Z)
 ])
+LAMP_Y0, LAMP_Y1 = 11.4, 12.2
 body += both_sides([
     *fender_flare(FRONT_AXLE_Z, 5, 4),
     *fender_flare(REAR_AXLE_Z, 4, 4),
-    # Light strip across the front face of the front flare's leg, and the turn signal on its outer side
-    box(13.3, 7.4, 25.9, FLARE_X - 0.2, 8.2, 26.1, "light"),
-    box(FLARE_X, 7.4, 24.4, FLARE_X + 0.1, 8.2, 25.6, "amber"),
+    # Beside the headlights (center y 12.3): a light strip standing a little proud of the front flare's
+    # sloping front face, and the turn signal on the flare's outer side
+    box(13.3, LAMP_Y0, flare_face_z(FRONT_AXLE_Z, 1, LAMP_Y1) - 0.2, FLARE_X - 0.2, LAMP_Y1,
+        flare_face_z(FRONT_AXLE_Z, 1, LAMP_Y0) + 0.1, "light"),
+    box(FLARE_X, LAMP_Y0, arch_side_z(FRONT_AXLE_Z, 1, LAMP_Y0) + 0.6, FLARE_X + 0.1, LAMP_Y1,
+        flare_face_z(FRONT_AXLE_Z, 1, LAMP_Y1) - 0.1, "amber"),
 ])
 
 
