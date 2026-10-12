@@ -6,7 +6,10 @@ import {
   createVehicle,
   rebuildVehicle,
 } from "../../src/domain/vehicle/registry";
-import type { TickContext, Vehicle } from "../../src/domain/vehicle/vehicle";
+import type {
+  Vehicle,
+  VehicleTickInput,
+} from "../../src/domain/vehicle/vehicle";
 import type { VehicleRepository } from "../../src/domain/vehicle/vehicleRepository";
 
 export type TraceKind = "suv" | "sportsboat";
@@ -57,7 +60,7 @@ function context(
   s: TraceSensors,
   riders: readonly TraceRider[],
   testInput?: TraceInput,
-): TickContext {
+): VehicleTickInput {
   const { x, y, z } = s.location;
   return {
     tick: s.tick,

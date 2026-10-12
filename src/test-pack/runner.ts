@@ -2,12 +2,11 @@
 // main Behavior Pack, so they drive the vehicle through script events.
 import { type Dimension, type Entity, system, world } from "@minecraft/server";
 import { dot, forward } from "../domain/shared/vec";
-import { BoatDrive } from "../domain/vehicle/boatDrive";
+import { BoatDrive, SPORTSBOAT_MOTION } from "../domain/vehicle/boatDrive";
 import { type Form, isForm } from "../domain/vehicle/form";
 import { headlightCells } from "../domain/vehicle/headlights";
-import { initialMotion } from "../domain/vehicle/motion";
 import { PAINTS } from "../domain/vehicle/paint";
-import { SPORTSBOAT_PROFILE, SUV_PROFILE } from "../domain/vehicle/profile";
+import { SUV_PROFILE } from "../domain/vehicle/profile";
 import { nearestSeat, toLocal } from "../domain/vehicle/seats";
 import { SPEC } from "../domain/vehicle/spec";
 import {
@@ -782,14 +781,13 @@ function boatDrag(a: Arena): Promise<Outcome> {
       a,
       async (boat) => {
         const start = boat.location;
-        let motion = initialMotion(boat.getRotation().y);
         let observed = boat.getVelocity();
         const waterRatios: number[] = [];
         const airRatios: number[] = [];
         const steadySpeeds: number[] = [];
         const coastRatios: number[] = [];
         const steadyDrag: number[] = [];
-        const replica = new BoatDrive();
+        const replica = new BoatDrive(boat.getRotation().y);
         const lines: string[] = [];
         drive(boat, 0, 1);
         for (let t = 0; t < 93; t++) {
@@ -799,11 +797,9 @@ function boatDrag(a: Arena): Promise<Outcome> {
           const throttle = t >= 1 && t <= 80;
           if (t === 80) clearInput(boat);
           const step = replica.step(
-            motion,
             { moveX: 0, moveY: throttle ? 1 : 0, jump: false },
             {
               tick: t,
-              riders: [],
               velocity: observed,
               onGround: false,
               // The replica stays afloat for the whole run.
@@ -812,9 +808,7 @@ function boatDrag(a: Arena): Promise<Outcome> {
               solidAt: () => false,
               targets: () => [],
             },
-            SPORTSBOAT_PROFILE,
           );
-          motion = step.motion;
           const given = {
             x: observed.x + step.impulse.x,
             z: observed.z + step.impulse.z,
@@ -837,11 +831,11 @@ function boatDrag(a: Arena): Promise<Outcome> {
           }
           if (throttle && t >= 60) {
             steadySpeeds.push(speed);
-            if (motion.waterDrag !== undefined)
-              steadyDrag.push(motion.waterDrag);
+            if (replica.waterDrag !== undefined)
+              steadyDrag.push(replica.waterDrag);
           }
           lines.push(
-            `tick=${t + 1} ${throttle ? "throttle" : "coast"} impulse=${hlen(step.impulse).toFixed(3)} given=${hlen(given).toFixed(3)} observed=${speed.toFixed(3)} feet=${(boat.location.y - a.gy).toFixed(3)} water=${water ? 1 : 0} drag=${motion.waterDrag?.toFixed(3) ?? "n/a"} ratio=${ratio?.toFixed(3) ?? "n/a"}`,
+            `tick=${t + 1} ${throttle ? "throttle" : "coast"} impulse=${hlen(step.impulse).toFixed(3)} given=${hlen(given).toFixed(3)} observed=${speed.toFixed(3)} feet=${(boat.location.y - a.gy).toFixed(3)} water=${water ? 1 : 0} drag=${replica.waterDrag?.toFixed(3) ?? "n/a"} ratio=${ratio?.toFixed(3) ?? "n/a"}`,
           );
         }
         const meanText = (values: number[]) =>
@@ -854,7 +848,7 @@ function boatDrag(a: Arena): Promise<Outcome> {
         });
         return {
           pass: distance >= 5,
-          detail: `distance=${distance.toFixed(3)} water(${summary(waterRatios)}) air(${summary(airRatios)}) steadySpeed=${meanText(steadySpeeds)} coastRatio=${meanText(coastRatios)} finalDrag=${motion.waterDrag?.toFixed(3) ?? "n/a"} steadyDrag=${Math.min(...steadyDrag).toFixed(3)}-${Math.max(...steadyDrag).toFixed(3)}`,
+          detail: `distance=${distance.toFixed(3)} water(${summary(waterRatios)}) air(${summary(airRatios)}) steadySpeed=${meanText(steadySpeeds)} coastRatio=${meanText(coastRatios)} finalDrag=${replica.waterDrag?.toFixed(3) ?? "n/a"} steadyDrag=${Math.min(...steadyDrag).toFixed(3)}-${Math.max(...steadyDrag).toFixed(3)}`,
           lines,
         };
       },
@@ -915,7 +909,7 @@ function boatCruise(a: Arena): Promise<Outcome> {
     );
     return {
       pass:
-        steadySpeed >= 0.95 * SPORTSBOAT_PROFILE.motion.maxSpeed &&
+        steadySpeed >= 0.95 * SPORTSBOAT_MOTION.maxSpeed &&
         Math.abs(turn.degrees) >= 360 &&
         turn.endSpeed >= 0.8 * turn.cruiseSpeed,
       detail: `steadySpeed=${steadySpeed.toFixed(3)} cruiseSpeed=${turn.cruiseSpeed.toFixed(3)} turnMinSpeed=${turn.minSpeed.toFixed(3)} turnEndSpeed=${turn.endSpeed.toFixed(3)} kept=${(turn.endSpeed / turn.cruiseSpeed).toFixed(3)} turn=${turn.degrees.toFixed(1)} turnTicks=${turn.ticks} turnRate=${turn.rate.toFixed(3)}`,

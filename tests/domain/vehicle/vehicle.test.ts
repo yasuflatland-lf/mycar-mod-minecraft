@@ -20,8 +20,8 @@ import { SPEC } from "../../../src/domain/vehicle/spec";
 import { STEP_LANES } from "../../../src/domain/vehicle/stepUp";
 import type {
   RiderView,
-  TickContext,
   Vehicle,
+  VehicleTickInput,
 } from "../../../src/domain/vehicle/vehicle";
 import { defined } from "../../support/defined";
 import { engineStep } from "../../support/engineModel";
@@ -117,7 +117,7 @@ class Sim {
         yaw: r.yaw,
         raw: r.raw,
       }));
-      const ctx: TickContext = {
+      const ctx: VehicleTickInput = {
         tick: t,
         riders,
         testInput: this.testInput,
@@ -604,7 +604,7 @@ describe("Vehicle water depth context", () => {
         }),
         (waterDepth) => {
           const vehicle = createVehicle("suv", "car", 0);
-          const ctx: TickContext = {
+          const ctx: VehicleTickInput = {
             tick: 0,
             riders: [],
             velocity: { x: 0, y: 0, z: 0 },

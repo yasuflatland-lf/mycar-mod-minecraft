@@ -4,6 +4,7 @@ import type { PlacementRule } from "./placement";
 import { DOOR_BY_SEAT, SEAT_POSITIONS } from "./seats";
 import { SPEC } from "./spec";
 
+/** Each drive holds its own value (ADR 0055). */
 export interface MotionLimits {
   readonly maxSpeed: number;
   readonly maxReverse: number;
@@ -40,31 +41,16 @@ export interface BeamPattern {
 
 export interface VehicleProfile {
   readonly kind: VehicleKind;
-  readonly motion: MotionLimits;
   readonly ram: RamBody;
   readonly seats: SeatLayout;
   readonly beams: BeamPattern;
   readonly placement: PlacementRule;
 }
 
-// Frozen because this one object is the default argument of the motion, ram
-// and headlight functions and is shared by every SUV; a write would change all
-// of them at once and leave RAM_QUERY_RADIUS, computed at load, stale.
+// Frozen because this one object is shared by every SUV; a write would change
+// all of them at once and leave RAM_QUERY_RADIUS, computed at load, stale.
 export const SUV_PROFILE: VehicleProfile = Object.freeze({
   kind: "suv",
-  motion: Object.freeze({
-    maxSpeed: SPEC.maxSpeed,
-    maxReverse: SPEC.maxReverse,
-    accel: SPEC.accel,
-    reverseAccel: SPEC.reverseAccel,
-    brake: SPEC.brake,
-    drag: SPEC.drag,
-    turnRate: SPEC.turnRate,
-    steerFullSpeed: SPEC.steerFullSpeed,
-    grip: SPEC.grip,
-    handbrakeGrip: SPEC.handbrakeGrip,
-    creepSpeed: SPEC.creepSpeed,
-  }),
   ram: Object.freeze({ front: SPEC.bodyFront, halfWidth: SPEC.bodyHalfWidth }),
   seats: Object.freeze({ positions: SEAT_POSITIONS, doors: DOOR_BY_SEAT }),
   beams: Object.freeze({
@@ -78,19 +64,6 @@ export const SUV_PROFILE: VehicleProfile = Object.freeze({
 /** The sports boat's own values (ADR 0051), written out even where they equal the SUV's today. */
 export const SPORTSBOAT_PROFILE: VehicleProfile = Object.freeze({
   kind: "sportsboat",
-  motion: Object.freeze({
-    maxSpeed: 1.12, // ADR 0051
-    maxReverse: 0.2, // ADR 0051
-    accel: 0.0225, // ADR 0051
-    reverseAccel: 0.01125, // Half of accel, as on land
-    brake: 0.04,
-    drag: 0.02,
-    turnRate: 6, // degrees/tick at full steering input (ADR 0051)
-    steerFullSpeed: 0.08,
-    grip: 0.6,
-    handbrakeGrip: 0.6, // Equal to grip: the boat has no handbrake
-    creepSpeed: 0.12, // Below SPEC.ramMinSpeed, so creeping never rams (ADR 0006)
-  }),
   ram: Object.freeze({ front: 3.0, halfWidth: 1.06 }), // ADR 0051
   // Must match minecraft:rideable in packs/yasu_ride_bp/entities/yasu_ride/sportsboat.se.json; the SUV's x/z, no doors (ADR 0051).
   seats: Object.freeze({

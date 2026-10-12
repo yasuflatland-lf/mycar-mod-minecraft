@@ -17,13 +17,13 @@ import {
   stepFlightMotion,
   WATER,
 } from "../../../src/domain/vehicle/motion";
-import { SUV_PROFILE } from "../../../src/domain/vehicle/profile";
 import type { RamTarget } from "../../../src/domain/vehicle/ram";
 import {
   createVehicle,
   rebuildVehicle,
 } from "../../../src/domain/vehicle/registry";
 import { SPEC } from "../../../src/domain/vehicle/spec";
+import { SUV_MOTION } from "../../../src/domain/vehicle/suvDrive";
 import type { TickOutcome } from "../../../src/domain/vehicle/vehicle";
 import {
   type Body,
@@ -444,22 +444,12 @@ describe("Motion medium contract", () => {
           airExpected: expected,
         };
         expect(
-          stepFlightMotion(
-            state,
-            FULL_THROTTLE,
-            velocity,
-            WATER,
-            SUV_PROFILE.motion,
-          ).blocked,
+          stepFlightMotion(state, FULL_THROTTLE, velocity, WATER, SUV_MOTION)
+            .blocked,
         ).toBe(false);
         expect(
-          stepFlightMotion(
-            state,
-            FULL_THROTTLE,
-            velocity,
-            AIR,
-            SUV_PROFILE.motion,
-          ).blocked,
+          stepFlightMotion(state, FULL_THROTTLE, velocity, AIR, SUV_MOTION)
+            .blocked,
         ).toBe(true);
         expect(
           stepFlightMotion(
@@ -467,7 +457,7 @@ describe("Motion medium contract", () => {
             FULL_THROTTLE,
             { x: 0, z: 0 },
             WATER,
-            SUV_PROFILE.motion,
+            SUV_MOTION,
           ).blocked,
         ).toBe(true);
       }),
