@@ -50,8 +50,8 @@ Setup: craft the "Sports Boat" item from 5 iron ingots and an oak boat, or use `
 
 | # | Steps | Pass condition | PC | Mobile |
 |---|---|---|---|---|
-| B1 | Use the boat item on water by clicking the bed, the surface, and the shore | One boat appears at the water surface for each tap and one item is used (not in Creative) | | |
-| B2 | Use the boat item on dry land | The boat appears on the clicked block and cannot drive on land | | |
+| B1 | Use the boat item on water by tapping the bed, the water surface, and the side of a shore block that has water next to it | One boat appears at the water surface for each tap, never on the shore, and one item is used (not in Creative) | | |
+| B2 | Use the boat item on the top of a dry block, then on the side of a dry block with no water next to it, then aimed at dry ground beyond reach | The first tap places the boat on the clicked block and it cannot drive on land; the other two place nothing and use no item | | |
 | B3 | Seat four riders and look forward from the driver's seat | All four riders fit and the driver's eye level sees over the windshield | | |
 | B4 | Drive forward, reverse, turn, and drive into a shore level with the water | The boat responds on water and stops at the shore without leaving the water | | |
 | B5 | Tap (mobile) / left-click (PC) the boat with a dye, then brown dye | The hull turns the dye's color, then back to black; each repaint uses one dye (not in Creative) | | |

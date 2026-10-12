@@ -1,6 +1,7 @@
 // Connects game events to the use cases.
 import {
   type Block,
+  type Dimension,
   Direction,
   type Entity,
   EntityInitializationCause,
@@ -20,8 +21,13 @@ import type {
   PlaceVehicleCommand,
 } from "../../../application/vehicle/placeVehicle";
 import type { SwitchHeadlights } from "../../../application/vehicle/switchHeadlights";
+import type { Vec3 } from "../../../domain/shared/vec";
 import type { VehicleKind } from "../../../domain/vehicle/kind";
-import { surfaceCellY } from "../../../domain/vehicle/placement";
+import {
+  type BlockFace,
+  placementCell,
+} from "../../../domain/vehicle/placement";
+import { profileOf } from "../../../domain/vehicle/profile";
 import { NAMESPACE } from "../../shared/identifiers";
 import { parseTestInputMessage } from "../testInput/testInputMessage";
 import type { TestInputStore } from "../testInput/testInputStore";
@@ -33,6 +39,19 @@ import {
   TEST_INPUT_EVENT,
 } from "./identifiers";
 import { isWaterAt } from "./water";
+
+const BLOCK_FACE: Readonly<Record<Direction, BlockFace>> = {
+  [Direction.Up]: "up",
+  [Direction.Down]: "down",
+  [Direction.North]: "north",
+  [Direction.South]: "south",
+  [Direction.East]: "east",
+  [Direction.West]: "west",
+};
+
+// How far the itemUse ray looks for water, in blocks. It reaches open water a
+// little past the block interaction; a land hit never places (see itemUse below).
+const WATER_RAY_DISTANCE = 12;
 
 export function registerSubscriptions(
   useCases: {
@@ -88,38 +107,37 @@ export function registerSubscriptions(
   );
 
   // One tap on water can fire both the block interaction and itemUse, in the
-  // same tick, so each player gets one boat request and one placement per tick.
-  // The deferred placement runs a tick later, where it can meet an itemUse.
-  const boatRequested = oncePerPlayerPerTick();
-  const boatPlaced = oncePerPlayerPerTick();
-  const placeBoat = (cmd: PlaceVehicleCommand) => {
-    if (boatPlaced(cmd.playerId)) useCases.place.execute(cmd);
+  // same tick, so each player gets one placement request and one placement per
+  // tick. The deferred placement runs a tick later, where it can meet an itemUse.
+  const requested = oncePerPlayerPerTick();
+  const placed = oncePerPlayerPerTick();
+  const place = (cmd: PlaceVehicleCommand) => {
+    if (placed(cmd.playerId)) useCases.place.execute(cmd);
   };
   const placeCommand = (
     player: Player,
     kind: VehicleKind,
-    block: Block,
+    dimension: Dimension,
+    blockLocation: Vec3,
   ): PlaceVehicleCommand => ({
     kind,
     playerId: player.id,
-    dimensionId: block.dimension.id,
-    blockLocation: block.location,
+    dimensionId: dimension.id,
+    blockLocation,
     yaw: player.getRotation().y,
     creative: player.getGameMode() === GameMode.Creative,
     slot: player.selectedSlotIndex,
   });
-  // The interaction ray skips liquids and reports the bed under the water, so
-  // the boat climbs to the top water cell (docs/spike-sportsboat.md).
-  const surfaceLocation = (block: Block) => {
-    const { x, y, z } = block.location;
-    return {
-      x,
-      y: surfaceCellY(y, (cellY) =>
-        isWaterAt(block.dimension, { x, y: cellY, z }),
-      ),
-      z,
-    };
-  };
+  // The interaction ray skips liquids and reports the bed under the water or
+  // the shore beside it, so a water kind climbs to the top water cell of the
+  // clicked or the adjacent cell (docs/spike-sportsboat.md).
+  const cellFor = (kind: VehicleKind, block: Block, face: Direction) =>
+    placementCell(
+      profileOf(kind).placement,
+      block.location,
+      BLOCK_FACE[face],
+      (at) => isWaterAt(block.dimension, at),
+    );
 
   // The after-event only fires when the interaction did something, and an item
   // with no use behavior does nothing on a block, so a tap never reaches it
@@ -128,23 +146,13 @@ export function registerSubscriptions(
   // or toggling the block underneath.
   world.beforeEvents.playerInteractWithBlock.subscribe((ev) => {
     const kind = kindOfItem(ev.itemStack?.typeId);
-    if (
-      !ev.isFirstEvent ||
-      kind === undefined ||
-      (kind !== "sportsboat" && ev.blockFace !== Direction.Up)
-    )
-      return;
+    if (!ev.isFirstEvent || kind === undefined) return;
+    const cell = cellFor(kind, ev.block, ev.blockFace);
+    if (cell === undefined) return;
     ev.cancel = true;
-    const block = ev.block;
-    const cmd = placeCommand(ev.player, kind, block);
-    if (kind !== "sportsboat") {
-      system.run(() => useCases.place.execute(cmd));
-      return;
-    }
-    if (!boatRequested(ev.player.id)) return;
-    system.run(() =>
-      placeBoat({ ...cmd, blockLocation: surfaceLocation(block) }),
-    );
+    if (!requested(ev.player.id)) return;
+    const cmd = placeCommand(ev.player, kind, ev.block.dimension, cell);
+    system.run(() => place(cmd));
   });
 
   // initialSpawn is true on every join, not only the first one, so a player
@@ -190,19 +198,22 @@ export function registerSubscriptions(
       tick: system.currentTick,
     });
 
+  // A tap on open water past the interaction reach fires only itemUse. This ray
+  // sees liquids, but only a water hit places a vehicle: land placement goes
+  // through the block interaction above, which keeps the normal reach.
   world.afterEvents.itemUse.subscribe((ev) => {
-    if (kindOfItem(ev.itemStack.typeId) === "sportsboat") {
+    const kind = kindOfItem(ev.itemStack.typeId);
+    if (kind !== undefined && profileOf(kind).placement.onWater) {
       const player = ev.source;
       const hit = player.getBlockFromViewDirection({
         includeLiquidBlocks: true,
         includePassableBlocks: true,
-        maxDistance: 12,
+        maxDistance: WATER_RAY_DISTANCE,
       });
-      if (hit && boatRequested(player.id))
-        placeBoat({
-          ...placeCommand(player, "sportsboat", hit.block),
-          blockLocation: surfaceLocation(hit.block),
-        });
+      if (!hit || !isWaterAt(hit.block.dimension, hit.block.location)) return;
+      const cell = cellFor(kind, hit.block, hit.face);
+      if (cell && requested(player.id))
+        place(placeCommand(player, kind, hit.block.dimension, cell));
       return;
     }
     if (ev.itemStack.typeId !== HEADLIGHT_SWITCH_TYPE) return;

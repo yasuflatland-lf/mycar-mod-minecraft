@@ -4,6 +4,7 @@ import {
   forward,
   leftOf,
   length,
+  normalizeYaw,
   type Vec2,
   type Vec3,
 } from "../../../src/domain/shared/vec";
@@ -41,6 +42,18 @@ const rawInput: fc.Arbitrary<RawInput> = fc.record({
   jump: fc.boolean(),
 });
 const FULL_THROTTLE: RawInput = { moveX: 0, moveY: 1, jump: false };
+const steer = number(-1, 1);
+/** A stick held sideways: beyond the deadzone and within SPEC.sidewaysAngle of horizontal (ADR 0018). */
+const sideways: fc.Arbitrary<RawInput> = fc
+  .tuple(number(0.2, 1), fc.constantFrom(-1, 1), number(-0.9, 0.9))
+  .map(([x, sign, slope]) => ({
+    moveX: sign * x,
+    moveY: x * slope * Math.tan((SPEC.sidewaysAngle * Math.PI) / 180),
+    jump: false,
+  }));
+
+/** Signed difference between two yaws, in (-180, 180]. */
+const yawDelta = (from: number, to: number) => normalizeYaw(to - from);
 
 interface Water {
   waterDepth?: number;
@@ -48,6 +61,14 @@ interface Water {
 }
 const AFLOAT: Water = { waterDepth: 0.5 };
 const BEACHED: Water = { waterDepth: 0, waterBelow: false };
+/** The usual case for a floating hull: its feet sit above the water cell (ADR 0051). */
+const WATER_BELOW: Water = { waterDepth: 0, waterBelow: true };
+const waterDepth = number(0.01, 5);
+const afloatWater: fc.Arbitrary<Water> = fc.oneof(
+  waterDepth.map((d) => ({ waterDepth: d })),
+  fc.constant(WATER_BELOW),
+  waterDepth.map((d) => ({ waterDepth: d, waterBelow: true })),
+);
 
 /** Feeds a vehicle through the engine model: apply the impulse, then the medium's drag. */
 class BoatSim {
@@ -278,10 +299,10 @@ describe("BoatDrive (ADR 0051)", () => {
 
   it("afloat at full throttle, rises to the boat's top speed above the SUV's and never exceeds it", () => {
     fc.assert(
-      fc.property(yaw, fc.boolean(), (heading, jump) => {
+      fc.property(yaw, fc.boolean(), afloatWater, (heading, jump, water) => {
         const sim = new BoatSim(boat(heading), SPORTSBOAT_WATER.drag);
         for (let i = 0; i < 120; i++) {
-          sim.step({ ...FULL_THROTTLE, jump }, AFLOAT);
+          sim.step({ ...FULL_THROTTLE, jump }, water);
           expect(length(sim.body.vel)).toBeLessThanOrEqual(
             SPORTSBOAT_PROFILE.motion.maxSpeed + 1e-9,
           );
@@ -293,6 +314,28 @@ describe("BoatDrive (ADR 0051)", () => {
         expect(sim.vehicle.speed).toBe(SPORTSBOAT_PROFILE.motion.maxSpeed);
         expect(sim.vehicle.speed).toBeGreaterThan(SUV_PROFILE.motion.maxSpeed);
       }),
+    );
+  });
+
+  it("with water only 0.3 blocks below the feet, drives exactly as with water at the feet", () => {
+    fc.assert(
+      fc.property(
+        yaw,
+        waterDepth,
+        fc.array(fc.option(rawInput, { nil: undefined }), {
+          minLength: 1,
+          maxLength: 80,
+        }),
+        (heading, depth, inputs) => {
+          const below = new BoatSim(boat(heading), SPORTSBOAT_WATER.drag);
+          const atFeet = new BoatSim(boat(heading), SPORTSBOAT_WATER.drag);
+          for (const raw of inputs) {
+            expect(below.step(raw, WATER_BELOW)).toStrictEqual(
+              atFeet.step(raw, { waterDepth: depth }),
+            );
+          }
+        },
+      ),
     );
   });
 
@@ -308,6 +351,85 @@ describe("BoatDrive (ADR 0051)", () => {
           );
         }
       }),
+    );
+  });
+
+  it("afloat at speed, turns against the stick by the profile's turnRate, and the other way in reverse", () => {
+    fc.assert(
+      fc.property(
+        yaw,
+        steer,
+        fc.constantFrom(1, -1),
+        afloatWater,
+        (heading, s, direction, water) => {
+          const sim = new BoatSim(boat(heading), SPORTSBOAT_WATER.drag);
+          const stick = { moveX: 0, moveY: direction, jump: false };
+          // 20 ticks take the boat past steerFullSpeed both ways.
+          for (let i = 0; i < 20; i++) sim.step(stick, water);
+          const before = sim.vehicle.yaw;
+          sim.step({ ...stick, moveX: s }, water);
+          expect(
+            Math.abs(sim.vehicle.speed) /
+              SPORTSBOAT_PROFILE.motion.steerFullSpeed,
+          ).toBeGreaterThanOrEqual(1);
+          expect(yawDelta(before, sim.vehicle.yaw)).toBeCloseTo(
+            -direction * s * SPORTSBOAT_PROFILE.motion.turnRate,
+            9,
+          );
+        },
+      ),
+    );
+  });
+
+  it("steers by whatever turnRate the profile it is given holds", () => {
+    fc.assert(
+      fc.property(
+        yaw,
+        steer,
+        number(1, 12),
+        afloatWater,
+        (heading, s, turnRate, water) => {
+          const profile = {
+            ...SPORTSBOAT_PROFILE,
+            motion: { ...SPORTSBOAT_PROFILE.motion, turnRate },
+          };
+          const motion = { ...initialMotion(heading), speed: 0.5 };
+          const out = new BoatDrive().step(
+            motion,
+            { moveX: s, moveY: 1, jump: false },
+            context(0, undefined, { x: 0, z: 0 }, water),
+            profile,
+          );
+          expect(yawDelta(motion.yaw, out.motion.yaw)).toBeCloseTo(
+            -s * turnRate,
+            9,
+          );
+        },
+      ),
+    );
+  });
+
+  it("afloat with the stick held sideways, settles at creep speed from rest or from full speed and keeps turning", () => {
+    fc.assert(
+      fc.property(
+        yaw,
+        fc.integer({ min: 0, max: 120 }),
+        sideways,
+        afloatWater,
+        (heading, throttleTicks, stick, water) => {
+          const sim = new BoatSim(boat(heading), SPORTSBOAT_WATER.drag);
+          for (let i = 0; i < throttleTicks; i++)
+            sim.step(FULL_THROTTLE, water);
+          for (let i = 0; i < 100; i++) sim.step(stick, water);
+          expect(sim.vehicle.speed).toBe(SPORTSBOAT_PROFILE.motion.creepSpeed);
+          const before = sim.vehicle.yaw;
+          sim.step(stick, water);
+          expect(yawDelta(before, sim.vehicle.yaw)).toBeCloseTo(
+            -stick.moveX * SPORTSBOAT_PROFILE.motion.turnRate,
+            9,
+          );
+        },
+      ),
     );
   });
 
@@ -369,24 +491,36 @@ describe("BoatDrive (ADR 0051)", () => {
     );
   });
 
-  it("does the same with jump held as with jump released", () => {
-    const tick = fc.record({
-      raw: fc.option(rawInput, { nil: undefined }),
-      afloat: fc.boolean(),
-    });
+  it("ignores jump afloat or beached, even with a handbrake grip that differs from its grip", () => {
+    // SPORTSBOAT_PROFILE sets handbrakeGrip equal to grip, which would hide a
+    // path that reads the handbrake; a differing one makes such a path show.
+    const water = fc.oneof(
+      afloatWater,
+      fc.constant(BEACHED),
+      fc.constant<Water>({}),
+    );
     fc.assert(
       fc.property(
         yaw,
-        fc.array(tick, { minLength: 1, maxLength: 80 }),
-        (heading, ticks) => {
-          const held = new BoatSim(boat(heading), SPORTSBOAT_WATER.drag);
-          const released = new BoatSim(boat(heading), SPORTSBOAT_WATER.drag);
-          for (const t of ticks) {
-            const water = t.afloat ? AFLOAT : BEACHED;
-            const a = held.step(t.raw && { ...t.raw, jump: true }, water);
-            const b = released.step(t.raw && { ...t.raw, jump: false }, water);
-            expect(a).toStrictEqual(b);
-          }
+        number(-0.2, 1.12),
+        fc.record({ x: number(-2, 2), z: number(-2, 2) }),
+        water,
+        fc.boolean(),
+        rawInput,
+        number(0, 1),
+        (heading, speed, velocity, w, onGround, raw, handbrakeGrip) => {
+          const profile = {
+            ...SPORTSBOAT_PROFILE,
+            motion: { ...SPORTSBOAT_PROFILE.motion, handbrakeGrip },
+          };
+          const motion = { ...initialMotion(heading), speed };
+          const ctx = { ...context(0, undefined, velocity, w), onGround };
+          const drive = new BoatDrive();
+          expect(
+            drive.step(motion, { ...raw, jump: true }, ctx, profile),
+          ).toStrictEqual(
+            drive.step(motion, { ...raw, jump: false }, ctx, profile),
+          );
         },
       ),
     );

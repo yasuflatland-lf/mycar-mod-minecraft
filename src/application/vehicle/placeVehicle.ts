@@ -1,4 +1,6 @@
-// Use case: place a vehicle by using the vehicle item on the top face of a block (ADR 0008).
+// Use case: place a vehicle from its item on the cell its kind's placement rule
+// picks (ADR 0008, ADR 0050): the SUV on the top face of a block, the sports boat
+// at the water surface from any face or the view ray, or on land from a top face (ADR 0051).
 import type { Vec3 } from "../../domain/shared/vec";
 import type { VehicleKind } from "../../domain/vehicle/kind";
 import { canPlaceAt } from "../../domain/vehicle/placement";
@@ -10,7 +12,11 @@ export interface PlaceVehicleCommand {
   kind: VehicleKind;
   playerId: string;
   dimensionId: string;
-  /** Position of the block the item was used on (integer coordinates). The vehicle appears one block above it. */
+  /**
+   * Cell the vehicle sits on top of (integer coordinates): the block the item was
+   * used on, or for a water kind the top water cell above or beside it (ADR 0051).
+   * The vehicle appears one block above it.
+   */
   blockLocation: Vec3;
   yaw: number;
   creative: boolean;

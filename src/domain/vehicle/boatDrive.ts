@@ -78,10 +78,8 @@ export class BoatDrive implements Drive {
     ctx: TickContext,
     profile: VehicleProfile,
   ): DriveResult {
-    // There is no handbrake, so jump does nothing.
-    const input: DriveInput = raw
-      ? { ...toDriveInput(raw), handbrake: false }
-      : NEUTRAL_INPUT;
+    // There is no handbrake: neither path below reads it, so jump does nothing.
+    const input: DriveInput = raw ? toDriveInput(raw) : NEUTRAL_INPUT;
     let step: MotionResult;
     if (isAfloat(ctx.waterDepth, ctx.waterBelow)) {
       const waterDrag = estimateWaterDrag(
