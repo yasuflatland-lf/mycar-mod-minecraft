@@ -37,13 +37,15 @@ const onlyBlocked =
 
 describe("canPlaceAt (ADR 0008, collision box from ADR 0009)", () => {
   it("can place when a 3-wide × 2-high space is clear", () => {
-    expect(canPlaceAt(() => true)).toBe(true);
+    expect(canPlaceAt(() => true, SUV_PROFILE.placement.clearance)).toBe(true);
   });
 
   it("cannot place when any single cell of the 3 × 2 × 3 footprint is blocked", () => {
     fc.assert(
       fc.property(insideFootprint, (b) => {
-        expect(canPlaceAt(onlyBlocked(b))).toBe(false);
+        expect(
+          canPlaceAt(onlyBlocked(b), SUV_PROFILE.placement.clearance),
+        ).toBe(false);
       }),
     );
   });
@@ -51,8 +53,70 @@ describe("canPlaceAt (ADR 0008, collision box from ADR 0009)", () => {
   it("can place when the only blocked cell is outside the footprint", () => {
     fc.assert(
       fc.property(outsideFootprint, (b) => {
-        expect(canPlaceAt(onlyBlocked(b))).toBe(true);
+        expect(
+          canPlaceAt(onlyBlocked(b), SUV_PROFILE.placement.clearance),
+        ).toBe(true);
       }),
+    );
+  });
+});
+
+describe("clearance query order (ADR 0055)", () => {
+  const legacyCells = [-1, 0, 1].flatMap((dx) =>
+    [-1, 0, 1].flatMap((dz) => [1, 2].map((dy) => [dx, dy, dz])),
+  );
+
+  it("visits exactly the original eighteen cells, stopping at the first obstruction", () => {
+    fc.assert(
+      fc.property(
+        fc.array(fc.boolean(), { minLength: 18, maxLength: 18 }),
+        (air) => {
+          for (const profile of [SUV_PROFILE, SPORTSBOAT_PROFILE]) {
+            for (const layout of [air, Array<boolean>(18).fill(true)]) {
+              const queries: number[][] = [];
+              const result = canPlaceAt((dx, dy, dz) => {
+                queries.push([dx, dy, dz]);
+                return layout[queries.length - 1] ?? false;
+              }, profile.placement.clearance);
+              const blocked = layout.indexOf(false);
+              expect(result).toBe(blocked === -1);
+              expect(queries).toEqual(
+                legacyCells.slice(0, blocked === -1 ? 18 : blocked + 1),
+              );
+            }
+          }
+        },
+      ),
+    );
+  });
+
+  it("uses every dimension of a kind's clearance", () => {
+    fc.assert(
+      fc.property(
+        fc.record({
+          halfX: fc.integer({ min: 0, max: 4 }),
+          halfZ: fc.integer({ min: 0, max: 4 }),
+          height: fc.integer({ min: 1, max: 5 }),
+        }),
+        (clearance) => {
+          const queries: number[][] = [];
+          expect(
+            canPlaceAt((dx, dy, dz) => {
+              queries.push([dx, dy, dz]);
+              return true;
+            }, clearance),
+          ).toBe(true);
+          const range = (from: number, to: number) =>
+            Array.from({ length: to - from + 1 }, (_, i) => from + i);
+          const expected = range(-clearance.halfX, clearance.halfX).flatMap(
+            (dx) =>
+              range(-clearance.halfZ, clearance.halfZ).flatMap((dz) =>
+                range(1, clearance.height).map((dy) => [dx, dy, dz]),
+              ),
+          );
+          expect(queries).toEqual(expected);
+        },
+      ),
     );
   });
 });
@@ -129,6 +193,94 @@ const waterOf = (clicked: Vec3, offsets: Vec3[]) => {
 };
 
 describe("placementCell (ADR 0050, ADR 0051)", () => {
+  it("preserves legacy results and water queries for both kinds on every face", () => {
+    fc.assert(
+      fc.property(
+        cell,
+        fc.array(fc.boolean(), { minLength: 43, maxLength: 43 }),
+        fc.array(fc.boolean(), { minLength: 43, maxLength: 43 }),
+        fc.option(fc.integer({ min: 0, max: 40 }), { nil: undefined }),
+        (clicked, clickedColumn, adjacentColumn, maxClimb) => {
+          for (const face of FACES) {
+            const next = add(clicked, FACE_OFFSET[face]);
+            const columnAt = (at: Vec3): boolean[] => {
+              if (at.x === clicked.x && at.z === clicked.z)
+                return clickedColumn;
+              if (at.x === next.x && at.z === next.z) return adjacentColumn;
+              return [];
+            };
+            const isWater = (at: Vec3) =>
+              columnAt(at)[at.y - clicked.y + 1] ?? false;
+            for (const [profile, legacyRule] of [
+              [SUV_PROFILE, { onWater: false, anyFace: false }],
+              [SPORTSBOAT_PROFILE, { onWater: true, anyFace: true }],
+            ] as const) {
+              const queries: Vec3[] = [];
+              const legacyQueries: Vec3[] = [];
+              const actual = placementCell(
+                profile.placement,
+                clicked,
+                face,
+                (at) => {
+                  queries.push(at);
+                  return isWater(at);
+                },
+                maxClimb,
+              );
+              const expected = legacyPlacementCell(
+                legacyRule,
+                clicked,
+                face,
+                (at) => {
+                  legacyQueries.push(at);
+                  return isWater(at);
+                },
+                maxClimb,
+              );
+              expect(actual).toEqual(expected);
+              expect(queries).toEqual(legacyQueries);
+            }
+          }
+        },
+      ),
+    );
+  });
+
+  it("tries surfaces in their declared order and has no implicit top fallback", () => {
+    fc.assert(
+      fc.property(cell, (clicked) => {
+        const clearance = SUV_PROFILE.placement.clearance;
+        expect(
+          placementCell(
+            { surfaces: ["top", "water"], clearance },
+            clicked,
+            "up",
+            () => true,
+          ),
+        ).toEqual(clicked);
+        expect(
+          placementCell(
+            { surfaces: ["water", "top"], clearance },
+            clicked,
+            "up",
+            () => true,
+          ),
+        ).toEqual({ ...clicked, y: clicked.y + 16 });
+        expect(
+          placementCell(
+            { surfaces: ["water"], clearance },
+            clicked,
+            "up",
+            () => false,
+          ),
+        ).toBeUndefined();
+        expect(
+          placementCell({ surfaces: [], clearance }, clicked, "up", () => true),
+        ).toBeUndefined();
+      }),
+    );
+  });
+
   it("places a land kind only on the top face of the clicked block, ignoring water", () => {
     fc.assert(
       fc.property(
@@ -206,3 +358,32 @@ describe("placementCell (ADR 0050, ADR 0051)", () => {
     });
   });
 });
+
+// Pre-refactor placement logic is the behavior oracle for ADR 0055.
+function legacyPlacementCell(
+  rule: { onWater: boolean; anyFace: boolean },
+  clicked: Vec3,
+  face: BlockFace,
+  isWaterAt: (at: Vec3) => boolean,
+  maxClimb = 16,
+): Vec3 | undefined {
+  if (!rule.anyFace && face !== "up") return undefined;
+  if (rule.onWater) {
+    const offset = FACE_OFFSET[face];
+    const next = {
+      x: clicked.x + offset.x,
+      y: clicked.y + offset.y,
+      z: clicked.z + offset.z,
+    };
+    for (const cell of [clicked, next]) {
+      if (!isWaterAt(cell)) continue;
+      const { x, z } = cell;
+      return {
+        x,
+        y: surfaceCellY(cell.y, (y) => isWaterAt({ x, y, z }), maxClimb),
+        z,
+      };
+    }
+  }
+  return face === "up" ? clicked : undefined;
+}

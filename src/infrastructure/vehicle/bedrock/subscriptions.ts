@@ -203,7 +203,10 @@ export function registerSubscriptions(
   // through the block interaction above, which keeps the normal reach.
   world.afterEvents.itemUse.subscribe((ev) => {
     const kind = kindOfItem(ev.itemStack.typeId);
-    if (kind !== undefined && profileOf(kind).placement.onWater) {
+    if (
+      kind !== undefined &&
+      profileOf(kind).placement.surfaces.includes("water")
+    ) {
       const player = ev.source;
       const hit = player.getBlockFromViewDirection({
         includeLiquidBlocks: true,
