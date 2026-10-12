@@ -157,7 +157,7 @@ describe("BedrockVehicleWorld snapshots", () => {
     game.getDimension.mockImplementation((id: string) =>
       id === dimId ? dimension : { getEntities: () => [] },
     );
-    expect(world.loadedVehicles().map((v) => v.id)).toEqual([car.id]);
+    expect(world.loadedVehicles().map((s) => s.id)).toEqual([car.id]);
     expect(world.loadedVehicleIds()).toEqual([car.id]);
   });
 

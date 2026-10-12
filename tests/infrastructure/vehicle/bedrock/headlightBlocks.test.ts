@@ -56,10 +56,10 @@ describe("HeadlightBlocks (ADR 0020)", () => {
         const lights = new HeadlightBlocks();
         lights.shine(car.id, car, wanted);
         const [first, ...others] = wanted;
-        const c = defined(first, "first wanted cell");
-        grid.getBlock(c).setType("minecraft:stone");
+        const placed = defined(first, "first wanted cell");
+        grid.getBlock(placed).setType("minecraft:stone");
         lights.shine(car.id, car, []);
-        expect(grid.typeAt(c)).toBe("minecraft:stone");
+        expect(grid.typeAt(placed)).toBe("minecraft:stone");
         expect(others.map(grid.typeAt)).toEqual(
           others.map(() => "minecraft:air"),
         );
