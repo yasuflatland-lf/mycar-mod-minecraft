@@ -57,6 +57,10 @@ function hlen(v: Horizontal): number {
   return Math.hypot(v.x, v.z);
 }
 
+function mean(values: number[]): number {
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
 function slipAngleDeg(v: Horizontal, yaw: number): number {
   const f = forward(yaw);
   const cos = (v.x * f.x + v.z * f.z) / hlen(v);
@@ -631,6 +635,9 @@ function flightDriverless(a: Arena): Promise<Outcome> {
 // 80 blocks across z, so a submarine has room to turn (submarine_bank); the
 // lane runs along the low-z edge and right turns head into the open water.
 const POOL = { minX: 15, maxX: 85, minZ: 2, maxZ: 81, z: 7.5 } as const;
+// Along +z at x = 20.5 the pool is clear for a full throttle and coast;
+// wall_diagonal's wall stands at x = 45.
+const POOL_SOUTH_LANE = { x: POOL.minX + 5.5, z: POOL.minZ + 2.5, yaw: 0 };
 // Deep enough for a full car height of water with a block under it. In the
 // flat dev world (gy = -60) this puts the pool's stone floor at -64, the
 // bottom of the world, so a carHeight above 2 no longer fits; withPool throws
@@ -820,35 +827,27 @@ function boatDrag(a: Arena): Promise<Outcome> {
             `tick=${t + 1} ${throttle ? "throttle" : "coast"} impulse=${hlen(step.impulse).toFixed(3)} given=${hlen(given).toFixed(3)} observed=${speed.toFixed(3)} feet=${(boat.location.y - a.gy).toFixed(3)} water=${water ? 1 : 0} drag=${motion.waterDrag?.toFixed(3) ?? "n/a"} ratio=${ratio?.toFixed(3) ?? "n/a"}`,
           );
         }
-        const mean = (values: number[]) =>
-          values.length > 0
-            ? (
-                values.reduce((sum, value) => sum + value, 0) / values.length
-              ).toFixed(3)
-            : "n/a";
+        const meanText = (values: number[]) =>
+          values.length > 0 ? mean(values).toFixed(3) : "n/a";
         const summary = (values: number[]) =>
-          `mean=${mean(values)} spread=${values.length > 0 ? (Math.max(...values) - Math.min(...values)).toFixed(3) : "n/a"} n=${values.length}`;
+          `mean=${meanText(values)} spread=${values.length > 0 ? (Math.max(...values) - Math.min(...values)).toFixed(3) : "n/a"} n=${values.length}`;
         const distance = hlen({
           x: boat.location.x - start.x,
           z: boat.location.z - start.z,
         });
         return {
           pass: distance >= 5,
-          detail: `distance=${distance.toFixed(3)} water(${summary(waterRatios)}) air(${summary(airRatios)}) steadySpeed=${mean(steadySpeeds)} coastRatio=${mean(coastRatios)} finalDrag=${motion.waterDrag?.toFixed(3) ?? "n/a"} steadyDrag=${Math.min(...steadyDrag).toFixed(3)}-${Math.max(...steadyDrag).toFixed(3)}`,
+          detail: `distance=${distance.toFixed(3)} water(${summary(waterRatios)}) air(${summary(airRatios)}) steadySpeed=${meanText(steadySpeeds)} coastRatio=${meanText(coastRatios)} finalDrag=${motion.waterDrag?.toFixed(3) ?? "n/a"} steadyDrag=${Math.min(...steadyDrag).toFixed(3)}-${Math.max(...steadyDrag).toFixed(3)}`,
           lines,
         };
       },
-      // Along +z at x = 20.5 the pool is clear for the throttle and the coast;
-      // wall_diagonal's wall stands at x = 45.
-      { x: POOL.minX + 5.5, z: POOL.minZ + 2.5, yaw: 0 },
+      POOL_SOUTH_LANE,
     ),
   );
 }
 
 function boatCruise(a: Arena): Promise<Outcome> {
   return withPool(a, 3, async () => {
-    const mean = (speeds: number[]) =>
-      speeds.reduce((sum, speed) => sum + speed, 0) / speeds.length;
     const steadySpeed = await withBoat(
       a,
       async (boat) => {
@@ -860,7 +859,7 @@ function boatCruise(a: Arena): Promise<Outcome> {
         }
         return mean(speeds);
       },
-      { x: POOL.minX + 5.5, z: POOL.minZ + 2.5, yaw: 0 },
+      POOL_SOUTH_LANE,
     );
     const turn = await withBoat(
       a,
