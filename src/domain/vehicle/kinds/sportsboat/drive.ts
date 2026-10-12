@@ -156,6 +156,9 @@ export class BoatDrive implements Drive {
   }
 
   onDriverMounted(driverYaw: number): void {
+    // A held hull keeps its hold yaw, so turning the drive to the driver here
+    // would point the seats and headlights away from the bow until undocking.
+    if (this.docked || this.restoredDocked) return;
     this.motion = alignOnMount(this.motion, driverYaw);
   }
 
@@ -176,7 +179,7 @@ export class BoatDrive implements Drive {
       if (!departing) {
         return {
           impulse: { x: 0, y: 0, z: 0 },
-          forward: forward(this.motion.yaw),
+          forward: forward(this.docked.yaw),
           commands,
           riders: { thirdPerson: false, underwater: false },
           hold: this.docked,
