@@ -8,8 +8,9 @@ export type Cell = Vec3;
 export const cellKey = (c: Cell): string => `${c.x},${c.y},${c.z}`;
 
 /**
- * Cells ahead of a vehicle at `location` facing `yaw`, one per reach and lane
- * in `beams`, one block above the ground the vehicle stands on.
+ * Cells ahead of a vehicle at `location` facing `yaw`: the distinct cells
+ * reached by each reach and lane in `beams` (pairs that floor to the same
+ * block share one cell), one block above the ground the vehicle stands on.
  */
 export function headlightCells(
   location: Vec3,
