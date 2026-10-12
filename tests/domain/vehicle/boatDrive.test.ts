@@ -19,7 +19,10 @@ import { driveFor } from "../../../src/domain/vehicle/drive";
 import type { RawInput } from "../../../src/domain/vehicle/driveInput";
 import { FORMS } from "../../../src/domain/vehicle/form";
 import type { VehicleKind } from "../../../src/domain/vehicle/kind";
-import { initialMotion } from "../../../src/domain/vehicle/motion";
+import {
+  initialMotion,
+  type MotionState,
+} from "../../../src/domain/vehicle/motion";
 import {
   SPORTSBOAT_PROFILE,
   SUV_PROFILE,
@@ -268,6 +271,49 @@ describe("BoatDrive (ADR 0051)", () => {
         expect(beached.motion.waterDrag).toBe(next.motion.waterDrag);
         expect(beached.motion.airExpected).toBeUndefined();
       }),
+    );
+  });
+
+  it("makes one wall decision per tick: a tick taken as a drag sample never lowers the speed, and a skipped one does", () => {
+    // Heading +z at speed 1 and given (0.1, 1.0): the z axis keeps 0.95, so the
+    // sample is about 0.945 and raises any estimate up to 0.9. The x axis keeps
+    // just over half the stored estimate, which is under half the raised one.
+    fc.assert(
+      fc.property(
+        number(SPORTSBOAT_DRAG.min, 0.9),
+        number(0.0002, 0.002),
+        (prev, over) => {
+          const drive = new BoatDrive();
+          const motion: MotionState = {
+            ...initialMotion(0),
+            speed: 1,
+            waterDrag: prev,
+            airExpected: { x: 0.1, z: 1 },
+          };
+          const velocity = (xRatio: number) => ({ x: 0.1 * xRatio, z: 0.95 });
+          const step = (v: Vec2, m = motion) =>
+            drive.step(
+              m,
+              FULL_THROTTLE,
+              context(0, FULL_THROTTLE, v, AFLOAT),
+              SPORTSBOAT_PROFILE,
+            );
+          const unblocked = step(velocity(0.5), {
+            ...motion,
+            airExpected: undefined,
+          }).motion.speed;
+          const sampled = step(velocity(prev * SPEC.blockedRatio + over));
+          const raised = sampled.motion.waterDrag ?? 0;
+          expect(raised).toBeGreaterThan(prev);
+          expect(0.1 * (prev * SPEC.blockedRatio + over)).toBeLessThan(
+            0.1 * raised * SPEC.blockedRatio,
+          );
+          expect(sampled.motion.speed).toBe(unblocked);
+          const skipped = step(velocity(prev * SPEC.blockedRatio - over));
+          expect(skipped.motion.waterDrag).toBe(prev);
+          expect(skipped.motion.speed).toBeCloseTo(0.95, 12);
+        },
+      ),
     );
   });
 

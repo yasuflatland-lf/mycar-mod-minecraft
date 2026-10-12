@@ -40,12 +40,17 @@ function boundDrag(drag: number): number {
   return clamp(drag, SPORTSBOAT_DRAG.min, SPORTSBOAT_DRAG.max);
 }
 
+/** The estimate a tick starts from: the stored one, bounded, or the initial value. */
+function currentWaterDrag(prev: number | undefined): number {
+  return boundDrag(prev ?? SPORTSBOAT_DRAG.initial);
+}
+
 export function estimateWaterDrag(
   prev: number | undefined,
   given: Vec2 | undefined,
   observed: Vec2,
 ): number {
-  const estimate = boundDrag(prev ?? SPORTSBOAT_DRAG.initial);
+  const estimate = currentWaterDrag(prev);
   if (!given) return estimate;
   const givenSq = dot(given, given);
   if (
@@ -87,11 +92,17 @@ export class BoatDrive implements Drive {
         motion.airExpected,
         ctx.velocity,
       );
+      // Divide by the updated estimate, but check walls against the one the
+      // estimator checked, so a tick taken as a drag sample is never also a wall hit.
       step = stepFlightMotion(
         { ...motion, waterDrag },
         input,
         ctx.velocity,
-        { ...SPORTSBOAT_WATER, drag: waterDrag },
+        {
+          ...SPORTSBOAT_WATER,
+          drag: waterDrag,
+          wallDrag: currentWaterDrag(motion.waterDrag),
+        },
         profile.motion,
       );
     } else {
