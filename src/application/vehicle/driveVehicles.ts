@@ -68,7 +68,7 @@ export class DriveVehicles {
         }
       } catch (e) {
         // A failure in one vehicle must not stop the others.
-        this.log.warn(`[mycar] ${snap.id}: ${e}`);
+        this.log.warn(`${snap.id}: ${e}`);
       }
     }
     for (const id of this.repo.ids()) {
@@ -77,7 +77,7 @@ export class DriveVehicles {
       try {
         this.world.shineHeadlights(id, []);
       } catch (e) {
-        this.log.warn(`[mycar] ${id}: ${e}`);
+        this.log.warn(`${id}: ${e}`);
       }
     }
     this.syncCameras(offRoad);
@@ -91,7 +91,7 @@ export class DriveVehicles {
         this.world.giveWaterBreathing(id, SPEC.waterBreathingTicks);
       } catch (e) {
         // One failed refresh must not skip the other riders.
-        this.log.warn(`[mycar] breathing ${id}: ${e}`);
+        this.log.warn(`breathing ${id}: ${e}`);
       }
     }
   }
@@ -117,8 +117,7 @@ export class DriveVehicles {
       this.cameraFailed.delete(id);
       return true;
     } catch (e) {
-      if (!this.cameraFailed.has(id))
-        this.log.warn(`[mycar] camera ${id}: ${e}`);
+      if (!this.cameraFailed.has(id)) this.log.warn(`camera ${id}: ${e}`);
       this.cameraFailed.add(id);
       return false;
     }

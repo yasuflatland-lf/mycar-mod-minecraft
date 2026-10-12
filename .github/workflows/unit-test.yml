@@ -50,7 +50,7 @@ jobs:
       - if: steps.src.outputs.present == 'true'
         run: pnpm run build
 
-      # Catch a mycar_bp -> mycar_rp dependency version mismatch before a release tag does
+      # Catch a yasu_ride_bp -> yasu_ride_rp dependency version mismatch before a release tag does
       - if: steps.src.outputs.present == 'true'
         run: pnpm run package
 

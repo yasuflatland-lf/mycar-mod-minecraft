@@ -101,8 +101,8 @@ describe("BedrockVehicleWorld submarine wiring (ADR 0040)", () => {
   it("switches gravity off for submarine and writes its form on the same call", () => {
     const { car, world } = fixture();
     world.setForm(car.id, "submarine");
-    expect(car.triggerEvent).toHaveBeenCalledWith("mycar:gravity_off");
-    expect(car.setProperty).toHaveBeenCalledWith("mycar:form", "submarine");
+    expect(car.triggerEvent).toHaveBeenCalledWith("yasu_ride:gravity_off");
+    expect(car.setProperty).toHaveBeenCalledWith("yasu_ride:form", "submarine");
     expect(car.triggerEvent.mock.invocationCallOrder[0]).toBeLessThan(
       car.setProperty.mock.invocationCallOrder[0] ?? 0,
     );

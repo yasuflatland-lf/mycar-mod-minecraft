@@ -10,10 +10,10 @@ const common = {
 await build({
   ...common,
   entryPoints: ["src/main.ts"],
-  outfile: "packs/mycar_bp/scripts/main.js",
+  outfile: "packs/yasu_ride_bp/scripts/main.js",
 });
 await build({
   ...common,
   entryPoints: ["src/test-pack/runner.ts"],
-  outfile: "packs/mycar_test_bp/scripts/main.js",
+  outfile: "packs/yasu_ride_test_bp/scripts/main.js",
 });

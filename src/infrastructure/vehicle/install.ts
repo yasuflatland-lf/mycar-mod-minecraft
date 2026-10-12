@@ -7,6 +7,7 @@ import { LimitVehicles } from "../../application/vehicle/limitVehicles";
 import { PaintVehicle } from "../../application/vehicle/paintVehicle";
 import { PlaceVehicle } from "../../application/vehicle/placeVehicle";
 import { SwitchHeadlights } from "../../application/vehicle/switchHeadlights";
+import { NAMESPACE } from "../shared/identifiers";
 import { BedrockVehicleWorld } from "./bedrock/bedrockVehicleWorld";
 import { registerSubscriptions } from "./bedrock/subscriptions";
 import { DynamicPropertyFleetRepository } from "./persistence/dynamicPropertyFleetRepository";
@@ -17,7 +18,7 @@ export function installVehicles(): void {
   const repo = new InMemoryVehicleRepository();
   const store = new TestInputStore();
   const bedrock = new BedrockVehicleWorld(store);
-  const log = { warn: (m: string) => console.warn(m) };
+  const log = { warn: (m: string) => console.warn(`[${NAMESPACE}] ${m}`) };
   const fleets = new DynamicPropertyFleetRepository(log);
   registerSubscriptions(
     {

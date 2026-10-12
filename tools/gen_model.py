@@ -1,4 +1,4 @@
-"""Generate the model and textures for the MyCar SUV.
+"""Generate the model and textures for the Yasuflatland Ride SUV.
 
 Coordinates are in pixels (16 px = 1 block). The definitions below use "forward +z, right +x",
 and are rotated 180° around the Y axis just before writing, because in Bedrock the front of an
@@ -15,7 +15,10 @@ import zlib
 from pathlib import Path
 
 RP = Path(sys.argv[1])
-(RP / "models/entity").mkdir(parents=True, exist_ok=True)
+MODELS = RP / "models/entity/yasu_ride"
+ENTITY_TEXTURES = RP / "textures/entity/yasu_ride"
+ITEM_TEXTURES = RP / "textures/items/yasu_ride"
+MODELS.mkdir(parents=True, exist_ok=True)
 
 # Color swatches. Each color fills a 4x4 cell, and each face's UV points at the cell's center 2x2
 PALETTE = {
@@ -486,7 +489,7 @@ def prop(name, x_out, z_center):
 
 
 # The folded wheels hang out from the body on arms in flight, like a hovering DeLorean (ADR 0043): the
-# hover animation moves each wheel this far outward on top of lowering it 4 px. suv.animation.json is
+# hover animation moves each wheel this far outward on top of lowering it 4 px. suv.anim.json is
 # written by hand, so wheels_folded, wheels_deploy and wheels_retract must use the same value.
 FOLD_OUT = 6
 # How far the dive and submerged animations move each turned rear wheel out (ADR 0040), which the
@@ -564,7 +567,7 @@ geo = {
     "minecraft:geometry": [
         {
             "description": {
-                "identifier": "geometry.mycar.suv",
+                "identifier": "geometry.yasu_ride.suv",
                 "texture_width": TEXTURE_WIDTH,
                 "texture_height": 16,
                 "visible_bounds_width": 5,
@@ -627,7 +630,7 @@ def turn_around(bones):
 
 
 turn_around(geo["minecraft:geometry"][0]["bones"])
-(RP / "models/entity/suv.geo.json").write_text(json.dumps(geo, indent=1))
+(MODELS / "suv.geo.json").write_text(json.dumps(geo, indent=1))
 
 
 def png(path, w, h, pixel):
@@ -657,11 +660,11 @@ def swatches(body_color):
     return swatch
 
 
-(RP / "textures/entity").mkdir(parents=True, exist_ok=True)
-(RP / "textures/items").mkdir(parents=True, exist_ok=True)
+ENTITY_TEXTURES.mkdir(parents=True, exist_ok=True)
+ITEM_TEXTURES.mkdir(parents=True, exist_ok=True)
 for paint, body_color in BODY_PAINTS.items():
     name = "suv" if paint == "khaki" else f"suv_{paint}"
-    png(RP / f"textures/entity/{name}.png", TEXTURE_WIDTH, 16, swatches(body_color))
+    png(ENTITY_TEXTURES / f"{name}.png", TEXTURE_WIDTH, 16, swatches(body_color))
 
 
 def icon(x, y):
@@ -675,7 +678,7 @@ def icon(x, y):
     return (0, 0, 0)
 
 
-png(RP / "textures/items/suv_item.png", 16, 16, icon)
+png(ITEM_TEXTURES / "suv_item.png", 16, 16, icon)
 
 
 def switch_icon(x, y):
@@ -687,5 +690,5 @@ def switch_icon(x, y):
     return (0, 0, 0, 0)
 
 
-png(RP / "textures/items/headlight_switch.png", 16, 16, switch_icon)
+png(ITEM_TEXTURES / "headlight_switch.png", 16, 16, switch_icon)
 print("cubes:", sum(len(b.get("cubes", [])) for b in geo["minecraft:geometry"][0]["bones"]))

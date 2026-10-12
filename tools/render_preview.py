@@ -19,9 +19,9 @@ import sys
 import zlib
 from pathlib import Path
 
-GEOMETRY = "models/entity/suv.geo.json"
-TEXTURE = "textures/entity/suv.png"
-ANIMATIONS = "animations/suv.animation.json"
+GEOMETRY = "models/entity/yasu_ride/suv.geo.json"
+TEXTURE = "textures/entity/yasu_ride/suv.png"
+ANIMATIONS = "animations/yasu_ride/suv.anim.json"
 WIDTH, HEIGHT = 800, 600
 SUPERSAMPLE = 3
 MARGIN = 0.04  # fraction of the image kept empty around the union of all poses
@@ -185,7 +185,7 @@ def cube_faces(cube):
 
 def folded_wheels(animations):
     """Bone name -> (z rotation, position) of the folded wheels, read from the hover animation (ADR 0022)."""
-    bones = animations["animations"]["animation.mycar.suv.wheels_folded"]["bones"]
+    bones = animations["animations"]["animation.yasu_ride.suv.wheels_folded"]["bones"]
     return {
         name: (pose["rotation"][2], pose["position"])
         for name, pose in bones.items()
@@ -196,7 +196,7 @@ def folded_wheels(animations):
 def submerged_parts(animations):
     """Bone name -> (rotation, position) of the turned rear wheels and props, read from the submerged
     animation (ADR 0040). The props' spin is a Molang expression, so it is drawn at rest."""
-    bones = animations["animations"]["animation.mycar.suv.submerged"]["bones"]
+    bones = animations["animations"]["animation.yasu_ride.suv.submerged"]["bones"]
     return {
         name: ([a if isinstance(a, (int, float)) else 0 for a in pose["rotation"]], pose["position"])
         for name, pose in bones.items()

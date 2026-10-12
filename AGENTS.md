@@ -6,7 +6,7 @@ Guidance for coding agents (Codex, Claude Code, and others) working in this repo
 
 A vehicle add-on for Minecraft Bedrock Edition: a Behavior Pack and a Resource Pack driven by the stable Script API (`@minecraft/server` 2.x), written in TypeScript and bundled with esbuild. It targets a Bedrock Dedicated Server (BDS) on a home LAN, played from PC (keyboard) and mobile (touch).
 
-The source lives in `src/` (domain, application, infrastructure, and the in-game test pack in `src/test-pack/`), with unit tests in `tests/`. `pnpm build` bundles it into `packs/mycar_bp` and `packs/mycar_test_bp`. The in-game tests (`pnpm test:game`) run against the dev BDS in Docker, so they need `pnpm server:up` first.
+The source lives in `src/` (domain, application, infrastructure, and the in-game test pack in `src/test-pack/`), with unit tests in `tests/`. `pnpm build` bundles it into `packs/yasu_ride_bp` and `packs/yasu_ride_test_bp`. The in-game tests (`pnpm test:game`) run against the dev BDS in Docker, so they need `pnpm server:up` first.
 
 ## Commands
 
@@ -23,7 +23,7 @@ pnpm test          # vitest + fast-check
 pnpm test:coverage # same, with a coverage report in coverage/ (CI uploads it to Codecov)
 pnpm test:mutation # Stryker mutation testing, report in reports/mutation (not in CI)
 pnpm build         # esbuild bundle into the Behavior Pack and the test pack
-pnpm package       # zip the packs into dist/mycar-<version>.mcaddon (after build)
+pnpm package       # zip the packs into dist/yasuflatland-ride-<version>.mcaddon (after build)
 pnpm model         # regenerate the Resource Pack model and the README previews (Python 3)
 pnpm model:check   # fail if the README previews in docs/images are stale
 pnpm sounds        # regenerate the Resource Pack sounds (Python 3)
@@ -79,3 +79,16 @@ Design decisions live in [docs/adr](docs/adr/README.md). Read the ADRs that rela
 - Commit messages are a single imperative line with no body or trailers, for example `Add Biome for formatting and linting, and run it in CI`. Do not add AI attribution (`Co-Authored-By`, "Generated with ...") to commits or PR descriptions.
 - Pin exact dependency versions. pnpm's default minimum release age rejects versions published too recently; pick an older release instead of loosening the setting.
 - Never commit world data (`server/data/`, `spike/server/data/`), `node_modules/`, or `dist/`.
+
+## Naming and adding a new kind of content
+
+Ship all rides in Yasuflatland Ride: `yasuflatland-ride-minecraft`, with `yasu_ride_bp` and `yasu_ride_rp`; `yasu_ride_test_bp` is for development only. The dev container is `yasuflatland-ride-bds` and its world is `yasuflatland-ride-dev`.
+
+House-building parts ship as a separate add-on with their own namespace. Do not change the `yasu_ride` namespace after the first Yasuflatland Ride release (0047).
+
+Use `yasu_ride:<snake_case>` for IDs, properties, groups, and events; the test entity namespace is `yasu_ride_test:`. Geometry names use `geometry.yasu_ride.<name>`, animations use `animation.yasu_ride.<entity>.<name>`, controllers use `controller.<kind>.yasu_ride.<entity>[.<name>]`, and sounds use `yasu_ride.<name>`. Lang keys follow IDs. Item texture shortnames use `yasu_ride_<name>` and the atlas resource pack name is `yasu_ride`. Keep engine-fixed manifest, lang, atlas, and sound definition files at their required paths (0047).
+
+When adding a new kind of content, place its code by the feature boundaries rule above (0046), and:
+
+- Build identifiers with `id()` from `src/infrastructure/shared/identifiers.ts`.
+- Put pack files under `<type>/yasu_ride/`, flat below the namespace folder; test entities go under `entities/yasu_ride_test/`. Use the short type suffixes from 0047 (`suv.se.json`, `suv.ce.json`, `suv.ac.json`, ...), and keep every path within 80 characters counting the pack folder (a console limit).

@@ -56,15 +56,15 @@ jobs:
         # The image downloads BDS on first start, which takes a while on a fresh runner.
         run: |
           for i in $(seq 1 120); do
-            if docker logs mycar-bds 2>&1 | grep -q "Server started"; then
+            if docker logs yasuflatland-ride-bds 2>&1 | grep -q "Server started"; then
               exit 0
             fi
-            if [ "$(docker inspect -f '{{.State.Running}}' mycar-bds)" != true ]; then
+            if [ "$(docker inspect -f '{{.State.Running}}' yasuflatland-ride-bds)" != true ]; then
               echo "::error::BDS container exited before the server started"
               exit 1
             fi
             if [ $((i % 6)) = 0 ]; then
-              echo "still waiting ($((i * 5))s): $(docker logs mycar-bds 2>&1 | tail -n 1)"
+              echo "still waiting ($((i * 5))s): $(docker logs yasuflatland-ride-bds 2>&1 | tail -n 1)"
             fi
             sleep 5
           done
@@ -79,7 +79,7 @@ jobs:
       - name: Dump BDS logs on failure
         if: failure() && steps.runner.outputs.present == 'true'
         run: |
-          docker logs mycar-bds > bds.log 2>&1 || true
+          docker logs yasuflatland-ride-bds > bds.log 2>&1 || true
           echo "--- first 150 lines ---"
           head -n 150 bds.log
           echo "--- last 150 lines ---"
