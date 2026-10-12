@@ -164,8 +164,8 @@ body = [
     box(-2.5, 25, ROOF_FRONT - 1.3, 2.5, 26.5, ROOF_FRONT - 0.8, "rim"),
     # Black hardtop roof
     box(-13, ROOF_Y, REAR, 13, ROOF_Y + 1, ROOF_FRONT, "hardtop"),
-    # B-pillars
-    *both_sides([box(12, 17, -6, 13, ROOF_Y, -5, "body")]),
+    # B-pillars, down to the floor so they close the gap between the front and rear doors
+    *both_sides([box(12, 7, -6, 13, ROOF_Y, -5, "body")]),
     # Cargo area sides: body-colored below the belt line, the black hardtop above it with a closed,
     # tinted quarter window
     *both_sides([
