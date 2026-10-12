@@ -323,6 +323,20 @@ describe("DriveVehicles", () => {
     new DriveVehicles(world, repo, logger()).execute(0);
     expect(world.shone.get("gone")).toEqual([]);
   });
+
+  it("logs a failed light clear of an unloaded vehicle and still clears and forgets the others", () => {
+    const world = new FakeWorld();
+    const repo = new InMemoryRepo();
+    const log = logger();
+    repo.save(createVehicle("suv", "stuck", 0));
+    repo.save(createVehicle("suv", "gone", 0));
+    world.shone.set("gone", [{ x: 0, y: 0, z: 4 }]);
+    world.failShineOn = "stuck";
+    new DriveVehicles(world, repo, log).execute(0);
+    expect(log.lines).toEqual(["stuck: Error: lights"]);
+    expect(world.shone.get("gone")).toEqual([]);
+    expect(repo.ids()).toEqual([]);
+  });
 });
 
 describe("DriveVehicles third-person camera in flight (ADR 0028)", () => {
