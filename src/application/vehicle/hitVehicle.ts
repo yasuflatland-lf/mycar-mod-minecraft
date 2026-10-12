@@ -7,6 +7,8 @@ import type { BreakWorld } from "./ports";
 export interface HitVehicleCommand {
   vehicleId: string;
   tick: number;
+  /** The attacker stands on a deck floor block (ADR 0063). */
+  fromDeck: boolean;
 }
 
 export class HitVehicle {
@@ -17,6 +19,7 @@ export class HitVehicle {
   ) {}
 
   execute(cmd: HitVehicleCommand): boolean {
+    if (cmd.fromDeck) return false;
     const vehicle = this.repo.get(cmd.vehicleId);
     if (!vehicle) return false;
     const broken = vehicle
