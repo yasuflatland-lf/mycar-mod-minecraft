@@ -1,6 +1,6 @@
 # Architecture Decision Records
 
-This directory records design decisions and the reasons behind them. The format follows Michael Nygard's ADRs (Context, Decision, Consequences). To reverse a decision, do not rewrite the original ADR: add a new ADR and set the original's status to "Superseded by NNNN".
+This directory records design decisions and the reasons behind them. The format follows Michael Nygard's ADRs (Context, Decision, Consequences). To reverse a decision, do not rewrite the original ADR: add a new ADR and set the original's status to "Superseded by NNNN". When a new ADR adds to an earlier decision without reversing it, set the earlier ADR's status to "Extended by NNNN".
 
 | No. | Decision | Status |
 |---|---|---|
@@ -49,10 +49,12 @@ This directory records design decisions and the reasons behind them. The format 
 | [0043](0043-wheel-arms.md) | Wheel arms in flight and under water | Accepted |
 | [0044](0044-bank-under-water.md) | Bank into turns under water | Accepted |
 | [0045](0045-submarine-preview.md) | Add a submarine pose to the README previews | Accepted |
-| [0046](0046-organize-each-layer-by-feature.md) | Organize each layer by feature | Accepted |
+| [0046](0046-organize-each-layer-by-feature.md) | Organize each layer by feature | Extended by 0050 |
 | [0047](0047-rename-to-yasuflatland-ride.md) | Rename to Yasuflatland Ride | Accepted |
 | [0048](0048-mutation-testing-and-unused-code-checks.md) | Mutation testing with Stryker, and unused code checks with knip | Accepted |
 | [0049](0049-pack-icons-rendered-from-model.md) | Render pack icons from the hovering SUV model | Accepted |
+| [0050](0050-vehicle-kinds-and-per-kind-profiles.md) | Vehicle kinds and per-kind profiles | Accepted |
+| [0051](0051-sports-boat.md) | Sports boat | Accepted |
 
 The measurements and in-game tests behind these decisions are in [the driving-core spike findings](../spike-driving-core.md).
 
