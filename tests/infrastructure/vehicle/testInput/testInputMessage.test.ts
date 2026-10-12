@@ -7,6 +7,8 @@ const axis = fc
   .double({ min: -1, max: 1, noNaN: true })
   .filter((value) => !Object.is(value, -0));
 const finite = fc.double({ noNaN: true, noDefaultInfinity: true });
+const part = fc.string().filter((value) => !value.includes(","));
+const extraFields = fc.array(part, { minLength: 1, maxLength: 3 });
 
 describe("parseTestInputMessage", () => {
   it("formatting a valid input as a message and parsing it returns the original values", () => {
@@ -94,8 +96,7 @@ describe("parseTestInputMessage", () => {
     );
   });
 
-  it("rejects messages whose field count is not 2, 4, or 5", () => {
-    const part = fc.string().filter((value) => !value.includes(","));
+  it("rejects messages whose field count is not 2 or 4", () => {
     fc.assert(
       fc.property(
         fc
@@ -140,6 +141,35 @@ describe("parseTestInputMessage", () => {
         ).toBeUndefined();
         expect(parseTestInputMessage(",clear")).toBeUndefined();
       }),
+    );
+  });
+
+  it("rejects a clear followed by more fields", () => {
+    fc.assert(
+      fc.property(vehicleId, extraFields, (id, rest) => {
+        expect(
+          parseTestInputMessage(`${id},clear,${rest.join(",")}`),
+        ).toBeUndefined();
+      }),
+    );
+  });
+
+  it("rejects a valid input followed by more fields", () => {
+    fc.assert(
+      fc.property(
+        vehicleId,
+        axis,
+        axis,
+        fc.boolean(),
+        extraFields,
+        (id, x, y, jump, rest) => {
+          expect(
+            parseTestInputMessage(
+              `${id},${x},${y},${jump ? "1" : "0"},${rest.join(",")}`,
+            ),
+          ).toBeUndefined();
+        },
+      ),
     );
   });
 });
