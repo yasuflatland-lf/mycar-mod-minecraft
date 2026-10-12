@@ -249,7 +249,7 @@ export class BedrockVehicleWorld
 
   keepDeckSeats(
     vehicleId: string,
-    positions: readonly Vec3[],
+    positions: readonly (Vec3 | undefined)[],
     yaw: number,
   ): void {
     this.deckSeats.keep(vehicleId, this.entity(vehicleId), positions, yaw);

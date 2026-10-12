@@ -65,6 +65,7 @@ Setup: craft the "Sports Boat" item from 5 iron ingots and an oak boat, or use `
 | B12 | On a docked boat's deck, tap (mobile) / left-click (PC) the boat three times with an empty hand; repeat while sneaking at the very edge of the deck; then do the same from the water | It does not break from the deck, including at the edge; it breaks and drops the item from the water | | |
 | B13 | On a docked boat's deck, long-press (mobile) / right-click (PC) the rear-left seat; have a second player use the driver seat, then push the driver's stick | Each player sits in the chosen seat; on the push both move into the boat, the driver stays in seat 0, and the boat leaves. With lower seats empty, a passenger may move to a lower seat on departure (ADR 0063) | | |
 | B14 | Sit only in a rear deck seat and push the stick | Nothing happens; only the deck driver sets off | | |
+| B15 | On a docked boat, sit in the rear-left deck seat; have a second player get into the boat's rear-left seat from the water | The first player is left standing on the deck and the second sits in the boat; the boat stays docked | | |
 
 ## Upgrading from MyCar 0.5.0 and earlier
 

@@ -69,7 +69,7 @@ export class DeckSeats {
   keep(
     vehicleId: string,
     car: Entity | undefined,
-    positions: readonly Vec3[],
+    positions: readonly (Vec3 | undefined)[],
     yaw: number,
   ): void {
     const ids = car ? this.ids(car) : (this.kept.get(vehicleId) ?? []);

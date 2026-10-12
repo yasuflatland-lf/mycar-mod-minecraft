@@ -102,7 +102,11 @@ export class FakeWorld
   holdAt(id: string, pose: HoldPose | undefined) {
     this.held.set(id, pose);
   }
-  keepDeckSeats(_id: string, _positions: readonly Vec3[], _yaw: number) {}
+  keepDeckSeats(
+    _id: string,
+    _positions: readonly (Vec3 | undefined)[],
+    _yaw: number,
+  ) {}
   boardDeckRiders(_id: string) {}
   layFloor(id: string, cells: readonly FloorCell[]) {
     this.floors.set(id, cells);

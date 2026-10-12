@@ -27,7 +27,7 @@ export interface DriveWorld {
   loadedVehicles(): VehicleSnapshot[];
   keepDeckSeats(
     vehicleId: string,
-    positions: readonly Vec3[],
+    positions: readonly (Vec3 | undefined)[],
     yaw: number,
   ): void;
   boardDeckRiders(vehicleId: string): void;

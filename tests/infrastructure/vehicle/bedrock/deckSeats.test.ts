@@ -174,3 +174,33 @@ it("removes a loaded orphan and preserves a seat with a nearby loaded owner", ()
   removeOrphanDeckSeat(seat as unknown as Entity);
   expect(seat.remove).toHaveBeenCalledOnce();
 });
+
+it("removes only the deck seats whose boat seat is taken and keeps the others in place", () => {
+  fc.assert(
+    fc.property(
+      fc.array(point, { minLength: 4, maxLength: 4 }),
+      fc.subarray([0, 1, 2, 3]),
+      (positions, taken) => {
+        const f = fixture();
+        const seats = new DeckSeats();
+        seats.keep(f.car.id, f.car, positions, 0);
+        const ids: string[] = JSON.parse(
+          String(f.boat.saved.get(DECK_SEATS_PROPERTY)),
+        );
+        seats.keep(
+          f.car.id,
+          f.car,
+          positions.map((at, seat) => (taken.includes(seat) ? undefined : at)),
+          0,
+        );
+        expect(
+          JSON.parse(String(f.boat.saved.get(DECK_SEATS_PROPERTY))),
+        ).toEqual(ids.map((id, seat) => (taken.includes(seat) ? null : id)));
+        ids.forEach((id, seat) => {
+          expect(f.entities.get(id)?.isValid).toBe(!taken.includes(seat));
+        });
+        expect(f.dimension.spawnEntity).toHaveBeenCalledTimes(4);
+      },
+    ),
+  );
+});

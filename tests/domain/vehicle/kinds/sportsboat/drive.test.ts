@@ -1259,3 +1259,51 @@ it("only the deck driver above the stick threshold requests boarding and keeps t
     ),
   );
 });
+
+it("keeps deck seats only at empty boat seats and ignores the deck driver while the boat has one", () => {
+  const pushes = (input: RawInput | undefined) =>
+    input !== undefined &&
+    Math.max(Math.abs(input.moveX), Math.abs(input.moveY)) > DOCK.stick;
+  fc.assert(
+    fc.property(
+      yaw,
+      fc.subarray([0, 1, 2, 3]),
+      fc.array(fc.option(rawInput, { nil: undefined }), {
+        minLength: 4,
+        maxLength: 4,
+      }),
+      (heading, taken, inputs) => {
+        const vehicle = rebuildVehicle("sportsboat", "boat", heading, [], {
+          docked: true,
+        });
+        const f = forward(heading);
+        const left = leftOf(f);
+        const riders = taken.map((seat) => {
+          const at = SPORTSBOAT_PROFILE.seats.positions[seat];
+          if (at === undefined) throw new Error(`no seat ${seat}`);
+          return {
+            id: `rider${seat}`,
+            offset: {
+              x: left.x * at.x + f.x * at.z,
+              z: left.z * at.x + f.z * at.z,
+            },
+            yaw: heading,
+            raw: { moveX: 0, moveY: 0, jump: false },
+          };
+        });
+        const out = vehicle.tick({
+          ...context(0, undefined, { x: 0, z: 0 }, AFLOAT),
+          riders,
+          deckSeatInputs: inputs,
+        });
+        expect(out.hold).toBeDefined();
+        expect(out.deckSeats).toHaveLength(4);
+        for (const [seat, at] of out.deckSeats.entries())
+          expect(at === undefined).toBe(taken.includes(seat));
+        expect(out.boardDeckRiders).toBe(
+          !taken.includes(0) && pushes(inputs[0]),
+        );
+      },
+    ),
+  );
+});
