@@ -170,14 +170,10 @@ export class BoatDrive implements Drive {
     }
     const commands: EngineCommand[] = [];
     if (this.docked) {
-      if (
+      const departing =
         raw !== undefined &&
-        Math.max(Math.abs(raw.moveX), Math.abs(raw.moveY)) > DOCK.stick
-      ) {
-        commands.push(...undockCommands());
-        this.docked = undefined;
-        this.stillTicks = 0;
-      } else {
+        Math.max(Math.abs(raw.moveX), Math.abs(raw.moveY)) > DOCK.stick;
+      if (!departing) {
         return {
           impulse: { x: 0, y: 0, z: 0 },
           forward: forward(this.motion.yaw),
@@ -187,6 +183,9 @@ export class BoatDrive implements Drive {
           floor: floorCells(this.docked),
         };
       }
+      commands.push(...undockCommands());
+      this.docked = undefined;
+      this.stillTicks = 0;
     }
     // There is no handbrake: neither path below reads it, so jump does nothing.
     const input: DriveInput = raw ? toDriveInput(raw) : NEUTRAL_INPUT;
@@ -224,42 +223,37 @@ export class BoatDrive implements Drive {
         this.limits,
       );
     }
-    this.trim = stepTrim(this.trim, motion.speed, step.state.speed, afloat);
-    this.roll = stepRoll(
-      this.roll,
-      motion.yaw,
-      step.state.yaw,
-      step.state.speed,
-      afloat,
-    );
-    if (this.trim !== this.sentTrim) commands.push(trimCommand(this.trim));
-    if (this.roll !== this.sentRoll) commands.push(rollCommand(this.roll));
-    this.sentTrim = this.trim;
-    this.sentRoll = this.roll;
     this.motion = step.state;
     this.stillTicks =
       afloat && raw === undefined && Math.abs(step.state.speed) < DOCK.maxSpeed
         ? this.stillTicks + 1
         : 0;
-    if (this.stillTicks >= DOCK.ticks) {
-      const y = holdHeight(ctx.location.y, (dy) =>
-        ctx.waterAt({ x: 0, y: dy, z: 0 }),
-      );
-      if (y !== undefined) {
-        this.docked = {
-          x: ctx.location.x,
-          y,
-          z: ctx.location.z,
-          yaw: step.state.yaw,
-        };
-        this.motion = { ...this.motion, speed: 0 };
-        commands.push(...dockCommands());
-        if (this.trim !== 0) commands.push(trimCommand(0));
-        if (this.roll !== 0) commands.push(rollCommand(0));
-        this.trim = this.sentTrim = 0;
-        this.roll = this.sentRoll = 0;
-      }
+    const holdY =
+      this.stillTicks >= DOCK.ticks
+        ? holdHeight(ctx.location.y, (dy) => ctx.waterAt({ x: 0, y: dy, z: 0 }))
+        : undefined;
+    if (holdY !== undefined) {
+      this.docked = { ...ctx.location, y: holdY, yaw: step.state.yaw };
+      this.motion = { ...step.state, speed: 0 };
+      commands.push(...dockCommands());
     }
+    // A docked boat sits level, so docking clears any residual trim or roll.
+    this.trim = this.docked
+      ? 0
+      : stepTrim(this.trim, motion.speed, step.state.speed, afloat);
+    this.roll = this.docked
+      ? 0
+      : stepRoll(
+          this.roll,
+          motion.yaw,
+          step.state.yaw,
+          step.state.speed,
+          afloat,
+        );
+    if (this.trim !== this.sentTrim) commands.push(trimCommand(this.trim));
+    if (this.roll !== this.sentRoll) commands.push(rollCommand(this.roll));
+    this.sentTrim = this.trim;
+    this.sentRoll = this.roll;
     // Buoyancy and gravity belong to the engine, so the script never pushes vertically.
     return {
       impulse: { x: step.impulse.x, y: 0, z: step.impulse.z },
