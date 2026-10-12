@@ -13,6 +13,7 @@ import { PAINTS } from "../domain/vehicle/paint";
 import { nearestSeat, toLocal } from "../domain/vehicle/seats";
 import { SPEC } from "../domain/vehicle/spec";
 import {
+  DECK_FLOOR_BLOCK,
   ENTITY_TYPE,
   entityPropertyId,
   HEADLIGHTS_PROPERTY,
@@ -789,24 +790,18 @@ const BOAT_DOCK_TEST = {
 } as const;
 
 function deckFloorCount(a: Arena, center: Vec3, radius: number): number {
+  const cx = Math.floor(center.x);
+  const cy = Math.floor(center.y);
+  const cz = Math.floor(center.z);
   let count = 0;
-  for (
-    let x = Math.floor(center.x) - radius;
-    x <= Math.floor(center.x) + radius;
-    x++
-  ) {
+  for (let x = cx - radius; x <= cx + radius; x++) {
     for (
-      let y = Math.max(a.dim.heightRange.min, Math.floor(center.y) - radius);
-      y <= Math.floor(center.y) + radius;
+      let y = Math.max(a.dim.heightRange.min, cy - radius);
+      y <= cy + radius;
       y++
     ) {
-      for (
-        let z = Math.floor(center.z) - radius;
-        z <= Math.floor(center.z) + radius;
-        z++
-      ) {
-        if (a.dim.getBlock({ x, y, z })?.typeId === "yasu_ride:deck_floor")
-          count++;
+      for (let z = cz - radius; z <= cz + radius; z++) {
+        if (a.dim.getBlock({ x, y, z })?.typeId === DECK_FLOOR_BLOCK) count++;
       }
     }
   }
@@ -818,7 +813,8 @@ function boatDock(a: Arena): Promise<Outcome> {
     withBoat(
       a,
       async (boat) => {
-        const docked = () => boat.getProperty("yasu_ride:docked") === true;
+        const docked = () =>
+          boat.getProperty(entityPropertyId("docked")) === true;
         let dockTicks = 0;
         while (!docked() && dockTicks < BOAT_DOCK_TEST.timeout) {
           await wait(1);
