@@ -389,16 +389,16 @@ it.each(["suv", "sportsboat"] as const)(
     const { world, car } = fixture();
     car.typeId = ENTITY_TYPE[kind];
     car.getProperty.mockImplementation((name) =>
-      name === `${NAMESPACE}:form` ? "hover" : false,
+      name === `${NAMESPACE}:form` ? "hover" : name === `${NAMESPACE}:docked`,
     );
     const snapshot = world.loadedVehicles()[0];
     expect(car.getProperty.mock.calls).toEqual([[HEADLIGHTS_PROPERTY]]);
     car.getProperty.mockClear();
     expect(snapshot?.restored()).toStrictEqual(
-      kind === "suv" ? { form: "hover" } : {},
+      kind === "suv" ? { form: "hover" } : { docked: true },
     );
     expect(car.getProperty.mock.calls).toEqual(
-      kind === "suv" ? [[`${NAMESPACE}:form`]] : [],
+      kind === "suv" ? [[`${NAMESPACE}:form`]] : [[`${NAMESPACE}:docked`]],
     );
   },
 );
