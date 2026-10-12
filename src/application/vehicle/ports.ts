@@ -3,11 +3,13 @@ import type { Vec2, Vec3 } from "../../domain/shared/vec";
 import type { RawInput } from "../../domain/vehicle/driveInput";
 import type { Form } from "../../domain/vehicle/form";
 import type { Cell } from "../../domain/vehicle/headlights";
+import type { VehicleKind } from "../../domain/vehicle/kind";
 import type { Paint } from "../../domain/vehicle/paint";
 import type { RamHit, RamTarget } from "../../domain/vehicle/ram";
 import type { RiderView } from "../../domain/vehicle/vehicle";
 
 export interface VehicleSnapshot {
+  kind: VehicleKind;
   id: string;
   location: Vec3;
   yaw: number;
@@ -46,9 +48,18 @@ export interface DriveWorld {
 
 export interface PlacementWorld {
   isAir(dimensionId: string, at: Vec3): boolean;
-  spawnVehicle(dimensionId: string, at: Vec3, yaw: number): string;
+  spawnVehicle(
+    dimensionId: string,
+    at: Vec3,
+    yaw: number,
+    kind: VehicleKind,
+  ): string;
   /** Takes one vehicle item from `slot`. False when that slot no longer holds one. */
-  consumeVehicleItem(playerId: string, slot: number): boolean;
+  consumeVehicleItem(
+    playerId: string,
+    slot: number,
+    kind: VehicleKind,
+  ): boolean;
 }
 
 export interface StarterWorld {

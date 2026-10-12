@@ -21,10 +21,10 @@ import { parseTestInputMessage } from "../testInput/testInputMessage";
 import type { TestInputStore } from "../testInput/testInputStore";
 import {
   HEADLIGHT_SWITCH_TYPE,
-  ITEM_TYPE,
+  kindOfEntity,
+  kindOfItem,
   PAINT_BY_DYE,
   TEST_INPUT_EVENT,
-  VEHICLE_TYPE,
 } from "./identifiers";
 
 export function registerSubscriptions(
@@ -47,11 +47,12 @@ export function registerSubscriptions(
   // that is no longer valid was removed by an earlier event for the same load.
   system.run(() => useCases.limit.start());
   world.afterEvents.entityLoad.subscribe((ev) => {
-    if (ev.entity.typeId === VEHICLE_TYPE && ev.entity.isValid)
+    if (kindOfEntity(ev.entity.typeId) !== undefined && ev.entity.isValid)
       useCases.limit.found([ev.entity.id]);
   });
   world.afterEvents.entitySpawn.subscribe((ev) => {
-    if (ev.entity.typeId !== VEHICLE_TYPE || !ev.entity.isValid) return;
+    if (kindOfEntity(ev.entity.typeId) === undefined || !ev.entity.isValid)
+      return;
     if (ev.cause === EntityInitializationCause.Loaded) {
       useCases.limit.found([ev.entity.id]);
     } else {
@@ -86,14 +87,12 @@ export function registerSubscriptions(
   // placement runs on the next tick. Cancelling keeps the tap from also opening
   // or toggling the block underneath.
   world.beforeEvents.playerInteractWithBlock.subscribe((ev) => {
-    if (
-      !ev.isFirstEvent ||
-      ev.itemStack?.typeId !== ITEM_TYPE ||
-      ev.blockFace !== Direction.Up
-    )
+    const kind = kindOfItem(ev.itemStack?.typeId);
+    if (!ev.isFirstEvent || kind === undefined || ev.blockFace !== Direction.Up)
       return;
     ev.cancel = true;
     const cmd = {
+      kind,
       playerId: ev.player.id,
       dimensionId: ev.block.dimension.id,
       blockLocation: ev.block.location,
@@ -114,7 +113,10 @@ export function registerSubscriptions(
   // entity is an attack, and the interaction is left to getting in (ADR 0036).
   world.afterEvents.entityHitEntity.subscribe((ev) => {
     const player = ev.damagingEntity;
-    if (ev.hitEntity.typeId !== VEHICLE_TYPE || !(player instanceof Player))
+    if (
+      kindOfEntity(ev.hitEntity.typeId) === undefined ||
+      !(player instanceof Player)
+    )
       return;
     const held = player
       .getComponent("minecraft:inventory")
@@ -138,7 +140,7 @@ export function registerSubscriptions(
 
   const ridden = (player: Entity) => {
     const mount = player.getComponent("minecraft:riding")?.entityRidingOn;
-    return mount?.typeId === VEHICLE_TYPE ? mount : undefined;
+    return kindOfEntity(mount?.typeId) !== undefined ? mount : undefined;
   };
   const switchHeadlights = (playerId: string, vehicleId: string) =>
     useCases.headlights.execute({
@@ -154,7 +156,7 @@ export function registerSubscriptions(
   });
 
   world.beforeEvents.playerInteractWithEntity.subscribe((ev) => {
-    if (ev.target.typeId !== VEHICLE_TYPE) return;
+    if (kindOfEntity(ev.target.typeId) === undefined) return;
     // A rider aiming at their own vehicle interacts with it instead of using
     // the item, so the switch is handled here too.
     if (
