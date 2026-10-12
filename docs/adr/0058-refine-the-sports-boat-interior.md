@@ -21,7 +21,7 @@ The sports boat (0051) started from the spike's model: forward-facing mid benche
 
 ## Consequences
 
-- The model grows from 906 to 1120 cubes
+- The model grows from 906 to 1127 cubes
 - The previews in `docs/images` change, and the Resource Pack version goes up to 0.1.41 (0015)
 - The honeycomb tile is 8 by 8 texels stretched over each quilted face, so on a large cushion it reads as a coarse pattern rather than fine stitching
 - The closed door and the filler cushions are fixed geometry. Riders cannot open the door or remove the cushions
