@@ -122,6 +122,7 @@ class Sim {
         raw: r.raw,
       }));
       const ctx: VehicleTickInput = {
+        deckSeatInputs: [],
         tick: t,
         riders,
         testInput: this.testInput,
@@ -168,6 +169,7 @@ describe("Vehicle (aggregate)", () => {
       fc.property(fc.double({ min: 0.5, max: 1, noNaN: true }), (throttle) => {
         const vehicle = createVehicle("suv", "car", 0);
         const out = vehicle.tick({
+          deckSeatInputs: [],
           tick: 0,
           riders: [
             {
@@ -402,6 +404,7 @@ describe("Vehicle (aggregate)", () => {
       const out = v.tick({
         tick,
         riders: [],
+        deckSeatInputs: [],
         testInput: { moveX: 0, moveY: 0.2, jump: false },
         velocity: { ...vel, y: 0 },
         onGround: true,
@@ -455,6 +458,7 @@ describe("Vehicle (aggregate)", () => {
             const out = v.tick({
               tick,
               riders: [],
+              deckSeatInputs: [],
               testInput: { moveX: 0, moveY, jump: false },
               velocity: { ...vel, y: 0 },
               onGround: true,
@@ -642,6 +646,7 @@ describe("Vehicle water depth context", () => {
         (waterDepth) => {
           const vehicle = createVehicle("suv", "car", 0);
           const ctx: VehicleTickInput = {
+            deckSeatInputs: [],
             tick: 0,
             riders: [],
             velocity: { x: 0, y: 0, z: 0 },
@@ -666,6 +671,7 @@ describe("Vehicle water depth context", () => {
     expect(
       propertyValue(
         vehicle.tick({
+          deckSeatInputs: [],
           tick: 0,
           riders: [],
           velocity: { x: 0, y: 0, z: 0 },
@@ -694,6 +700,7 @@ it("concatenates seat commands in seat order when multiple riders leave", () => 
     {},
   );
   const out = vehicle.tick({
+    deckSeatInputs: [],
     tick: 0,
     riders: [],
     velocity: { x: 0, y: 0, z: 0 },

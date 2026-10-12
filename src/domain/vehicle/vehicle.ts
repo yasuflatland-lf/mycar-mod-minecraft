@@ -27,6 +27,8 @@ export interface VehicleTickInput extends TickContext {
 export interface TickOutcome {
   hold?: HoldPose;
   floor: readonly FloorCell[];
+  deckSeats: readonly Vec3[];
+  boardDeckRiders: boolean;
   impulse: Vec3;
   yaw: number;
   hits: RamHit[];
@@ -88,6 +90,8 @@ export class Vehicle {
     return {
       hold: step.hold,
       floor: step.floor ?? [],
+      deckSeats: step.deckSeats ?? [],
+      boardDeckRiders: step.boardDeckRiders ?? false,
       impulse: step.impulse,
       yaw: this.drive.yaw,
       hits: this.ram(input, step.forward),

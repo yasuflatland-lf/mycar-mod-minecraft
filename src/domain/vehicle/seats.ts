@@ -1,5 +1,6 @@
 // Seat assignment and dismount detection (ADR 0019).
-import { dot, leftOf, type Vec2 } from "../shared/vec";
+import { dot, forward, leftOf, type Vec2, type Vec3 } from "../shared/vec";
+import type { HoldPose } from "./floor";
 import type { SeatLayout } from "./profile";
 
 /** Converts a world-space offset into seat coordinates for a vehicle facing `f`. */
@@ -43,4 +44,17 @@ export function vacatedSeats(
   now: ReadonlyMap<string, number>,
 ): number[] {
   return [...prev].filter(([id]) => !now.has(id)).map(([, seat]) => seat);
+}
+
+export function seatWorldPositions(
+  pose: HoldPose,
+  positions: SeatLayout["positions"],
+): Vec3[] {
+  const f = forward(pose.yaw);
+  const left = leftOf(f);
+  return positions.map((seat) => ({
+    x: pose.x + f.x * seat.z + left.x * seat.x,
+    y: pose.y,
+    z: pose.z + f.z * seat.z + left.z * seat.x,
+  }));
 }

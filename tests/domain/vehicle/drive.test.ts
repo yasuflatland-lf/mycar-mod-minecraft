@@ -17,6 +17,7 @@ const yaw = number(-180, 180);
 /** A stopped vehicle with no blocks or ram targets around it. */
 function stillContext(onGround: boolean, waterDepth = 0): TickContext {
   return {
+    deckSeatInputs: [],
     tick: 0,
     velocity: { x: 0, y: 0, z: 0 },
     onGround,

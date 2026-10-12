@@ -78,6 +78,7 @@ it.each(VEHICLE_KINDS)(
           samples.forEach((s, tick) => {
             const out = vehicle.tick({
               tick,
+              deckSeatInputs: [],
               riders: s.mounted
                 ? [
                     {

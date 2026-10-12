@@ -27,6 +27,7 @@ import {
 } from "../../motion/motion";
 import { waterBelowAt, waterDepthAt } from "../../motion/water";
 import type { MotionLimits } from "../../profile";
+import { seatWorldPositions } from "../../seats";
 import { stepRoll, stepTrim } from "./attitude";
 import { DOCK, floorCells, holdHeight } from "./deck";
 import {
@@ -35,7 +36,7 @@ import {
   trimCommand,
   undockCommands,
 } from "./entity";
-import { SPORTSBOAT_MOTION } from "./profile";
+import { SPORTSBOAT_MOTION, SPORTSBOAT_PROFILE } from "./profile";
 
 // The height of the sportsboat collision box, which bounds the water depth
 // query; the boat only tests whether the depth is above zero.
@@ -169,16 +170,27 @@ export class BoatDrive implements Drive {
       this.restoredDocked = false;
     }
     const commands: EngineCommand[] = [];
+    let boardDeckRiders = false;
     if (this.docked) {
       if (
         raw !== undefined &&
         Math.max(Math.abs(raw.moveX), Math.abs(raw.moveY)) > DOCK.stick
       ) {
+        boardDeckRiders = true;
         commands.push(...undockCommands());
         this.docked = undefined;
         this.stillTicks = 0;
       } else {
+        const deckDriver = ctx.deckSeatInputs[0];
         return {
+          deckSeats: seatWorldPositions(
+            this.docked,
+            SPORTSBOAT_PROFILE.seats.positions,
+          ),
+          boardDeckRiders:
+            deckDriver !== undefined &&
+            Math.max(Math.abs(deckDriver.moveX), Math.abs(deckDriver.moveY)) >
+              DOCK.stick,
           impulse: { x: 0, y: 0, z: 0 },
           forward: forward(this.motion.yaw),
           commands,
@@ -266,6 +278,10 @@ export class BoatDrive implements Drive {
       forward: step.forward,
       commands,
       riders: { thirdPerson: false, underwater: false },
+      boardDeckRiders,
+      deckSeats: this.docked
+        ? seatWorldPositions(this.docked, SPORTSBOAT_PROFILE.seats.positions)
+        : [],
       ...(this.docked && { hold: this.docked, floor: floorCells(this.docked) }),
     };
   }
