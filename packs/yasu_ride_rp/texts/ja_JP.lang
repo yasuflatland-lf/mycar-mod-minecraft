@@ -3,3 +3,4 @@ entity.yasu_ride:suv.name=SUV
 item.yasu_ride:headlight_switch.name=ヘッドライトスイッチ
 item.yasu_ride:sportsboat_item.name=スポーツボート
 entity.yasu_ride:sportsboat.name=スポーツボート
+tile.yasu_ride:deck_floor.name=ボートの甲板
