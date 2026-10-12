@@ -1,3 +1,4 @@
+import "./portableTrig";
 import { expect, it } from "vitest";
 import { recordApp, traceText } from "./record";
 import { appScenarios } from "./scenarios";

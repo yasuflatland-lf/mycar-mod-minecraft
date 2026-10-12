@@ -1,3 +1,4 @@
+import "./portableTrig";
 import { expect, it } from "vitest";
 import { recordDomain, traceText } from "./record";
 import { domainScenarios } from "./scenarios";
