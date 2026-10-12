@@ -8,6 +8,7 @@ import {
   type Vec2,
 } from "../shared/vec";
 import type { DriveInput } from "./driveInput";
+import { type MotionLimits, SUV_PROFILE } from "./profile";
 import { SPEC } from "./spec";
 
 export interface Medium {
@@ -58,28 +59,34 @@ export function updateSpeed(
   speed: number,
   throttle: number,
   creep = false,
+  limits: MotionLimits = SUV_PROFILE.motion,
 ): number {
   if (creep) {
-    if (speed >= SPEC.creepSpeed)
-      return Math.max(SPEC.creepSpeed, speed - SPEC.drag);
+    if (speed >= limits.creepSpeed)
+      return Math.max(limits.creepSpeed, speed - limits.drag);
     return Math.min(
-      SPEC.creepSpeed,
-      speed + (speed < 0 ? SPEC.brake : SPEC.accel),
+      limits.creepSpeed,
+      speed + (speed < 0 ? limits.brake : limits.accel),
     );
   }
   let s = speed;
-  if (throttle > 0) s += (s < 0 ? SPEC.brake : SPEC.accel) * throttle;
+  if (throttle > 0) s += (s < 0 ? limits.brake : limits.accel) * throttle;
   else if (throttle < 0)
-    s += (s > 0 ? SPEC.brake : SPEC.reverseAccel) * throttle;
-  else s -= Math.sign(s) * Math.min(Math.abs(s), SPEC.drag);
-  return clamp(s, -SPEC.maxReverse, SPEC.maxSpeed);
+    s += (s > 0 ? limits.brake : limits.reverseAccel) * throttle;
+  else s -= Math.sign(s) * Math.min(Math.abs(s), limits.drag);
+  return clamp(s, -limits.maxReverse, limits.maxSpeed);
 }
 
 /** Steering is weaker at low speed and reversed when backing up. Left input (steer > 0) decreases yaw. */
-export function steerYaw(yaw: number, speed: number, steer: number): number {
+export function steerYaw(
+  yaw: number,
+  speed: number,
+  steer: number,
+  limits: MotionLimits = SUV_PROFILE.motion,
+): number {
   const factor =
-    Math.min(1, Math.abs(speed) / SPEC.steerFullSpeed) * Math.sign(speed);
-  return normalizeYaw(yaw - steer * SPEC.turnRate * factor);
+    Math.min(1, Math.abs(speed) / limits.steerFullSpeed) * Math.sign(speed);
+  return normalizeYaw(yaw - steer * limits.turnRate * factor);
 }
 
 /**
@@ -94,9 +101,13 @@ function hitWall(v: Vec2, given: Vec2, keptRatio: number): boolean {
 }
 
 /** Lowers the internal speed to the actual forward speed after a wall hit. */
-function speedAfterWall(speed: number, vLong: number): number {
+function speedAfterWall(
+  speed: number,
+  vLong: number,
+  limits: MotionLimits,
+): number {
   if (Math.abs(vLong) >= Math.abs(speed)) return speed;
-  return clamp(vLong, -SPEC.maxReverse, SPEC.maxSpeed);
+  return clamp(vLong, -limits.maxReverse, limits.maxSpeed);
 }
 
 export function stepMotion(
@@ -104,10 +115,11 @@ export function stepMotion(
   input: DriveInput,
   obs: Observation,
   probe: StepProbe,
+  limits: MotionLimits = SUV_PROFILE.motion,
 ): MotionResult {
   const st: MotionState = { ...prev, airExpected: undefined };
-  st.speed = updateSpeed(st.speed, input.throttle, input.creep);
-  st.yaw = steerYaw(st.yaw, st.speed, input.steer);
+  st.speed = updateSpeed(st.speed, input.throttle, input.creep, limits);
+  st.yaw = steerYaw(st.yaw, st.speed, input.steer, limits);
   const f = forward(st.yaw);
   const v = obs.velocity;
   const vLong = dot(v, f);
@@ -121,7 +133,7 @@ export function stepMotion(
     blocked = hitWall(v, e, limit);
     if (blocked) {
       // While colliding, freeze the friction estimate.
-      st.speed = speedAfterWall(st.speed, vLong);
+      st.speed = speedAfterWall(st.speed, vLong, limits);
     } else {
       const eLen2 = e.x * e.x + e.z * e.z;
       if (eLen2 > SPEC.minExpectedForFriction ** 2) {
@@ -154,14 +166,14 @@ export function stepMotion(
   // Set the forward component to the internal speed, cancel a grip-sized
   // fraction of the sideways component, and cap the result at max speed (ADR 0002).
   const lat = { x: v.x - f.x * vLong, z: v.z - f.z * vLong };
-  const grip = input.handbrake ? SPEC.handbrakeGrip : SPEC.grip;
+  const grip = input.handbrake ? limits.handbrakeGrip : limits.grip;
   const keepLat = stepping ? 0 : 1 - grip;
   const target = clampLength(
     {
       x: f.x * st.speed + lat.x * keepLat,
       z: f.z * st.speed + lat.z * keepLat,
     },
-    SPEC.maxSpeed,
+    limits.maxSpeed,
   );
   // Pre-divide by friction so the velocity left after the engine applies
   // friction this tick is the target.
@@ -189,28 +201,30 @@ export function stepFlightMotion(
   input: DriveInput,
   v: Vec2,
   medium: Medium = AIR,
+  limits: MotionLimits = SUV_PROFILE.motion,
 ): MotionResult {
-  // Without the cap, speed keeps climbing toward SPEC.maxSpeed under water
+  // Without the cap, speed keeps climbing toward limits.maxSpeed under water
   // while clampLength hides it, and a released throttle coasts at full water
   // speed until speed falls back below maxWaterSpeed.
+  const maxSpeed = Math.min(limits.maxSpeed, medium.maxSpeed);
   let speed = Math.min(
-    updateSpeed(prev.speed, input.throttle, input.creep),
-    medium.maxSpeed,
+    updateSpeed(prev.speed, input.throttle, input.creep, limits),
+    maxSpeed,
   );
-  const yaw = steerYaw(prev.yaw, speed, input.steer);
+  const yaw = steerYaw(prev.yaw, speed, input.steer, limits);
   const f = forward(yaw);
   const vLong = dot(v, f);
   const blocked =
     prev.airExpected !== undefined &&
     hitWall(v, prev.airExpected, medium.drag * SPEC.blockedRatio);
-  if (blocked) speed = speedAfterWall(speed, vLong);
-  const keepLat = 1 - SPEC.grip;
+  if (blocked) speed = speedAfterWall(speed, vLong, limits);
+  const keepLat = 1 - limits.grip;
   const target = clampLength(
     {
       x: f.x * speed + (v.x - f.x * vLong) * keepLat,
       z: f.z * speed + (v.z - f.z * vLong) * keepLat,
     },
-    medium.maxSpeed,
+    maxSpeed,
   );
   const given = {
     x: target.x / medium.drag,
