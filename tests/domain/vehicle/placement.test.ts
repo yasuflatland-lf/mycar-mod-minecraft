@@ -106,20 +106,13 @@ describe("clearance query order (ADR 0055)", () => {
               return true;
             }, clearance),
           ).toBe(true);
-          const expected = Array.from(
-            { length: clearance.halfX * 2 + 1 },
-            (_, i) => i - clearance.halfX,
-          ).flatMap((dx) =>
-            Array.from(
-              { length: clearance.halfZ * 2 + 1 },
-              (_, i) => i - clearance.halfZ,
-            ).flatMap((dz) =>
-              Array.from({ length: clearance.height }, (_, i) => [
-                dx,
-                i + 1,
-                dz,
-              ]),
-            ),
+          const range = (from: number, to: number) =>
+            Array.from({ length: to - from + 1 }, (_, i) => from + i);
+          const expected = range(-clearance.halfX, clearance.halfX).flatMap(
+            (dx) =>
+              range(-clearance.halfZ, clearance.halfZ).flatMap((dz) =>
+                range(1, clearance.height).map((dy) => [dx, dy, dz]),
+              ),
           );
           expect(queries).toEqual(expected);
         },
@@ -210,15 +203,14 @@ describe("placementCell (ADR 0050, ADR 0051)", () => {
         (clicked, clickedColumn, adjacentColumn, maxClimb) => {
           for (const face of FACES) {
             const next = add(clicked, FACE_OFFSET[face]);
-            const isWater = (at: Vec3) => {
-              const column =
-                at.x === clicked.x && at.z === clicked.z
-                  ? clickedColumn
-                  : at.x === next.x && at.z === next.z
-                    ? adjacentColumn
-                    : [];
-              return column[at.y - clicked.y + 1] ?? false;
+            const columnAt = (at: Vec3): boolean[] => {
+              if (at.x === clicked.x && at.z === clicked.z)
+                return clickedColumn;
+              if (at.x === next.x && at.z === next.z) return adjacentColumn;
+              return [];
             };
+            const isWater = (at: Vec3) =>
+              columnAt(at)[at.y - clicked.y + 1] ?? false;
             for (const [profile, legacyRule] of [
               [SUV_PROFILE, { onWater: false, anyFace: false }],
               [SPORTSBOAT_PROFILE, { onWater: true, anyFace: true }],

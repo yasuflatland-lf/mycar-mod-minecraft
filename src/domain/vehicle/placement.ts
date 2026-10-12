@@ -81,25 +81,47 @@ export function placementCell(
   maxClimb = 16,
 ): Vec3 | undefined {
   for (const surface of rule.surfaces) {
-    if (surface === "top") {
-      if (face === "up") return clicked;
-      continue;
-    }
-    const offset = FACE_OFFSET[face];
-    const next = {
-      x: clicked.x + offset.x,
-      y: clicked.y + offset.y,
-      z: clicked.z + offset.z,
+    const cell = cellOnSurface(surface, clicked, face, isWaterAt, maxClimb);
+    if (cell !== undefined) return cell;
+  }
+  return undefined;
+}
+
+function cellOnSurface(
+  surface: PlacementSurface,
+  clicked: Vec3,
+  face: BlockFace,
+  isWaterAt: (at: Vec3) => boolean,
+  maxClimb: number,
+): Vec3 | undefined {
+  switch (surface) {
+    case "top":
+      return face === "up" ? clicked : undefined;
+    case "water":
+      return waterSurfaceCell(clicked, face, isWaterAt, maxClimb);
+  }
+}
+
+function waterSurfaceCell(
+  clicked: Vec3,
+  face: BlockFace,
+  isWaterAt: (at: Vec3) => boolean,
+  maxClimb: number,
+): Vec3 | undefined {
+  const offset = FACE_OFFSET[face];
+  const next = {
+    x: clicked.x + offset.x,
+    y: clicked.y + offset.y,
+    z: clicked.z + offset.z,
+  };
+  for (const cell of [clicked, next]) {
+    if (!isWaterAt(cell)) continue;
+    const { x, z } = cell;
+    return {
+      x,
+      y: surfaceCellY(cell.y, (y) => isWaterAt({ x, y, z }), maxClimb),
+      z,
     };
-    for (const cell of [clicked, next]) {
-      if (!isWaterAt(cell)) continue;
-      const { x, z } = cell;
-      return {
-        x,
-        y: surfaceCellY(cell.y, (y) => isWaterAt({ x, y, z }), maxClimb),
-        z,
-      };
-    }
   }
   return undefined;
 }
