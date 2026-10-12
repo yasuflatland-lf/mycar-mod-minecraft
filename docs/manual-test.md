@@ -62,6 +62,7 @@ Setup: craft the "Sports Boat" item from 5 iron ingots and an oak boat, or use `
 | B9 | Stop a boat and get off onto the deck | After a second with no driver, the boat stays still and you can walk at the deck's height | | |
 | B10 | Walk around the deck and jump into the water | You can walk across the deck and fall into the water at the edge | | |
 | B11 | Get back in from the water and drive off | The boat leaves and the invisible floor disappears | | |
+| B12 | On a docked boat's deck, tap (mobile) / left-click (PC) the boat three times with an empty hand; repeat while sneaking at the very edge of the deck; then do the same from the water | It does not break from the deck, including at the edge; it breaks and drops the item from the water | | |
 
 ## Upgrading from MyCar 0.5.0 and earlier
 

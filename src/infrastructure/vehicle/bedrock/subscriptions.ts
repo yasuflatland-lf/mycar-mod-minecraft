@@ -31,6 +31,7 @@ import {
 import { NAMESPACE } from "../../shared/identifiers";
 import { parseTestInputMessage } from "../testInput/testInputMessage";
 import type { TestInputStore } from "../testInput/testInputStore";
+import { standsOnDeck } from "./deck";
 import {
   HEADLIGHT_SWITCH_TYPE,
   isVehicleEntity,
@@ -184,6 +185,7 @@ export function registerSubscriptions(
     useCases.hit.execute({
       vehicleId: ev.hitEntity.id,
       tick: system.currentTick,
+      fromDeck: standsOnDeck(player),
     });
   });
 
