@@ -177,8 +177,9 @@ describe("Resource Pack flight visuals (ADR 0022)", () => {
   it("keeps the Resource Pack module and the Behavior Pack's dependency on the Resource Pack version (ADR 0015)", () => {
     const rp = read(`${RP}/manifest.json`);
     const bp = read("packs/yasu_ride_bp/manifest.json");
-    const dep = bp.dependencies.find(
-      (d: { uuid?: string }) => d.uuid === rp.header.uuid,
+    const dep = defined(
+      bp.dependencies.find((d: { uuid?: string }) => d.uuid === rp.header.uuid),
+      "Behavior Pack dependency on the Resource Pack",
     );
     // 0.1.26 first ships the sonar (0041); an older cached copy lacks it.
     const [major, minor, patch] = rp.header.version;
