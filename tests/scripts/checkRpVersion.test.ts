@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { checkResourcePackVersion } from "../../scripts/check-rp-version.mjs";
 
 const version = fc.tuple(fc.nat(), fc.nat(), fc.nat());
-const tag = version.map((value) => `v${value.join(".")}`);
+const releaseTag = version.map((value) => `v${value.join(".")}`);
 
 describe("Resource Pack release version check", () => {
   it("skips an absent previous release regardless of changes or versions", () => {
@@ -30,7 +30,7 @@ describe("Resource Pack release version check", () => {
   it("accepts an unchanged Resource Pack regardless of versions", () => {
     fc.assert(
       fc.property(
-        tag,
+        releaseTag,
         version,
         version,
         (tag, previousVersion, currentVersion) => {
@@ -49,7 +49,7 @@ describe("Resource Pack release version check", () => {
 
   it("rejects changed packs with equal versions and explains the cache constraint", () => {
     fc.assert(
-      fc.property(tag, version, (tag, previousVersion) => {
+      fc.property(releaseTag, version, (tag, previousVersion) => {
         const error = checkResourcePackVersion({
           tag,
           changed: true,
@@ -67,7 +67,7 @@ describe("Resource Pack release version check", () => {
   it("accepts changed packs when any version component differs", () => {
     fc.assert(
       fc.property(
-        tag,
+        releaseTag,
         version,
         fc.integer({ min: 0, max: 2 }),
         fc.integer({ min: 1, max: 1000 }),
