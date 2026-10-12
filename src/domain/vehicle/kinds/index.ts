@@ -40,20 +40,12 @@ export const RAM_QUERY_RADIUS = ramQueryRadius(
   Object.values(KINDS).map(({ profile }) => profile),
 );
 
-function driveOf(
-  kind: VehicleKind,
-  yaw: number,
-  restored: RestoredValues,
-): Drive {
-  return KINDS[kind].createDrive(yaw, restored);
-}
-
 export function createVehicle(
   kind: VehicleKind,
   id: string,
   yaw: number,
 ): Vehicle {
-  return new Vehicle(id, profileOf(kind), driveOf(kind, yaw, {}));
+  return new Vehicle(id, profileOf(kind), KINDS[kind].createDrive(yaw, {}));
 }
 
 /**
@@ -71,7 +63,7 @@ export function rebuildVehicle(
   const vehicle = new Vehicle(
     id,
     profileOf(kind),
-    driveOf(kind, yaw, restored),
+    KINDS[kind].createDrive(yaw, restored),
   );
   vehicle.seatRiders(riders, yaw);
   return vehicle;

@@ -60,35 +60,46 @@ function allowsFeatureImport(
   return source === undefined || source === target;
 }
 
+function startsWith(path: readonly string[], ...prefix: string[]): boolean {
+  return prefix.every((segment, i) => path[i] === segment);
+}
+
+/** The kind and motion rules of ADR 0055, on paths split into segments under src/. */
 function allowsKindImport(file: string, specifier: string): boolean {
   const source = relative(SRC, file).split(sep);
   if (!LAYERS.includes(source[0] ?? "")) return true;
+  // kind.ts imports nothing, not even a package.
   if (source.join("/") === "domain/vehicle/kind.ts") return false;
   if (!specifier.startsWith(".")) return true;
-  const resolved = resolve(dirname(file), specifier);
-  const target = relative(SRC, resolved).split(sep);
+  const target = relative(SRC, resolve(dirname(file), specifier)).split(sep);
   if (!LAYERS.includes(target[0] ?? "")) return true;
   const sourceKinds = source.indexOf("kinds");
   const targetKinds = target.indexOf("kinds");
+  const sourceKind = source[sourceKinds + 1];
+
+  // One kind never imports another; kinds/index.ts wires them all.
   if (
     sourceKinds >= 0 &&
     targetKinds >= 0 &&
-    source[sourceKinds + 1] !== "index.ts" &&
-    source[sourceKinds + 1] !== target[targetKinds + 1]
+    sourceKind !== "index.ts" &&
+    sourceKind !== target[targetKinds + 1]
   )
     return false;
-  if (source[0] === "domain" && source[1] === "vehicle" && sourceKinds < 0) {
+
+  // The core and motion/ never import kinds/, and the core never imports motion/.
+  if (startsWith(source, "domain", "vehicle") && sourceKinds < 0) {
     if (targetKinds >= 0) return false;
     if (
-      source[2] !== "motion" &&
-      target[0] === "domain" &&
-      target[1] === "vehicle" &&
-      target[2] === "motion"
+      !startsWith(source, "domain", "vehicle", "motion") &&
+      startsWith(target, "domain", "vehicle", "motion")
     )
       return false;
   }
+
+  // Application and infrastructure reach kinds/ only through kinds/index.ts.
   if (
-    (source[0] === "application" || source[0] === "infrastructure") &&
+    (startsWith(source, "application") ||
+      startsWith(source, "infrastructure")) &&
     targetKinds >= 0
   ) {
     const entry = target.slice(targetKinds + 1).join("/");
