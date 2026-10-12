@@ -110,7 +110,7 @@ pnpm lint            # format and lint check with Biome
 pnpm test            # unit tests, property-based tests, and the layer dependency check
 pnpm build           # bundle the TypeScript into the Behavior Pack
 pnpm package         # zip the packs into dist/yasuflatland-ride-<version>.mcaddon (run after build)
-pnpm model           # generate the vehicle model, texture, README previews, and pack icons
+pnpm model           # generate the SUV and sports boat models and textures, the SUV README previews, and pack icons
 pnpm model:check     # fail if the README previews or pack icons are out of date with the model
 pnpm server:up       # start the dev BDS in Docker
 pnpm test:game       # in-game tests
