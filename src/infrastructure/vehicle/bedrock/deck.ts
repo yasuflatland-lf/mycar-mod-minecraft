@@ -8,17 +8,12 @@ const BELOW_FEET_OFFSET = 0.01;
 export function standsOnDeck(player: Player): boolean {
   try {
     const { location, dimension } = player;
-    const cell = {
-      x: Math.floor(location.x),
-      y: Math.floor(location.y),
-      z: Math.floor(location.z),
-    };
-    return (
-      dimension.getBlock(cell)?.typeId === DECK_FLOOR_BLOCK ||
-      dimension.getBlock({
-        ...cell,
-        y: Math.floor(location.y - BELOW_FEET_OFFSET),
-      })?.typeId === DECK_FLOOR_BLOCK
+    const x = Math.floor(location.x);
+    const z = Math.floor(location.z);
+    return [location.y, location.y - BELOW_FEET_OFFSET].some(
+      (y) =>
+        dimension.getBlock({ x, y: Math.floor(y), z })?.typeId ===
+        DECK_FLOOR_BLOCK,
     );
   } catch {
     return false; // Unloaded chunk or outside the world
