@@ -69,7 +69,7 @@ export interface MotionResult {
 export function updateSpeed(
   speed: number,
   throttle: number,
-  creep = false,
+  creep: boolean,
   limits: MotionLimits,
 ): number {
   if (creep) {
