@@ -1,17 +1,12 @@
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { defined } from "../support/defined";
-import type { Json } from "../support/packFiles";
 
 const read = (p: string) => JSON.parse(readFileSync(p, "utf8"));
 
 const BP = "packs/yasu_ride_bp";
 const RP = "packs/yasu_ride_rp";
 const entityFile = read(`${BP}/entities/yasu_ride/deck_seat.se.json`);
-const entity = entityFile["minecraft:entity"] as {
-  description: Json;
-  components: Json;
-};
+const entity = entityFile["minecraft:entity"];
 
 describe("Boat deck seat (ADR 0063)", () => {
   it("is summonable but not spawnable and excluded from the vehicle family", () => {
@@ -34,6 +29,17 @@ describe("Boat deck seat (ADR 0063)", () => {
       crouching_skip_interact: true,
       seats: [{ position: [0, 0.52, 0] }],
     });
+  });
+
+  it("seats its rider at the same height as every sports boat seat", () => {
+    const boatSeats: { position: number[] }[] = read(
+      `${BP}/entities/yasu_ride/sportsboat.se.json`,
+    )["minecraft:entity"].components["minecraft:rideable"].seats;
+    const deckY = entity.components["minecraft:rideable"].seats[0].position[1];
+    expect(boatSeats.length).toBeGreaterThan(0);
+    for (const boatSeat of boatSeats) {
+      expect(boatSeat.position[1]).toBe(deckY);
+    }
   });
 
   it("can be aimed at above the deck without gravity, collision, or pushing", () => {
@@ -66,17 +72,7 @@ describe("Boat deck seat (ADR 0063)", () => {
 
   it("references an existing texture and an invisible model with no cubes", () => {
     const clientFile = read(`${RP}/entity/yasu_ride/deck_seat.ce.json`);
-    const client = (
-      clientFile["minecraft:client_entity"] as {
-        description: {
-          identifier: string;
-          materials: Json;
-          textures: { default: string };
-          geometry: { default: string };
-          render_controllers: string[];
-        };
-      }
-    ).description;
+    const client = clientFile["minecraft:client_entity"].description;
     expect(clientFile.format_version).toBe("1.10.0");
     expect(client.identifier).toBe(entity.description.identifier);
     expect(client.materials).toEqual({ default: "entity" });
@@ -91,12 +87,9 @@ describe("Boat deck seat (ADR 0063)", () => {
 
     const file = read(`${RP}/models/entity/yasu_ride/deck_seat.geo.json`);
     expect(file.format_version).toBe("1.12.0");
-    const geometries = file["minecraft:geometry"] as {
-      description: Json;
-      bones: Json[];
-    }[];
+    const geometries = file["minecraft:geometry"];
     expect(geometries).toHaveLength(1);
-    const geometry = defined(geometries[0], "deck seat geometry");
+    const geometry = geometries[0];
     expect(geometry.description).toEqual({
       identifier: client.geometry.default,
       texture_width: 16,
@@ -113,7 +106,7 @@ describe("Boat deck seat (ADR 0063)", () => {
       .filter((line) => line.startsWith("entity.yasu_ride:deck_seat.name="))
       .map((line) => line.slice(line.indexOf("=") + 1));
     expect(names).toHaveLength(1);
-    expect(defined(names[0], locale).trim()).not.toBe("");
+    expect(names[0]?.trim()).not.toBe("");
     if (locale === "en_US") expect(names[0]).toBe("Boat Seat");
   });
 });

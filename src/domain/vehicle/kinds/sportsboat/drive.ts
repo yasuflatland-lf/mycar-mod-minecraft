@@ -168,6 +168,9 @@ export class BoatDrive implements Drive {
   }
 
   onDriverMounted(driverYaw: number): void {
+    // A held hull keeps its hold yaw, so turning the drive to the driver here
+    // would point the seats and headlights away from the bow until undocking.
+    if (this.docked || this.restoredDocked) return;
     this.motion = alignOnMount(this.motion, driverYaw);
   }
 
@@ -188,8 +191,8 @@ export class BoatDrive implements Drive {
           deckSeats: deckSeatPositions(this.docked),
           boardDeckRiders: pushesStick(ctx.deckSeatInputs[0]),
           impulse: { x: 0, y: 0, z: 0 },
-          forward: forward(this.motion.yaw),
-          commands,
+          forward: forward(this.docked.yaw),
+          commands: [],
           riders: { thirdPerson: false, underwater: false },
           hold: this.docked,
           floor: floorCells(this.docked),
@@ -241,28 +244,30 @@ export class BoatDrive implements Drive {
       afloat && raw === undefined && Math.abs(step.state.speed) < DOCK.maxSpeed
         ? this.stillTicks + 1
         : 0;
-    const holdY =
-      this.stillTicks >= DOCK.ticks
-        ? holdHeight(ctx.location.y, (dy) => ctx.waterAt({ x: 0, y: dy, z: 0 }))
-        : undefined;
-    if (holdY !== undefined) {
-      this.docked = { ...ctx.location, y: holdY, yaw: step.state.yaw };
-      this.motion = { ...step.state, speed: 0 };
-      commands.push(...dockCommands());
+    if (this.stillTicks >= DOCK.ticks) {
+      const holdY = holdHeight(ctx.location.y, (dy) =>
+        ctx.waterAt({ x: 0, y: dy, z: 0 }),
+      );
+      if (holdY !== undefined) {
+        this.docked = { ...ctx.location, y: holdY, yaw: step.state.yaw };
+        this.motion = { ...step.state, speed: 0 };
+        commands.push(...dockCommands());
+      }
     }
-    // A docked boat sits level, so docking clears any residual trim or roll.
-    this.trim = this.docked
-      ? 0
-      : stepTrim(this.trim, motion.speed, step.state.speed, afloat);
-    this.roll = this.docked
-      ? 0
-      : stepRoll(
-          this.roll,
-          motion.yaw,
-          step.state.yaw,
-          step.state.speed,
-          afloat,
-        );
+    if (this.docked) {
+      // A docked boat sits level, so docking clears any residual trim or roll.
+      this.trim = 0;
+      this.roll = 0;
+    } else {
+      this.trim = stepTrim(this.trim, motion.speed, step.state.speed, afloat);
+      this.roll = stepRoll(
+        this.roll,
+        motion.yaw,
+        step.state.yaw,
+        step.state.speed,
+        afloat,
+      );
+    }
     if (this.trim !== this.sentTrim) commands.push(trimCommand(this.trim));
     if (this.roll !== this.sentRoll) commands.push(rollCommand(this.roll));
     this.sentTrim = this.trim;

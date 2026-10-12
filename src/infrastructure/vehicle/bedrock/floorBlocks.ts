@@ -48,6 +48,10 @@ function savedCells(car: Entity): FloorCell[] {
 
 export class FloorBlocks {
   private readonly laid = new Map<string, Laid>();
+  // Cells left in a dimension the vehicle has left because their chunk was
+  // unloaded at the time; the saved property only describes the current
+  // dimension, so they are kept here until a later tick clears them.
+  private stranded: Laid[] = [];
 
   /** `car` is undefined when the vehicle is gone; its cells are then only cleared. */
   lay(
@@ -63,6 +67,7 @@ export class FloorBlocks {
     const before = JSON.stringify(entry.cells);
     if (car && car.dimension.id !== entry.dimension.id) {
       this.update(entry, []);
+      if (entry.cells.length > 0) this.stranded.push(entry);
       entry = { dimension: car.dimension, cells: [] };
     }
     this.update(entry, car ? wanted : []);
@@ -77,7 +82,8 @@ export class FloorBlocks {
   }
 
   /**
-   * Clears the cells of vehicles that are gone. A vehicle removed as its chunk
+   * Clears the cells of vehicles that are gone, and retries the cells left in
+   * a dimension a vehicle has left. A vehicle removed as its chunk
    * loads may have floor cells in chunks that are not loaded yet, and nothing
    * else asks for its id again (ADR 0038).
    */
@@ -87,6 +93,8 @@ export class FloorBlocks {
       this.update(entry, []);
       if (entry.cells.length === 0) this.laid.delete(id);
     }
+    for (const entry of this.stranded) this.update(entry, []);
+    this.stranded = this.stranded.filter((entry) => entry.cells.length > 0);
   }
 
   private update(entry: Laid, wanted: readonly FloorCell[]): void {
@@ -114,13 +122,8 @@ export class FloorBlocks {
       try {
         const b = entry.dimension.getBlock(c);
         if (!b) continue;
-        const owned = cells.has(cellKey(c));
-        if (
-          !b.isAir &&
-          !isLightBlock(b) &&
-          !(owned && b.typeId === DECK_FLOOR_BLOCK)
-        )
-          continue;
+        const ownFloor = cells.has(cellKey(c)) && b.typeId === DECK_FLOOR_BLOCK;
+        if (!b.isAir && !isLightBlock(b) && !ownFloor) continue;
         b.setPermutation(
           BlockPermutation.resolve(DECK_FLOOR_BLOCK, {
             [DECK_FLOOR_HEIGHT_STATE]: c.height,
