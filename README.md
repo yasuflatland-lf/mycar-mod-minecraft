@@ -61,7 +61,7 @@ Download `yasuflatland-ride-<version>.mcaddon` from the [latest release](https:/
 - More SUVs can be crafted at a crafting table from 5 iron ingots, 1 iron block, and 2 coal blocks
 - The **Sports Boat** item is crafted from 5 iron ingots and an oak boat
 - Use the item on the top of a block to place the vehicle. Hit an empty vehicle 3 times, without a dye in hand, to break it back into the item
-- Use the boat item on water, clicking the bed, the surface, or the shore, to place it at the surface. It can also be placed on land. Hit an empty boat 3 times to get its item back
+- Use the boat item on water to place it at the water surface: tap the bed under the water, the water itself (up to 12 blocks away), or the side of a shore block that has water next to that side. On land, use it on the top of a block, as with the SUV. Tapping the side of a block with no water next to it places nothing. Hit an empty boat 3 times to get its item back
 - The **headlight switch** is crafted from a lever and glowstone dust
 
 ### Controls
