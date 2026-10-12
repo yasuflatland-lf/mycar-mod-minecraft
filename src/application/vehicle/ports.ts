@@ -17,6 +17,7 @@ export interface VehicleSnapshot {
   velocityY: number;
   onGround: boolean;
   waterDepth: number;
+  waterBelow: boolean;
   riders: RiderView[];
   form: Form;
   headlights: boolean;

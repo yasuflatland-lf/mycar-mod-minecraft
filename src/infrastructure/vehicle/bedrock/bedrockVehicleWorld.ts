@@ -48,6 +48,7 @@ import {
   THIRD_PERSON_CAMERA,
   VEHICLE_FAMILY,
 } from "./identifiers";
+import { isWaterAt } from "./water";
 
 const DIMENSIONS = ["overworld", "nether", "the_end"] as const;
 const isPlayer = (e: Entity): e is Player => e.typeId === PLAYER_TYPE;
@@ -109,6 +110,7 @@ export class BedrockVehicleWorld
           velocityY: v.y,
           onGround: car.isOnGround,
           waterDepth: this.waterDepth(car),
+          waterBelow: this.isWaterCell(car, Math.floor(car.location.y - 0.3)),
           riders: this.riders(car),
           form: isForm(form) ? form : "car",
           headlights: car.getProperty(HEADLIGHTS_PROPERTY) === true,
@@ -123,25 +125,13 @@ export class BedrockVehicleWorld
   }
 
   private waterDepth(car: Entity): number {
-    const { x, y, z } = car.location;
-    return waterDepthFrom(y, (cellY) => {
-      try {
-        const block = car.dimension.getBlock({
-          x: Math.floor(x),
-          y: cellY,
-          z: Math.floor(z),
-        });
-        return (
-          block !== undefined &&
-          (block.typeId === "minecraft:water" ||
-            block.typeId === "minecraft:flowing_water" ||
-            block.typeId === "minecraft:bubble_column" ||
-            block.isWaterlogged)
-        );
-      } catch {
-        return false; // Unloaded chunk or outside the world
-      }
-    });
+    return waterDepthFrom(car.location.y, (cellY) =>
+      this.isWaterCell(car, cellY),
+    );
+  }
+
+  private isWaterCell(car: Entity, cellY: number): boolean {
+    return isWaterAt(car.dimension, { ...car.location, y: cellY });
   }
 
   private riders(car: Entity): RiderView[] {

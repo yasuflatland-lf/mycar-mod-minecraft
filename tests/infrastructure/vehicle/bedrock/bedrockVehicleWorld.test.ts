@@ -93,11 +93,14 @@ describe("BedrockVehicleWorld submarine wiring (ADR 0040)", () => {
     (typeId, isWaterlogged) => {
       const { dimension, world } = fixture();
       dimension.getBlock.mockReturnValue({ typeId, isWaterlogged });
-      expect(world.loadedVehicles()[0]?.waterDepth).toBe(SPEC.carHeight + 1);
+      const snap = world.loadedVehicles()[0];
+      expect(snap?.waterDepth).toBe(SPEC.carHeight + 1);
+      expect(snap?.waterBelow).toBe(true);
       expect(dimension.getBlock.mock.calls.map(([at]) => at)).toEqual([
         { x: -2, y: 64, z: 2 },
         { x: -2, y: 65, z: 2 },
         { x: -2, y: 66, z: 2 },
+        { x: -2, y: 63, z: 2 },
       ]);
     },
   );
@@ -107,7 +110,9 @@ describe("BedrockVehicleWorld submarine wiring (ADR 0040)", () => {
     (block) => {
       const { dimension, world } = fixture();
       dimension.getBlock.mockReturnValue(block);
-      expect(world.loadedVehicles()[0]?.waterDepth).toBe(0);
+      const snap = world.loadedVehicles()[0];
+      expect(snap?.waterDepth).toBe(0);
+      expect(snap?.waterBelow).toBe(false);
     },
   );
 
@@ -117,7 +122,29 @@ describe("BedrockVehicleWorld submarine wiring (ADR 0040)", () => {
     dimension.getBlock.mockImplementation(() => {
       throw new Error("unloaded");
     });
-    expect(world.loadedVehicles()[0]?.waterDepth).toBe(0.75);
+    const snap = world.loadedVehicles()[0];
+    expect(snap?.waterDepth).toBe(0.75);
+    expect(snap?.waterBelow).toBe(false);
+  });
+
+  it("reports water below high feet independently of waterDepth", () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: -60, max: 300 }),
+        fc.double({ min: 0, max: 0.299, noNaN: true }),
+        (y, fraction) => {
+          const { car, dimension, world } = fixture();
+          car.location.y = y + fraction;
+          dimension.getBlock.mockImplementation((at: { y: number }) => ({
+            typeId: at.y === y - 1 ? "minecraft:water" : "minecraft:air",
+            isWaterlogged: false,
+          }));
+          const snap = world.loadedVehicles()[0];
+          expect(snap?.waterDepth).toBe(0);
+          expect(snap?.waterBelow).toBe(true);
+        },
+      ),
+    );
   });
 
   it("refreshes breathing without particles and ignores a missing player", () => {

@@ -179,6 +179,7 @@ export const snapshot = (
   velocityY: 0,
   onGround: true,
   waterDepth: 0,
+  waterBelow: false,
   riders: [],
   form: "car",
   headlights: false,
