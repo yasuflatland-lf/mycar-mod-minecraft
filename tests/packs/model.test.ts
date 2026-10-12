@@ -195,9 +195,9 @@ describe("SUV model (ADR 0009)", () => {
       (c.origin[a] ?? 0) + (c.size[a] ?? 0),
     ];
     const thinAxis = (c: Cube) => c.size.indexOf(Math.min(...c.size));
-    // A right-handed x rotation. The game turns the other way (ADR 0051), but
-    // the plates and the frame cubes they are checked against share it, so the
-    // checks hold either way.
+    // A right-handed x rotation. The game turns a cube's x rotation the other
+    // way (ADR 0051): a written -25 leans the A-pillars' tops back toward +z,
+    // the cabin. So inside() undoes a cube's rotation with +rx.
     const turnX = (p: Vec3, pivot: Vec3, degrees: number): Vec3 => {
       const r = (degrees * Math.PI) / 180;
       const [y, z] = [p[1] - pivot[1], p[2] - pivot[2]];
@@ -208,7 +208,7 @@ describe("SUV model (ADR 0009)", () => {
       ];
     };
     const inside = (c: Cube, p: Vec3) => {
-      const local = turnX(p, c.pivot ?? [0, 0, 0], -(c.rotation?.[0] ?? 0));
+      const local = turnX(p, c.pivot ?? [0, 0, 0], c.rotation?.[0] ?? 0);
       return local.every((v, a) => {
         const [c0, c1] = span(c, a);
         return c0 - EPS <= v && v <= c1 + EPS;
@@ -228,6 +228,8 @@ describe("SUV model (ADR 0009)", () => {
         (c) => c.rotation && c.size[0] === 1 && c.size[1] > 10,
       );
       expect(pillars).toHaveLength(2);
+      // In game a negative x rotation leans the top back toward +z, the cabin
+      expect(windshield?.rotation?.[0]).toBeLessThan(0);
       for (const pillar of pillars) {
         expect(windshield?.rotation).toEqual(pillar.rotation);
         expect(windshield?.pivot).toEqual(pillar.pivot);
@@ -325,6 +327,9 @@ describe("SUV model (ADR 0009)", () => {
               posts.some((c) => inside(c, at(from)) && inside(c, at(to)));
             const byNeighbor = sidePlates.some((n) => {
               if (n === p || !span(n, a).some((e) => near(e, edge)))
+                return false;
+              // The mirrored plate on the other side has the same spans
+              if (Math.sign(n.origin[0]) !== Math.sign(p.origin[0]))
                 return false;
               const [n0, n1] = span(n, other);
               if (n1 <= o0 || o1 <= n0) return false;
