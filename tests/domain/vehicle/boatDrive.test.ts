@@ -397,11 +397,12 @@ describe("a sports boat Vehicle (ADR 0051)", () => {
   it("rams a target 3.2 blocks ahead at speed and not one 3.6 ahead, while an SUV at the same speed rams neither", () => {
     const drive = (kind: VehicleKind, heading: number, ticks: number) => {
       const vehicle = Vehicle.create(kind, heading, kind);
+      const afloat = kind === "sportsboat";
       const sim = new BoatSim(
         vehicle,
-        kind === "sportsboat" ? SPORTSBOAT_WATER.drag : SPEC.defaultFriction,
+        afloat ? SPORTSBOAT_WATER.drag : SPEC.defaultFriction,
       );
-      const water = kind === "sportsboat" ? AFLOAT : BEACHED;
+      const water = afloat ? AFLOAT : BEACHED;
       for (let i = 0; i < ticks; i++) sim.step(FULL_THROTTLE, water);
       const ahead = (id: string, blocks: number): RamTarget => {
         const f = forward(vehicle.yaw);
@@ -455,10 +456,10 @@ describe("a sports boat Vehicle (ADR 0051)", () => {
             riders: [rider],
           });
           expect(seated.driverId).toBe(seat === 0 ? "rider" : undefined);
-          const left0 = vehicle.tick(
+          const vacated = vehicle.tick(
             context(1, undefined, { x: 0, z: 0 }, AFLOAT),
           );
-          expect(left0.events).toStrictEqual([
+          expect(vacated.events).toStrictEqual([
             { type: "SeatVacated", vehicleId: "boat", seat },
           ]);
         },

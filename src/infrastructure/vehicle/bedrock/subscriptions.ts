@@ -20,13 +20,14 @@ import type {
   PlaceVehicleCommand,
 } from "../../../application/vehicle/placeVehicle";
 import type { SwitchHeadlights } from "../../../application/vehicle/switchHeadlights";
+import type { VehicleKind } from "../../../domain/vehicle/kind";
 import { surfaceCellY } from "../../../domain/vehicle/placement";
 import { NAMESPACE } from "../../shared/identifiers";
 import { parseTestInputMessage } from "../testInput/testInputMessage";
 import type { TestInputStore } from "../testInput/testInputStore";
 import {
   HEADLIGHT_SWITCH_TYPE,
-  kindOfEntity,
+  isVehicleEntity,
   kindOfItem,
   PAINT_BY_DYE,
   TEST_INPUT_EVENT,
@@ -53,12 +54,11 @@ export function registerSubscriptions(
   // that is no longer valid was removed by an earlier event for the same load.
   system.run(() => useCases.limit.start());
   world.afterEvents.entityLoad.subscribe((ev) => {
-    if (kindOfEntity(ev.entity.typeId) !== undefined && ev.entity.isValid)
+    if (isVehicleEntity(ev.entity.typeId) && ev.entity.isValid)
       useCases.limit.found([ev.entity.id]);
   });
   world.afterEvents.entitySpawn.subscribe((ev) => {
-    if (kindOfEntity(ev.entity.typeId) === undefined || !ev.entity.isValid)
-      return;
+    if (!isVehicleEntity(ev.entity.typeId) || !ev.entity.isValid) return;
     if (ev.cause === EntityInitializationCause.Loaded) {
       useCases.limit.found([ev.entity.id]);
     } else {
@@ -95,6 +95,19 @@ export function registerSubscriptions(
   const placeBoat = (cmd: PlaceVehicleCommand) => {
     if (boatPlaced(cmd.playerId)) useCases.place.execute(cmd);
   };
+  const placeCommand = (
+    player: Player,
+    kind: VehicleKind,
+    block: Block,
+  ): PlaceVehicleCommand => ({
+    kind,
+    playerId: player.id,
+    dimensionId: block.dimension.id,
+    blockLocation: block.location,
+    yaw: player.getRotation().y,
+    creative: player.getGameMode() === GameMode.Creative,
+    slot: player.selectedSlotIndex,
+  });
   // The interaction ray skips liquids and reports the bed under the water, so
   // the boat climbs to the top water cell (docs/spike-sportsboat.md).
   const surfaceLocation = (block: Block) => {
@@ -122,24 +135,16 @@ export function registerSubscriptions(
     )
       return;
     ev.cancel = true;
-    if (kind === "sportsboat" && !boatRequested(ev.player.id)) return;
     const block = ev.block;
-    const cmd = {
-      kind,
-      playerId: ev.player.id,
-      dimensionId: ev.block.dimension.id,
-      blockLocation: ev.block.location,
-      yaw: ev.player.getRotation().y,
-      creative: ev.player.getGameMode() === GameMode.Creative,
-      slot: ev.player.selectedSlotIndex,
-    };
-    system.run(() => {
-      if (kind === "sportsboat") {
-        placeBoat({ ...cmd, blockLocation: surfaceLocation(block) });
-      } else {
-        useCases.place.execute(cmd);
-      }
-    });
+    const cmd = placeCommand(ev.player, kind, block);
+    if (kind !== "sportsboat") {
+      system.run(() => useCases.place.execute(cmd));
+      return;
+    }
+    if (!boatRequested(ev.player.id)) return;
+    system.run(() =>
+      placeBoat({ ...cmd, blockLocation: surfaceLocation(block) }),
+    );
   });
 
   // initialSpawn is true on every join, not only the first one, so a player
@@ -152,10 +157,7 @@ export function registerSubscriptions(
   // entity is an attack, and the interaction is left to getting in (ADR 0036).
   world.afterEvents.entityHitEntity.subscribe((ev) => {
     const player = ev.damagingEntity;
-    if (
-      kindOfEntity(ev.hitEntity.typeId) === undefined ||
-      !(player instanceof Player)
-    )
+    if (!isVehicleEntity(ev.hitEntity.typeId) || !(player instanceof Player))
       return;
     const held = player
       .getComponent("minecraft:inventory")
@@ -179,7 +181,7 @@ export function registerSubscriptions(
 
   const ridden = (player: Entity) => {
     const mount = player.getComponent("minecraft:riding")?.entityRidingOn;
-    return kindOfEntity(mount?.typeId) !== undefined ? mount : undefined;
+    return isVehicleEntity(mount?.typeId) ? mount : undefined;
   };
   const switchHeadlights = (playerId: string, vehicleId: string) =>
     useCases.headlights.execute({
@@ -198,13 +200,8 @@ export function registerSubscriptions(
       });
       if (hit && boatRequested(player.id))
         placeBoat({
-          kind: "sportsboat",
-          playerId: player.id,
-          dimensionId: hit.block.dimension.id,
+          ...placeCommand(player, "sportsboat", hit.block),
           blockLocation: surfaceLocation(hit.block),
-          yaw: player.getRotation().y,
-          creative: player.getGameMode() === GameMode.Creative,
-          slot: player.selectedSlotIndex,
         });
       return;
     }
@@ -214,7 +211,7 @@ export function registerSubscriptions(
   });
 
   world.beforeEvents.playerInteractWithEntity.subscribe((ev) => {
-    if (kindOfEntity(ev.target.typeId) === undefined) return;
+    if (!isVehicleEntity(ev.target.typeId)) return;
     // A rider aiming at their own vehicle interacts with it instead of using
     // the item, so the switch is handled here too.
     if (

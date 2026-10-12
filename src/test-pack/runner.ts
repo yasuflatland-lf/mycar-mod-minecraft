@@ -712,6 +712,7 @@ async function withBoat<T>(
   if (!boat) throw new Error("boat not spawned at the pool surface");
   boat.setRotation({ x: 0, y: start.yaw });
   try {
+    await wait(40); // Let the boat settle on the water
     return await run(boat);
   } finally {
     clearInput(boat);
@@ -722,7 +723,6 @@ async function withBoat<T>(
 function boatFloat(a: Arena): Promise<Outcome> {
   return withPool(a, 3, () =>
     withBoat(a, async (boat) => {
-      await wait(40);
       let minY = Number.POSITIVE_INFINITY;
       let maxY = Number.NEGATIVE_INFINITY;
       for (let t = 0; t < 60; t++) {
@@ -759,7 +759,6 @@ function boatDrag(a: Arena): Promise<Outcome> {
     withBoat(
       a,
       async (boat) => {
-        await wait(40);
         const start = boat.location;
         let motion = initialMotion(boat.getRotation().y);
         let observed = boat.getVelocity();
@@ -853,7 +852,6 @@ function boatCruise(a: Arena): Promise<Outcome> {
     const steadySpeed = await withBoat(
       a,
       async (boat) => {
-        await wait(40);
         drive(boat, 0, 1);
         const speeds: number[] = [];
         for (let t = 1; t <= 70; t++) {
@@ -867,7 +865,6 @@ function boatCruise(a: Arena): Promise<Outcome> {
     const turn = await withBoat(
       a,
       async (boat) => {
-        await wait(40);
         drive(boat, 0, 1);
         const cruiseSpeeds: number[] = [];
         for (let t = 1; t <= 55; t++) {
@@ -917,7 +914,6 @@ function boatShore(a: Arena): Promise<Outcome> {
       `fill ${shoreX} ${a.gy - 3} ${POOL.minZ} ${POOL.maxX} ${a.gy - 1} ${POOL.maxZ} stone`,
     );
     return withBoat(a, async (boat) => {
-      await wait(40);
       const x0 = boat.location.x;
       drive(boat, 0, 1);
       await wait(120);
@@ -935,7 +931,6 @@ function boatShore(a: Arena): Promise<Outcome> {
 function boatRam(a: Arena): Promise<Outcome> {
   return withPool(a, 3, () =>
     withBoat(a, async (boat) => {
-      await wait(40);
       const cow = summonCow(a, boat.location.x + 14, boat.location.z);
       if (!cow) return { pass: false, detail: "cow not found" };
       try {
