@@ -26,7 +26,7 @@ function isFloorCell(v: unknown): v is FloorCell {
   if (typeof v !== "object" || v === null) return false;
   const c = v as Record<string, unknown>;
   return (
-    [c.x, c.y, c.z, c.height].every((n) => Number.isInteger(n)) &&
+    [c.x, c.y, c.z, c.height].every(Number.isInteger) &&
     typeof c.height === "number" &&
     c.height >= MIN_HEIGHT &&
     c.height <= MAX_HEIGHT
@@ -105,16 +105,20 @@ export class FloorBlocks {
         // Unloaded chunk: keep the cell and clear it on a later tick.
       }
     }
-    const cells = entry.cells.filter((c) => !cleared.has(cellKey(c)));
+    const cells = new Map(
+      entry.cells
+        .filter((c) => !cleared.has(cellKey(c)))
+        .map((c) => [cellKey(c), c]),
+    );
     for (const c of place) {
       try {
         const b = entry.dimension.getBlock(c);
         if (!b) continue;
-        const owned = cells.findIndex((laid) => cellKey(laid) === cellKey(c));
+        const owned = cells.has(cellKey(c));
         if (
           !b.isAir &&
           !isLightBlock(b) &&
-          !(owned >= 0 && b.typeId === DECK_FLOOR_BLOCK)
+          !(owned && b.typeId === DECK_FLOOR_BLOCK)
         )
           continue;
         b.setPermutation(
@@ -122,12 +126,11 @@ export class FloorBlocks {
             [DECK_FLOOR_HEIGHT_STATE]: c.height,
           }),
         );
-        if (owned >= 0) cells[owned] = c;
-        else cells.push(c);
+        cells.set(cellKey(c), c);
       } catch {
         // Unloaded chunk or outside the world: retry placement on a later tick.
       }
     }
-    entry.cells = cells;
+    entry.cells = [...cells.values()];
   }
 }
