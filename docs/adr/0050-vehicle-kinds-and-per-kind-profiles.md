@@ -1,6 +1,6 @@
 # 0050. Vehicle kinds and per-kind profiles
 
-- Status: Accepted
+- Status: Superseded in part by 0055
 - Date: 2026-10-12
 
 ## Context

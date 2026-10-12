@@ -3,8 +3,6 @@
   "entry": [
     "src/main.ts",
     "src/test-pack/runner.ts",
-    "scripts/check-rp-version.d.mts",
-    "vitest.trace.config.ts",
-    "stryker.trace.config.mjs"
+    "scripts/check-rp-version.d.mts"
   ]
 }
