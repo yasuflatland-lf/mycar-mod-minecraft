@@ -323,7 +323,8 @@ def strut(z0, y0, z1, y1, t=1.6):
                 pivot=[TX + 0.8, y0, z0], rotation=[-ang, 0, 0])
 
 
-# Raked about 50 degrees, so both struts meet under the middle of the short top over the helm.
+# Raked about 50 degrees and roughly parallel; they end 3 px either side of the middle of the short
+# top over the helm.
 REAR = ((-23.0, sheer(-23)), (-3.0, TOWER_TOP))
 FRONT = ((-14.0, sheer(-14)), (3.0, TOWER_TOP))
 
