@@ -44,6 +44,12 @@ export const entityPropertyId = (name: string): string => id(name);
 export const entityEventId = (name: string): string => id(name);
 export const entityAnimationId = (entityTypeId: string, name: string): string =>
   `animation.${NAMESPACE}.${entityTypeId.slice(NAMESPACE.length + 1)}.${name}`;
+/** Invisible collision floor for held vehicles (ADR 0063). */
+export const DECK_FLOOR_BLOCK = id("deck_floor");
+/** Collision height in pixels, matching the floor block permutations. */
+export const DECK_FLOOR_HEIGHT_STATE = id("height");
+/** Dynamic property on a vehicle holding its laid floor cells as JSON (ADR 0063). */
+export const DECK_CELLS_PROPERTY = id("deck_cells");
 export const LIGHT_BLOCK = "minecraft:light_block_15";
 /**
  * Test input messages have the form "<vehicleId>,<moveX>,<moveY>,<jump>"

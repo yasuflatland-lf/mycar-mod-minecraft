@@ -20,6 +20,7 @@ import type {
 } from "../../../application/vehicle/ports";
 import type { Vec3 } from "../../../domain/shared/vec";
 import type { EngineCommand } from "../../../domain/vehicle/drive";
+import type { FloorCell, HoldPose } from "../../../domain/vehicle/floor";
 import type { Cell } from "../../../domain/vehicle/headlights";
 import type { VehicleKind } from "../../../domain/vehicle/kind";
 import {
@@ -30,6 +31,7 @@ import { PAINTS, type Paint } from "../../../domain/vehicle/paint";
 import type { RamHit, RamTarget } from "../../../domain/vehicle/ram";
 import type { RiderView } from "../../../domain/vehicle/vehicle";
 import type { TestInputStore } from "../testInput/testInputStore";
+import { FloorBlocks } from "./floorBlocks";
 import { HeadlightBlocks, isLightBlock } from "./headlightBlocks";
 import {
   dyeOf,
@@ -74,6 +76,8 @@ export class BedrockVehicleWorld
   /** Vehicles collected by loadedVehicles() for this tick. The other methods look them up here by id. */
   private current = new Map<string, Entity>();
   private readonly headlightBlocks = new HeadlightBlocks();
+  private readonly floorBlocks = new FloorBlocks();
+  private readonly holds = new Map<string, HoldPose>();
 
   constructor(private readonly testInputs: TestInputStore) {}
 
@@ -131,6 +135,9 @@ export class BedrockVehicleWorld
     const live = new Set(this.current.keys());
     this.testInputs.retain(live);
     this.headlightBlocks.clearGone(live);
+    this.floorBlocks.clearGone(live);
+    for (const id of this.holds.keys())
+      if (!live.has(id)) this.holds.delete(id);
     return snapshots;
   }
 
@@ -215,7 +222,27 @@ export class BedrockVehicleWorld
       }));
   }
 
+  holdAt(vehicleId: string, pose: HoldPose | undefined): void {
+    if (!pose) {
+      this.holds.delete(vehicleId);
+      return;
+    }
+    this.holds.set(vehicleId, pose);
+    const car = this.entity(vehicleId);
+    if (!car) return;
+    car.teleport(
+      { x: pose.x, y: pose.y, z: pose.z },
+      { rotation: { x: 0, y: pose.yaw } },
+    );
+    car.clearVelocity();
+  }
+
+  layFloor(vehicleId: string, cells: readonly FloorCell[]): void {
+    this.floorBlocks.lay(vehicleId, this.entity(vehicleId), cells);
+  }
+
   applyMotion(vehicleId: string, impulse: Vec3, yaw: number): void {
+    if (this.holds.has(vehicleId)) return;
     const car = this.entity(vehicleId);
     if (!car) return;
     car.applyImpulse(impulse);
@@ -353,6 +380,8 @@ export class BedrockVehicleWorld
   removeVehicle(vehicleId: string): void {
     const car = this.entity(vehicleId);
     this.headlightBlocks.shine(vehicleId, car, []);
+    this.floorBlocks.lay(vehicleId, car, []);
+    this.holds.delete(vehicleId);
     car?.remove();
   }
 

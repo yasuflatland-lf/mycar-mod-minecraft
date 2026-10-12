@@ -2,6 +2,7 @@
 import type { Vec3 } from "../../domain/shared/vec";
 import type { EngineCommand, RestoredValues } from "../../domain/vehicle/drive";
 import type { RawInput } from "../../domain/vehicle/driveInput";
+import type { FloorCell, HoldPose } from "../../domain/vehicle/floor";
 import type { Cell } from "../../domain/vehicle/headlights";
 import type { VehicleKind } from "../../domain/vehicle/kind";
 import type { Paint } from "../../domain/vehicle/paint";
@@ -26,6 +27,13 @@ export interface DriveWorld {
   waterAt(vehicleId: string, offset: Vec3): boolean;
   solidAt(vehicleId: string, offset: Vec3): boolean;
   targetsNear(vehicleId: string): RamTarget[];
+  /** While a pose is set, teleports the vehicle there and clears its velocity every tick instead of applying the impulse. */
+  holdAt(vehicleId: string, pose: HoldPose | undefined): void;
+  /**
+   * Keeps yasu_ride:deck_floor in exactly these cells for the vehicle and clears
+   * the ones it laid before. Also called with no cells for a vehicle that is gone.
+   */
+  layFloor(vehicleId: string, cells: readonly FloorCell[]): void;
   applyMotion(vehicleId: string, impulse: Vec3, yaw: number): void;
   run(vehicleId: string, commands: readonly EngineCommand[]): void;
   /** Switches a player's view to the third-person camera, or back to their own (ADR 0028). */

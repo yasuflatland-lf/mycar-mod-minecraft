@@ -3,6 +3,7 @@ import { forward, type Vec2, type Vec3 } from "../shared/vec";
 import type { Drive, EngineCommand, RiderState, TickContext } from "./drive";
 import type { RawInput } from "./driveInput";
 import type { VehicleEvent } from "./events";
+import type { FloorCell, HoldPose } from "./floor";
 import { EMPTY_COUNTER, type HitCounter, registerHit } from "./hitCounter";
 import type { VehicleKind } from "./kind";
 import type { VehicleProfile } from "./profile";
@@ -24,6 +25,8 @@ export interface VehicleTickInput extends TickContext {
 }
 
 export interface TickOutcome {
+  hold?: HoldPose;
+  floor: readonly FloorCell[];
   impulse: Vec3;
   yaw: number;
   hits: RamHit[];
@@ -83,6 +86,8 @@ export class Vehicle {
     const step = this.drive.step(raw, input);
 
     return {
+      hold: step.hold,
+      floor: step.floor ?? [],
       impulse: step.impulse,
       yaw: this.drive.yaw,
       hits: this.ram(input, step.forward),
