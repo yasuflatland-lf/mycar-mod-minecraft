@@ -15,8 +15,15 @@ concurrency:
 jobs:
   # Runs the in-game tests (ADR 0010) against the dev BDS from server/compose.yaml (ADR 0011).
   in-game:
+    name: in-game (${{ matrix.shard }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        # Each job still pays about 27 s of fixed setup, so more jobs give
+        # less and less back (ADR 0054).
+        shard: ["1/4", "2/4", "3/4", "4/4"]
     steps:
       - uses: actions/checkout@v7
 
@@ -73,6 +80,8 @@ jobs:
 
       - if: steps.runner.outputs.present == 'true'
         run: pnpm run test:game
+        env:
+          GAME_TEST_SHARD: ${{ matrix.shard }}
 
       # Show the start as well as the end: a burst of repeated errors can push
       # the first, telling line out of a plain tail.
