@@ -1,4 +1,4 @@
-"""Render the README previews and the pack icons from the vehicle model.
+"""Render the README previews and the pack icons from the vehicle models.
 
     python3 -I tools/render_preview.py <resource pack> <output dir>          write the images
     python3 -I tools/render_preview.py <resource pack> <output dir> --check  fail if any is stale
@@ -8,9 +8,10 @@ Add --icons <pack dir> ... to either command to also write or check pack_icon.pn
 each folded wheel over a charcoal and orange background. yasu_ride_test_bp gets it in grayscale, so
 the test pack stands out in the pack list.
 
-Four poses share one camera and one scale, so they line up side by side in the README: on the
+Four SUV poses share one camera and one scale, so they line up side by side in the README: on the
 ground, with the headlights on at night, flying with the wheels folded (ADR 0027), and under water
-as a submarine (ADR 0045).
+as a submarine (ADR 0045). Four sports boat poses share another camera and scale: afloat in its
+default black, with the headlights on at night, and in two paints (ADR 0056).
 
 Only the standard library is used, like gen_model.py. The arithmetic avoids math.sin/cos (their
 last bit can differ between platforms' libm) so the same model renders to the same pixels on a Mac
@@ -88,6 +89,22 @@ GLOW_DISC_COLOR = (90, 215, 255)  # #5AD7FF
 GLOW_DISC_ALPHA = 0.9  # at the center, falling linearly to 0 at the rim
 GLOW_DISC_REACH = 1.6  # rim radius in multiples of the wheel radius
 ICON_GRAYSCALE_PACK = "yasu_ride_test_bp"
+
+# The sports boat floats with its feet about 0.45 blocks under the surface (docs/spike-sportsboat.md)
+BOAT_GEOMETRY = "models/entity/yasu_ride/sportsboat.geo.json"
+BOAT_TEXTURES = "textures/entity/yasu_ride"
+BOAT_WATERLINE = 7.2
+BOAT_WATER_COLOR = (30, 105, 165)
+BOAT_WATER_LAYERS = 10
+BOAT_WATER_ALPHA = 0.07
+BOAT_WATER_MARGIN = 14.0
+BOAT_BEAM_LENGTH = 40.0
+BOAT_POSES = {
+    "sportsboat-afloat.png": {"lamps": False, "dusk": False, "paint": None},
+    "sportsboat-headlights.png": {"lamps": True, "dusk": True, "paint": None},
+    "sportsboat-red.png": {"lamps": False, "dusk": False, "paint": "red"},
+    "sportsboat-white.png": {"lamps": False, "dusk": False, "paint": "white"},
+}
 
 POSES = {
     "suv-front-left.png": {"lamps": False, "dusk": False, "hover": False, "submarine": False},
@@ -357,6 +374,61 @@ def ground_layers(polygons, pose, ground_y):
     return layers
 
 
+def collect_boat(geo, texture, pose):
+    """Return the boat's opaque faces as (quad, rgb, bloom group or None) and its see-through faces as
+    (quad, rgb, alpha)."""
+    desc = geo["description"]
+    tint = NIGHT_TINT if pose["dusk"] else (1.0, 1.0, 1.0)
+    polygons, glass = [], []
+    for bone in geo["bones"]:
+        emissive = "lamp" if bone["name"] == "headlights" and pose["lamps"] else None
+        for cube in bone.get("cubes", []):
+            # In game a cube's x rotation turns the other way from this rotate() (ADR 0051)
+            rx, ry, rz = cube.get("rotation", [0, 0, 0])
+            for face, quad in cube_faces({**cube, "rotation": [-rx, ry, rz]}):
+                quad = mirror(quad)
+                normal = cross(sub(quad[1], quad[0]), sub(quad[3], quad[0]))
+                if dot(normal, normal) == 0:
+                    continue
+                if emissive:
+                    polygons.append((quad, LAMP_LIT, emissive))
+                    continue
+                r, g, b, a = face_color(texture, cube["uv"][face], desc["texture_width"], desc["texture_height"])
+                k = shade(normalize(normal))
+                rgb = (r * k * tint[0], g * k * tint[1], b * k * tint[2])
+                if a < 255:
+                    glass.append((quad, rgb, a / 255))
+                else:
+                    polygons.append((quad, rgb, None))
+    return polygons, glass
+
+
+def water_layers(polygons, pose):
+    """See-through quads on the water surface as (quad, rgb, alpha): water that fades out away from
+    the hull, then the headlight beam."""
+    points = [p for quad, _, _ in polygons for p in quad]
+    x_lo, x_hi = min(p[0] for p in points), max(p[0] for p in points)
+    z_lo, z_hi = min(p[2] for p in points), max(p[2] for p in points)
+    y = BOAT_WATERLINE
+    layers = []
+    for layer in range(BOAT_WATER_LAYERS):
+        g = BOAT_WATER_MARGIN * (layer + 1) / BOAT_WATER_LAYERS
+        quad = [(x_lo - g, y, z_lo - g), (x_hi + g, y, z_lo - g), (x_hi + g, y, z_hi + g), (x_lo - g, y, z_hi + g)]
+        layers.append((quad, BOAT_WATER_COLOR, BOAT_WATER_ALPHA))
+    if pose["lamps"]:
+        # The beam leaves the water under the lamps on the bow flanks; the front is the model's -z
+        # side (ADR 0009)
+        lamps = [p for quad, _, emissive in polygons if emissive == "lamp" for p in quad]
+        half = max(abs(p[0]) for p in lamps)
+        start = min(p[2] for p in lamps)
+        for layer in range(BEAM_LAYERS):
+            length = BOAT_BEAM_LENGTH * (layer + 1) / BEAM_LAYERS
+            spread = half + length * BEAM_SPREAD
+            quad = [(-half, y, start), (-spread, y, start - length), (spread, y, start - length), (half, y, start)]
+            layers.append((quad, BEAM_COLOR, BEAM_ALPHA))
+    return layers
+
+
 class Camera:
     def __init__(self, points):
         lo = [min(p[i] for p in points) for i in range(3)]
@@ -441,7 +513,7 @@ def add_bloom(planes, body, source, config, width, height):
                 planes[c][o] += bloom[c][o] * k
 
 
-def rasterize(polygons, layers, to_screen, width=WIDTH, height=HEIGHT, background=None, bloom=BLOOM):
+def rasterize(polygons, layers, to_screen, width=WIDTH, height=HEIGHT, background=None, bloom=BLOOM, see_through=()):
     w, h = width * SUPERSAMPLE, height * SUPERSAMPLE
 
     # Premultiplied (r, g, b, a) under the vehicle. The shadow and light pools add up on top of
@@ -469,6 +541,17 @@ def rasterize(polygons, layers, to_screen, width=WIDTH, height=HEIGHT, backgroun
 
         fill(to_screen(quad), w, h, paint)
 
+    # See-through quads (quad, rgb, alpha) in front of the vehicle are blended over it, farthest first
+    coats = {}
+    for quad, rgb, alpha in see_through:
+
+        def coat(px, py, q, rgb=rgb, alpha=alpha):
+            i = py * w + px
+            if q > depth[i]:
+                coats.setdefault(i, []).append((q, rgb, alpha))
+
+        fill(to_screen(quad), w, h, coat)
+
     # Average each SUPERSAMPLE x SUPERSAMPLE block with premultiplied alpha
     n = SUPERSAMPLE * SUPERSAMPLE
     planes = [[0.0] * (width * height) for _ in range(4)]
@@ -480,7 +563,14 @@ def rasterize(polygons, layers, to_screen, width=WIDTH, height=HEIGHT, backgroun
             for sy in range(oy * SUPERSAMPLE, (oy + 1) * SUPERSAMPLE):
                 for sx in range(ox * SUPERSAMPLE, (ox + 1) * SUPERSAMPLE):
                     i = sy * w + sx
-                    if color[i] is not None:
+                    if i in coats:
+                        cr, cg, cb, ca = (*color[i], 1.0) if color[i] is not None else (0.0, 0.0, 0.0, 0.0)
+                        for _, rgb, alpha in sorted(coats[i], key=lambda c: c[0]):
+                            cr, cg, cb = (rgb[c] * alpha + v * (1 - alpha) for c, v in enumerate((cr, cg, cb)))
+                            ca = alpha + ca * (1 - alpha)
+                        r, g, b, a = r + cr, g + cg, b + cb, a + ca
+                        covered += color[i] is not None
+                    elif color[i] is not None:
                         r, g, b, a = r + color[i][0], g + color[i][1], b + color[i][2], a + 1.0
                         covered += 1
                     elif ground[i] is not None:
@@ -529,12 +619,22 @@ def render(rp, icons=False):
 
     # One camera and one scale for every pose, so the vehicle has the same size in each picture
     camera = Camera([p for polygons in scenes.values() for quad, _, _ in polygons for p in quad])
-    projected = [
-        camera.project(p)
-        for name in POSES
-        for quad in [q for q, _, _ in scenes[name]] + [q for q, _, _ in layers[name]]
-        for p in quad
-    ]
+    to_screen = fit(camera, [q for name in POSES for q, _, _ in scenes[name] + layers[name]])
+
+    images = {name: rasterize(scenes[name], layers[name], to_screen) for name in POSES}
+    images.update(render_boat(rp))
+    icon = None
+    if icons:
+        # Lamps lit without the dusk tint, so the body keeps its daylight colors
+        pose = {**POSES["suv-flying.png"], "lamps": True}
+        polygons = collect(geo, texture, folds, turns, pose)
+        icon = render_icon(geo, polygons, camera)
+    return images, icon
+
+
+def fit(camera, quads):
+    """Return a to_screen function that centers the quads in the preview frame with MARGIN around them."""
+    projected = [camera.project(p) for quad in quads for p in quad]
     sx_lo, sx_hi = min(p[0] for p in projected), max(p[0] for p in projected)
     sy_lo, sy_hi = min(p[1] for p in projected), max(p[1] for p in projected)
     w, h = WIDTH * SUPERSAMPLE, HEIGHT * SUPERSAMPLE
@@ -545,14 +645,23 @@ def render(rp, icons=False):
     def to_screen(quad):
         return [(off_x + scale * x, off_y + scale * y, q) for x, y, q in map(camera.project, quad)]
 
-    images = {name: rasterize(scenes[name], layers[name], to_screen) for name in POSES}
-    icon = None
-    if icons:
-        # Lamps lit without the dusk tint, so the body keeps its daylight colors
-        pose = {**POSES["suv-flying.png"], "lamps": True}
-        polygons = collect(geo, texture, folds, turns, pose)
-        icon = render_icon(geo, polygons, camera)
-    return images, icon
+    return to_screen
+
+
+def render_boat(rp):
+    geo = json.loads((rp / BOAT_GEOMETRY).read_text())["minecraft:geometry"][0]
+    scenes, layers = {}, {}
+    for name, pose in BOAT_POSES.items():
+        suffix = f"_{pose['paint']}" if pose["paint"] else ""
+        texture = read_png(rp / BOAT_TEXTURES / f"sportsboat{suffix}.png")
+        scenes[name] = collect_boat(geo, texture, pose)
+        layers[name] = water_layers(scenes[name][0], pose)
+    camera = Camera([p for polygons, _ in scenes.values() for quad, _, _ in polygons for p in quad])
+    to_screen = fit(camera, [q for name in BOAT_POSES for q, _, _ in scenes[name][0] + layers[name]])
+    return {
+        name: rasterize(polygons, [], to_screen, see_through=glass + layers[name])
+        for name, (polygons, glass) in scenes.items()
+    }
 
 
 def render_icon(geo, polygons, camera):

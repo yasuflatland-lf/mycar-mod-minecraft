@@ -65,12 +65,32 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
+      # Depth 2 keeps the pull request's base as HEAD^1 of the merge commit
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
 
-      - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+      # A pull request that touches none of the renderer's inputs or outputs
+      # cannot make them stale, so it skips the render (ADR 0057). Pushes to
+      # main always render.
+      - id: inputs
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" != pull_request ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          elif git diff --name-only HEAD^1 HEAD | grep -qE '^(tools/render_preview\.py|packs/yasu_ride_rp/(models|textures/entity|animations)/|packs/[^/]+/pack_icon\.png$|docs/images/|package\.json$|mise\.toml$|\.github/workflows/unit-test\.yml$)'; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.inputs.outputs.changed == 'true'
+        uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
 
       # The README previews and pack icons must be re-rendered whenever the model or its texture changes
-      - run: pnpm run model:check
+      - if: steps.inputs.outputs.changed == 'true'
+        run: pnpm run model:check
 
   # The main ruleset requires a status check named "check", so keep this job
   # id. It fails unless every job above succeeded.
