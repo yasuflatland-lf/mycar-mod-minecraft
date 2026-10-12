@@ -40,6 +40,9 @@ PALETTE = {
     "jet": (104, 106, 112),  # gray jet nozzles and reverse buckets
     "ring": (40, 92, 220),  # blue ring on the wheel hub
     "stripe": (0x61, 0x61, 0x61),  # the line along each side below the gunwale
+    "gunmetal": (74, 76, 82),  # matte speaker pods
+    "chrome": (226, 228, 232),
+    "button": (60, 60, 64),
 }
 # The windshield renders with entity_alphablend, so its swatch is see-through
 ALPHA = {"glass": 80}
@@ -76,9 +79,20 @@ def uv(color):
     return {k: dict(face) for k in ("north", "south", "east", "west", "up", "down")}
 
 
-# A quilted tile below the swatch row: tan with a darker diamond lattice, stretched over a whole face.
+# A quilted tile below the swatch row: tan with a darker honeycomb stitch, as on the reference boat's
+# cushions, stretched over a whole face.
 QUILT_UV = {"uv": [0, 16], "uv_size": [8, 8]}
 QUILT_LINE = (128, 80, 44)
+QUILT = [
+    "........",
+    ".LL..LL.",
+    "L..LL..L",
+    "........",
+    "........",
+    "L..LL..L",
+    ".LL..LL.",
+    "........",
+]
 
 
 def box(x0, y0, z0, x1, y1, z1, color, faces=None, **extra):
@@ -92,6 +106,12 @@ def box(x0, y0, z0, x1, y1, z1, color, faces=None, **extra):
 def pair(x0, y0, z0, x1, y1, z1, color, **extra):
     """A box on the right (+x) and its mirror on the left."""
     return [box(x0, y0, z0, x1, y1, z1, color, **extra), box(-x1, y0, z0, -x0, y1, z1, color, **extra)]
+
+
+def disc(cx, cy, r, z0, z1, color):
+    """A round section along z: a square and the same square turned 45 degrees."""
+    return [box(cx - r, cy - r, z0, cx + r, cy + r, z1, color, pivot=[cx, cy, z0], rotation=[0, 0, rot])
+            for rot in (0, 45)]
 
 
 def lerp(table, z):
@@ -112,6 +132,8 @@ DECK = 9.0  # cockpit floor
 DECK_BOW = 11.0  # the open bow's floor, a step up through the windshield's walk-through
 COCKPIT = (-44.0, 14.0)  # open from the transom to the consoles
 BOW = (18.0, 40.0)  # open bow seating; ahead of it, the anchor locker is decked over
+BOW_FILLER = 26.0  # the filler cushions start here, ahead of the floor inside the walk-through
+WALK_HALF = 3.5  # half the walk-through: the reference's 22 inches is 7 px at this scale
 SLICE = 2.0
 
 body, glass = [], []
@@ -144,11 +166,21 @@ while z < 48.0:
     if open_bow:
         body += pair(b - 1.6, DECK_BOW, z, b, s, z + SLICE, "hull")
         body.append(box(-b + 1.6, DECK_BOW, z, b - 1.6, DECK_BOW + 0.3, z + SLICE, "teak"))
-        # U-shaped bow lounge along the sides: charcoal base, tan cushion and back
+        # U-shaped bow lounge along the sides: charcoal base, tan cushion with charcoal piping on its
+        # inboard edge, and a tan back capped in charcoal
         inner = max(b - 7.5, 0.0)
         body += pair(inner, DECK_BOW, z, b - 1.6, DECK_BOW + 2.2, z + SLICE, "seat_dark")
-        body += pair(inner, DECK_BOW + 2.2, z, b - 1.6, DECK_BOW + 3.2, z + SLICE, "seat")
-        body += pair(b - 2.8, DECK_BOW + 3.2, z, b - 1.6, s - 0.6, z + SLICE, "seat")
+        body += pair(inner + 0.6, DECK_BOW + 2.2, z, b - 1.6, DECK_BOW + 3.2, z + SLICE, "seat")
+        if inner > 0:
+            body += pair(inner, DECK_BOW + 2.2, z, inner + 0.6, DECK_BOW + 3.3, z + SLICE, "seat_dark")
+        body += pair(b - 2.8, DECK_BOW + 3.2, z, b - 1.6, s - 0.9, z + SLICE, "seat")
+        body += pair(b - 3.0, s - 0.9, z, b - 1.6, s - 0.3, z + SLICE, "seat_dark")
+        # Filler cushions close the aisle into one sun pad, leaving room to stand inside the
+        # walk-through
+        if zc > BOW_FILLER and inner > 0:
+            body.append(box(-inner, DECK_BOW, z, inner, DECK_BOW + 2.2, z + SLICE, "seat_dark"))
+            body.append(box(-inner, DECK_BOW + 2.2, z, inner, DECK_BOW + 3.2, z + SLICE, "seat"))
+            body.append(box(-0.15, DECK_BOW + 3.2, z, 0.15, DECK_BOW + 3.3, z + SLICE, "seam"))
     # Rub rail just below the gunwale, and a faint strake lower down
     body += pair(b, s - 1.1, z, b + 0.35, s - 0.4, z + SLICE, "stripe")
     sy = lerp(STRAKE, zc)
@@ -208,60 +240,125 @@ def striped(x0, x1, y0, y1, z0, z1, quilt_face):
             for i, (a, b, c) in enumerate(zip(edges, edges[1:], colors))]
 
 
-# Helm (right, the driver is seat 0) and passenger buckets on pedestals: tan with charcoal backs
+# Helm (right, the driver is seat 0) and passenger buckets on pedestals, wraparound like the reference:
+# a charcoal shell, tall tan wings, a headrest, and a flip-up bolster at the front of the cushion
 for sign in (1, -1):
     a, c = (2.5, 10) if sign > 0 else (-10, -2.5)
     body.append(box(a + 2.5, F, 3, c - 2.5, F + 0.5, 6, "metal"))  # pedestal
-    body += striped(a, c, F + 0.5, F + 2.5, 1, 8, "up")  # cushion
-    body.append(box(a, F + 2.5, 0, c, F + 9, 2, "seat_dark"))  # back
-    body += striped(a + 0.6, c - 0.6, F + 3, F + 8.5, 1.9, 2.3, "south")  # face toward the sitter
-    body.append(box(a - 0.5, F + 0.5, 0, a, F + 5, 8, "seat_dark"))  # bolsters
-    body.append(box(c, F + 0.5, 0, c + 0.5, F + 5, 8, "seat_dark"))
+    body.append(box(a, F + 0.5, 0.5, c, F + 1.6, 8, "seat_dark"))  # base shell
+    body += striped(a, c, F + 1.6, F + 2.8, 2, 5.6, "up")  # cushion
+    body.append(box(a + 0.3, F + 1.6, 5.6, c - 0.3, F + 2.6, 5.9, "seat_dark"))  # bolster hinge
+    body.append(box(a, F + 1.6, 5.9, c, F + 3.4, 8, "seat"))  # flip-up bolster, folded down
+    body.append(box(a, F + 1.6, 0, c, F + 10, 1.6, "seat_dark"))  # back shell
+    body += striped(a + 0.6, c - 0.6, F + 3, F + 9.6, 1.6, 2.0, "south")  # face toward the sitter
+    body.append(box(a + 0.8, F + 10, 0.2, c - 0.8, F + 11, 1.8, "seat_dark"))  # headrest
+    for x0, x1, shell in ((a - 0.6, a, a - 0.9), (c, c + 0.6, c + 0.6)):
+        body.append(box(x0, F + 1.6, 0, x1, F + 9, 3.5, "seat"))  # tall wing
+        body.append(box(x0, F + 1.6, 3.5, x1, F + 4.6, 8, "seat"))  # arm
+        body.append(box(min(shell, x0), F + 0.5, 0, max(shell + 0.3, x1), F + 1.6, 8, "seat_dark"))
 
-# Mid benches either side of the aisle (seats 2 and 3), and the aft lounges facing forward
-for x0, x1 in ((2.6, 15.4), (-15.4, -2.6)):
+# Aft U lounge, as on the reference: a bench across the transom, side benches along the hull facing
+# inboard, and at their front ends forward-facing seats with flip-back backrests for seats 2 and 3.
+# The rider positions in sportsboat.se.json stay where they were (ADR 0058).
+U_SIDE = 9.4  # inboard edge of each side bench
+for sign in (1, -1):
+    def side(x0, x1):
+        return (x0, x1) if sign > 0 else (-x1, -x0)
+
+    # Forward-facing seat (seat 2 or 3)
+    x0, x1 = side(2.6, 15.4)
     body.append(box(x0, F, -17, x1, F + 2.6, -9, "seat_dark"))
     body += striped(x0, x1, F + 2.6, F + 3.6, -17, -9, "up")
-    body += striped(x0, x1, F + 3.6, F + 9, -18.5, -17, "south")
-    body.append(box(x0, F, -44, x1, F + 2.6, -27, "seat_dark"))
-    body += striped(x0, x1, F + 2.6, F + 3.8, -42, -27, "up")
-    body += striped(x0, x1, F + 3.8, F + 6.8, -44, -42, "south")
-    body.append(box(x0, F + 3.8, -44, x1, F + 4.4, -42.4, "seat_dark"))  # charcoal band
+    # Flip-back backrest: a charcoal frame round a tan face, on steel hinges at both ends
+    body.append(box(x0, F + 2.6, -18.6, x1, F + 8.4, -17.6, "seat_dark"))
+    body += striped(x0 + 0.4, x1 - 0.4, F + 4.0, F + 8.0, -17.6, -17.2, "south")
+    for hx in (x0 - 0.1, x1 - 0.3):
+        body.append(box(hx, F + 3.2, -18.4, hx + 0.4, F + 4.4, -17.4, "steel"))
+    # Side bench, its cushion running under the backrest to meet the forward seat
+    x0, x1 = side(U_SIDE, 15.4)
+    body.append(box(x0, F, -38, x1, F + 2.6, -17, "seat_dark"))
+    cx0, cx1 = side(U_SIDE + 0.6, 14.2)
+    body.append(box(cx0, F + 2.6, -38, cx1, F + 3.6, -18.6, "seat", faces=["up"]))
+    px0, px1 = side(U_SIDE, U_SIDE + 0.6)
+    body.append(box(px0, F + 2.6, -38, px1, F + 3.7, -18.6, "seat_dark"))  # piping
+    bx0, bx1 = side(14.2, 15.4)
+    body.append(box(bx0, F + 2.6, -42, bx1, F + 6.4, -18.6, "seat"))  # back against the hull
+    tx0, tx1 = side(14.0, 15.4)
+    body.append(box(tx0, F + 6.4, -42, tx1, F + 7.0, -18.6, "seat_dark"))
+    # Round chrome speaker grille set into the side back, ahead of the tower legs
+    gx0, gx1 = side(13.9, 14.2)
+    gx = (gx0 + gx1) / 2
+    for rot in (0, 45):
+        body.append(box(gx0, F + 3.9, -27.9, gx1, F + 5.7, -26.1, "chrome",
+                        pivot=[gx, F + 4.8, -27], rotation=[rot, 0, 0]))
+    hx0, hx1 = side(13.8, 13.9)
+    body.append(box(hx0, F + 4.4, -27.4, hx1, F + 5.2, -26.6, "gloss"))  # cone
+
+# Transom bench across the stern, under the side benches' back ends
+body.append(box(-15.4, F, -44, 15.4, F + 2.6, -38, "seat_dark"))
+body += striped(-14.2, 14.2, F + 2.6, F + 3.8, -42, -38, "up")
+body += striped(-15.4, 15.4, F + 3.8, F + 6.8, -44, -42, "south")
+body.append(box(-15.4, F + 6.8, -44, 15.4, F + 7.4, -42, "seat_dark"))  # charcoal cap
+body.append(box(-15.4, F + 3.8, -44, 15.4, F + 4.4, -42.4, "seat_dark"))  # charcoal band
 
 # Helm console with a glossy dash, a big display, a wheel, and the throttle; passenger console
-body.append(box(2, F, 9, 15.4, F + 7, 16, "gloss"))
-body.append(box(2, F + 7, 10, 15.4, F + 8, 15.5, "gloss"))
-body.append(box(-15.4, F, 9, -2, F + 6.5, 16, "gloss"))
-body.append(box(-15.4, F + 6.5, 10, -2, F + 7.3, 15.5, "gloss"))
-# The display sits right of the wheel's center, smaller than the dash is wide. It stands ahead of
-# the driver (bow at +z), and its top leans away from the driver, toward +z. In game a negative x
-# rotation tips +y toward +z before the 180-degree turn, so the angle is -20; render_preview.py
-# draws it leaning the other way (ADR 0051).
-SCREEN_PIVOT = [10.5, F + 8, 13.5]
-body.append(box(7.2, F + 8, 13, 13.8, F + 11.8, 14, "gloss", pivot=SCREEN_PIVOT, rotation=[-20, 0, 0]))
-body.append(box(7.6, F + 8.4, 12.8, 13.4, F + 11.4, 13.1, "screen", pivot=SCREEN_PIVOT, rotation=[-20, 0, 0]))
-# Steering wheel as in the photo: a thick black rim, three broad black spokes at 10, 2, and 6 o'clock
-# with chrome accents where they meet the rim, and a large hub with a blue ring and a silver center.
-WX, WY, WZ = 6.25, F + 7.5, 8.2  # wheel center
+body.append(box(WALK_HALF, F, 9, 15.4, F + 7, 16, "gloss"))
+body.append(box(WALK_HALF, F + 7, 10, 15.4, F + 8, 15.5, "gloss"))
+body.append(box(-15.4, F, 9, -WALK_HALF, F + 6.5, 16, "gloss"))
+body.append(box(-15.4, F + 6.5, 10, -WALK_HALF, F + 7.3, 15.5, "gloss"))
+# Tan leather panel on each side wall beside the front seats
+body += pair(15.0, F + 3.5, -1.0, 15.4, sheer(2) - 1.2, 4.8, "seat")
+body += pair(14.9, F + 3.0, -1.0, 15.4, F + 3.5, 4.8, "seat_dark")
+# A large display inboard of the wheel, as on the reference helm, overhanging the console toward the
+# aisle. It stands ahead of the driver (bow at +z), and its top leans away from the driver, toward +z.
+# In game a negative x rotation tips +y toward +z before the 180-degree turn, so the angle is -20;
+# render_preview.py draws it leaning the other way (ADR 0051).
+SCREEN_PIVOT = [5.5, F + 8, 13.5]
+body.append(box(2.0, F + 8, 13, 9.0, F + 12.4, 14, "gloss", pivot=SCREEN_PIVOT, rotation=[-20, 0, 0]))
+body.append(box(2.4, F + 8.4, 12.8, 8.6, F + 12.0, 13.1, "screen", pivot=SCREEN_PIVOT, rotation=[-20, 0, 0]))
+# Phone holder standing on the dash, and a switch panel outboard of it
+body.append(box(11.0, F + 8, 12.4, 12.4, F + 10.6, 12.9, "gloss"))
+body.append(box(11.2, F + 8.3, 12.3, 12.2, F + 10.4, 12.4, "screen"))
+body.append(box(12.8, F + 8, 10.6, 15.0, F + 8.3, 13.4, "gloss"))
+for bx in (13.1, 13.8, 14.5):
+    for bz in (11.2, 12.4):
+        body.append(box(bx, F + 8.3, bz, bx + 0.4, F + 8.45, bz + 0.4, "metal"))
+# Two chrome-rimmed cupholders: on the dash between the display and the wheel, and on the ledge below
+for x0, y0, z0, size in ((9.6, F + 8, 10.4, 1.3), (3.9, F + 7, 9.0, 1.0)):
+    body.append(box(x0, y0, z0, x0 + size, y0 + 0.15, z0 + size, "chrome"))
+    body.append(box(x0 + 0.25, y0 + 0.15, z0 + 0.25, x0 + size - 0.25, y0 + 0.17, z0 + size - 0.25, "gloss"))
+# Steering wheel as on the reference: a thick black rim and a broad matte black three-spoke pad with
+# its side spokes slightly raised, chrome strips along their lower edges, small buttons, one blue
+# LED, and a plain silver cap with no emblem (ADR 0009). The column sits under a thick glossy cowl.
+WX, WY, WZ = 7.6, F + 7.5, 7.0  # wheel center; the driver faces its -z side
 for i in range(16):
     ang = i * 22.5
     cx = WX + 2.7 * math.cos(math.radians(ang))
     cy = WY + 2.7 * math.sin(math.radians(ang))
     body.append(box(cx - 0.6, cy - 0.45, WZ, cx + 0.6, cy + 0.45, WZ + 0.8, "gloss",
                     pivot=[cx, cy, WZ + 0.4], rotation=[0, 0, ang + 90]))
-for ang in (30, 150, 270):
-    cx = WX + 1.5 * math.cos(math.radians(ang))
-    cy = WY + 1.5 * math.sin(math.radians(ang))
-    body.append(box(cx - 1.1, cy - 0.55, WZ + 0.15, cx + 1.1, cy + 0.55, WZ + 0.6, "gloss",
+for ang in (20, 160, 270):
+    along = (math.cos(math.radians(ang)), math.sin(math.radians(ang)))
+    cx, cy = WX + 1.3 * along[0], WY + 1.3 * along[1]
+    body.append(box(cx - 1.2, cy - 0.75, WZ + 0.15, cx + 1.2, cy + 0.75, WZ + 0.6, "gloss",
                     pivot=[cx, cy, WZ + 0.4], rotation=[0, 0, ang]))
-    ax = WX + 2.0 * math.cos(math.radians(ang))
-    ay = WY + 2.0 * math.sin(math.radians(ang))
-    body.append(box(ax - 0.35, ay - 0.35, WZ + 0.05, ax + 0.35, ay + 0.35, WZ + 0.15, "steel",
-                    pivot=[ax, ay, WZ + 0.1], rotation=[0, 0, ang]))
-body.append(box(WX - 1.0, WY - 1.0, WZ + 0.1, WX + 1.0, WY + 1.0, WZ + 0.7, "gloss"))
-body.append(box(WX - 0.75, WY - 0.75, WZ, WX + 0.75, WY + 0.75, WZ + 0.1, "ring"))
-body.append(box(WX - 0.45, WY - 0.45, WZ - 0.05, WX + 0.45, WY + 0.45, WZ, "steel"))
-body.append(box(5.75, F + 4, 8.8, 6.75, F + 7.5, 9.6, "gloss"))  # column
+    if ang != 270:
+        # Across the spoke, pointing down on either side
+        down = (along[1], -along[0]) if along[0] > 0 else (-along[1], along[0])
+        lx, ly = cx + 0.7 * down[0], cy + 0.7 * down[1]
+        body.append(box(lx - 1.1, ly - 0.12, WZ + 0.05, lx + 1.1, ly + 0.12, WZ + 0.15, "chrome",
+                        pivot=[lx, ly, WZ + 0.1], rotation=[0, 0, ang]))
+        for r in (0.9, 1.6):
+            bx, by = WX + r * along[0] - 0.15 * down[0], WY + r * along[1] - 0.15 * down[1]
+            body.append(box(bx - 0.2, by - 0.2, WZ + 0.05, bx + 0.2, by + 0.2, WZ + 0.15, "button",
+                            pivot=[bx, by, WZ + 0.1], rotation=[0, 0, ang]))
+body += disc(WX, WY, 1.3, WZ + 0.1, WZ + 0.7, "gloss")  # pad center
+body += disc(WX, WY, 0.6, WZ - 0.05, WZ + 0.1, "steel")  # cap
+lx, ly = WX + 0.45, WY - 1.9
+body.append(box(lx - 0.15, ly - 0.15, WZ + 0.05, lx + 0.15, ly + 0.15, WZ + 0.15, "ring"))  # LED
+body.append(box(WX - 1.0, WY - 1.6, WZ + 0.6, WX + 1.0, WY + 0.6, 9.0, "gloss"))  # cowl
+body.append(box(WX - 1.05, WY - 1.65, WZ + 1.0, WX + 1.05, WY + 0.65, WZ + 1.2, "chrome"))
+body.append(box(WX - 0.7, F + 4, 8.2, WX + 0.7, WY - 1.6, 9.0, "gloss"))  # column
 # Throttle on the right side wall beside the driver: a glossy black housing with a chrome
 # handle on a black lever arm, as in the photo
 body.append(box(13.4, F + 4.5, 5.0, 15.4, F + 7.4, 9.0, "gloss"))
@@ -295,17 +392,30 @@ s0 = sheer(FRONT_BASE)
 ROW_HEIGHT = WS_HEIGHT / WS_ROWS
 # (bottom y, front z) of each row of the front glass
 ROWS = [(s0 + r * WS_HEIGHT / WS_ROWS, FRONT_BASE - r * (FRONT_BASE - FRONT_TOP) / WS_ROWS) for r in range(WS_ROWS)]
+POST = WALK_HALF + 0.6  # outer face of each walk-through post
 for y0, zf in ROWS:
     # The center section is the walk-through to the bow
-    glass += pair(3.2, y0, zf - 0.9, beam(zf) - 1.0, y0 + ROW_HEIGHT, zf, "glass")
-body += pair(3.0, s0 + WS_HEIGHT, FRONT_TOP - 1.0, beam(FRONT_TOP) - 1.0, s0 + WS_HEIGHT + 0.7, FRONT_TOP + 0.2, "frame")
+    glass += pair(POST, y0, zf - 0.9, beam(zf) - 1.0, y0 + ROW_HEIGHT, zf, "glass")
+body += pair(POST - 0.2, s0 + WS_HEIGHT, FRONT_TOP - 1.0, beam(FRONT_TOP) - 1.0, s0 + WS_HEIGHT + 0.7, FRONT_TOP + 0.2, "frame")
 # Walk-through posts lean back with the glass: one short block per row
 for y0, zf in ROWS:
-    body += pair(2.6, y0, zf - 0.9, 3.2, y0 + ROW_HEIGHT + 0.05, zf, "frame")
-# Corner posts where the front meets the sides, and a mid post on each side pane
+    body += pair(WALK_HALF, y0, zf - 0.9, POST, y0 + ROW_HEIGHT + 0.05, zf, "frame")
+# Corner posts where the front meets the sides, a divider halfway across each front pane, and a mid
+# post on each side pane
 for y0, zf in ROWS:
     hw = beam(zf) - 1.0
     body += pair(hw - 0.6, y0, zf - 0.9, hw, y0 + ROW_HEIGHT + 0.05, zf, "frame")
+    mid = (POST + hw) / 2
+    body += pair(mid - 0.25, y0, zf - 0.95, mid + 0.25, y0 + ROW_HEIGHT + 0.05, zf + 0.05, "frame")
+# The walk-through door is closed: its glass leans back in line with the front panes, under the top rail
+for y0, zf in ROWS:
+    glass.append(box(-WALK_HALF, y0, zf - 0.9, WALK_HALF, y0 + ROW_HEIGHT, zf, "glass"))
+body.append(box(-WALK_HALF, s0 + WS_HEIGHT, FRONT_TOP - 1.0, WALK_HALF, s0 + WS_HEIGHT + 0.7, FRONT_TOP + 0.2, "frame"))
+# Rear-view mirror on a stalk over the helm half of the windshield's top rail, its glass facing aft
+MX, MY, MZ = 8.5, s0 + WS_HEIGHT + 0.7, FRONT_TOP - 0.4
+body.append(box(MX - 0.3, MY, MZ - 0.3, MX + 0.3, MY + 1.0, MZ + 0.3, "frame"))
+body.append(box(MX - 3.4, MY + 0.8, MZ - 0.9, MX + 3.4, MY + 2.2, MZ - 0.3, "gloss"))
+body.append(box(MX - 3.1, MY + 1.0, MZ - 1.0, MX + 3.1, MY + 2.0, MZ - 0.9, "chrome"))
 body += pair(beam(6) - 1.6, sheer(6), 5.6, beam(6) - 1.0, sheer(6) + glass_height(6) + 0.2, 6.4, "frame")
 
 # Wake tower: on each gunwale a raked rear and front strut with rungs and an X brace, then the top beam.
@@ -353,27 +463,53 @@ B_FRONT, B_REAR = 9.0, -10.0  # over the helm only
 B_HALF = 19.0
 B_TOP = TOWER_TOP + 3.5
 B_THICK = 2.0
+
+
+def bimini_top(zc):
+    front = B_FRONT - zc
+    t = (zc - B_REAR) / (B_FRONT - B_REAR)
+    drop = 2.4 if front < 1.5 else 1.2 if front < 3.5 else 0.0
+    return B_TOP - drop - 1.5 * t + 0.6 * (1 - (2 * t - 1) ** 2)
+
+
 z = B_REAR
 while z < B_FRONT:
     zc = z + SLICE / 2
     front = B_FRONT - zc
     rear = zc - B_REAR
-    drop = 2.4 if front < 1.5 else 1.2 if front < 3.5 else 0.0
     corner = 2.0 if min(front, rear) < 1.5 else 0.8 if min(front, rear) < 3.5 else 0.0
     hw = B_HALF - corner
-    t = rear / (B_FRONT - B_REAR)
-    top = B_TOP - drop - 1.5 * t + 0.6 * (1 - (2 * t - 1) ** 2)
+    top = bimini_top(zc)
     body.append(box(-hw + 3, top - B_THICK, z, hw - 3, top, z + SLICE, "canvas"))
+    # Two ribs under the top run from near the middle of the front edge out toward the rear corners
+    rib = 3.0 + (B_HALF - 8.0 - 3.0) * front / (B_FRONT - B_REAR)
+    body += pair(rib - 0.4, top - B_THICK - 0.4, z, rib + 0.4, top - B_THICK, z + SLICE, "frame")
     if B_REAR + 4 <= z and z + SLICE <= B_FRONT - 4:
         body.append(box(-9, top, z, 9, top + 0.25, z + SLICE, "canvas_panel"))
     body += pair(hw - 3, top - B_THICK - 0.8, z, hw - 1, top - 0.3, z + SLICE, "canvas")
     body += pair(hw - 1, top - B_THICK - 1.6, z, hw, top - 1.0, z + SLICE, "canvas")
     z += SLICE
 
-# Tower speakers under the front corners of the top beam
-for x in (-11, 7):
-    body.append(box(x, TOWER_TOP - 2.6, 1.0, x + 4, TOWER_TOP, 4.0, "gloss"))
-    body.append(box(x + 0.6, TOWER_TOP - 2.2, 4.0, x + 3.4, TOWER_TOP - 0.4, 4.3, "metal"))
+# Tower speakers set into the underside of the top near its rear edge, a quarter of the way in from
+# each side, facing aft as on the reference. Each is a bullet-shaped matte pod that narrows toward
+# the bow, with a blue LED ring behind the bezel and a grille of split spokes round a hub.
+G = B_REAR + 1.4  # z of the grille face
+for sx in (-B_HALF / 2, B_HALF / 2):
+    under = bimini_top(G + 3) - B_THICK
+    cy = under - 1.6
+    body += disc(sx, cy, 1.6, G - 0.05, G, "gloss")  # behind the grille
+    for ang in range(0, 360, 60):
+        ca, sa = math.cos(math.radians(ang)), math.sin(math.radians(ang))
+        for off in (-0.2, 0.2):
+            px, py = sx + 1.05 * ca - off * sa, cy + 1.05 * sa + off * ca
+            body.append(box(px - 0.55, py - 0.08, G - 0.15, px + 0.55, py + 0.08, G - 0.05, "jet",
+                            pivot=[px, py, G - 0.1], rotation=[0, 0, ang]))
+    body += disc(sx, cy, 0.45, G - 0.25, G - 0.05, "jet")  # hub
+    body += disc(sx, cy, 1.9, G, G + 0.5, "gunmetal")  # bezel
+    body += disc(sx, cy, 1.95, G + 0.5, G + 0.7, "ring")  # LED ring
+    for r, z0, z1 in ((1.9, 0.7, 2.4), (1.6, 2.4, 3.6), (1.15, 3.6, 4.5), (0.6, 4.5, 5.0)):
+        body += disc(sx, cy, r, G + z0, G + z1, "gunmetal")
+    body.append(box(sx - 0.5, cy + 1.4, G + 1.5, sx + 0.5, under, G + 3.0, "gloss"))  # mount
 # Stainless bow rails on the foredeck
 for z0 in (34.0, 38.0, 42.0):
     body += pair(beam(z0 + 0.4) - 1.6, sheer(z0), z0, beam(z0 + 0.4) - 1.1, sheer(z0) + 1.8, z0 + 0.5, "steel")
@@ -435,9 +571,21 @@ def turn_around(bones):
             f["north"], f["south"], f["east"], f["west"] = f["south"], f["north"], f["west"], f["east"]
 
 
+def rounded(value):
+    """Round floats to 4 places. Float noise such as 5.714285714285714 would otherwise push the file
+    past Biome's 1 MiB limit, and `pnpm model` could no longer format it."""
+    if isinstance(value, float):
+        return round(value, 4) + 0.0  # + 0.0 turns -0.0 into 0.0
+    if isinstance(value, list):
+        return [rounded(v) for v in value]
+    if isinstance(value, dict):
+        return {k: rounded(v) for k, v in value.items()}
+    return value
+
+
 MODELS.mkdir(parents=True, exist_ok=True)
 turn_around(geo["minecraft:geometry"][0]["bones"])
-(MODELS / "sportsboat.geo.json").write_text(json.dumps(geo, indent=1))
+(MODELS / "sportsboat.geo.json").write_text(json.dumps(rounded(geo), separators=(",", ":")))
 
 
 def png(path, w, h, pixel):
@@ -459,9 +607,7 @@ def swatches(hull_color):
 
     def swatch(x, y):
         if 16 <= y < 24 and x < 8:
-            u, v = x, y - 16
-            lattice = (u + v) % 4 == 0 or (u - v) % 4 == 0
-            return QUILT_LINE if lattice else PALETTE["seat"]
+            return QUILT_LINE if QUILT[y - 16][x] == "L" else PALETTE["seat"]
         i = x // 4
         if y >= 4 or i >= len(NAMES):
             return (0, 0, 0)
