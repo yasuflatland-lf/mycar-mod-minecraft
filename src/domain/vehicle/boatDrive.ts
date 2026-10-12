@@ -36,32 +36,27 @@ export const SPORTSBOAT_WATER: Medium = {
   maxSpeed: SPORTSBOAT_PROFILE.motion.maxSpeed,
 };
 
+function boundDrag(drag: number): number {
+  return clamp(drag, SPORTSBOAT_DRAG.min, SPORTSBOAT_DRAG.max);
+}
+
 export function estimateWaterDrag(
   prev: number | undefined,
   given: Vec2 | undefined,
   observed: Vec2,
 ): number {
-  const estimate = clamp(
-    prev ?? SPORTSBOAT_DRAG.initial,
-    SPORTSBOAT_DRAG.min,
-    SPORTSBOAT_DRAG.max,
-  );
+  const estimate = boundDrag(prev ?? SPORTSBOAT_DRAG.initial);
+  if (!given) return estimate;
+  const givenSq = dot(given, given);
   if (
-    !given ||
-    dot(given, given) <= SPORTSBOAT_DRAG.minGiven ** 2 ||
+    givenSq <= SPORTSBOAT_DRAG.minGiven ** 2 ||
     hitWall(observed, given, estimate * SPEC.blockedRatio)
   )
     return estimate;
-  const sample = clamp(
-    dot(observed, given) / dot(given, given),
-    SPORTSBOAT_DRAG.min,
-    SPORTSBOAT_DRAG.max,
-  );
-  return clamp(
+  const sample = boundDrag(dot(observed, given) / givenSq);
+  return boundDrag(
     estimate * (1 - SPORTSBOAT_DRAG.smoothing) +
       sample * SPORTSBOAT_DRAG.smoothing,
-    SPORTSBOAT_DRAG.min,
-    SPORTSBOAT_DRAG.max,
   );
 }
 
@@ -98,7 +93,7 @@ export class BoatDrive implements Drive {
         { ...motion, waterDrag },
         input,
         ctx.velocity,
-        { drag: waterDrag, maxSpeed: SPORTSBOAT_WATER.maxSpeed },
+        { ...SPORTSBOAT_WATER, drag: waterDrag },
         profile.motion,
       );
     } else {
