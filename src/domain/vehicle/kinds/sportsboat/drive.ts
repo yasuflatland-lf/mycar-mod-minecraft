@@ -1,5 +1,5 @@
 // The sports boat's drive: the engine floats the hull and the script drives only x and z (ADR 0051).
-import { clamp, dot, type Vec2 } from "../../../shared/vec";
+import { clamp, dot, forward, type Vec2 } from "../../../shared/vec";
 import type {
   Drive,
   DriveStep,
@@ -13,6 +13,7 @@ import {
   type RawInput,
   toDriveInput,
 } from "../../driveInput";
+import type { HoldPose } from "../../floor";
 import { MOTION } from "../../motion/constants";
 import {
   alignOnMount,
@@ -27,7 +28,13 @@ import {
 import { waterBelowAt, waterDepthAt } from "../../motion/water";
 import type { MotionLimits } from "../../profile";
 import { stepRoll, stepTrim } from "./attitude";
-import { rollCommand, trimCommand } from "./entity";
+import { DOCK, floorCells, holdHeight } from "./deck";
+import {
+  dockCommands,
+  rollCommand,
+  trimCommand,
+  undockCommands,
+} from "./entity";
 import { SPORTSBOAT_MOTION } from "./profile";
 
 // The height of the sportsboat collision box, which bounds the water depth
@@ -95,6 +102,9 @@ export class BoatDrive implements Drive {
   private dragEstimate: number | undefined;
   private trim = 0;
   private roll = 0;
+  private docked: HoldPose | undefined;
+  private stillTicks = 0;
+  private restoredDocked: boolean;
   // Undefined until the first tick, so a rebuilt vehicle clears a trim or roll
   // the entity kept from before /reload, as the SUV does with its bank.
   private sentTrim: number | undefined;
@@ -103,10 +113,15 @@ export class BoatDrive implements Drive {
   /** `limits` other than the boat's own are for tests that vary one value. */
   constructor(
     yaw: number,
-    _restored: RestoredValues,
+    restored: RestoredValues,
     private readonly limits: MotionLimits = SPORTSBOAT_MOTION,
   ) {
     this.motion = initialMotion(yaw);
+    this.restoredDocked = restored.docked === true;
+  }
+
+  get isDocked(): boolean {
+    return this.docked !== undefined;
   }
 
   get speed(): number {
@@ -149,6 +164,30 @@ export class BoatDrive implements Drive {
   }
 
   step(raw: RawInput | undefined, ctx: TickContext): DriveStep {
+    if (this.restoredDocked && !this.docked) {
+      this.docked = { ...ctx.location, yaw: this.motion.yaw };
+      this.restoredDocked = false;
+    }
+    const commands: EngineCommand[] = [];
+    if (this.docked) {
+      if (
+        raw !== undefined &&
+        Math.max(Math.abs(raw.moveX), Math.abs(raw.moveY)) > DOCK.stick
+      ) {
+        commands.push(...undockCommands());
+        this.docked = undefined;
+        this.stillTicks = 0;
+      } else {
+        return {
+          impulse: { x: 0, y: 0, z: 0 },
+          forward: forward(this.motion.yaw),
+          commands,
+          riders: { thirdPerson: false, underwater: false },
+          hold: this.docked,
+          floor: floorCells(this.docked),
+        };
+      }
+    }
     // There is no handbrake: neither path below reads it, so jump does nothing.
     const input: DriveInput = raw ? toDriveInput(raw) : NEUTRAL_INPUT;
     const motion = this.motion;
@@ -193,18 +232,41 @@ export class BoatDrive implements Drive {
       step.state.speed,
       afloat,
     );
-    const commands: EngineCommand[] = [];
     if (this.trim !== this.sentTrim) commands.push(trimCommand(this.trim));
     if (this.roll !== this.sentRoll) commands.push(rollCommand(this.roll));
     this.sentTrim = this.trim;
     this.sentRoll = this.roll;
     this.motion = step.state;
+    this.stillTicks =
+      afloat && raw === undefined && Math.abs(step.state.speed) < DOCK.maxSpeed
+        ? this.stillTicks + 1
+        : 0;
+    if (this.stillTicks >= DOCK.ticks) {
+      const y = holdHeight(ctx.location.y, (dy) =>
+        ctx.waterAt({ x: 0, y: dy, z: 0 }),
+      );
+      if (y !== undefined) {
+        this.docked = {
+          x: ctx.location.x,
+          y,
+          z: ctx.location.z,
+          yaw: step.state.yaw,
+        };
+        this.motion = { ...this.motion, speed: 0 };
+        commands.push(...dockCommands());
+        if (this.trim !== 0) commands.push(trimCommand(0));
+        if (this.roll !== 0) commands.push(rollCommand(0));
+        this.trim = this.sentTrim = 0;
+        this.roll = this.sentRoll = 0;
+      }
+    }
     // Buoyancy and gravity belong to the engine, so the script never pushes vertically.
     return {
       impulse: { x: step.impulse.x, y: 0, z: step.impulse.z },
       forward: step.forward,
       commands,
       riders: { thirdPerson: false, underwater: false },
+      ...(this.docked && { hold: this.docked, floor: floorCells(this.docked) }),
     };
   }
 }
