@@ -1,5 +1,5 @@
 // Collision floor geometry and water-relative hold height for a stopped sports boat (ADR 0063).
-import { clamp, forward } from "../../../shared/vec";
+import { clamp, forward, type Vec2 } from "../../../shared/vec";
 import type { FloorCell, HoldPose } from "../../floor";
 import { toLocal } from "../../seats";
 
@@ -53,31 +53,35 @@ export const DECK = Object.freeze({
   ]),
 });
 
+function covers(part: DeckPart, local: Vec2): boolean {
+  return (
+    Math.abs(local.x) <= part.halfWidth + DECK.margin &&
+    local.z >= part.zMin - DECK.margin &&
+    local.z <= part.zMax + DECK.margin
+  );
+}
+
+/** First and last block whose center lies within the scan radius of `center`. */
+function scanRange(center: number): readonly [number, number] {
+  return [
+    Math.ceil(center - SCAN_RADIUS - 0.5),
+    Math.floor(center + SCAN_RADIUS - 0.5),
+  ];
+}
+
 export function floorCells(pose: HoldPose): FloorCell[] {
   const f = forward(pose.yaw);
+  const [xMin, xMax] = scanRange(pose.x);
+  const [zMin, zMax] = scanRange(pose.z);
   const cells: FloorCell[] = [];
-  for (
-    let x = Math.ceil(pose.x - SCAN_RADIUS - 0.5);
-    x <= Math.floor(pose.x + SCAN_RADIUS - 0.5);
-    x++
-  ) {
-    for (
-      let z = Math.ceil(pose.z - SCAN_RADIUS - 0.5);
-      z <= Math.floor(pose.z + SCAN_RADIUS - 0.5);
-      z++
-    ) {
+  for (let x = xMin; x <= xMax; x++) {
+    for (let z = zMin; z <= zMax; z++) {
       const local = toLocal({ x: x + 0.5 - pose.x, z: z + 0.5 - pose.z }, f);
-      let top: number | undefined;
-      for (const part of DECK.parts) {
-        if (
-          Math.abs(local.x) <= part.halfWidth + DECK.margin &&
-          local.z >= part.zMin - DECK.margin &&
-          local.z <= part.zMax + DECK.margin
-        ) {
-          top = Math.max(top ?? Number.NEGATIVE_INFINITY, pose.y + part.height);
-        }
-      }
-      if (top === undefined) continue;
+      const heights = DECK.parts
+        .filter((part) => covers(part, local))
+        .map((part) => part.height);
+      if (heights.length === 0) continue;
+      const top = pose.y + Math.max(...heights);
       const y = Math.floor(top);
       const height = clamp(
         Math.round((top - y) * PIXELS_PER_BLOCK),
