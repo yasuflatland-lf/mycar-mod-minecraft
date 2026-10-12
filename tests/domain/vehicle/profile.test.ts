@@ -26,10 +26,7 @@ import {
   createVehicle,
   rebuildVehicle,
 } from "../../../src/domain/vehicle/registry";
-import {
-  DOOR_BY_SEAT,
-  SEAT_POSITIONS,
-} from "../../../src/domain/vehicle/seats";
+import { SEAT_POSITIONS } from "../../../src/domain/vehicle/seats";
 import { SPEC } from "../../../src/domain/vehicle/spec";
 import { SUV_MOTION } from "../../../src/domain/vehicle/suvDrive";
 
@@ -76,7 +73,7 @@ describe("vehicle profiles (ADR 0050)", () => {
     expect(SUV_PROFILE).toEqual({
       kind: "suv",
       ram: { front: SPEC.bodyFront, halfWidth: SPEC.bodyHalfWidth },
-      seats: { positions: SEAT_POSITIONS, doors: DOOR_BY_SEAT },
+      seats: { positions: SEAT_POSITIONS },
       beams: { reach: SPEC.headlightReach, lanes: [0] },
       placement: { onWater: false, anyFace: false },
     });

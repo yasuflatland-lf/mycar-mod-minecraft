@@ -19,24 +19,22 @@ import type {
   VehicleSnapshot,
 } from "../../../application/vehicle/ports";
 import type { Vec3 } from "../../../domain/shared/vec";
-import { type Form, isForm } from "../../../domain/vehicle/form";
+import type { EngineCommand } from "../../../domain/vehicle/drive";
 import type { Cell } from "../../../domain/vehicle/headlights";
 import type { VehicleKind } from "../../../domain/vehicle/kind";
 import { PAINTS, type Paint } from "../../../domain/vehicle/paint";
 import type { RamHit, RamTarget } from "../../../domain/vehicle/ram";
 import { RAM_QUERY_RADIUS } from "../../../domain/vehicle/ramQuery";
+import { entityContractOf } from "../../../domain/vehicle/registry";
 import type { RiderView } from "../../../domain/vehicle/vehicle";
 import type { TestInputStore } from "../testInput/testInputStore";
 import { HeadlightBlocks, isLightBlock } from "./headlightBlocks";
 import {
-  BANK_PROPERTY,
-  doorAnimation,
   dyeOf,
   ENTITY_TYPE,
-  FORM_PROPERTY,
-  GEAR_DOWN_PROPERTY,
-  GRAVITY_OFF_EVENT,
-  GRAVITY_ON_EVENT,
+  entityAnimationId,
+  entityEventId,
+  entityPropertyId,
   HEADLIGHTS_PROPERTY,
   ITEM_TYPE,
   isVehicleEntity,
@@ -108,7 +106,6 @@ export class BedrockVehicleWorld
         if (kind === undefined) continue;
         this.current.set(car.id, car);
         const v = car.getVelocity();
-        const form = car.getProperty(FORM_PROPERTY);
         snapshots.push({
           id: car.id,
           kind,
@@ -117,7 +114,13 @@ export class BedrockVehicleWorld
           velocity: v,
           onGround: car.isOnGround,
           riders: this.riders(car),
-          form: isForm(form) ? form : "car",
+          restored: () =>
+            Object.fromEntries(
+              entityContractOf(kind).restored.map((name) => [
+                name,
+                car.getProperty(entityPropertyId(name)),
+              ]),
+            ),
           headlights: car.getProperty(HEADLIGHTS_PROPERTY) === true,
           testInput: this.testInputs.get(car.id),
         });
@@ -217,15 +220,25 @@ export class BedrockVehicleWorld
     car.setRotation({ x: 0, y: yaw });
   }
 
-  setForm(vehicleId: string, form: Form): void {
-    const car = this.entity(vehicleId);
-    if (!car) return;
-    // The property drives the client animation; gravity lives in a component
-    // group, so both change together here (ADR 0021). Gravity goes first: if
-    // the event throws, the property still holds the old form, and a /reload
-    // rebuilds the aggregate from it.
-    car.triggerEvent(form === "car" ? GRAVITY_ON_EVENT : GRAVITY_OFF_EVENT);
-    car.setProperty(FORM_PROPERTY, form);
+  run(vehicleId: string, commands: readonly EngineCommand[]): void {
+    const entity = this.entity(vehicleId);
+    if (!entity) return;
+    for (const command of commands) {
+      switch (command.type) {
+        case "setProperty":
+          entity.setProperty(entityPropertyId(command.name), command.value);
+          break;
+        case "triggerEvent":
+          entity.triggerEvent(entityEventId(command.name));
+          break;
+        case "playAnimation":
+          entity.playAnimation(entityAnimationId(entity.typeId, command.name));
+          break;
+        case "playSound":
+          entity.dimension.playSound(command.name, entity.location);
+          break;
+      }
+    }
   }
 
   setThirdPerson(playerId: string, on: boolean): void {
@@ -241,14 +254,6 @@ export class BedrockVehicleWorld
     });
   }
 
-  setBank(vehicleId: string, degrees: number): void {
-    this.entity(vehicleId)?.setProperty(BANK_PROPERTY, degrees);
-  }
-
-  setGearDown(vehicleId: string, down: boolean): void {
-    this.entity(vehicleId)?.setProperty(GEAR_DOWN_PROPERTY, down);
-  }
-
   damage(hit: RamHit, attackerId: string | undefined): void {
     const target = world.getEntity(hit.id);
     if (!target?.isValid) return;
@@ -258,15 +263,6 @@ export class BedrockVehicleWorld
       damagingEntity: attacker,
     });
     target.applyKnockback({ x: hit.push.x, z: hit.push.z }, hit.pushUp);
-  }
-
-  playDoor(vehicleId: string, door: string): void {
-    const car = this.entity(vehicleId);
-    if (!car) return;
-    const kind = kindOfEntity(car.typeId);
-    if (kind === undefined) return;
-    car.playAnimation(doorAnimation(kind, door));
-    car.dimension.playSound("random.door_open", car.location);
   }
 
   isAir(dimensionId: string, at: Vec3): boolean {

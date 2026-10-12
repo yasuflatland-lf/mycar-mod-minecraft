@@ -9,9 +9,9 @@ import type {
   VehicleSnapshot,
 } from "../../../src/application/vehicle/ports";
 import type { Vec3 } from "../../../src/domain/shared/vec";
+import type { EngineCommand } from "../../../src/domain/vehicle/drive";
 import { Fleet, type FleetState } from "../../../src/domain/vehicle/fleet";
 import type { FleetRepository } from "../../../src/domain/vehicle/fleetRepository";
-import type { Form } from "../../../src/domain/vehicle/form";
 import type { Cell } from "../../../src/domain/vehicle/headlights";
 import type { VehicleKind } from "../../../src/domain/vehicle/kind";
 import type { Paint } from "../../../src/domain/vehicle/paint";
@@ -98,8 +98,33 @@ export class FakeWorld
     if (id === this.failOn) throw new Error("boom");
     this.calls.push(`motion:${id}:${yaw.toFixed(0)}`);
   }
-  setForm(id: string, form: Form) {
-    this.calls.push(`form:${id}:${form}`);
+  readonly properties = new Map<
+    string,
+    Record<string, string | number | boolean>
+  >();
+  run(id: string, commands: readonly EngineCommand[]) {
+    for (const command of commands) {
+      if (command.type === "setProperty") {
+        const properties = this.properties.get(id) ?? {};
+        properties[command.name] = command.value;
+        this.properties.set(id, properties);
+        if (command.name === "form")
+          this.calls.push(`form:${id}:${command.value}`);
+        if (command.name === "bank")
+          this.calls.push(`bank:${id}:${command.value}`);
+        if (command.name === "gear_down")
+          this.calls.push(`gear:${id}:${command.value ? "down" : "up"}`);
+      }
+      if (command.type === "playAnimation")
+        this.calls.push(`door:${id}:${command.name}`);
+    }
+  }
+  formOf(id: string) {
+    return (
+      this.properties.get(id)?.form ??
+      this.snapshots.find((s) => s.id === id)?.restored().form ??
+      "car"
+    );
   }
   setThirdPerson(id: string, on: boolean) {
     if (id === this.failCameraOn) throw new Error("camera");
@@ -109,17 +134,8 @@ export class FakeWorld
     if (id === this.failBreathingOn) throw new Error("breathing");
     this.calls.push(`breathing:${id}:${ticks}`);
   }
-  setBank(id: string, degrees: number) {
-    this.calls.push(`bank:${id}:${degrees}`);
-  }
-  setGearDown(id: string, down: boolean) {
-    this.calls.push(`gear:${id}:${down ? "down" : "up"}`);
-  }
   damage(hit: RamHit, attackerId: string | undefined) {
     this.calls.push(`damage:${hit.id}:${attackerId ?? "-"}`);
-  }
-  playDoor(id: string, door: string) {
-    this.calls.push(`door:${id}:${door}`);
   }
   shineHeadlights(id: string, cells: readonly Cell[]) {
     this.shone.set(id, cells);
@@ -192,7 +208,7 @@ export const snapshot = (
     velocity: { x: 0, y: 0, z: 0 },
     onGround: true,
     riders: [],
-    form: "car",
+    restored: () => ({}),
     headlights: false,
     ...fields,
   };

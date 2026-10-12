@@ -2,8 +2,6 @@ import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { forward, leftOf, type Vec2 } from "../../../src/domain/shared/vec";
 import {
-  DOOR_BY_SEAT,
-  doorOf,
   nearestSeat,
   occupiedSeats,
   SEAT_POSITIONS,
@@ -97,39 +95,5 @@ describe("seats (ADR 0019)", () => {
     ]);
     expect(vacatedSeats(prev, new Map([["b", 2]]))).toEqual([0]);
     expect(vacatedSeats(prev, prev)).toEqual([]);
-  });
-});
-
-describe("doorOf", () => {
-  it("returns the door bone of each seat", () => {
-    fc.assert(
-      fc.property(seat, (i) => {
-        expect(doorOf(i, DOOR_BY_SEAT)).toBe(DOOR_BY_SEAT[i]);
-      }),
-    );
-  });
-
-  it("uses a supplied door list and returns undefined when there is no entry", () => {
-    fc.assert(
-      fc.property(
-        fc.array(fc.string(), { maxLength: 8 }),
-        fc.integer({ min: -1, max: 9 }),
-        (doors, i) => {
-          expect(doorOf(i, doors)).toBe(doors[i]);
-          expect(doorOf(i, [])).toBeUndefined();
-        },
-      ),
-    );
-  });
-
-  it("returns undefined for a seat the vehicle does not have", () => {
-    fc.assert(
-      fc.property(
-        fc.oneof(fc.integer({ max: -1 }), fc.integer({ min: 4 })),
-        (i) => {
-          expect(doorOf(i, DOOR_BY_SEAT)).toBeUndefined();
-        },
-      ),
-    );
   });
 });

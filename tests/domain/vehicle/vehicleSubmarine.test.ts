@@ -25,6 +25,7 @@ import {
 import { SPEC } from "../../../src/domain/vehicle/spec";
 import { SUV_MOTION } from "../../../src/domain/vehicle/suvDrive";
 import type { TickOutcome } from "../../../src/domain/vehicle/vehicle";
+import { propertyValue } from "../../support/engineCommands";
 import {
   type Body,
   engineStep,
@@ -60,6 +61,10 @@ function stepAhead(height: number): (offset: Vec3) => boolean {
 }
 
 class DiveSim {
+  form: Form;
+  gravity: boolean;
+  bankAngle = 0;
+  wheelsDown = true;
   tick = 0;
   y = 0;
   vy = 0;
@@ -71,7 +76,11 @@ class DiveSim {
   constructor(
     readonly surface: number,
     readonly vehicle = createVehicle("suv", "vehicle", 0),
-  ) {}
+    form: Form = "car",
+  ) {
+    this.form = form;
+    this.gravity = form === "car";
+  }
 
   get waterDepth(): number {
     return Math.max(0, this.surface - this.y);
@@ -88,15 +97,26 @@ class DiveSim {
       solidAt: (offset) => this.y + offset.y < 0 || this.obstacle(offset),
       targets: this.targets,
     });
-    if (out.form) this.changes.push(out.form);
-    const underwater = this.vehicle.form === "submarine";
+    const form = propertyValue(out.commands, "form") as Form | undefined;
+    if (form) {
+      this.changes.push(form);
+      this.form = form;
+    }
+    const gear = propertyValue(out.commands, "gear_down");
+    if (typeof gear === "boolean") this.wheelsDown = gear;
+    const bank = propertyValue(out.commands, "bank");
+    if (typeof bank === "number") this.bankAngle = bank;
+    for (const command of out.commands)
+      if (command.type === "triggerEvent")
+        this.gravity = command.name === "gravity_on";
+    const underwater = this.form === "submarine";
     this.body = engineStep(
       this.body,
       { x: out.impulse.x, z: out.impulse.z },
       { mu: SPEC.defaultFriction, drag: underwater ? WATER_DRAG : undefined },
       this.y <= 0,
     ).body;
-    const gravity = this.vehicle.form === "car" ? GRAVITY : 0;
+    const gravity = this.gravity ? GRAVITY : 0;
     let vy = this.vy + out.impulse.y - gravity;
     this.y += vy;
     if (this.y <= 0) {
@@ -119,7 +139,7 @@ describe("Vehicle as a submarine", () => {
         const sim = new DiveSim(d, createVehicle("suv", "vehicle", heading));
         sim.run(IDLE, 300);
         expect(sim.changes).toEqual(["submarine"]);
-        expect(sim.vehicle.form).toBe("submarine");
+        expect(sim.form).toBe("submarine");
         expect(sim.y).toBe(0);
       }),
     );
@@ -131,7 +151,7 @@ describe("Vehicle as a submarine", () => {
         const sim = new DiveSim(d);
         sim.run(IDLE, 100);
         expect(sim.changes).toEqual([]);
-        expect(sim.vehicle.form).toBe("car");
+        expect(sim.form).toBe("car");
       }),
     );
   });
@@ -163,6 +183,7 @@ describe("Vehicle as a submarine", () => {
         const sim = new DiveSim(
           100,
           rebuildVehicle("suv", "vehicle", 0, [], { form: "submarine" }),
+          "submarine",
         );
         sim.y = 100 - d;
         sim.vy = -0.1;
@@ -242,6 +263,7 @@ describe("Vehicle as a submarine", () => {
             rebuildVehicle("suv", "vehicle", heading, [], {
               form: "submarine",
             }),
+            "submarine",
           );
           sim.y = gap;
           for (let i = 0; i < 60; i++) {
@@ -355,16 +377,19 @@ describe("Vehicle as a submarine", () => {
           let sent: number | undefined;
           for (const input of inputs) {
             const out = sim.step(input);
-            expect(Math.abs(sim.vehicle.bankAngle)).toBeLessThanOrEqual(
+            expect(Math.abs(sim.bankAngle)).toBeLessThanOrEqual(
               SPEC.maxBank + 1e-9,
             );
-            expect(sim.vehicle.wheelsDown).toBe(true);
+            expect(sim.wheelsDown).toBe(true);
             // The client sees every new angle: it is sent on the tick it
             // changes, and on the first tick (ADR 0026).
-            if (sim.vehicle.bankAngle !== sent)
-              expect(out.bank).toBe(sim.vehicle.bankAngle);
-            sent = sim.vehicle.bankAngle;
-            expect(out.gearDown === undefined || out.gearDown).toBe(true);
+            if (sim.bankAngle !== sent)
+              expect(propertyValue(out.commands, "bank")).toBe(sim.bankAngle);
+            sent = sim.bankAngle;
+            expect(
+              propertyValue(out.commands, "gear_down") === undefined ||
+                propertyValue(out.commands, "gear_down"),
+            ).toBe(true);
             expect(length(sim.body.vel)).toBeLessThanOrEqual(
               SPEC.maxWaterSpeed + 1e-9,
             );
@@ -381,26 +406,27 @@ describe("Vehicle as a submarine", () => {
     const sim = new DiveSim(1000);
     sim.y = 500;
     sim.run(FORWARD, 40);
-    expect(sim.vehicle.form).toBe("submarine");
+    expect(sim.form).toBe("submarine");
     const depth = sim.y;
     sim.run({ ...FORWARD, moveX: 1 }, 20);
-    expect(sim.vehicle.bankAngle).toBeLessThan(-SPEC.maxBank / 2);
+    expect(sim.bankAngle).toBeLessThan(-SPEC.maxBank / 2);
     expect(Math.abs(sim.y - depth)).toBeLessThan(0.05);
     sim.run(FORWARD, 20);
-    expect(sim.vehicle.bankAngle).toBe(0);
+    expect(sim.bankAngle).toBe(0);
   });
 
   it("breaches into hover with Jump held and becomes a car on a shallow shore", () => {
     const sim = new DiveSim(5);
     sim.run({ ...IDLE, jump: true }, 30);
     expect(sim.changes).toEqual(["submarine", "hover"]);
-    expect(sim.vehicle.form).toBe("hover");
+    expect(sim.form).toBe("hover");
 
     fc.assert(
       fc.property(shallowDepth, (d) => {
         const beached = new DiveSim(
           d,
           rebuildVehicle("suv", "vehicle", 0, [], { form: "submarine" }),
+          "submarine",
         );
         beached.step(IDLE);
         expect(beached.changes).toEqual(["car"]);

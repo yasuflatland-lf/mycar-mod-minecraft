@@ -1,14 +1,13 @@
 // Aggregate for one vehicle: its drive, driver, seats, ram cooldowns, and the hit count.
 import { forward, type Vec2, type Vec3 } from "../shared/vec";
-import type { Drive, TickContext } from "./drive";
+import type { Drive, EngineCommand, RiderState, TickContext } from "./drive";
 import type { RawInput } from "./driveInput";
 import type { VehicleEvent } from "./events";
-import type { Form } from "./form";
 import { EMPTY_COUNTER, type HitCounter, registerHit } from "./hitCounter";
 import type { VehicleKind } from "./kind";
 import type { VehicleProfile } from "./profile";
 import { type RamHit, selectHits } from "./ram";
-import { doorOf, occupiedSeats, vacatedSeats } from "./seats";
+import { occupiedSeats, vacatedSeats } from "./seats";
 import { SPEC } from "./spec";
 
 export interface RiderView {
@@ -29,13 +28,9 @@ export interface TickOutcome {
   yaw: number;
   hits: RamHit[];
   driverId?: string;
-  events: VehicleEvent[];
-  /** The new vehicle form, only on the tick it changes (ADR 0021). */
-  form?: Form;
-  /** The new bank angle in degrees, only on the tick it changes and on the first tick (ADR 0026). */
-  bank?: number;
-  /** Whether the wheels are in the driving pose, only on the tick it changes and on the first tick (ADR 0033). */
-  gearDown?: boolean;
+  commands: readonly EngineCommand[];
+  seatCommands: readonly EngineCommand[];
+  riders: RiderState;
 }
 
 export class Vehicle {
@@ -80,22 +75,8 @@ export class Vehicle {
     return this.drive.yaw;
   }
 
-  get form(): Form {
-    return this.drive.form;
-  }
-
-  /** Whether the wheels are in the driving pose (ADR 0033). */
-  get wheelsDown(): boolean {
-    return this.drive.wheelsDown;
-  }
-
-  /** Bank angle in degrees; positive lowers the right side (ADR 0026). */
-  get bankAngle(): number {
-    return this.drive.bankAngle;
-  }
-
   tick(input: VehicleTickInput): TickOutcome {
-    const events = this.updateSeats(input.riders);
+    const seatCommands = this.updateSeats(input.riders);
     const driver = this.updateDriver(input.riders);
 
     const raw = driver?.raw ?? input.testInput;
@@ -106,32 +87,23 @@ export class Vehicle {
       yaw: this.drive.yaw,
       hits: this.ram(input, step.forward),
       driverId: driver?.id,
-      events,
-      form: step.form,
-      bank: step.bank,
-      gearDown: step.gearDown,
+      commands: step.commands,
+      seatCommands,
+      riders: step.riders,
     };
   }
 
-  private updateSeats(riders: readonly RiderView[]): VehicleEvent[] {
+  private updateSeats(riders: readonly RiderView[]): readonly EngineCommand[] {
     const seats = occupiedSeats(
       riders,
       forward(this.drive.yaw),
       this.profile.seats.positions,
     );
-    const events: VehicleEvent[] = vacatedSeats(this.seats, seats).map(
-      (seat) => {
-        const door = doorOf(seat, this.profile.seats.doors ?? []);
-        return {
-          type: "SeatVacated",
-          vehicleId: this.id,
-          seat,
-          ...(door !== undefined ? { door } : {}),
-        };
-      },
-    );
+    const commands = vacatedSeats(this.seats, seats)
+      .sort((a, b) => a - b)
+      .flatMap((seat) => this.drive.onSeatVacated(seat));
     this.seats = seats;
-    return events;
+    return commands;
   }
 
   private updateDriver(riders: readonly RiderView[]): RiderView | undefined {

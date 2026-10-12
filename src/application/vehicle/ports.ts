@@ -1,7 +1,7 @@
 // Capabilities the application layer requires from the game (ports). Implementations live in the infrastructure layer (ADR 0012).
 import type { Vec3 } from "../../domain/shared/vec";
+import type { EngineCommand, RestoredValues } from "../../domain/vehicle/drive";
 import type { RawInput } from "../../domain/vehicle/driveInput";
-import type { Form } from "../../domain/vehicle/form";
 import type { Cell } from "../../domain/vehicle/headlights";
 import type { VehicleKind } from "../../domain/vehicle/kind";
 import type { Paint } from "../../domain/vehicle/paint";
@@ -16,7 +16,7 @@ export interface VehicleSnapshot {
   velocity: Vec3;
   onGround: boolean;
   riders: RiderView[];
-  form: Form;
+  restored(): RestoredValues;
   headlights: boolean;
   testInput?: RawInput;
 }
@@ -27,17 +27,12 @@ export interface DriveWorld {
   solidAt(vehicleId: string, offset: Vec3): boolean;
   targetsNear(vehicleId: string): RamTarget[];
   applyMotion(vehicleId: string, impulse: Vec3, yaw: number): void;
-  setForm(vehicleId: string, form: Form): void;
+  run(vehicleId: string, commands: readonly EngineCommand[]): void;
   /** Switches a player's view to the third-person camera, or back to their own (ADR 0028). */
   setThirdPerson(playerId: string, on: boolean): void;
   /** Refreshes water breathing; does nothing for a missing player (ADR 0040). */
   giveWaterBreathing(playerId: string, ticks: number): void;
-  /** Degrees; positive lowers the right side (ADR 0026). */
-  setBank(vehicleId: string, degrees: number): void;
-  /** Whether the wheels are in the driving pose (ADR 0033). */
-  setGearDown(vehicleId: string, down: boolean): void;
   damage(hit: RamHit, attackerId: string | undefined): void;
-  playDoor(vehicleId: string, door: string): void;
   /**
    * Keeps light blocks in exactly these cells for the vehicle and clears the
    * ones it lit before. Also called with no cells for a vehicle that is gone.

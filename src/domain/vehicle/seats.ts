@@ -10,21 +10,6 @@ export const SEAT_POSITIONS: readonly Vec2[] = [
   { x: 0.38, z: -0.8 },
 ];
 
-/** Door bone name for each seat (ADR 0009). */
-export const DOOR_BY_SEAT: readonly string[] = [
-  "door_fr",
-  "door_fl",
-  "door_rr",
-  "door_rl",
-];
-
-export function doorOf(
-  seat: number,
-  doors: readonly string[],
-): string | undefined {
-  return doors[seat];
-}
-
 /** Converts a world-space offset into seat coordinates for a vehicle facing `f`. */
 export function toLocal(offset: Vec2, f: Vec2): Vec2 {
   return { x: dot(offset, leftOf(f)), z: dot(offset, f) };

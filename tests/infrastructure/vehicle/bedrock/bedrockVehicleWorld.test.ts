@@ -1,6 +1,5 @@
 import fc from "fast-check";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { FORMS } from "../../../../src/domain/vehicle/form";
 import { SPEC } from "../../../../src/domain/vehicle/spec";
 import { NAMESPACE } from "../../../../src/infrastructure/shared/identifiers";
 import { BedrockVehicleWorld } from "../../../../src/infrastructure/vehicle/bedrock/bedrockVehicleWorld";
@@ -35,6 +34,7 @@ function fixture() {
     getBlock: vi.fn(),
     getEntities: vi.fn(),
     spawnItem: vi.fn(),
+    playSound: vi.fn(),
   };
   const car = {
     id: "car",
@@ -51,6 +51,7 @@ function fixture() {
     getDynamicProperty: vi.fn(),
     setDynamicProperty: vi.fn(),
     triggerEvent: vi.fn(),
+    playAnimation: vi.fn(),
     setProperty: vi.fn(),
   };
   const entities = [car];
@@ -152,19 +153,6 @@ describe("BedrockVehicleWorld submarine wiring (ADR 0040)", () => {
     expect(addEffect.mock.calls).toEqual([
       ["water_breathing", SPEC.waterBreathingTicks, { showParticles: false }],
     ]);
-  });
-
-  it("switches gravity off for submarine and writes its form on the same call", () => {
-    const { car, world } = fixture();
-    world.setForm(car.id, "submarine");
-    expect(car.triggerEvent).toHaveBeenCalledWith(`${NAMESPACE}:gravity_off`);
-    expect(car.setProperty).toHaveBeenCalledWith(
-      `${NAMESPACE}:form`,
-      "submarine",
-    );
-    expect(car.triggerEvent.mock.invocationCallOrder[0]).toBeLessThan(
-      car.setProperty.mock.invocationCallOrder[0] ?? 0,
-    );
   });
 });
 
@@ -296,22 +284,6 @@ describe("BedrockVehicleWorld snapshots", () => {
 describe("BedrockVehicleWorld flight wiring", () => {
   beforeEach(() => vi.resetAllMocks());
 
-  it("keeps gravity on only in the car form (ADR 0021, 0039)", () => {
-    fc.assert(
-      fc.property(fc.constantFrom(...FORMS), (form) => {
-        const { car, world } = fixture();
-        world.setForm(car.id, form);
-        expect(car.triggerEvent.mock.calls).toEqual([
-          [
-            form === "car"
-              ? `${NAMESPACE}:gravity_on`
-              : `${NAMESPACE}:gravity_off`,
-          ],
-        ]);
-      }),
-    );
-  });
-
   it("switches a rider to the third-person camera and back (ADR 0028)", () => {
     const { world } = fixture();
     const camera = { setCamera: vi.fn(), clear: vi.fn() };
@@ -326,3 +298,90 @@ describe("BedrockVehicleWorld flight wiring", () => {
     expect(camera.setCamera).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("BedrockVehicleWorld command interpreter", () => {
+  beforeEach(() => vi.resetAllMocks());
+
+  it("runs all four commands in order at the vehicle", () => {
+    const { world, car, dimension } = fixture();
+    world.run(car.id, [
+      { type: "setProperty", name: "bank", value: 12 },
+      { type: "triggerEvent", name: "gravity_off" },
+      { type: "playAnimation", name: "door_fr" },
+      { type: "playSound", name: "random.door_open" },
+    ]);
+    expect(car.setProperty.mock.calls).toEqual([[`${NAMESPACE}:bank`, 12]]);
+    expect(car.triggerEvent.mock.calls).toEqual([[`${NAMESPACE}:gravity_off`]]);
+    expect(car.playAnimation.mock.calls).toEqual([
+      [`animation.${NAMESPACE}.suv.door_fr`],
+    ]);
+    expect(dimension.playSound.mock.calls).toEqual([
+      ["random.door_open", car.location],
+    ]);
+    const order = [
+      car.setProperty,
+      car.triggerEvent,
+      car.playAnimation,
+      dimension.playSound,
+    ].map((fn) => fn.mock.invocationCallOrder[0]);
+    expect(order).toEqual([...order].sort((a, b) => (a ?? 0) - (b ?? 0)));
+  });
+
+  it("ignores every command when the entity is missing", () => {
+    const { world, car, dimension } = fixture();
+    world.run("missing", [
+      { type: "setProperty", name: "bank", value: 0 },
+      { type: "triggerEvent", name: "gravity_on" },
+      { type: "playAnimation", name: "door_fl" },
+      { type: "playSound", name: "random.door_open" },
+    ]);
+    for (const fn of [
+      car.setProperty,
+      car.triggerEvent,
+      car.playAnimation,
+      dimension.playSound,
+    ])
+      expect(fn).not.toHaveBeenCalled();
+  });
+
+  it("propagates a throw and stops the remaining commands", () => {
+    const { world, car, dimension } = fixture();
+    const failure = new Error("event failed");
+    car.triggerEvent.mockImplementation(() => {
+      throw failure;
+    });
+    expect(() =>
+      world.run(car.id, [
+        { type: "setProperty", name: "bank", value: 0 },
+        { type: "triggerEvent", name: "gravity_off" },
+        { type: "setProperty", name: "form", value: "hover" },
+        { type: "playAnimation", name: "door_fr" },
+        { type: "playSound", name: "random.door_open" },
+      ]),
+    ).toThrow(failure);
+    expect(car.setProperty.mock.calls).toEqual([[`${NAMESPACE}:bank`, 0]]);
+    expect(car.playAnimation).not.toHaveBeenCalled();
+    expect(dimension.playSound).not.toHaveBeenCalled();
+  });
+});
+
+it.each(["suv", "sportsboat"] as const)(
+  "reads only %s's declared restored properties, lazily",
+  (kind) => {
+    vi.resetAllMocks();
+    const { world, car } = fixture();
+    car.typeId = ENTITY_TYPE[kind];
+    car.getProperty.mockImplementation((name) =>
+      name === `${NAMESPACE}:form` ? "hover" : false,
+    );
+    const snapshot = world.loadedVehicles()[0];
+    expect(car.getProperty.mock.calls).toEqual([[HEADLIGHTS_PROPERTY]]);
+    car.getProperty.mockClear();
+    expect(snapshot?.restored()).toStrictEqual(
+      kind === "suv" ? { form: "hover" } : {},
+    );
+    expect(car.getProperty.mock.calls).toEqual(
+      kind === "suv" ? [[`${NAMESPACE}:form`]] : [],
+    );
+  },
+);

@@ -3,13 +3,10 @@ import { VEHICLE_KINDS } from "../../../../src/domain/vehicle/kind";
 import { PAINTS } from "../../../../src/domain/vehicle/paint";
 import { NAMESPACE } from "../../../../src/infrastructure/shared/identifiers";
 import {
-  BANK_PROPERTY,
   ENTITY_TYPE,
+  entityEventId,
+  entityPropertyId,
   FLEET_PROPERTY,
-  FORM_PROPERTY,
-  GEAR_DOWN_PROPERTY,
-  GRAVITY_OFF_EVENT,
-  GRAVITY_ON_EVENT,
   HEADLIGHT_SWITCH_TYPE,
   HEADLIGHTS_PROPERTY,
   ITEM_TYPE,
@@ -56,11 +53,8 @@ describe("identifiers (ADR 0047)", () => {
       HEADLIGHTS_PROPERTY,
       LIT_CELLS_PROPERTY,
       TEST_INPUT_EVENT,
-      FORM_PROPERTY,
-      BANK_PROPERTY,
-      GEAR_DOWN_PROPERTY,
-      GRAVITY_OFF_EVENT,
-      GRAVITY_ON_EVENT,
+      ...["form", "bank", "gear_down"].map(entityPropertyId),
+      ...["gravity_on", "gravity_off"].map(entityEventId),
       ...PAINTS.map(paintEvent),
     ];
     for (const id of ids) {

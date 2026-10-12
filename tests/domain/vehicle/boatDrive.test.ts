@@ -282,11 +282,11 @@ describe("BoatDrive (ADR 0051)", () => {
       fc.property(yaw, number(SPORTSBOAT_DRAG.min, 0.89), (heading, low) => {
         const motion = { ...initialMotion(heading), speed: 0.5 };
         const ctx = context(0, FULL_THROTTLE, { x: 0, z: 0 }, AFLOAT);
-        const drive = new BoatDrive(heading).restore({
+        const drive = new BoatDrive(heading, {}).restore({
           motion,
           waterDrag: low,
         });
-        const higher = new BoatDrive(heading).restore({
+        const higher = new BoatDrive(heading, {}).restore({
           motion,
           waterDrag: low + 0.04,
         });
@@ -346,7 +346,7 @@ describe("BoatDrive (ADR 0051)", () => {
           const velocity = (xRatio: number) => ({ x: 0.1 * xRatio, z: 0.95 });
           /** The drive's state after one tick from `m` and the estimate `prev`. */
           const step = (v: Vec2, m = motion) => {
-            const drive = new BoatDrive(0).restore({
+            const drive = new BoatDrive(0, {}).restore({
               motion: m,
               waterDrag: prev,
             });
@@ -375,20 +375,25 @@ describe("BoatDrive (ADR 0051)", () => {
   it("is the sports boat's drive and keeps no form, gear, or bank whatever form it is given", () => {
     fc.assert(
       fc.property(fc.constantFrom(...FORMS), yaw, (form, heading) => {
-        const drive = new BoatDrive(heading);
-        expect([drive.form, drive.wheelsDown, drive.bankAngle]).toStrictEqual([
-          "car",
-          true,
-          0,
-        ]);
+        const drive = new BoatDrive(heading, { form });
+        const step = drive.step(
+          undefined,
+          context(0, undefined, { x: 0, z: 0 }, AFLOAT),
+        );
+        expect(step.commands).toStrictEqual([]);
+        expect(step.riders).toStrictEqual({
+          thirdPerson: false,
+          underwater: false,
+        });
         const rebuilt = rebuildVehicle("sportsboat", "boat", heading, [], {
           form,
         });
-        expect([
-          rebuilt.form,
-          rebuilt.wheelsDown,
-          rebuilt.bankAngle,
-        ]).toStrictEqual(["car", true, 0]);
+        const out = rebuilt.tick(context(0, undefined, { x: 0, z: 0 }, AFLOAT));
+        expect(out.commands).toStrictEqual([]);
+        expect(out.riders).toStrictEqual({
+          thirdPerson: false,
+          underwater: false,
+        });
       }),
     );
   });
@@ -482,10 +487,14 @@ describe("BoatDrive (ADR 0051)", () => {
         afloatWater,
         (heading, s, turnRate, water) => {
           const motion = { ...initialMotion(heading), speed: 0.5 };
-          const drive = new BoatDrive(heading, {
-            ...SPORTSBOAT_MOTION,
-            turnRate,
-          }).restore({ motion });
+          const drive = new BoatDrive(
+            heading,
+            {},
+            {
+              ...SPORTSBOAT_MOTION,
+              turnRate,
+            },
+          ).restore({ motion });
           drive.step(
             { moveX: s, moveY: 1, jump: false },
             context(0, undefined, { x: 0, z: 0 }, water),
@@ -569,9 +578,11 @@ describe("BoatDrive (ADR 0051)", () => {
               solidAt: () => t.solid,
             });
             expect(out.impulse.y).toBe(0);
-            expect(out.form).toBeUndefined();
-            expect(out.bank).toBeUndefined();
-            expect(out.gearDown).toBeUndefined();
+            expect(out.commands).toStrictEqual([]);
+            expect(out.riders).toStrictEqual({
+              thirdPerson: false,
+              underwater: false,
+            });
           });
         },
       ),
@@ -599,10 +610,14 @@ describe("BoatDrive (ADR 0051)", () => {
           const motion = { ...initialMotion(heading), speed };
           const ctx = { ...context(0, undefined, velocity, w), onGround };
           const run = (jump: boolean) => {
-            const drive = new BoatDrive(heading, {
-              ...SPORTSBOAT_MOTION,
-              handbrakeGrip,
-            }).restore({ motion });
+            const drive = new BoatDrive(
+              heading,
+              {},
+              {
+                ...SPORTSBOAT_MOTION,
+                handbrakeGrip,
+              },
+            ).restore({ motion });
             return {
               step: drive.step({ ...raw, jump }, ctx),
               state: drive.state,
@@ -649,7 +664,7 @@ describe("a sports boat Vehicle (ADR 0051)", () => {
     );
   });
 
-  it("seats riders by the SUV's positions and emits SeatVacated without a door when one leaves", () => {
+  it("seats riders by the SUV's positions and emits no seat commands when one leaves", () => {
     expect(SPORTSBOAT_PROFILE.seats.positions).toStrictEqual(
       SUV_PROFILE.seats.positions,
     );
@@ -681,9 +696,7 @@ describe("a sports boat Vehicle (ADR 0051)", () => {
           const vacated = vehicle.tick(
             context(1, undefined, { x: 0, z: 0 }, AFLOAT),
           );
-          expect(vacated.events).toStrictEqual([
-            { type: "SeatVacated", vehicleId: "boat", seat },
-          ]);
+          expect(vacated.seatCommands).toStrictEqual([]);
         },
       ),
     );
@@ -693,7 +706,7 @@ describe("a sports boat Vehicle (ADR 0051)", () => {
 it("queries below the boat only when its depth query is dry", () => {
   fc.assert(
     fc.property(fc.boolean(), fc.boolean(), (atFeet, below) => {
-      const drive = new BoatDrive(0);
+      const drive = new BoatDrive(0, {});
       const ctx = context(0, FULL_THROTTLE, { x: 0, z: 0 }, BEACHED);
       const probes: number[] = [];
       drive.step(FULL_THROTTLE, {

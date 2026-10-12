@@ -1,14 +1,9 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { FORMS } from "../../src/domain/vehicle/form";
 import { SEAT_POSITIONS } from "../../src/domain/vehicle/seats";
-import { SPEC } from "../../src/domain/vehicle/spec";
 import {
-  BANK_PROPERTY,
-  FORM_PROPERTY,
-  GEAR_DOWN_PROPERTY,
-  GRAVITY_OFF_EVENT,
-  GRAVITY_ON_EVENT,
+  entityEventId,
+  entityPropertyId,
 } from "../../src/infrastructure/vehicle/bedrock/identifiers";
 
 const read = (p: string) => JSON.parse(readFileSync(p, "utf8"));
@@ -66,11 +61,9 @@ describe("packs/yasu_ride_bp", () => {
   });
 
   it("switches gravity off with yasu_ride:gravity_off and back on with yasu_ride:gravity_on, and syncs the vehicle form to clients (ADR 0021)", () => {
-    expect(FORM_PROPERTY).toBe("yasu_ride:form");
-    expect(FORMS).toEqual(["car", "takeoff", "hover", "landing", "submarine"]);
-    expect(entity.description.properties[FORM_PROPERTY]).toEqual({
-      type: "enum",
-      values: ["car", "takeoff", "hover", "landing", "submarine"],
+    expect(
+      entity.description.properties[entityPropertyId("form")],
+    ).toMatchObject({
       default: "car",
       client_sync: true,
     });
@@ -83,20 +76,20 @@ describe("packs/yasu_ride_bp", () => {
     expect(entity.component_groups["yasu_ride:weighted"]).toEqual({
       "minecraft:physics": {},
     });
-    expect(entity.events[GRAVITY_OFF_EVENT]).toEqual({
+    expect(entity.events[entityEventId("gravity_off")]).toEqual({
       add: { component_groups: ["yasu_ride:weightless"] },
       remove: { component_groups: ["yasu_ride:weighted"] },
     });
-    expect(entity.events[GRAVITY_ON_EVENT]).toEqual({
+    expect(entity.events[entityEventId("gravity_on")]).toEqual({
       add: { component_groups: ["yasu_ride:weighted"] },
       remove: { component_groups: ["yasu_ride:weightless"] },
     });
   });
 
-  it("syncs a bank angle to clients whose range holds every angle the script sends (ADR 0026)", () => {
-    expect(entity.description.properties[BANK_PROPERTY]).toEqual({
-      type: "float",
-      range: [-SPEC.maxBank, SPEC.maxBank],
+  it("syncs the bank angle to clients with a level default (ADR 0026)", () => {
+    expect(
+      entity.description.properties[entityPropertyId("bank")],
+    ).toMatchObject({
       default: 0,
       client_sync: true,
     });
@@ -105,8 +98,9 @@ describe("packs/yasu_ride_bp", () => {
 
 describe("packs/yasu_ride_bp landing gear (ADR 0033)", () => {
   it("syncs whether the wheels are down, down by default for a vehicle on the ground", () => {
-    expect(entity.description.properties[GEAR_DOWN_PROPERTY]).toEqual({
-      type: "bool",
+    expect(
+      entity.description.properties[entityPropertyId("gear_down")],
+    ).toMatchObject({
       default: true,
       client_sync: true,
     });

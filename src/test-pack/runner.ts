@@ -9,11 +9,10 @@ import { PAINTS } from "../domain/vehicle/paint";
 import { SUV_PROFILE } from "../domain/vehicle/profile";
 import { nearestSeat, toLocal } from "../domain/vehicle/seats";
 import { SPEC } from "../domain/vehicle/spec";
+import type { SUV_ENTITY } from "../domain/vehicle/suvEntity";
 import {
-  BANK_PROPERTY,
   ENTITY_TYPE,
-  FORM_PROPERTY,
-  GEAR_DOWN_PROPERTY,
+  entityPropertyId,
   HEADLIGHTS_PROPERTY,
   TEST_INPUT_EVENT as INPUT_EVENT,
   LIGHT_BLOCK,
@@ -461,8 +460,15 @@ function headlightsFollowAndClear(a: Arena): Promise<Outcome> {
 
 const FLIGHT_LANE = { x: 5.5, z: 4.5 } as const;
 
+function suvProperty(
+  car: Entity,
+  name: keyof typeof SUV_ENTITY.properties,
+): ReturnType<Entity["getProperty"]> {
+  return car.getProperty(entityPropertyId(name));
+}
+
 function vehicleForm(car: Entity): Form | undefined {
-  const form = car.getProperty(FORM_PROPERTY);
+  const form = suvProperty(car, "form");
   return isForm(form) ? form : undefined;
 }
 
@@ -562,7 +568,7 @@ function flightClimbDescend(a: Arena): Promise<Outcome> {
 
 function flightBank(a: Arena): Promise<Outcome> {
   return withAirborneCar(a, async (car) => {
-    const bank = () => Number(car.getProperty(BANK_PROPERTY));
+    const bank = () => Number(suvProperty(car, "bank"));
     // Turn right: the lane runs along the arena's low-z edge, and a car that
     // leaves the ticking area stops updating.
     drive(car, -1, 1);
@@ -592,7 +598,7 @@ function flightLand(a: Arena): Promise<Outcome> {
     let landedAt = -1;
     for (let t = 0; t < 80; t++) {
       await wait(1);
-      if (Number.isNaN(gearY) && car.getProperty(GEAR_DOWN_PROPERTY) === true)
+      if (Number.isNaN(gearY) && suvProperty(car, "gear_down") === true)
         gearY = car.location.y - a.gy;
       if (vehicleForm(car) === "car") {
         landedAt = t;
@@ -625,7 +631,7 @@ function flightTouchdown(a: Arena): Promise<Outcome> {
     drive(car, 0, 0);
     await wait(20);
     const restY = car.location.y - a.gy;
-    const gearDown = car.getProperty(GEAR_DOWN_PROPERTY) === true;
+    const gearDown = suvProperty(car, "gear_down") === true;
     return {
       pass: landedAt >= 0 && Math.abs(restY) <= 0.1 && gearDown,
       detail: `landedAt=${landedAt} restY=${restY.toFixed(2)} gearDown=${gearDown}`,
@@ -787,7 +793,7 @@ function boatDrag(a: Arena): Promise<Outcome> {
         const steadySpeeds: number[] = [];
         const coastRatios: number[] = [];
         const steadyDrag: number[] = [];
-        const replica = new BoatDrive(boat.getRotation().y);
+        const replica = new BoatDrive(boat.getRotation().y, {});
         const lines: string[] = [];
         drive(boat, 0, 1);
         for (let t = 0; t < 93; t++) {
@@ -1056,7 +1062,7 @@ function submarineDive(a: Arena): Promise<Outcome> {
 function submarineBank(a: Arena): Promise<Outcome> {
   return withPool(a, DIVE_DEPTH, () =>
     withDivingCar(a, async (car, enteredAt) => {
-      const bank = () => Number(car.getProperty(BANK_PROPERTY));
+      const bank = () => Number(suvProperty(car, "bank"));
       // Turn right into the open water, as flight_bank does in the air (ADR 0044).
       drive(car, -1, 1);
       await wait(20);

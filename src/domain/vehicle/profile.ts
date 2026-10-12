@@ -1,7 +1,7 @@
 import type { Vec2 } from "../shared/vec";
 import type { VehicleKind } from "./kind";
 import type { PlacementRule } from "./placement";
-import { DOOR_BY_SEAT, SEAT_POSITIONS } from "./seats";
+import { SEAT_POSITIONS } from "./seats";
 import { SPEC } from "./spec";
 
 /** Each drive holds its own value (ADR 0055). */
@@ -28,8 +28,6 @@ export interface RamBody {
 export interface SeatLayout {
   /** x = left, z = forward; index 0 is the driver. */
   readonly positions: readonly Vec2[];
-  /** Door bone per seat; absent for kinds without doors. */
-  readonly doors?: readonly string[];
 }
 
 export interface BeamPattern {
@@ -52,7 +50,7 @@ export interface VehicleProfile {
 export const SUV_PROFILE: VehicleProfile = Object.freeze({
   kind: "suv",
   ram: Object.freeze({ front: SPEC.bodyFront, halfWidth: SPEC.bodyHalfWidth }),
-  seats: Object.freeze({ positions: SEAT_POSITIONS, doors: DOOR_BY_SEAT }),
+  seats: Object.freeze({ positions: SEAT_POSITIONS }),
   beams: Object.freeze({
     reach: SPEC.headlightReach,
     lanes: Object.freeze([0]),

@@ -1,7 +1,13 @@
 // The SUV's transforming drivetrain: forms, landing gear, bank, and vertical motion (ADR 0050).
 import { clamp, rightOf, type Vec2 } from "../shared/vec";
 import { bankSink, stepBank } from "./bank";
-import type { Drive, DriveStep, TickContext } from "./drive";
+import type {
+  Drive,
+  DriveStep,
+  EngineCommand,
+  RestoredValues,
+  TickContext,
+} from "./drive";
 import {
   type DriveInput,
   NEUTRAL_INPUT,
@@ -13,6 +19,7 @@ import {
   type Form,
   type FormState,
   initialForm,
+  isForm,
   stepForm,
   verticalImpulse,
   verticalSpeed,
@@ -33,6 +40,12 @@ import type { MotionLimits } from "./profile";
 import { SPEC } from "./spec";
 import { stepHeight } from "./stepUp";
 import { submarineVerticalSpeed } from "./submarine";
+import {
+  bankCommand,
+  doorCommands,
+  formCommands,
+  gearCommand,
+} from "./suvEntity";
 import { waterDepthAt } from "./water";
 
 // Frozen because every SUV drive shares this one object.
@@ -112,7 +125,8 @@ export class SuvDrive implements Drive {
   // Undefined until the first tick, like sentBank.
   private sentGearDown: boolean | undefined;
 
-  constructor(yaw: number, form: Form) {
+  constructor(yaw: number, restored: RestoredValues) {
+    const form = isForm(restored.form) ? restored.form : "car";
     this.motion = initialMotion(yaw);
     this.formState = initialForm(form);
     this.gearDown = form === "car";
@@ -140,6 +154,10 @@ export class SuvDrive implements Drive {
 
   onDriverMounted(driverYaw: number): void {
     this.motion = alignOnMount(this.motion, driverYaw);
+  }
+
+  onSeatVacated(seat: number): readonly EngineCommand[] {
+    return doorCommands(seat);
   }
 
   step(raw: RawInput | undefined, ctx: TickContext): DriveStep {
@@ -222,9 +240,12 @@ export class SuvDrive implements Drive {
     return {
       impulse: { x: step.impulse.x, y: impulseY, z: step.impulse.z },
       forward: step.forward,
-      form: form === before ? undefined : form,
-      bank,
-      gearDown,
+      commands: [
+        ...(form === before ? [] : formCommands(form)),
+        ...(bank === undefined ? [] : [bankCommand(bank)]),
+        ...(gearDown === undefined ? [] : [gearCommand(gearDown)]),
+      ],
+      riders: { thirdPerson: form !== "car", underwater: form === "submarine" },
     };
   }
 }

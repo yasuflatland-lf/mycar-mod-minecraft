@@ -1,7 +1,7 @@
 import { DriveVehicles } from "../../src/application/vehicle/driveVehicles";
 import type { DriveWorld } from "../../src/application/vehicle/ports";
 import type { Vec2, Vec3 } from "../../src/domain/shared/vec";
-import { type Form, isForm } from "../../src/domain/vehicle/form";
+import type { EngineCommand } from "../../src/domain/vehicle/drive";
 import {
   createVehicle,
   rebuildVehicle,
@@ -84,31 +84,24 @@ function context(
     targets: () => s.targets(),
   };
 }
-function formOf(properties: Readonly<Record<string, PropertyValue>>): Form {
-  return isForm(properties.form) ? properties.form : "car";
-}
-function formWrites(form: string): string[] {
-  return [
-    `event gravity_${form === "car" ? "on" : "off"}`,
-    `property form ${form}`,
-  ];
-}
-function doorWrites(door: string): string[] {
-  return [`animation ${door}`, "sound random.door_open"];
+function commandWrite(command: EngineCommand): string {
+  switch (command.type) {
+    case "setProperty":
+      return `property ${command.name} ${command.value}`;
+    case "triggerEvent":
+      return `event ${command.name}`;
+    case "playAnimation":
+      return `animation ${command.name}`;
+    case "playSound":
+      return `sound ${command.name}`;
+  }
 }
 function wrap(vehicle: Vehicle): TraceVehicle {
   return {
     tick(sensors, riders, testInput) {
       const out = vehicle.tick(context(sensors, riders, testInput));
-      const writes = out.form ? formWrites(out.form) : [];
-      if (out.bank !== undefined) writes.push(`property bank ${out.bank}`);
-      if (out.gearDown !== undefined)
-        writes.push(`property gear_down ${out.gearDown}`);
-      const seatWrites = out.events.flatMap((e) =>
-        e.type === "SeatVacated" && e.door !== undefined
-          ? doorWrites(e.door)
-          : [],
-      );
+      const writes = out.commands.map(commandWrite);
+      const seatWrites = out.seatCommands.map(commandWrite);
       return {
         impulse: out.impulse,
         yaw: out.yaw,
@@ -117,10 +110,7 @@ function wrap(vehicle: Vehicle): TraceVehicle {
         hits: out.hits,
         writes,
         seatWrites,
-        riders: {
-          thirdPerson: vehicle.form !== "car",
-          underwater: vehicle.form === "submarine",
-        },
+        riders: out.riders,
       };
     },
   };
@@ -208,7 +198,7 @@ export function createTraceApp(): TraceApp {
           riders: [...v.riders],
           testInput: v.testInput,
           headlights: v.headlights,
-          form: formOf(v.properties),
+          restored: () => v.properties,
         };
       }),
     solidAt: (id, offset) => context(snapshot(id).sensors, []).solidAt(offset),
@@ -218,13 +208,8 @@ export function createTraceApp(): TraceApp {
       activeVehicleId = id;
       record(id, `motion ${yaw} ${impulse.x},${impulse.y},${impulse.z}`);
     },
-    setForm: (id, form) => {
-      for (const write of formWrites(form)) record(id, write);
-    },
-    setBank: (id, n) => record(id, `property bank ${n}`),
-    setGearDown: (id, b) => record(id, `property gear_down ${b}`),
-    playDoor: (id, door) => {
-      for (const write of doorWrites(door)) record(id, write);
+    run: (id, commands) => {
+      for (const command of commands) record(id, commandWrite(command));
     },
     damage: (hit, attacker) =>
       record(activeVehicleId, `damage ${hit.id} ${attacker ?? "-"}`),
