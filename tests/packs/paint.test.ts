@@ -5,7 +5,7 @@ import {
   PAINT_BY_DYE,
   PAINT_VARIANT,
   paintEvent,
-} from "../../src/infrastructure/bedrock/identifiers";
+} from "../../src/infrastructure/vehicle/bedrock/identifiers";
 
 const read = (p: string) => JSON.parse(readFileSync(p, "utf8"));
 const entity = read("packs/mycar_bp/entities/suv.json")["minecraft:entity"];

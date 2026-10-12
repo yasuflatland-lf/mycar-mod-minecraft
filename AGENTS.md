@@ -56,6 +56,7 @@ Design decisions live in [docs/adr](docs/adr/README.md). Read the ADRs that rela
 
 - **Stable APIs only (0001).** Do not use beta Script APIs, experimental toggles, or `@minecraft/server-gametest`.
 - **Three layers with one-way dependencies (0012):** `src/infrastructure` → `src/application` → `src/domain`. Only `src/infrastructure` may import `@minecraft/server`. `src/main.ts` only calls `bootstrap()`. `tests/architecture.test.ts` checks the import graph. `src/test-pack/` sits outside the layers.
+- **Feature boundaries ([0046](docs/adr/0046-organize-each-layer-by-feature.md)).** Every layer file lives in a feature folder or `shared/`, except `infrastructure/bootstrap.ts`. Features cannot import other features, and shared code cannot import features. All driven entities, including boats, belong to `vehicle`. Wire each feature through its infrastructure install function.
 - **Movement is script-driven (0002).** The script sets velocity every tick. Tuning values live in one place in the domain; do not scatter magic numbers.
 - **Testing (0010).** Pure logic gets property-based tests (fast-check + vitest) with only a few example tests. Integration with the game is covered by in-game tests started with `scriptevent`, not by GameTest.
 - **Model conventions (0009).** The front of an entity is the model's -z side. Bone names (`root`, `body`, `headlights`, `wheel_*`, `door_*`, `seat_0`–`seat_3`) are a fixed contract between the model and the scripts. Give the grille eight slots (a seven-slot grille is a Jeep trademark), with no logo or vehicle name.

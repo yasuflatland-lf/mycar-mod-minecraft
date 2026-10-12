@@ -29,3 +29,5 @@ Split `src/` into the following three layers. Dependencies point one way only: i
 - The domain and application layers can be unit-tested and property-tested without the game (0010). Application tests replace ports with fake implementations
 - Vehicle state (velocity, heading, seats, punch count) is held by the `Vehicle` aggregate and kept in an in-memory repository. It is not persisted (it is rebuilt when scripts reload)
 - Handing data across layers adds code, so there are more files than in the spike
+
+See [0046](0046-organize-each-layer-by-feature.md) for feature boundaries within each layer.

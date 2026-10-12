@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   HEADLIGHT_SWITCH_TYPE,
   HEADLIGHTS_PROPERTY,
-} from "../../src/infrastructure/bedrock/identifiers";
+} from "../../src/infrastructure/vehicle/bedrock/identifiers";
 
 const read = (p: string) => JSON.parse(readFileSync(p, "utf8"));
 const entity = read("packs/mycar_bp/entities/suv.json")["minecraft:entity"];
