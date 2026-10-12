@@ -1,6 +1,9 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { checkResourcePackVersion } from "../../scripts/check-rp-version.mjs";
+import {
+  checkResourcePackVersion,
+  git,
+} from "../../scripts/check-rp-version.mjs";
 
 const version = fc.tuple(fc.nat(), fc.nat(), fc.nat());
 const releaseTag = version.map((value) => `v${value.join(".")}`);
@@ -86,5 +89,13 @@ describe("Resource Pack release version check", () => {
         },
       ),
     );
+  });
+});
+
+describe("Resource Pack check git helper", () => {
+  it("reports git's own reason when a command fails", () => {
+    expect(() =>
+      git("ls-tree", "-d", "--name-only", "refs/tags/no-such-tag", "packs/"),
+    ).toThrow(/fatal: .*no-such-tag/);
   });
 });

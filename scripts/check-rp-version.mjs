@@ -20,10 +20,12 @@ export function checkResourcePackVersion({
   return `${PACK} changed since ${tag}, but its version is ${previous} at ${tag} and ${current} at HEAD; bump header.version, the module version, and the Behavior Pack's dependency on it (ADR 0015)`;
 }
 
-function git(...args) {
+// Pipe stderr so a failing command's error message ends with git's own reason
+// (execFileSync appends captured stderr to "Command failed: git ...").
+export function git(...args) {
   return execFileSync("git", args, {
     encoding: "utf8",
-    stdio: ["ignore", "pipe", "ignore"],
+    stdio: ["ignore", "pipe", "pipe"],
   });
 }
 

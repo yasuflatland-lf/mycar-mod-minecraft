@@ -4,3 +4,5 @@ export function checkResourcePackVersion(options: {
   previousVersion: readonly number[];
   currentVersion: readonly number[];
 }): string | null;
+
+export function git(...args: string[]): string;
