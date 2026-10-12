@@ -16,24 +16,34 @@ export function checkResourcePackVersion({
   if (!tag || !changed) return null;
   const previous = previousVersion.join(".");
   const current = currentVersion.join(".");
-  return previous === current
-    ? `${PACK} changed since ${tag}, but its version is ${previous} at ${tag} and ${current} at HEAD; bump header.version, the module version, and the Behavior Pack's dependency on it (ADR 0015)`
-    : null;
+  if (previous !== current) return null;
+  return `${PACK} changed since ${tag}, but its version is ${previous} at ${tag} and ${current} at HEAD; bump header.version, the module version, and the Behavior Pack's dependency on it (ADR 0015)`;
 }
 
-const git = (...args) =>
-  execFileSync("git", args, {
+function git(...args) {
+  return execFileSync("git", args, {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "ignore"],
   });
+}
 
-const manifestAt = (revision, dir) => {
+function manifestAt(revision, dir) {
   try {
     return JSON.parse(git("show", `${revision}:${dir}/manifest.json`));
   } catch {
     return undefined;
   }
-};
+}
+
+function treesDiffer(left, right) {
+  try {
+    git("diff", "--quiet", left, right);
+    return false;
+  } catch (error) {
+    if (error.status !== 1) throw error;
+    return true;
+  }
+}
 
 function main(tag) {
   if (!tag) {
@@ -51,21 +61,15 @@ function main(tag) {
     console.log(`${PACK} did not exist at ${tag}; skipping the check`);
     return;
   }
-  let changed = false;
-  try {
-    git("diff", "--quiet", `${tag}:${previousDir}`, `HEAD:${PACK}`);
-  } catch (error) {
-    if (error.status !== 1) throw error;
-    changed = true;
-  }
-  const error = checkResourcePackVersion({
+  const changed = treesDiffer(`${tag}:${previousDir}`, `HEAD:${PACK}`);
+  const failure = checkResourcePackVersion({
     tag,
     changed,
     previousVersion: manifestAt(tag, previousDir).header.version,
     currentVersion: current.header.version,
   });
-  if (error) {
-    console.error(`::error::${error}`);
+  if (failure) {
+    console.error(`::error::${failure}`);
     process.exitCode = 1;
     return;
   }
