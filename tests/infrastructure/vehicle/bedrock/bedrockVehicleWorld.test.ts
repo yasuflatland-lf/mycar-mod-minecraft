@@ -152,6 +152,15 @@ describe("BedrockVehicleWorld snapshots", () => {
     expect(world.loadedVehicles().map((s) => s.id)).toEqual(["car"]);
   });
 
+  it.each(["nether", "the_end"])("snapshots a vehicle in the %s", (dimId) => {
+    const { dimension, car, world } = fixture();
+    game.getDimension.mockImplementation((id: string) =>
+      id === dimId ? dimension : { getEntities: () => [] },
+    );
+    expect(world.loadedVehicles().map((v) => v.id)).toEqual([car.id]);
+    expect(world.loadedVehicleIds()).toEqual([car.id]);
+  });
+
   it("reports the headlights as the vehicle's headlights property says (ADR 0020)", () => {
     fc.assert(
       fc.property(fc.constantFrom(true, false, undefined, "true"), (value) => {
