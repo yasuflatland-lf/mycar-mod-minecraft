@@ -56,7 +56,7 @@ This directory records design decisions and the reasons behind them. The format 
 | [0050](0050-vehicle-kinds-and-per-kind-profiles.md) | Vehicle kinds and per-kind profiles | Accepted |
 | [0051](0051-sports-boat.md) | Sports boat | Accepted |
 | [0053](0053-estimate-buoyant-boat-water-drag.md) | Estimate the buoyant boat's water drag | Accepted |
-| [0054](0054-shard-in-game-tests-in-ci.md) | Shard the in-game tests across three CI jobs | Accepted |
+| [0054](0054-shard-in-game-tests-in-ci.md) | Shard the in-game tests across four CI jobs and run model:check beside the unit tests | Accepted |
 
 The measurements and in-game tests behind these decisions are in [the driving-core spike findings](../spike-driving-core.md).
 
