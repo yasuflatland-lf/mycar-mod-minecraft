@@ -76,7 +76,7 @@ Design decisions live in [docs/adr](docs/adr/README.md). Read the ADRs that rela
 
 ## Git and pull requests
 
-- Branch names use a type prefix: `feat/`, `fix/`, `docs/`, `chore/`, `ci/`, `spike/`.
+- Branch names use a type prefix: `feat/`, `fix/`, `refactor/`, `docs/`, `chore/`, `ci/`, `spike/`.
 - Commit messages are a single imperative line with no body or trailers, for example `Add Biome for formatting and linting, and run it in CI`. Do not add AI attribution (`Co-Authored-By`, "Generated with ...") to commits or PR descriptions.
 - Pin exact dependency versions. pnpm's default minimum release age rejects versions published too recently; pick an older release instead of loosening the setting.
 - Never commit world data (`server/data/`, `spike/server/data/`), `node_modules/`, or `dist/`.
