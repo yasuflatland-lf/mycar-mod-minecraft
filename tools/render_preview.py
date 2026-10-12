@@ -383,9 +383,9 @@ def collect_boat(geo, texture, pose):
     for bone in geo["bones"]:
         emissive = "lamp" if bone["name"] == "headlights" and pose["lamps"] else None
         for cube in bone.get("cubes", []):
-            # In game a cube's x rotation turns the other way from this rotate() (ADR 0051)
+            # In game a cube's x and z rotations turn the other way from this rotate() (ADR 0051, 0058)
             rx, ry, rz = cube.get("rotation", [0, 0, 0])
-            for face, quad in cube_faces({**cube, "rotation": [-rx, ry, rz]}):
+            for face, quad in cube_faces({**cube, "rotation": [-rx, ry, -rz]}):
                 quad = mirror(quad)
                 normal = cross(sub(quad[1], quad[0]), sub(quad[3], quad[0]))
                 if dot(normal, normal) == 0:
