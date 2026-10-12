@@ -33,6 +33,20 @@ if (rpDependency.version.join(".") !== rp.header.version.join(".")) {
   );
 }
 
+// The Resource Pack depends back on the Behavior Pack version, so a
+// release that bumps the Behavior Pack must update this side too.
+const bpDependency = rp.dependencies?.find(
+  (dependency) => dependency.uuid === bp.header.uuid,
+);
+if (!bpDependency) {
+  fail(`${RP}/manifest.json has no dependency on ${BP}`);
+}
+if (bpDependency.version.join(".") !== bp.header.version.join(".")) {
+  fail(
+    `${RP} depends on ${BP} ${bpDependency.version.join(".")}, but ${BP} is ${bp.header.version.join(".")}`,
+  );
+}
+
 const version = bp.header.version.join(".");
 const expected = process.env.EXPECTED_VERSION?.replace(/^v/, "");
 if (expected && expected !== version) {

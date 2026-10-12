@@ -177,14 +177,31 @@ describe("Resource Pack flight visuals (ADR 0022)", () => {
   it("keeps the Resource Pack module and the Behavior Pack's dependency on the Resource Pack version (ADR 0015)", () => {
     const rp = read(`${RP}/manifest.json`);
     const bp = read("packs/yasu_ride_bp/manifest.json");
-    const dep = bp.dependencies.find(
-      (d: { uuid?: string }) => d.uuid === rp.header.uuid,
+    const dep = defined(
+      bp.dependencies.find((d: { uuid?: string }) => d.uuid === rp.header.uuid),
+      "Behavior Pack dependency on the Resource Pack",
     );
     // 0.1.26 first ships the sonar (0041); an older cached copy lacks it.
     const [major, minor, patch] = rp.header.version;
     expect(major * 1e6 + minor * 1e3 + patch).toBeGreaterThanOrEqual(1026);
     expect(rp.modules[0].version).toEqual(rp.header.version);
     expect(dep.version).toEqual(rp.header.version);
+  });
+
+  // Creator Tools flags a Resource Pack without these as CADDONIREQ170 and
+  // CADDONREQ168: it could be applied globally, or to a world without the
+  // Behavior Pack.
+  it("stays world-scoped and depends on the current Behavior Pack version", () => {
+    const rp = read(`${RP}/manifest.json`);
+    const bp = read("packs/yasu_ride_bp/manifest.json");
+    expect(rp.header.pack_scope).toBe("world");
+    const dep = defined(
+      rp.dependencies?.find(
+        (d: { uuid?: string }) => d.uuid === bp.header.uuid,
+      ),
+      "Resource Pack dependency on the Behavior Pack",
+    );
+    expect(dep.version).toEqual(bp.header.version);
   });
 });
 
