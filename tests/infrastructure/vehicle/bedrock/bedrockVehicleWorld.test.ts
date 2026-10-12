@@ -5,6 +5,8 @@ import { SPEC } from "../../../../src/domain/vehicle/spec";
 import { NAMESPACE } from "../../../../src/infrastructure/shared/identifiers";
 import { BedrockVehicleWorld } from "../../../../src/infrastructure/vehicle/bedrock/bedrockVehicleWorld";
 import {
+  DECK_CELLS_PROPERTY,
+  DECK_FLOOR_BLOCK,
   ENTITY_TYPE,
   HEADLIGHTS_PROPERTY,
   ITEM_TYPE,
@@ -393,24 +395,25 @@ describe("BedrockVehicleWorld command interpreter", () => {
   });
 });
 
-it.each(["suv", "sportsboat"] as const)(
-  "reads only %s's declared restored properties, lazily",
-  (kind) => {
+it.each([
+  { kind: "suv", name: "form", value: "hover" },
+  { kind: "sportsboat", name: "docked", value: true },
+] as const)(
+  "reads only $kind's declared restored properties, lazily",
+  ({ kind, name, value }) => {
     vi.resetAllMocks();
     const { world, car } = fixture();
     car.typeId = ENTITY_TYPE[kind];
-    car.getProperty.mockImplementation((name) =>
-      name === `${NAMESPACE}:form` ? "hover" : name === `${NAMESPACE}:docked`,
-    );
+    const stored: Record<string, unknown> = {
+      [`${NAMESPACE}:form`]: "hover",
+      [`${NAMESPACE}:docked`]: true,
+    };
+    car.getProperty.mockImplementation((key) => stored[key] ?? false);
     const snapshot = world.loadedVehicles()[0];
     expect(car.getProperty.mock.calls).toEqual([[HEADLIGHTS_PROPERTY]]);
     car.getProperty.mockClear();
-    expect(snapshot?.restored()).toStrictEqual(
-      kind === "suv" ? { form: "hover" } : { docked: true },
-    );
-    expect(car.getProperty.mock.calls).toEqual(
-      kind === "suv" ? [[`${NAMESPACE}:form`]] : [[`${NAMESPACE}:docked`]],
-    );
+    expect(snapshot?.restored()).toStrictEqual({ [name]: value });
+    expect(car.getProperty.mock.calls).toEqual([[`${NAMESPACE}:${name}`]]);
   },
 );
 
@@ -439,5 +442,44 @@ describe("BedrockVehicleWorld holds (ADR 0063)", () => {
     expect(car.setRotation).toHaveBeenCalledWith({ x: 0, y: pose.yaw });
     world.holdAt("missing", pose);
     expect(car.teleport).toHaveBeenCalledTimes(3);
+  });
+
+  it("clears the floor and releases the hold of a removed vehicle", () => {
+    const { dimension, world, car } = fixture();
+    const grid = blockGrid();
+    dimension.getBlock.mockImplementation(grid.getBlock);
+    const cell = { x: 0, y: 64, z: 3, height: 9 };
+    const pose = { x: 1, y: 64.5, z: -2, yaw: 30 };
+    world.loadedVehicles();
+    world.holdAt(car.id, pose);
+    world.layFloor(car.id, [cell]);
+    expect(grid.typeAt(cell)).toBe(DECK_FLOOR_BLOCK);
+    world.removeVehicle(car.id);
+    expect(grid.typeAt(cell)).toBe("minecraft:air");
+    expect(car.setDynamicProperty).toHaveBeenLastCalledWith(
+      DECK_CELLS_PROPERTY,
+      undefined,
+    );
+    expect(car.remove).toHaveBeenCalledOnce();
+    world.applyMotion(car.id, { x: 0, y: 0, z: 1 }, pose.yaw);
+    expect(car.applyImpulse).toHaveBeenCalledOnce();
+  });
+
+  it("clears the floor and releases the hold of a vehicle that is no longer loaded (ADR 0038)", () => {
+    const { dimension, world, car } = fixture();
+    const grid = blockGrid();
+    dimension.getBlock.mockImplementation(grid.getBlock);
+    const cell = { x: 0, y: 64, z: 3, height: 9 };
+    const pose = { x: 1, y: 64.5, z: -2, yaw: 30 };
+    world.loadedVehicles();
+    world.holdAt(car.id, pose);
+    world.layFloor(car.id, [cell]);
+    dimension.getEntities.mockReturnValue([]);
+    world.loadedVehicles();
+    expect(grid.typeAt(cell)).toBe("minecraft:air");
+    dimension.getEntities.mockReturnValue([car]);
+    world.loadedVehicles();
+    world.applyMotion(car.id, { x: 0, y: 0, z: 1 }, pose.yaw);
+    expect(car.applyImpulse).toHaveBeenCalledOnce();
   });
 });
