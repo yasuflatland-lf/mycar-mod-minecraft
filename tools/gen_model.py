@@ -682,21 +682,52 @@ def hub_span(x_out, inner, outer):
     return sorted((x_out * (HUB_X + inner), x_out * (HUB_X + outer)))
 
 
+def around_axle(center, x0, x1, r0, r1, half_width, angles, color):
+    """Blocks from r0 to r1 out from the axle (along x), half_width wide, one turned to each angle."""
+    _, cy, cz = center
+    cubes = []
+    for angle in angles:
+        cube = box(x0, cy + r0, cz - half_width, x1, cy + r1, cz + half_width, color)
+        if angle:
+            cube["rotation"] = [angle, 0, 0]
+            cube["pivot"] = list(center)
+        cubes.append(cube)
+    return cubes
+
+
+def ring(center, x0, x1, r0, r1, segments, color):
+    """A ring from r0 to r1 around the axle, built from `segments` blocks that overlap a little."""
+    half_chord = round(r1 * math.tan(math.radians(180 / segments)) + 0.05, 3)
+    return around_axle(center, x0, x1, r0, r1, half_chord, [i * 360 / segments for i in range(segments)], color)
+
+
 def wheel(name, x_out, z_center):
-    x0, x1 = hub_span(x_out, -2, 2)
-    rim_x0, rim_x1 = hub_span(x_out, 1.9, 2.2)
-    hub_x0, hub_x1 = hub_span(x_out, 2.2, 2.5)
+    """A road wheel modeled on a black eight-spoke off-road wheel: a lugged tire, a gray barrel behind the
+    spokes, a black lip with chrome rivets, black spokes with a machined stripe down each, and a black
+    hub with chrome lug nuts and a small center cap. Every turned set is symmetric under reversing its
+    angles, so it looks the same whichever way the game turns x rotations. Nothing reaches past
+    HUB_X + 2.5, where the submarine prop mounts (ADR 0042)."""
     center = (HUB_X * x_out, 6, z_center)
-    return {
-        "name": name,
-        "parent": "root",
-        "pivot": list(center),
-        "cubes": [
-            *round_tire("x", center, 6, x0, x1),
-            *disc("x", center, 2.8, rim_x0, rim_x1, (0, 30, 60), "rim"),
-            *disc("x", center, 1.1, hub_x0, hub_x1, (0, 45), "trim"),
-        ],
-    }
+
+    def span(inner, outer):
+        return hub_span(x_out, inner, outer)
+
+    rivets = [i * 22.5 for i in range(16)]
+    spokes = [22.5 + i * 45 for i in range(8)]
+    cubes = [
+        *round_tire("x", center, 6, *span(-2, 2), segments=24),
+        # Shoulder lugs on every other tread block, standing out of the outer sidewall
+        *around_axle(center, *span(1.8, 2.15), 5.1, 6, 0.75, [i * 30 for i in range(12)], "tire"),
+        *disc("x", center, 3.6, *span(1.8, 1.85), (0, 30, 60), "trim"),  # barrel behind the spokes
+        *ring(center, *span(1.85, 2.2), 3.25, 3.9, 24, "grille"),  # lip
+        *around_axle(center, *span(2.2, 2.3), 3.45, 3.7, 0.12, rivets, "rim"),
+        *around_axle(center, *span(1.85, 2.2), 1.1, 3.35, 0.42, spokes, "grille"),
+        *around_axle(center, *span(2.2, 2.25), 1.5, 3.1, 0.1, spokes, "spoke"),  # machined stripe
+        *disc("x", center, 1.25, *span(1.9, 2.35), (0, 30, 60), "grille"),  # hub
+        *around_axle(center, *span(2.35, 2.45), 0.75, 0.97, 0.11, [i * 60 for i in range(6)], "rim"),
+        *disc("x", center, 0.4, *span(2.35, 2.5), (0, 45), "spoke"),  # center cap
+    ]
+    return {"name": name, "parent": "root", "pivot": list(center), "cubes": cubes}
 
 
 # The side windows and the windshield are open frames. Under water (ADR 0040) plates fill them, flush
@@ -896,6 +927,7 @@ def turn_around(bones):
 
 
 turn_around(geo["minecraft:geometry"][0]["bones"])
+
 (MODELS / "suv.geo.json").write_text(json.dumps(geo, indent=1))
 
 
