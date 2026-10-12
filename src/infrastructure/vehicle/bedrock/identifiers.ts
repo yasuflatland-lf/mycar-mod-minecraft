@@ -52,6 +52,7 @@ export const LIGHT_BLOCK = "minecraft:light_block_15";
 export const TEST_INPUT_EVENT = id("test_input");
 /** Vanilla camera preset that views the player from behind, as F5 does (ADR 0028). */
 export const THIRD_PERSON_CAMERA = "minecraft:third_person";
+
 /** The vanilla dye that repaints a vehicle with a paint (ADR 0031). Brown dye turns it back to khaki. */
 export function dyeOf(paint: Paint): string {
   const color = paint === "khaki" ? "brown" : paint;

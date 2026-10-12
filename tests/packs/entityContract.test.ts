@@ -20,6 +20,13 @@ const animations = new Set(
   ),
 );
 
+function expectNotReserved(name: string): void {
+  expect(CORE_PROPERTY_NAMES).not.toContain(name);
+  expect(CORE_EVENT_PREFIXES.some((prefix) => name.startsWith(prefix))).toBe(
+    false,
+  );
+}
+
 it.each(VEHICLE_KINDS)(
   "matches the %s entity contract to its packs and reserves core names",
   (kind) => {
@@ -34,24 +41,15 @@ it.each(VEHICLE_KINDS)(
       expect(
         entity.description.properties[entityPropertyId(name)],
       ).toMatchObject(spec);
-      expect(CORE_PROPERTY_NAMES).not.toContain(name);
-      expect(
-        CORE_EVENT_PREFIXES.some((prefix) => name.startsWith(prefix)),
-      ).toBe(false);
+      expectNotReserved(name);
     }
     for (const name of contract.events) {
       expect(entity.events).toHaveProperty(entityEventId(name));
-      expect(CORE_PROPERTY_NAMES).not.toContain(name);
-      expect(
-        CORE_EVENT_PREFIXES.some((prefix) => name.startsWith(prefix)),
-      ).toBe(false);
+      expectNotReserved(name);
     }
     for (const name of contract.animations) {
       expect(animations).toContain(entityAnimationId(ENTITY_TYPE[kind], name));
-      expect(CORE_PROPERTY_NAMES).not.toContain(name);
-      expect(
-        CORE_EVENT_PREFIXES.some((prefix) => name.startsWith(prefix)),
-      ).toBe(false);
+      expectNotReserved(name);
     }
     for (const name of contract.restored)
       expect(contract.properties).toHaveProperty(name);
