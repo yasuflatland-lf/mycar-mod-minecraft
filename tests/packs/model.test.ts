@@ -195,7 +195,9 @@ describe("SUV model (ADR 0009)", () => {
       (c.origin[a] ?? 0) + (c.size[a] ?? 0),
     ];
     const thinAxis = (c: Cube) => c.size.indexOf(Math.min(...c.size));
-    // The x rotation of tools/render_preview.py, which matches the game.
+    // A right-handed x rotation. The game turns the other way (ADR 0051), but
+    // the plates and the frame cubes they are checked against share it, so the
+    // checks hold either way.
     const turnX = (p: Vec3, pivot: Vec3, degrees: number): Vec3 => {
       const r = (degrees * Math.PI) / 180;
       const [y, z] = [p[1] - pivot[1], p[2] - pivot[2]];

@@ -314,7 +314,9 @@ def collect(geo, texture, folds, turns, pose):
             motion = ((rx, ry, 0), offset)
         emissive = "lamp" if name == "headlights" and pose["lamps"] else "disc" if name.startswith("glow_") else None
         for cube in bone.get("cubes", []):
-            for face, quad in cube_faces(cube):
+            # In game a cube's x and z rotations turn the other way from this rotate() (ADR 0051, 0058)
+            rx, ry, rz = cube.get("rotation", [0, 0, 0])
+            for face, quad in cube_faces({**cube, "rotation": [-rx, ry, -rz]}):
                 if motion:
                     rotation, (dx, dy, dz) = motion
                     quad = [rotate(p, bone["pivot"], rotation) for p in quad]
