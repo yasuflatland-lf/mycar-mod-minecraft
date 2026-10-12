@@ -17,12 +17,13 @@ The sports boat (0051) started from the spike's model: forward-facing mid benche
 - Build the wheel from a thick round rim of 40 short segments, with thinner bands along its inner and outer edges to round its cross-section, and a broad three-spoke pad at 20, 160, and 270 degrees, with chrome strips along the lower edges of the side spokes, small buttons, one blue LED, and a plain silver cap with no emblem (0009). Put it on a thick glossy column cowl with a chrome band
 - Remove the box speakers under the tower beam. Set two bullet-shaped gunmetal pods under the top near its rear edge, a quarter of the way in from each side, facing aft. Each has a bezel, a blue LED ring, and a grille of split spokes round a hub. Add two ribs under the top, and a round chrome speaker grille in each side back of the U lounge
 - Replace the quilted tile's diamond lattice with a honeycomb stitch, and add the `gunmetal`, `chrome`, and `button` swatches
+- Write cube z rotations in the generator's right-handed sense and keep them as they are when the model is turned around. The game turns a cube's z rotation the other way, as it does the x rotation (0051), so the rim segments, spokes, and grille spokes came out tilted the wrong way in game while the preview showed them right. `tools/render_preview.py` now negates z rotations as well as x rotations for the boat
 - Keep the colors of 0051: the reference photos of white and blue boats only set shapes
 
 ## Consequences
 
 - The model grows from 906 to 1231 cubes
-- The previews in `docs/images` change, and the Resource Pack version goes up to 0.1.42 (0015)
+- The previews in `docs/images` change, and the Resource Pack version goes up to 0.1.43 (0015)
 - The honeycomb tile is 8 by 8 texels stretched over each quilted face, so on a large cushion it reads as a coarse pattern rather than fine stitching
 - The closed door and the filler cushions are fixed geometry. Riders cannot open the door or remove the cushions
 - In-game checks still to do: whether the wheel and display read clearly from the driver's view, and whether the speaker pods' LED rings show under the top in daylight

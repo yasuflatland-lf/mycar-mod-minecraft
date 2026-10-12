@@ -579,7 +579,11 @@ def turn_around(bones):
                 cube["pivot"] = [-cube["pivot"][0], cube["pivot"][1], -cube["pivot"][2]]
             if "rotation" in cube:
                 rx, ry, rz = cube["rotation"]
-                cube["rotation"] = [-rx, ry, -rz]
+                # Turning around negates z rotations too, but the game turns a cube's z rotation the
+                # other way from the right-handed one this file builds with, so keeping rz lets the
+                # game show the angles as written (ADR 0058). x rotations are written in the game's
+                # sense already (ADR 0051).
+                cube["rotation"] = [-rx, ry, rz]
             # Turning around swaps which way each face points; quilted faces must follow
             f = cube["uv"]
             f["north"], f["south"], f["east"], f["west"] = f["south"], f["north"], f["west"], f["east"]
