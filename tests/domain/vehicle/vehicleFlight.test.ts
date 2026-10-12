@@ -9,8 +9,12 @@ import {
 } from "../../../src/domain/shared/vec";
 import type { RawInput } from "../../../src/domain/vehicle/driveInput";
 import type { Form } from "../../../src/domain/vehicle/form";
+import {
+  createVehicle,
+  rebuildVehicle,
+} from "../../../src/domain/vehicle/registry";
 import { SPEC } from "../../../src/domain/vehicle/spec";
-import { Vehicle } from "../../../src/domain/vehicle/vehicle";
+import type { Vehicle } from "../../../src/domain/vehicle/vehicle";
 import { AIR_DRAG, GRAVITY, VERTICAL_DRAG } from "../../support/engineModel";
 
 const GROUND_FRICTION = 0.688;
@@ -32,7 +36,7 @@ class FlightSim {
   /** Each landing gear change with the height it happened at. */
   readonly gearYs: [boolean, number][] = [];
 
-  constructor(readonly vehicle: Vehicle = Vehicle.create("car", 0)) {
+  constructor(readonly vehicle: Vehicle = createVehicle("suv", "car", 0)) {
     this.gravity = vehicle.form === "car";
   }
 
@@ -258,7 +262,9 @@ describe("Vehicle in flight (ADR 0021)", () => {
   });
 
   it("keeps flying without reporting a change when rebuilt in flight", () => {
-    const sim = new FlightSim(Vehicle.rebuild("car", 0, [], "hover"));
+    const sim = new FlightSim(
+      rebuildVehicle("suv", "car", 0, [], { form: "hover" }),
+    );
     sim.y = 5;
     sim.run(FORWARD, 20);
     expect(sim.changes).toEqual([]);
@@ -297,7 +303,9 @@ describe("Vehicle in flight (ADR 0021)", () => {
 
 describe("Vehicle banking (ADR 0026)", () => {
   function flying(): FlightSim {
-    const sim = new FlightSim(Vehicle.rebuild("car", 0, [], "hover"));
+    const sim = new FlightSim(
+      rebuildVehicle("suv", "car", 0, [], { form: "hover" }),
+    );
     sim.y = 10;
     return sim;
   }
@@ -341,7 +349,7 @@ describe("Vehicle banking (ADR 0026)", () => {
 describe("Vehicle landing gear (ADR 0033)", () => {
   /** One airborne tick of a vehicle rebuilt mid-landing. */
   function landOnce(yaw: number, solidAt: (offset: Vec3) => boolean) {
-    const vehicle = Vehicle.rebuild("car", yaw, [], "landing");
+    const vehicle = rebuildVehicle("suv", "car", yaw, [], { form: "landing" });
     const out = vehicle.tick({
       tick: 0,
       riders: [],
@@ -355,7 +363,7 @@ describe("Vehicle landing gear (ADR 0033)", () => {
   }
 
   it("starts with the wheels down when placed", () => {
-    expect(Vehicle.create("car", 0).wheelsDown).toBe(true);
+    expect(createVehicle("suv", "car", 0).wheelsDown).toBe(true);
   });
 
   it("keeps the wheels folded when rebuilt while landing high above the ground", () => {

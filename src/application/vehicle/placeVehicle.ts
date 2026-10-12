@@ -4,7 +4,7 @@
 import type { Vec3 } from "../../domain/shared/vec";
 import type { VehicleKind } from "../../domain/vehicle/kind";
 import { canPlaceAt } from "../../domain/vehicle/placement";
-import { Vehicle } from "../../domain/vehicle/vehicle";
+import { createVehicle } from "../../domain/vehicle/registry";
 import type { VehicleRepository } from "../../domain/vehicle/vehicleRepository";
 import type { PlacementWorld } from "./ports";
 
@@ -53,7 +53,7 @@ export class PlaceVehicle {
       cmd.yaw,
       cmd.kind,
     );
-    this.repo.save(Vehicle.create(id, cmd.yaw, cmd.kind));
+    this.repo.save(createVehicle(cmd.kind, id, cmd.yaw));
     return true;
   }
 }

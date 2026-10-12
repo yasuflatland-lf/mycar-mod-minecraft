@@ -4,8 +4,9 @@ import { DriveVehicles } from "../../../src/application/vehicle/driveVehicles";
 import { forward } from "../../../src/domain/shared/vec";
 import type { RawInput } from "../../../src/domain/vehicle/driveInput";
 import { headlightCells } from "../../../src/domain/vehicle/headlights";
+import { SUV_PROFILE } from "../../../src/domain/vehicle/profile";
+import { createVehicle } from "../../../src/domain/vehicle/registry";
 import { SPEC } from "../../../src/domain/vehicle/spec";
-import { Vehicle } from "../../../src/domain/vehicle/vehicle";
 import { FakeWorld, InMemoryRepo, snapshot } from "./fakes";
 
 const logger = () => {
@@ -91,7 +92,7 @@ describe("DriveVehicles", () => {
   it("discards the aggregates of vehicles that are no longer loaded", () => {
     const world = new FakeWorld();
     const repo = new InMemoryRepo();
-    repo.save(Vehicle.create("gone", 0));
+    repo.save(createVehicle("suv", "gone", 0));
     world.snapshots = [snapshot("a")];
     new DriveVehicles(world, repo, logger()).execute(0);
     expect(repo.ids()).toEqual(["a"]);
@@ -243,14 +244,16 @@ describe("DriveVehicles", () => {
       snapshot("off", { location, yaw: 30 }),
     ];
     new DriveVehicles(world, new InMemoryRepo(), logger()).execute(0);
-    expect(world.shone.get("on")).toEqual(headlightCells(location, 30));
+    expect(world.shone.get("on")).toEqual(
+      headlightCells(location, 30, SUV_PROFILE.beams),
+    );
     expect(world.shone.get("off")).toEqual([]);
   });
 
   it("clears the lights of a vehicle that is no longer loaded", () => {
     const world = new FakeWorld();
     const repo = new InMemoryRepo();
-    repo.save(Vehicle.create("gone", 0));
+    repo.save(createVehicle("suv", "gone", 0));
     world.shone.set("gone", [{ x: 0, y: 0, z: 4 }]);
     new DriveVehicles(world, repo, logger()).execute(0);
     expect(world.shone.get("gone")).toEqual([]);

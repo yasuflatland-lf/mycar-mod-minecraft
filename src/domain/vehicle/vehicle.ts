@@ -65,15 +65,15 @@ export class Vehicle {
   private constructor(
     readonly id: string,
     yaw: number,
-    form: Form = "car",
-    kind: VehicleKind = "suv",
+    form: Form,
+    kind: VehicleKind,
   ) {
     this.profile = profileOf(kind);
     this.motion = initialMotion(yaw);
     this.drive = driveFor(kind, form);
   }
 
-  static create(id: string, yaw: number, kind: VehicleKind = "suv"): Vehicle {
+  static create(id: string, yaw: number, kind: VehicleKind): Vehicle {
     return new Vehicle(id, yaw, "car", kind);
   }
 
@@ -89,8 +89,8 @@ export class Vehicle {
     id: string,
     yaw: number,
     riders: readonly RiderView[],
-    form: Form = "car",
-    kind: VehicleKind = "suv",
+    form: Form,
+    kind: VehicleKind,
   ): Vehicle {
     const v = new Vehicle(id, yaw, form, kind);
     v.seats = occupiedSeats(riders, forward(yaw), v.profile.seats.positions);

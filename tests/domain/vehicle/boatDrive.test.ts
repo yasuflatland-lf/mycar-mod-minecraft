@@ -32,10 +32,14 @@ import {
   SUV_PROFILE,
 } from "../../../src/domain/vehicle/profile";
 import type { RamTarget } from "../../../src/domain/vehicle/ram";
-import { SPEC } from "../../../src/domain/vehicle/spec";
 import {
-  type TickContext,
-  type TickOutcome,
+  createVehicle,
+  rebuildVehicle,
+} from "../../../src/domain/vehicle/registry";
+import { SPEC } from "../../../src/domain/vehicle/spec";
+import type {
+  TickContext,
+  TickOutcome,
   Vehicle,
 } from "../../../src/domain/vehicle/vehicle";
 import { type Body, engineStep } from "../../support/engineModel";
@@ -125,7 +129,7 @@ function context(
 }
 
 function boat(heading: number): Vehicle {
-  return Vehicle.create("boat", heading, "sportsboat");
+  return createVehicle("sportsboat", "boat", heading);
 }
 
 describe("isAfloat (ADR 0051)", () => {
@@ -378,13 +382,9 @@ describe("BoatDrive (ADR 0051)", () => {
           true,
           0,
         ]);
-        const rebuilt = Vehicle.rebuild(
-          "boat",
-          heading,
-          [],
+        const rebuilt = rebuildVehicle("sportsboat", "boat", heading, [], {
           form,
-          "sportsboat",
-        );
+        });
         expect([
           rebuilt.form,
           rebuilt.wheelsDown,
@@ -627,7 +627,7 @@ describe("BoatDrive (ADR 0051)", () => {
 describe("a sports boat Vehicle (ADR 0051)", () => {
   it("rams a target 3.2 blocks ahead at speed and not one 3.6 ahead, while an SUV at the same speed rams neither", () => {
     const drive = (kind: VehicleKind, heading: number, ticks: number) => {
-      const vehicle = Vehicle.create(kind, heading, kind);
+      const vehicle = createVehicle(kind, kind, heading);
       const afloat = kind === "sportsboat";
       const sim = new BoatSim(
         vehicle,

@@ -1,6 +1,6 @@
 import { expect, it, vi } from "vitest";
 import { SUV_PROFILE } from "../../../src/domain/vehicle/profile";
-import { Vehicle } from "../../../src/domain/vehicle/vehicle";
+import { rebuildVehicle } from "../../../src/domain/vehicle/registry";
 import { defined } from "../../support/defined";
 
 vi.mock("../../../src/domain/vehicle/profile", async (importOriginal) => {
@@ -18,14 +18,20 @@ vi.mock("../../../src/domain/vehicle/profile", async (importOriginal) => {
 });
 
 it("emits SeatVacated without a door when the profile has no doors", () => {
-  const vehicle = Vehicle.rebuild("v", 0, [
-    {
-      id: "driver",
-      offset: defined(SUV_PROFILE.seats.positions[0], "driver seat"),
-      yaw: 0,
-      raw: { moveX: 0, moveY: 0, jump: false },
-    },
-  ]);
+  const vehicle = rebuildVehicle(
+    "suv",
+    "v",
+    0,
+    [
+      {
+        id: "driver",
+        offset: defined(SUV_PROFILE.seats.positions[0], "driver seat"),
+        yaw: 0,
+        raw: { moveX: 0, moveY: 0, jump: false },
+      },
+    ],
+    {},
+  );
   const out = vehicle.tick({
     tick: 0,
     riders: [],
