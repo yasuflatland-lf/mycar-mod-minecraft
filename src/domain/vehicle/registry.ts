@@ -1,3 +1,4 @@
+// The only way to build a vehicle: every caller names the kind, so none falls back to SUV values (ADR 0055).
 import { isForm } from "./form";
 import type { VehicleKind } from "./kind";
 import { type RiderView, Vehicle } from "./vehicle";
