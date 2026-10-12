@@ -128,7 +128,7 @@ def both_sides(cubes):
 
 
 # The rear end, 6 px behind where the first SUV ended, leaves room for a cargo area behind the rear
-# doors under a black hardtop, like a four-door Wrangler. The rear wheels sit 3 px further back than
+# doors under a black hardtop, like a four-door Wrangler. The rear wheels sit 5 px further back than
 # the first SUV's, under the cargo area.
 REAR = -32  # z of the tailgate's outer face
 CARGO_FRONT = -19  # z where the rear doors end and the cargo area's fixed panels begin
@@ -190,7 +190,7 @@ body = [
     box(8, 1.8, REAR - 2, 10, 3.4, -22, "trim"),
     box(7.75, 1.55, REAR - 2.5, 10.25, 3.65, REAR - 2, "rim"),
     # Side steps, running between the fender flares
-    *both_sides([box(13, 4, -11, 15.5, 6, 10, "trim")]),
+    *both_sides([box(13, 4, -13, 15.5, 6, 10, "trim")]),
 ]
 
 # Hood: a raised power dome, a black mesh vent on each side of it, washer nozzles, the cowl's vent
@@ -213,7 +213,7 @@ body += both_sides([
 # Distance of the wheel hubs from the center line. The tires stand 1.5 px out from the body's side
 # (x 13), under over-fenders.
 HUB_X = 15.5
-FRONT_AXLE_Z, REAR_AXLE_Z = 17, -19
+FRONT_AXLE_Z, REAR_AXLE_Z = 17, -21
 # Wheel arch: the inside of each flare. Its flat top's underside, the top's half length, and the inner
 # lower end of each slope, ahead of and behind the axle. The inner edge stays at least 6.3 px from the
 # axle, clear of the tire.
@@ -322,7 +322,7 @@ def facing_back(cube):
     return copy
 
 
-body += [facing_back(c) for c in chamfered_band(3, 7, 25.5, -REAR + 1.5, 15.5, 2.5)]
+body += [facing_back(c) for c in chamfered_band(3, 7, 27.5, -REAR + 1.5, 15.5, 2.5)]
 body += both_sides([
     box(10.5, 5, REAR - 1.6, 13, 6.2, REAR - 1.5, "tail"),  # reflector
     box(7.4, 1.8, REAR - 1.2, 8.4, 3, REAR + 1, "tail"),  # tow hook
