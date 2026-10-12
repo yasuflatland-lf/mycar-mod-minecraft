@@ -81,10 +81,14 @@ describe("sports boat Behavior Pack entity (ADR 0051)", () => {
   it("each paint event sets that paint's variant and drops the other paints", () => {
     expect(c["minecraft:variant"].value).toBe(0);
     expect(Object.keys(entity.component_groups).sort()).toEqual(
-      PAINTS.map((p) => `yasu_ride:paint_${p}`).sort(),
+      [
+        ...PAINTS.map((p) => `yasu_ride:paint_${p}`),
+        "yasu_ride:docked",
+        "yasu_ride:undocked",
+      ].sort(),
     );
     expect(Object.keys(entity.events).sort()).toEqual(
-      PAINTS.map(paintEvent).sort(),
+      [...PAINTS.map(paintEvent), "yasu_ride:dock", "yasu_ride:undock"].sort(),
     );
     for (const paint of PAINTS) {
       const event = entity.events[paintEvent(paint)];
@@ -99,8 +103,13 @@ describe("sports boat Behavior Pack entity (ADR 0051)", () => {
     }
   });
 
-  it("has the headlights, trim, and roll properties, off or level by default and synced to the client: no form, bank, or gear (ADR 0059, ADR 0061)", () => {
+  it("defaults to undocked with headlights off and level attitude, syncing only the visual properties", () => {
     expect(entity.description.properties).toEqual({
+      "yasu_ride:docked": {
+        type: "bool",
+        default: false,
+        client_sync: false,
+      },
       [HEADLIGHTS_PROPERTY]: {
         type: "bool",
         default: false,
@@ -118,6 +127,25 @@ describe("sports boat Behavior Pack entity (ADR 0051)", () => {
         default: 0,
         client_sync: true,
       },
+    });
+  });
+
+  it("disables collision and gravity on dock and restores physics on undock (ADR 0063)", () => {
+    expect(c["minecraft:physics"]).toEqual({});
+    expect(entity.component_groups["yasu_ride:docked"]).toEqual({
+      "minecraft:physics": { has_collision: false, has_gravity: false },
+    });
+    // Removing a group that overrides a base component removes the component (ADR 0063).
+    expect(entity.component_groups["yasu_ride:undocked"]).toEqual({
+      "minecraft:physics": {},
+    });
+    expect(entity.events["yasu_ride:dock"]).toEqual({
+      remove: { component_groups: ["yasu_ride:undocked"] },
+      add: { component_groups: ["yasu_ride:docked"] },
+    });
+    expect(entity.events["yasu_ride:undock"]).toEqual({
+      remove: { component_groups: ["yasu_ride:docked"] },
+      add: { component_groups: ["yasu_ride:undocked"] },
     });
   });
 
