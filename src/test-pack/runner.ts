@@ -809,8 +809,10 @@ const BOAT_DOCK_TEST = {
   minDeparture: 1,
 } as const;
 
-// ADR 0063: inspect all four seats within the hull and allow sub-pixel drift;
-// departure must clear even the wider orphan-check radius within half a second.
+// Test bounds, not values from ADR 0063: the four seats lie within 0.9 blocks
+// of the boat, so a 4-block search finds them all; 0.1 allows for the seat
+// teleport tolerance; departure must clear every seat within the orphan-check
+// radius of deckSeats.ts within half a second.
 const BOAT_DECK_SEATS_TEST = {
   count: 4,
   radius: 4,

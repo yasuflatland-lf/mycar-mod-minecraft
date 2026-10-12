@@ -9,9 +9,11 @@ import {
   PLAYER_TYPE,
 } from "./identifiers";
 
-// ADR 0063: avoid teleporting seated players for sub-pixel drift.
+// Under a pixel (1/16 block): a seat this close to its spot is left alone, so a
+// seated player is not teleported every tick for drift nobody can see.
 const TELEPORT_TOLERANCE = 0.05;
-// ADR 0063: encloses the hull and its seats when checking loaded ownership.
+// The farthest seat in SPORTSBOAT_PROFILE.seats is 0.9 blocks from the boat's
+// location, so 6 blocks finds a loaded owner with a wide margin.
 const ORPHAN_RADIUS = 6;
 
 function savedIds(car: Entity): (string | null)[] {
