@@ -4,6 +4,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 import {
   LOG_TAG,
   linesOfRun,
+  shardFrom,
   summaryOfRun,
   summaryPassed,
   TEST_EVENT,
@@ -11,6 +12,13 @@ import {
 
 const CONTAINER = "yasuflatland-ride-bds";
 const runId = randomBytes(4).toString("hex");
+// GAME_TEST_SHARD=2/3 runs the second of three slices of the suite, so CI can
+// spread it over parallel jobs, each with its own BDS.
+const shardText = process.env.GAME_TEST_SHARD ?? "";
+if (shardText !== "" && !shardFrom(shardText)) {
+  console.error(`GAME_TEST_SHARD must look like 2/3, got ${shardText}`);
+  process.exit(1);
+}
 const since = new Date().toISOString();
 // Write the command to bedrock_server's stdin ourselves, as Mojang's Creator
 // Tools does with the process it spawns. The image's send-command cannot be
@@ -46,7 +54,7 @@ execFileSync("docker", [
   "-c",
   'echo "$1" > "/proc/$2/fd/0"',
   "sh",
-  `scriptevent ${TEST_EVENT} ${runId}`,
+  `scriptevent ${TEST_EVENT} ${runId} ${shardText}`.trimEnd(),
   serverPid,
 ]);
 const deadline = Date.now() + 5 * 60_000;

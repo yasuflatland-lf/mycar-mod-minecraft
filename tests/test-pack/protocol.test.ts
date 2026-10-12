@@ -1,14 +1,17 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import {
+  inShard,
   LOG_TAG,
   linePrefix,
   linesOfRun,
   MANUAL_RUN_ID,
-  runIdFrom,
+  runRequestFrom,
+  shardFrom,
   summaryOfRun,
   summaryPassed,
   TEST_EVENT,
+  WHOLE_RUN,
 } from "../../src/test-pack/protocol";
 
 const runId = fc.stringMatching(/^[A-Za-z0-9_-]{1,32}$/);
@@ -21,26 +24,86 @@ function summaryLine(id: string, fail: number): string {
   return `2026 WARN ${linePrefix(id)}SUMMARY pass=${6 - fail} fail=${fail}`;
 }
 
-describe("runIdFrom", () => {
-  it("returns a well-formed id from the scriptevent message", () => {
+const shard = fc
+  .integer({ min: 1, max: 99 })
+  .chain((total) =>
+    fc.integer({ min: 1, max: total }).map((index) => ({ index, total })),
+  );
+
+describe("runRequestFrom", () => {
+  it("runs the whole suite for a message with only a run id", () => {
     fc.assert(
       fc.property(runId, (id) => {
-        expect(runIdFrom(` ${id} `)).toBe(id);
+        expect(runRequestFrom(` ${id} `)).toEqual({
+          runId: id,
+          shard: WHOLE_RUN,
+        });
       }),
     );
   });
 
-  it("falls back to the manual id for an empty or malformed message", () => {
+  it("reads the shard that follows the run id", () => {
+    fc.assert(
+      fc.property(runId, shard, (id, s) => {
+        expect(runRequestFrom(`${id} ${s.index}/${s.total}`)).toEqual({
+          runId: id,
+          shard: s,
+        });
+      }),
+    );
+  });
+
+  it("falls back to a whole manual run for an empty or malformed message", () => {
     fc.assert(
       fc.property(
         fc.oneof(
           fc.constant(""),
-          fc.string().filter((s) => /[^\w\s-]/.test(s)),
+          fc.string().filter((s) => /[^\w\s/-]/.test(s)),
+          runId.map((id) => `${id} 3/2`),
+          runId.map((id) => `${id} 1/2 extra`),
         ),
         (msg) => {
-          expect(runIdFrom(msg)).toBe(MANUAL_RUN_ID);
+          expect(runRequestFrom(msg)).toEqual({
+            runId: MANUAL_RUN_ID,
+            shard: WHOLE_RUN,
+          });
         },
       ),
+    );
+  });
+});
+
+describe("shardFrom", () => {
+  it("rejects an index of 0, above the total, or a malformed text", () => {
+    for (const text of ["0/2", "3/2", "1/0", "1-2", "1/2/3", "", " 1/2"])
+      expect(shardFrom(text)).toBeUndefined();
+  });
+});
+
+describe("inShard", () => {
+  it("puts every test in exactly one shard", () => {
+    fc.assert(
+      fc.property(
+        fc.nat({ max: 200 }),
+        fc.integer({ min: 1, max: 99 }),
+        (position, total) => {
+          const owners = Array.from({ length: total }, (_, i) => i + 1).filter(
+            (index) => inShard(position, { index, total }),
+          );
+          expect(owners).toHaveLength(1);
+        },
+      ),
+    );
+  });
+
+  it("gives the shards counts that differ by at most one", () => {
+    fc.assert(
+      fc.property(fc.nat({ max: 200 }), shard, (count, s) => {
+        const mine = Array.from({ length: count }, (_, i) => i).filter((i) =>
+          inShard(i, s),
+        ).length;
+        expect(Math.abs(mine - count / s.total)).toBeLessThan(1);
+      }),
     );
   });
 });

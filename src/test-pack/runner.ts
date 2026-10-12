@@ -18,7 +18,14 @@ import {
   PAINT_VARIANT,
   paintEvent,
 } from "../infrastructure/vehicle/bedrock/identifiers";
-import { LOG_TAG, linePrefix, runIdFrom, TEST_EVENT } from "./protocol";
+import {
+  inShard,
+  LOG_TAG,
+  linePrefix,
+  type RunRequest,
+  runRequestFrom,
+  TEST_EVENT,
+} from "./protocol";
 import { hitTick, judgeRam, PUSH_WINDOW, type RamSample } from "./ramJudge";
 
 // setupArena clears and floors this x/z rectangle and keeps it ticking.
@@ -1107,9 +1114,9 @@ async function vehicleLimit(a: Arena): Promise<Outcome> {
   }
 }
 
-async function runAll(runId: string): Promise<void> {
+async function runAll({ runId, shard }: RunRequest): Promise<void> {
   const a = await setupArena();
-  const tests: [string, () => Promise<Outcome>][] = [
+  const allTests: [string, () => Promise<Outcome>][] = [
     ["accel_and_step1", () => accelAndStep1(a)],
     ["passable_no_hop", () => passableNoHop(a)],
     ["turn_and_handbrake", () => turnAndHandbrake(a)],
@@ -1139,9 +1146,11 @@ async function runAll(runId: string): Promise<void> {
     ["boat_shore", () => boatShore(a)],
     ["boat_ram", () => boatRam(a)],
   ];
+  const tests = allTests.filter((_, i) => inShard(i, shard));
   let passed = 0;
   const lines: string[] = [];
   for (const [name, test] of tests) {
+    const start = system.currentTick;
     let outcome: Outcome;
     try {
       outcome = await test();
@@ -1149,7 +1158,10 @@ async function runAll(runId: string): Promise<void> {
       outcome = { pass: false, detail: `error: ${e}` };
     }
     if (outcome.pass) passed++;
-    lines.push(`${outcome.pass ? "PASS" : "FAIL"} ${name} ${outcome.detail}`);
+    // ticks= is what rebalancing the CI shards needs.
+    lines.push(
+      `${outcome.pass ? "PASS" : "FAIL"} ${name} ticks=${system.currentTick - start} ${outcome.detail}`,
+    );
   }
   for (const line of lines) log(runId, line);
   log(runId, `SUMMARY pass=${passed} fail=${tests.length - passed}`);
@@ -1160,13 +1172,14 @@ let activeRun: string | undefined;
 
 system.afterEvents.scriptEventReceive.subscribe((ev) => {
   if (ev.id !== TEST_EVENT) return;
-  const runId = runIdFrom(ev.message);
+  const request = runRequestFrom(ev.message);
+  const { runId } = request;
   if (activeRun !== undefined) {
     log(runId, `SUMMARY pass=0 fail=1 error=run ${activeRun} in progress`);
     return;
   }
   activeRun = runId;
-  runAll(runId)
+  runAll(request)
     .catch((e) => log(runId, `SUMMARY pass=0 fail=1 error=${e}`))
     .finally(() => {
       activeRun = undefined;
