@@ -67,10 +67,11 @@ const animations = new Set([
   ...definedKeys("animations", "animations"),
   ...definedKeys("animation_controllers", "animation_controllers"),
 ]);
-const renderControllers = definedKeys(
-  "render_controllers",
-  "render_controllers",
-);
+const renderControllers = new Set([
+  // Bedrock supplies this controller without a pack definition.
+  "controller.render.default",
+  ...definedKeys("render_controllers", "render_controllers"),
+]);
 const itemTextures = (
   JSON.parse(readFileSync(join(RP, "textures/item_texture.json"), "utf8")) as {
     texture_data: Record<string, { textures: string | string[] }>;
