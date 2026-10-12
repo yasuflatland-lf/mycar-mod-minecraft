@@ -9,6 +9,9 @@ rising in pitch with the speed. The client picks one by the vehicle's speed.
 hover_start: the air swelling in, played once when the wheels start to fold.
 sonar: the loop played while a ridden submarine is under water (ADR 0041): a clear sonar ping that rings
 out in the water, a faint return from far away, and the low rumble of the deep under both.
+boat_engine_0 to boat_engine_7: the sports boat's engine (ADR 0060): the deep, lumpy burble of a
+cross-plane V8, its wet exhaust bubbling out under the water, and the hiss of the hull cutting the water,
+at rising engine speeds. The client picks one by the boat's speed.
 
 Only the standard library is used, and the random generator is seeded, so the output is reproducible.
 The loops repeat without a click: the hover loops are sums of sines with whole cycles in the loop, and
@@ -47,6 +50,26 @@ SONAR_REFLECTIONS = [(0.11, 0.35), (0.23, 0.25), (0.37, 0.18), (0.52, 0.12)]
 SONAR_RETURN = [(1.6, 0.22), (1.73, 0.08)]
 SONAR_RETURN_DECAY_S = SONAR_DECAY_S * 0.7
 SONAR_RUMBLE_BAND = (30, 120)
+# Engine cycles per second of each boat engine level, from idle to full speed. One cycle is two turns
+# of the crank, so 6 Hz is 720 rpm and 38 Hz is 4560 rpm; the 1 s loop holds whole cycles.
+BOAT_CYCLE_RATES = [6, 9, 13, 17, 22, 27, 32, 38]
+BOAT_LOOP_S = 1.0
+# Firing order 1-8-4-3-6-5-7-2, one cylinder every 90 degrees of crank, with cylinders 1, 3, 5, and 7
+# on the left bank. Each bank's exhaust gets its pulses at uneven gaps, which is the V8 burble.
+V8_FIRING_ORDER = [1, 8, 4, 3, 6, 5, 7, 2]
+V8_LEFT_BANK = {1, 3, 5, 7}
+# Each bank's pipe booms through slightly different resonances, so the two banks beat against each other.
+V8_PIPES = [
+    [(42, 4.0, 1.0), (88, 5.0, 0.8), (150, 4.0, 0.4), (310, 3.0, 0.15)],
+    [(46, 4.0, 1.0), (94, 5.0, 0.8), (165, 4.0, 0.4), (330, 3.0, 0.15)],
+]
+# Wet exhaust: share of exhaust pulses that blow a bubble out under the water at idle and at full speed,
+# and the pitch range (Hz) the bubbles ring at.
+BUBBLE_SHARE = (0.6, 0.15)
+BUBBLE_PITCH = (70, 220)
+# The hull cutting the water: a noise band whose level rises from idle to full speed.
+WATER_BAND = (400, 3800)
+WATER_GAIN = (0.04, 0.55)
 
 
 def write(name, samples):
@@ -175,6 +198,55 @@ def sonar(rng):
     ]
 
 
+def boat_engine(rng, cycles_hz):
+    n = round(RATE * BOAT_LOOP_S)
+    cycles = round(BOAT_LOOP_S * cycles_hz)
+    gap = n / (cycles * len(V8_FIRING_ORDER))
+    # 0 at idle, 1 at full speed: idle runs rough and bubbles a lot, full speed is steady and hisses
+    t = BOAT_CYCLE_RATES.index(cycles_hz) / (len(BOAT_CYCLE_RATES) - 1)
+    banks = [[0.0] * n, [0.0] * n]
+    bubbles = [0.0] * n
+
+    def pop(train, at, gain):
+        length = round(0.006 * RATE)
+        for j in range(length):
+            noise = 1.0 if j < 2 else rng.uniform(-1, 1)
+            train[(at + j) % n] += gain * math.exp(-j / (length / 3)) * noise
+
+    def bubble(at, gain):
+        # A bubble rings as a damped sine whose pitch rises as it shrinks toward the surface
+        f0 = rng.uniform(*BUBBLE_PITCH)
+        decay = rng.uniform(0.02, 0.05)
+        phase = 0.0
+        for j in range(round(4 * decay * RATE)):
+            s = j / RATE
+            phase += 2 * math.pi * f0 * (1 + 1.5 * s / decay) / RATE
+            bubbles[(at + j) % n] += gain * math.exp(-s / decay) * math.sin(phase)
+
+    share = BUBBLE_SHARE[0] + (BUBBLE_SHARE[1] - BUBBLE_SHARE[0]) * t
+    for k in range(cycles * len(V8_FIRING_ORDER)):
+        cylinder = V8_FIRING_ORDER[k % len(V8_FIRING_ORDER)]
+        jitter = rng.uniform(-1, 1) * 0.08 * (1 - t) * gap
+        at = round(k * gap + jitter)
+        strength = rng.uniform(0.7 + 0.25 * t, 1.0)
+        pop(banks[0 if cylinder in V8_LEFT_BANK else 1], at, strength)
+        if rng.random() < share:
+            bubble(at + round(rng.uniform(0.005, 0.02) * RATE), strength * rng.uniform(0.3, 0.8))
+    rumble = [a + b for a, b in zip(ring(banks[0], V8_PIPES[0]), ring(banks[1], V8_PIPES[1]))]
+    peak = max(abs(x) for x in rumble) or 1.0
+    rumble = [math.tanh(1.8 * x / peak) for x in rumble]
+    bubble_peak = max(abs(x) for x in bubbles) or 1.0
+    water = periodic_noise(rng, BOAT_LOOP_S, *WATER_BAND, 300)
+    water_gain = WATER_GAIN[0] + (WATER_GAIN[1] - WATER_GAIN[0]) * t
+    # The water swells twice a loop, so the hiss is not static and still repeats without a seam
+    return [
+        rumble[i]
+        + 0.45 * (1 - 0.5 * t) * bubbles[i] / bubble_peak
+        + water_gain * (1 + 0.2 * math.sin(4 * math.pi * i / n)) * water[i]
+        for i in range(n)
+    ]
+
+
 rng = random.Random(29)
 for level, rate in enumerate(ENGINE_FIRING_RATES):
     write(f"engine_{level}", engine(rng, rate))
@@ -184,4 +256,7 @@ for level, band in enumerate(HOVER_AIR_BANDS):
 write("hover_start", hover_start(rng))
 rng = random.Random(40)
 write("sonar", sonar(rng))
+rng = random.Random(60)
+for level, rate in enumerate(BOAT_CYCLE_RATES):
+    write(f"boat_engine_{level}", boat_engine(rng, rate))
 print("wrote", ", ".join(sorted(p.name for p in OUT.glob("*.wav"))))

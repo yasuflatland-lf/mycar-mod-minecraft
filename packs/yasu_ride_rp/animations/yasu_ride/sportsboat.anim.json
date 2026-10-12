@@ -24,6 +24,46 @@
           { "effect": "jet_foam", "locator": "jet_right" }
         ]
       }
+    },
+    "animation.yasu_ride.sportsboat.engine_sound_0": {
+      "loop": true,
+      "animation_length": 1.0,
+      "sound_effects": { "0.0": { "effect": "engine_0" } }
+    },
+    "animation.yasu_ride.sportsboat.engine_sound_1": {
+      "loop": true,
+      "animation_length": 1.0,
+      "sound_effects": { "0.0": { "effect": "engine_1" } }
+    },
+    "animation.yasu_ride.sportsboat.engine_sound_2": {
+      "loop": true,
+      "animation_length": 1.0,
+      "sound_effects": { "0.0": { "effect": "engine_2" } }
+    },
+    "animation.yasu_ride.sportsboat.engine_sound_3": {
+      "loop": true,
+      "animation_length": 1.0,
+      "sound_effects": { "0.0": { "effect": "engine_3" } }
+    },
+    "animation.yasu_ride.sportsboat.engine_sound_4": {
+      "loop": true,
+      "animation_length": 1.0,
+      "sound_effects": { "0.0": { "effect": "engine_4" } }
+    },
+    "animation.yasu_ride.sportsboat.engine_sound_5": {
+      "loop": true,
+      "animation_length": 1.0,
+      "sound_effects": { "0.0": { "effect": "engine_5" } }
+    },
+    "animation.yasu_ride.sportsboat.engine_sound_6": {
+      "loop": true,
+      "animation_length": 1.0,
+      "sound_effects": { "0.0": { "effect": "engine_6" } }
+    },
+    "animation.yasu_ride.sportsboat.engine_sound_7": {
+      "loop": true,
+      "animation_length": 1.0,
+      "sound_effects": { "0.0": { "effect": "engine_7" } }
     }
   }
 }

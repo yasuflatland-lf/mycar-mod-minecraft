@@ -30,7 +30,25 @@
       "geometry": { "default": "geometry.yasu_ride.sportsboat" },
       "animations": {
         "attitude": "animation.yasu_ride.sportsboat.attitude",
-        "wake": "animation.yasu_ride.sportsboat.wake"
+        "wake": "animation.yasu_ride.sportsboat.wake",
+        "engine_sound_0": "animation.yasu_ride.sportsboat.engine_sound_0",
+        "engine_sound_1": "animation.yasu_ride.sportsboat.engine_sound_1",
+        "engine_sound_2": "animation.yasu_ride.sportsboat.engine_sound_2",
+        "engine_sound_3": "animation.yasu_ride.sportsboat.engine_sound_3",
+        "engine_sound_4": "animation.yasu_ride.sportsboat.engine_sound_4",
+        "engine_sound_5": "animation.yasu_ride.sportsboat.engine_sound_5",
+        "engine_sound_6": "animation.yasu_ride.sportsboat.engine_sound_6",
+        "engine_sound_7": "animation.yasu_ride.sportsboat.engine_sound_7"
+      },
+      "sound_effects": {
+        "engine_0": "yasu_ride.boat_engine_0",
+        "engine_1": "yasu_ride.boat_engine_1",
+        "engine_2": "yasu_ride.boat_engine_2",
+        "engine_3": "yasu_ride.boat_engine_3",
+        "engine_4": "yasu_ride.boat_engine_4",
+        "engine_5": "yasu_ride.boat_engine_5",
+        "engine_6": "yasu_ride.boat_engine_6",
+        "engine_7": "yasu_ride.boat_engine_7"
       },
       "particle_effects": {
         "jet_bubbles": "yasu_ride:jet_bubbles",
@@ -39,7 +57,31 @@
       "scripts": {
         "animate": [
           "attitude",
-          { "wake": "query.has_rider && query.ground_speed > 2" }
+          { "wake": "query.has_rider && query.ground_speed > 2" },
+          {
+            "engine_sound_0": "query.has_rider && query.ground_speed < 1"
+          },
+          {
+            "engine_sound_1": "query.has_rider && query.ground_speed >= 1 && query.ground_speed < 4"
+          },
+          {
+            "engine_sound_2": "query.has_rider && query.ground_speed >= 4 && query.ground_speed < 7"
+          },
+          {
+            "engine_sound_3": "query.has_rider && query.ground_speed >= 7 && query.ground_speed < 10"
+          },
+          {
+            "engine_sound_4": "query.has_rider && query.ground_speed >= 10 && query.ground_speed < 13"
+          },
+          {
+            "engine_sound_5": "query.has_rider && query.ground_speed >= 13 && query.ground_speed < 16"
+          },
+          {
+            "engine_sound_6": "query.has_rider && query.ground_speed >= 16 && query.ground_speed < 19.5"
+          },
+          {
+            "engine_sound_7": "query.has_rider && query.ground_speed >= 19.5"
+          }
         ]
       },
       "render_controllers": ["controller.render.yasu_ride.sportsboat"]

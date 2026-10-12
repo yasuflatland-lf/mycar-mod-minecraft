@@ -78,6 +78,54 @@
       "min_distance": 4.0,
       "max_distance": 48.0,
       "sounds": [{ "name": "sounds/yasu_ride/sonar", "volume": 0.2 }]
+    },
+    "yasu_ride.boat_engine_0": {
+      "category": "neutral",
+      "min_distance": 4.0,
+      "max_distance": 32.0,
+      "sounds": [{ "name": "sounds/yasu_ride/boat_engine_0", "volume": 0.5 }]
+    },
+    "yasu_ride.boat_engine_1": {
+      "category": "neutral",
+      "min_distance": 4.0,
+      "max_distance": 32.0,
+      "sounds": [{ "name": "sounds/yasu_ride/boat_engine_1", "volume": 0.54 }]
+    },
+    "yasu_ride.boat_engine_2": {
+      "category": "neutral",
+      "min_distance": 4.0,
+      "max_distance": 32.0,
+      "sounds": [{ "name": "sounds/yasu_ride/boat_engine_2", "volume": 0.58 }]
+    },
+    "yasu_ride.boat_engine_3": {
+      "category": "neutral",
+      "min_distance": 4.0,
+      "max_distance": 32.0,
+      "sounds": [{ "name": "sounds/yasu_ride/boat_engine_3", "volume": 0.62 }]
+    },
+    "yasu_ride.boat_engine_4": {
+      "category": "neutral",
+      "min_distance": 4.0,
+      "max_distance": 32.0,
+      "sounds": [{ "name": "sounds/yasu_ride/boat_engine_4", "volume": 0.66 }]
+    },
+    "yasu_ride.boat_engine_5": {
+      "category": "neutral",
+      "min_distance": 4.0,
+      "max_distance": 32.0,
+      "sounds": [{ "name": "sounds/yasu_ride/boat_engine_5", "volume": 0.7 }]
+    },
+    "yasu_ride.boat_engine_6": {
+      "category": "neutral",
+      "min_distance": 4.0,
+      "max_distance": 32.0,
+      "sounds": [{ "name": "sounds/yasu_ride/boat_engine_6", "volume": 0.74 }]
+    },
+    "yasu_ride.boat_engine_7": {
+      "category": "neutral",
+      "min_distance": 4.0,
+      "max_distance": 32.0,
+      "sounds": [{ "name": "sounds/yasu_ride/boat_engine_7", "volume": 0.78 }]
     }
   }
 }
