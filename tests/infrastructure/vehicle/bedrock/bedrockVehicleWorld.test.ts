@@ -7,6 +7,9 @@ import { BedrockVehicleWorld } from "../../../../src/infrastructure/vehicle/bedr
 import {
   DECK_CELLS_PROPERTY,
   DECK_FLOOR_BLOCK,
+  DECK_SEAT_OF_PROPERTY,
+  DECK_SEAT_TYPE,
+  DECK_SEATS_PROPERTY,
   ENTITY_TYPE,
   HEADLIGHTS_PROPERTY,
   ITEM_TYPE,
@@ -255,7 +258,7 @@ describe("BedrockVehicleWorld snapshots", () => {
       getRotation: () => ({ y: 0 }),
       inputInfo: {
         getMovementVector: () => ({ x: 0, y: 1 }),
-        getButtonState: () => undefined,
+        getButtonState: () => "Released",
       },
     };
     car.getComponent.mockImplementation((name) =>
@@ -481,5 +484,56 @@ describe("BedrockVehicleWorld holds (ADR 0063)", () => {
     world.loadedVehicles();
     world.applyMotion(car.id, { x: 0, y: 0, z: 1 }, pose.yaw);
     expect(car.applyImpulse).toHaveBeenCalledOnce();
+  });
+});
+
+describe("BedrockVehicleWorld deck seats (ADR 0063)", () => {
+  beforeEach(() => vi.resetAllMocks());
+
+  it("reads the input of each deck seat rider and boards them onto the boat", () => {
+    const { car, world } = fixture();
+    const player = {
+      id: "player",
+      typeId: "minecraft:player",
+      inputInfo: {
+        getMovementVector: () => ({ x: 0.5, y: 1 }),
+        getButtonState: () => "Released",
+      },
+    };
+    const seatRiders: unknown[] = [player];
+    const seatRideable = {
+      getRiders: () => seatRiders,
+      ejectRider: vi.fn(() => seatRiders.splice(0)),
+      addRider: vi.fn(),
+    };
+    const seat = {
+      id: "seat0",
+      typeId: DECK_SEAT_TYPE,
+      isValid: true,
+      getDynamicProperty: (key: string) =>
+        key === DECK_SEAT_OF_PROPERTY ? car.id : undefined,
+      getComponent: () => seatRideable,
+    };
+    const boatRideable = { getRiders: () => [], addRider: vi.fn(() => true) };
+    car.getDynamicProperty.mockImplementation((key: string) =>
+      key === DECK_SEATS_PROPERTY
+        ? JSON.stringify([seat.id, "empty"])
+        : undefined,
+    );
+    car.getComponent.mockImplementation((name: string) =>
+      name === "minecraft:rideable" ? boatRideable : undefined,
+    );
+    game.getEntity.mockImplementation((id: string) =>
+      id === car.id ? car : id === seat.id ? seat : undefined,
+    );
+    expect(world.loadedVehicles()[0]?.deckSeatInputs).toEqual([
+      { moveX: 0.5, moveY: 1, jump: false },
+      undefined,
+    ]);
+    world.boardDeckRiders("missing");
+    expect(boatRideable.addRider).not.toHaveBeenCalled();
+    world.boardDeckRiders(car.id);
+    expect(seatRideable.ejectRider).toHaveBeenCalledWith(player);
+    expect(boatRideable.addRider).toHaveBeenCalledWith(player);
   });
 });
