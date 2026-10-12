@@ -191,6 +191,15 @@ describe("stepFlightMotion walls and sideways velocity (ADR 0002, 0003)", () => 
     expect(r.blocked).toBe(false);
   });
 
+  it("reports a wall when the velocity comes back reversed on an axis (ADR 0003)", () => {
+    const r = stepFlightMotion(
+      prevState({ speed: 0.5, yaw: 0, airExpected: { x: 1, z: 1 } }),
+      { throttle: 0, steer: 0, handbrake: false, creep: false },
+      { x: -0.5, z: 0.91 },
+    );
+    expect(r.blocked).toBe(true);
+  });
+
   it("a wall never raises the internal speed (ADR 0003)", () => {
     fc.assert(
       fc.property(
