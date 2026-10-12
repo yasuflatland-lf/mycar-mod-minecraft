@@ -62,8 +62,10 @@ jobs:
       - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
 
       # Devices keep a cached Resource Pack with the same UUID and version, so a
-      # changed Resource Pack needs a new version (ADR 0015). HEAD^ skips the
-      # tag being released, which already points at HEAD.
+      # changed Resource Pack needs a new version (ADR 0015). On a tag push the
+      # tag being released already points at HEAD, so describe from HEAD^ to
+      # find the previous release. On a manual run the release job creates the
+      # tag later, and HEAD^ gives the same answer as HEAD.
       - run: node scripts/check-rp-version.mjs "$(git describe --tags --abbrev=0 --match 'v*' HEAD^ 2>/dev/null || true)"
 
       - run: pnpm install --frozen-lockfile
