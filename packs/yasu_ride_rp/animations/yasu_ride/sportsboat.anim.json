@@ -6,7 +6,7 @@
       "bones": {
         "root": {
           "rotation": [
-            "query.property('yasu_ride:trim')",
+            "-query.property('yasu_ride:trim')",
             0,
             "-query.property('yasu_ride:roll')"
           ]
