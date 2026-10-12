@@ -15,6 +15,9 @@ export function kindOfEntity(
 ): VehicleKind | undefined {
   return VEHICLE_KINDS.find((kind) => ENTITY_TYPE[kind] === typeId);
 }
+export function isVehicleEntity(typeId: string | undefined): boolean {
+  return kindOfEntity(typeId) !== undefined;
+}
 export function kindOfItem(
   typeId: string | undefined,
 ): VehicleKind | undefined {
