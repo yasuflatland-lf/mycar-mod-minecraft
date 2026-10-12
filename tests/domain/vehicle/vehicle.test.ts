@@ -18,12 +18,14 @@ import {
 import { SEAT_POSITIONS } from "../../../src/domain/vehicle/seats";
 import { SPEC } from "../../../src/domain/vehicle/spec";
 import { STEP_LANES } from "../../../src/domain/vehicle/stepUp";
+import { DOOR_BY_SEAT } from "../../../src/domain/vehicle/suvEntity";
 import type {
   RiderView,
   Vehicle,
   VehicleTickInput,
 } from "../../../src/domain/vehicle/vehicle";
 import { defined } from "../../support/defined";
+import { propertyValue } from "../../support/engineCommands";
 import { engineStep } from "../../support/engineModel";
 import { waterSensors } from "../../support/waterDepth";
 
@@ -140,9 +142,12 @@ class Sim {
       this.impulseY.push(out.impulse.y);
       this.hits.push(...out.hits.map((h) => h.id));
       this.events.push(
-        ...out.events.map((e) =>
-          e.type === "SeatVacated" ? `vacated:${e.seat}:${e.door}` : e.type,
-        ),
+        ...out.seatCommands
+          .filter((c) => c.type === "playAnimation")
+          .map(
+            (c) =>
+              `vacated:${DOOR_BY_SEAT.indexOf(c.name as (typeof DOOR_BY_SEAT)[number])}:${c.name}`,
+          ),
       );
     }
   }
@@ -613,9 +618,12 @@ describe("Vehicle water depth context", () => {
             solidAt: () => false,
             targets: () => [],
           };
-          expect(vehicle.tick(ctx).form).toBe("submarine");
-          expect(vehicle.form).toBe("submarine");
-          expect(vehicle.tick({ ...ctx, tick: 1 }).form).toBeUndefined();
+          const out = vehicle.tick(ctx);
+          expect(propertyValue(out.commands, "form")).toBe("submarine");
+          expect(out.riders.underwater).toBe(true);
+          expect(
+            propertyValue(vehicle.tick({ ...ctx, tick: 1 }).commands, "form"),
+          ).toBeUndefined();
         },
       ),
     );
@@ -624,15 +632,48 @@ describe("Vehicle water depth context", () => {
   it("treats dry cells as dry", () => {
     const vehicle = rebuildVehicle("suv", "car", 0, [], { form: "submarine" });
     expect(
-      vehicle.tick({
-        tick: 0,
-        riders: [],
-        velocity: { x: 0, y: 0, z: 0 },
-        onGround: false,
-        ...waterSensors(),
-        solidAt: () => false,
-        targets: () => [],
-      }).form,
+      propertyValue(
+        vehicle.tick({
+          tick: 0,
+          riders: [],
+          velocity: { x: 0, y: 0, z: 0 },
+          onGround: false,
+          ...waterSensors(),
+          solidAt: () => false,
+          targets: () => [],
+        }).commands,
+        "form",
+      ),
     ).toBe("car");
   });
+});
+
+it("concatenates seat commands in seat order when multiple riders leave", () => {
+  const vehicle = rebuildVehicle(
+    "suv",
+    "v",
+    0,
+    [3, 1, 2, 0].map((seat) => ({
+      id: `r${seat}`,
+      offset: seatOffset(0, seat),
+      yaw: 0,
+      raw: IDLE,
+    })),
+    {},
+  );
+  const out = vehicle.tick({
+    tick: 0,
+    riders: [],
+    velocity: { x: 0, y: 0, z: 0 },
+    onGround: true,
+    ...waterSensors(),
+    solidAt: () => false,
+    targets: () => [],
+  });
+  expect(out.seatCommands).toStrictEqual(
+    DOOR_BY_SEAT.flatMap((name) => [
+      { type: "playAnimation", name },
+      { type: "playSound", name: "random.door_open" },
+    ]),
+  );
 });

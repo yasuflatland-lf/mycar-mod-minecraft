@@ -1,13 +1,18 @@
 // The sports boat's drive: the engine floats the hull and the script drives only x and z (ADR 0051).
 import { clamp, dot, type Vec2 } from "../shared/vec";
-import type { Drive, DriveStep, TickContext } from "./drive";
+import type {
+  Drive,
+  DriveStep,
+  EngineCommand,
+  RestoredValues,
+  TickContext,
+} from "./drive";
 import {
   type DriveInput,
   NEUTRAL_INPUT,
   type RawInput,
   toDriveInput,
 } from "./driveInput";
-import type { Form } from "./form";
 import {
   alignOnMount,
   hitWall,
@@ -101,15 +106,13 @@ export interface BoatDriveState {
 }
 
 export class BoatDrive implements Drive {
-  readonly form: Form = "car";
-  readonly wheelsDown = true;
-  readonly bankAngle = 0;
   private motion: MotionState;
   private dragEstimate: number | undefined;
 
   /** `limits` other than the boat's own are for tests that vary one value. */
   constructor(
     yaw: number,
+    _restored: RestoredValues,
     private readonly limits: MotionLimits = SPORTSBOAT_MOTION,
   ) {
     this.motion = initialMotion(yaw);
@@ -140,6 +143,10 @@ export class BoatDrive implements Drive {
 
   onDriverMounted(driverYaw: number): void {
     this.motion = alignOnMount(this.motion, driverYaw);
+  }
+
+  onSeatVacated(_seat: number): readonly EngineCommand[] {
+    return [];
   }
 
   step(raw: RawInput | undefined, ctx: TickContext): DriveStep {
@@ -183,6 +190,8 @@ export class BoatDrive implements Drive {
     return {
       impulse: { x: step.impulse.x, y: 0, z: step.impulse.z },
       forward: step.forward,
+      commands: [],
+      riders: { thirdPerson: false, underwater: false },
     };
   }
 }

@@ -9,6 +9,7 @@ import {
 } from "../../../src/domain/vehicle/kind";
 import { SPEC } from "../../../src/domain/vehicle/spec";
 import { SuvDrive } from "../../../src/domain/vehicle/suvDrive";
+import { propertyValue } from "../../support/engineCommands";
 import { waterSensors } from "../../support/waterDepth";
 
 const number = (min: number, max: number) =>
@@ -33,11 +34,11 @@ const KIND_DRIVES: Record<
   { drive(heading: number): Drive; ctx: TickContext }
 > = {
   suv: {
-    drive: (heading) => new SuvDrive(heading, "car"),
+    drive: (heading) => new SuvDrive(heading, { form: "car" }),
     ctx: stillContext(true),
   },
   sportsboat: {
-    drive: (heading) => new BoatDrive(heading),
+    drive: (heading) => new BoatDrive(heading, {}),
     ctx: stillContext(false, 0.5),
   },
 };
@@ -45,7 +46,7 @@ const KIND_DRIVES: Record<
 it("starts the SUV drive in the given form, unbanked, with the wheels down only in car form", () => {
   fc.assert(
     fc.property(fc.constantFrom(...FORMS), yaw, (form, heading) => {
-      const drive = new SuvDrive(heading, form);
+      const drive = new SuvDrive(heading, { form: form });
       expect(drive.form).toBe(form);
       expect(drive.wheelsDown).toBe(form === "car");
       expect(drive.bankAngle).toBe(0);
@@ -54,14 +55,14 @@ it("starts the SUV drive in the given form, unbanked, with the wheels down only 
 });
 
 it("keeps an SUV drive started in hover hovering with the gear folded on its first airborne tick", () => {
-  const drive = new SuvDrive(0, "hover");
+  const drive = new SuvDrive(0, { form: "hover" });
   const result = drive.step(
     { moveX: 0, moveY: 0, jump: false },
     stillContext(false),
   );
-  expect(result.form).toBeUndefined();
-  expect(result.gearDown).toBe(false);
-  expect(result.bank).toBe(0);
+  expect(propertyValue(result.commands, "form")).toBeUndefined();
+  expect(propertyValue(result.commands, "gear_down")).toBe(false);
+  expect(propertyValue(result.commands, "bank")).toBe(0);
   expect(drive.form).toBe("hover");
   expect(drive.wheelsDown).toBe(false);
 });

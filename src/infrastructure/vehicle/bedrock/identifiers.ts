@@ -40,25 +40,18 @@ export const HEADLIGHT_SWITCH_TYPE = id("headlight_switch");
 export const HEADLIGHTS_PROPERTY = id("headlights");
 /** Dynamic property on a vehicle holding the cells it put light blocks in. */
 export const LIT_CELLS_PROPERTY = id("lit_cells");
-/** Resource Pack animation that swings a door bone (ADR 0009) open and shut. */
-export const doorAnimation = (kind: VehicleKind, door: string): string =>
-  `animation.${NAMESPACE}.${ENTITY_TYPE[kind].slice(NAMESPACE.length + 1)}.${door}`;
+export const entityPropertyId = (name: string): string => id(name);
+export const entityEventId = (name: string): string => id(name);
+export const entityAnimationId = (entityTypeId: string, name: string): string =>
+  `animation.${NAMESPACE}.${entityTypeId.slice(NAMESPACE.length + 1)}.${name}`;
 export const LIGHT_BLOCK = "minecraft:light_block_15";
 /**
  * Test input messages have the form "<vehicleId>,<moveX>,<moveY>,<jump>"
  * (jump is 0 / 1). "<vehicleId>,clear" clears the input.
  */
 export const TEST_INPUT_EVENT = id("test_input");
-/** Client-synced vehicle form. The script reads it back after /reload, and the Resource Pack draws each form from it (ADR 0021, 0039). */
-export const FORM_PROPERTY = id("form");
 /** Vanilla camera preset that views the player from behind, as F5 does (ADR 0028). */
 export const THIRD_PERSON_CAMERA = "minecraft:third_person";
-/** Client-synced bank angle in degrees; the Resource Pack rolls the model by it (ADR 0026). */
-export const BANK_PROPERTY = id("bank");
-/** Client-synced landing gear; the Resource Pack unfolds the wheels by it (ADR 0033). */
-export const GEAR_DOWN_PROPERTY = id("gear_down");
-export const GRAVITY_OFF_EVENT = id("gravity_off");
-export const GRAVITY_ON_EVENT = id("gravity_on");
 
 /** The vanilla dye that repaints a vehicle with a paint (ADR 0031). Brown dye turns it back to khaki. */
 export function dyeOf(paint: Paint): string {

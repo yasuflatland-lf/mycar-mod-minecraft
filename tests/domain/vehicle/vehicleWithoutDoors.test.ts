@@ -4,21 +4,22 @@ import { rebuildVehicle } from "../../../src/domain/vehicle/registry";
 import { defined } from "../../support/defined";
 import { waterSensors } from "../../support/waterDepth";
 
-vi.mock("../../../src/domain/vehicle/profile", async (importOriginal) => {
+vi.mock("../../../src/domain/vehicle/suvDrive", async (importOriginal) => {
   const original =
     await importOriginal<
-      typeof import("../../../src/domain/vehicle/profile")
+      typeof import("../../../src/domain/vehicle/suvDrive")
     >();
   return {
     ...original,
-    profileOf: () => ({
-      ...original.SUV_PROFILE,
-      seats: { positions: original.SUV_PROFILE.seats.positions },
-    }),
+    SuvDrive: class extends original.SuvDrive {
+      onSeatVacated() {
+        return [];
+      }
+    },
   };
 });
 
-it("emits SeatVacated without a door when the profile has no doors", () => {
+it("emits no seat commands when the drive has no doors", () => {
   const vehicle = rebuildVehicle(
     "suv",
     "v",
@@ -42,7 +43,5 @@ it("emits SeatVacated without a door when the profile has no doors", () => {
     solidAt: () => false,
     targets: () => [],
   });
-  expect(out.events).toStrictEqual([
-    { type: "SeatVacated", vehicleId: "v", seat: 0 },
-  ]);
+  expect(out.seatCommands).toStrictEqual([]);
 });

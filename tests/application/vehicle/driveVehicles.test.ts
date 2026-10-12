@@ -1,5 +1,5 @@
 import fc from "fast-check";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { DriveVehicles } from "../../../src/application/vehicle/driveVehicles";
 import { forward } from "../../../src/domain/shared/vec";
 import type { RawInput } from "../../../src/domain/vehicle/driveInput";
@@ -130,13 +130,15 @@ describe("DriveVehicles", () => {
     const repo = new InMemoryRepo();
     world.snapshots = [
       snapshot("a", {
-        form: "hover",
+        restored: () => ({ form: "hover" }),
         onGround: false,
         testInput: FULL_THROTTLE,
       }),
     ];
     new DriveVehicles(world, repo, logger()).execute(0);
-    expect(repo.get("a")?.form).toBe("hover");
+    expect(world.formOf("a")).toBe("hover");
+    // A drive rebuilt in car form would send its gear down on the first tick.
+    expect(world.calls).toContain("gear:a:up");
     expect(world.calls.some((c) => c.startsWith("form:"))).toBe(false);
   });
 
@@ -217,7 +219,7 @@ describe("DriveVehicles", () => {
         const speed = (v?.speed ?? 0) * SPEC.flightDrag;
         world.snapshots = [
           snapshot("a", {
-            form: "hover",
+            restored: () => ({ form: "hover" }),
             onGround: false,
             yaw: v?.yaw ?? 0,
             velocity: { x: f.x * speed, y: 0, z: f.z * speed },
@@ -228,7 +230,7 @@ describe("DriveVehicles", () => {
       }
     };
     fly(60);
-    const angle = repo.get("a")?.bankAngle;
+    const angle = world.properties.get("a")?.bank;
     expect(angle).toBe(SPEC.maxBank);
     expect(bankCalls().at(-1)).toBe(`bank:a:${angle}`);
     const before = bankCalls().length;
@@ -273,7 +275,10 @@ describe("DriveVehicles third-person camera in flight (ADR 0028)", () => {
   it("switches riders of a flying vehicle to third person once, and back when they get off", () => {
     const world = new FakeWorld();
     const uc = new DriveVehicles(world, new InMemoryRepo(), logger());
-    const flying = { form: "hover" as const, onGround: false };
+    const flying = {
+      restored: () => ({ form: "hover" }) as const,
+      onGround: false,
+    };
     world.snapshots = [snapshot("a", { ...flying, riders: [rider("p")] })];
     uc.execute(0);
     uc.execute(1);
@@ -301,15 +306,15 @@ describe("DriveVehicles third-person camera in flight (ADR 0028)", () => {
       uc.execute(tick++);
     };
     for (const input of tapTwice) drive(input, true);
-    expect(repo.get("a")?.form).toBe("takeoff");
+    expect(world.formOf("a")).toBe("takeoff");
     // Takeoff and landing count as off the ground (ADR 0028).
     expect(cameraCalls(world)).toEqual(["camera:p:third"]);
-    while (repo.get("a")?.form !== "hover") drive(idle, false);
+    while (world.formOf("a") !== "hover") drive(idle, false);
     for (const input of tapTwice) drive(input, false);
-    expect(repo.get("a")?.form).toBe("landing");
+    expect(world.formOf("a")).toBe("landing");
     expect(cameraCalls(world)).toEqual(["camera:p:third"]);
     drive(idle, true);
-    expect(repo.get("a")?.form).toBe("car");
+    expect(world.formOf("a")).toBe("car");
     expect(cameraCalls(world)).toEqual(["camera:p:third", "camera:p:own"]);
   });
 
@@ -328,7 +333,7 @@ describe("DriveVehicles third-person camera in flight (ADR 0028)", () => {
     world.failCameraOn = "p";
     world.snapshots = [
       snapshot("a", {
-        form: "hover",
+        restored: () => ({ form: "hover" }),
         onGround: false,
         riders: [rider("p")],
       }),
@@ -348,7 +353,7 @@ describe("DriveVehicles third-person camera in flight (ADR 0028)", () => {
     world.failCameraOn = "p";
     world.snapshots = [
       snapshot("a", {
-        form: "hover",
+        restored: () => ({ form: "hover" }),
         onGround: false,
         riders: [rider("p")],
       }),
@@ -361,7 +366,10 @@ describe("DriveVehicles third-person camera in flight (ADR 0028)", () => {
     const world = new FakeWorld();
     const log = logger();
     const uc = new DriveVehicles(world, new InMemoryRepo(), log);
-    const flying = { form: "hover" as const, onGround: false };
+    const flying = {
+      restored: () => ({ form: "hover" }) as const,
+      onGround: false,
+    };
     const riding = [snapshot("a", { ...flying, riders: [rider("p")] })];
     world.snapshots = riding;
     world.failCameraOn = "p";
@@ -382,13 +390,15 @@ describe("DriveVehicles third-person camera in flight (ADR 0028)", () => {
     const uc = new DriveVehicles(world, new InMemoryRepo(), logger());
     world.snapshots = [
       snapshot("a", {
-        form: "hover",
+        restored: () => ({ form: "hover" }),
         onGround: false,
         riders: [rider("p")],
       }),
     ];
     uc.execute(0);
-    world.snapshots = [snapshot("a", { form: "hover", onGround: false })];
+    world.snapshots = [
+      snapshot("a", { restored: () => ({ form: "hover" }), onGround: false }),
+    ];
     world.failCameraOn = "p";
     uc.execute(1);
     world.failCameraOn = undefined;
@@ -421,7 +431,7 @@ describe("DriveVehicles submarine riders (ADR 0040)", () => {
       }),
     ];
     uc.execute(0);
-    expect(repo.get("a")?.form).toBe("submarine");
+    expect(world.formOf("a")).toBe("submarine");
     expect(world.calls).toContain("form:a:submarine");
     expect(breathingCalls(world)).toEqual([
       breathing("driver"),
@@ -444,7 +454,7 @@ describe("DriveVehicles submarine riders (ADR 0040)", () => {
     world.snapshots = [
       snapshot("car", { riders: [rider("c")] }),
       snapshot("hover", {
-        form: "hover",
+        restored: () => ({ form: "hover" }),
         onGround: false,
         riders: [rider("h")],
       }),
@@ -477,7 +487,7 @@ describe("DriveVehicles submarine riders (ADR 0040)", () => {
     const uc = new DriveVehicles(world, new InMemoryRepo(), logger());
     world.snapshots = [
       snapshot("a", {
-        form: "submarine",
+        restored: () => ({ form: "submarine" }),
         waterDepth: SPEC.carHeight,
         riders: [rider("p")],
       }),
@@ -530,4 +540,20 @@ it("drives a boat with water below high feet and leaves a dry boat still", () =>
       expect(log.lines).toEqual([]);
     }),
   );
+});
+
+it("reads restored properties only when an aggregate is missing", () => {
+  const world = new FakeWorld();
+  const restored = vi.fn(() => ({ form: "hover" }));
+  world.snapshots = [
+    snapshot("a", {
+      restored,
+      onGround: false,
+      testInput: { moveX: 0, moveY: 0, jump: false },
+    }),
+  ];
+  const uc = new DriveVehicles(world, new InMemoryRepo(), { warn: vi.fn() });
+  uc.execute(0);
+  uc.execute(1);
+  expect(restored).toHaveBeenCalledTimes(1);
 });

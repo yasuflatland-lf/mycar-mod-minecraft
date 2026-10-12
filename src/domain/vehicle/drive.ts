@@ -1,7 +1,6 @@
 // How one vehicle kind moves each tick, under the shared core in vehicle.ts (ADR 0050, 0055).
 import type { Vec2, Vec3 } from "../shared/vec";
 import type { RawInput } from "./driveInput";
-import type { Form } from "./form";
 import type { RamTarget } from "./ram";
 
 /** Sensors only. Riders and test input stay with the core. */
@@ -20,29 +19,36 @@ export interface TickContext {
   targets(): readonly RamTarget[];
 }
 
+export type EngineCommand =
+  | { type: "setProperty"; name: string; value: number | boolean | string }
+  | { type: "triggerEvent"; name: string }
+  | { type: "playAnimation"; name: string }
+  | { type: "playSound"; name: string }; // at the vehicle's location
+
+/** Entity properties read back when an aggregate is rebuilt (ADR 0021, 0055). */
+export type RestoredValues = Readonly<
+  Record<string, string | number | boolean | undefined>
+>;
+
+export interface RiderState {
+  thirdPerson: boolean;
+  underwater: boolean;
+}
+
 export interface DriveStep {
   impulse: Vec3;
   /** The facing used for the ram this tick. */
   forward: Vec2;
-  /** Only on the tick the form changes (ADR 0021). */
-  form?: Form;
-  /** Only when changed, and on the first tick (ADR 0026). */
-  bank?: number;
-  /** Only when changed, and on the first tick (ADR 0033). */
-  gearDown?: boolean;
+  commands: readonly EngineCommand[];
+  riders: RiderState;
 }
 
 export interface Drive {
   /** Internal forward/reverse speed in blocks/tick; negative means reverse. */
   readonly speed: number;
   readonly yaw: number;
-  /** "car" for kinds without forms. */
-  readonly form: Form;
-  /** True for kinds without landing gear. */
-  readonly wheelsDown: boolean;
-  /** 0 for kinds that never bank. */
-  readonly bankAngle: number;
   /** Called when a new driver takes seat 0. */
   onDriverMounted(driverYaw: number): void;
+  onSeatVacated(seat: number): readonly EngineCommand[];
   step(raw: RawInput | undefined, ctx: TickContext): DriveStep;
 }

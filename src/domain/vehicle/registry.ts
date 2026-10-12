@@ -1,23 +1,24 @@
 // The only way to build a vehicle: every caller names the kind, so none falls back to SUV values (ADR 0055).
 import { BoatDrive } from "./boatDrive";
-import type { Drive } from "./drive";
-import { type Form, isForm } from "./form";
+import type { Drive, RestoredValues } from "./drive";
+import type { EntityContract } from "./entityContract";
 import type { VehicleKind } from "./kind";
 import { profileOf } from "./profile";
+import { SPORTSBOAT_ENTITY } from "./sportsboatEntity";
 import { SuvDrive } from "./suvDrive";
+import { SUV_ENTITY } from "./suvEntity";
 import { type RiderView, Vehicle } from "./vehicle";
 
-export type RestoredValues = Readonly<
-  Record<string, string | number | boolean | undefined>
->;
-
-/** Kinds without forms ignore `form`. */
-function driveOf(kind: VehicleKind, yaw: number, form: Form): Drive {
+function driveOf(
+  kind: VehicleKind,
+  yaw: number,
+  restored: RestoredValues,
+): Drive {
   switch (kind) {
     case "suv":
-      return new SuvDrive(yaw, form);
+      return new SuvDrive(yaw, restored);
     case "sportsboat":
-      return new BoatDrive(yaw);
+      return new BoatDrive(yaw, restored);
   }
 }
 
@@ -26,7 +27,7 @@ export function createVehicle(
   id: string,
   yaw: number,
 ): Vehicle {
-  return new Vehicle(id, profileOf(kind), driveOf(kind, yaw, "car"));
+  return new Vehicle(id, profileOf(kind), driveOf(kind, yaw, {}));
 }
 
 /**
@@ -41,8 +42,20 @@ export function rebuildVehicle(
   riders: readonly RiderView[],
   restored: RestoredValues,
 ): Vehicle {
-  const form = isForm(restored.form) ? restored.form : "car";
-  const vehicle = new Vehicle(id, profileOf(kind), driveOf(kind, yaw, form));
+  const vehicle = new Vehicle(
+    id,
+    profileOf(kind),
+    driveOf(kind, yaw, restored),
+  );
   vehicle.seatRiders(riders, yaw);
   return vehicle;
+}
+
+export function entityContractOf(kind: VehicleKind): EntityContract {
+  switch (kind) {
+    case "suv":
+      return SUV_ENTITY;
+    case "sportsboat":
+      return SPORTSBOAT_ENTITY;
+  }
 }
