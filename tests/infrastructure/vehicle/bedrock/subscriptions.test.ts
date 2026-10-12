@@ -1,10 +1,16 @@
-import type {
-  ItemUseAfterEvent,
-  PlayerInteractWithBlockBeforeEvent,
+import {
+  type EntitySpawnAfterEvent,
+  type ItemUseAfterEvent,
+  type PlayerInteractWithBlockBeforeEvent,
+  world,
 } from "@minecraft/server";
 import fc from "fast-check";
 import { beforeEach, expect, it, vi } from "vitest";
-import { ITEM_TYPE } from "../../../../src/infrastructure/vehicle/bedrock/identifiers";
+import {
+  DECK_SEAT_OF_PROPERTY,
+  DECK_SEAT_TYPE,
+  ITEM_TYPE,
+} from "../../../../src/infrastructure/vehicle/bedrock/identifiers";
 import { registerSubscriptions } from "../../../../src/infrastructure/vehicle/bedrock/subscriptions";
 import { TestInputStore } from "../../../../src/infrastructure/vehicle/testInput/testInputStore";
 
@@ -29,7 +35,7 @@ vi.mock("@minecraft/server", () => {
       West: "West",
     },
     GameMode: { Creative: "Creative" },
-    EntityInitializationCause: {},
+    EntityInitializationCause: { Loaded: "Loaded", Spawned: "Spawned" },
     ScriptEventSource: {},
     Player: class {},
     system: {
@@ -279,4 +285,39 @@ it("limits deferred placement and itemUse to one placement on their execution ti
       expect(f.place.execute).toHaveBeenCalledTimes(1);
     }),
   );
+});
+
+it("removes an orphan deck seat that loads with a chunk, but not one that is just spawned", () => {
+  const limit = { start: vi.fn(), found: vi.fn(), spawned: vi.fn() };
+  registerSubscriptions(
+    { limit } as unknown as Parameters<typeof registerSubscriptions>[0],
+    new TestInputStore(),
+  );
+  const spawn = vi
+    .mocked(world.afterEvents.entitySpawn.subscribe)
+    .mock.calls.at(-1)?.[0];
+  if (!spawn) throw new Error("entitySpawn not subscribed");
+  const seat = () => ({
+    typeId: DECK_SEAT_TYPE,
+    isValid: true,
+    location: { x: 0, y: 0, z: 0 },
+    dimension: { getEntities: () => [] },
+    getDynamicProperty: (key: string) =>
+      key === DECK_SEAT_OF_PROPERTY ? "gone" : undefined,
+    remove: vi.fn(),
+  });
+  const loaded = seat();
+  const spawned = seat();
+  spawn({
+    entity: loaded,
+    cause: "Loaded",
+  } as unknown as EntitySpawnAfterEvent);
+  spawn({
+    entity: spawned,
+    cause: "Spawned",
+  } as unknown as EntitySpawnAfterEvent);
+  expect(loaded.remove).toHaveBeenCalledOnce();
+  expect(spawned.remove).not.toHaveBeenCalled();
+  expect(limit.found).not.toHaveBeenCalled();
+  expect(limit.spawned).not.toHaveBeenCalled();
 });

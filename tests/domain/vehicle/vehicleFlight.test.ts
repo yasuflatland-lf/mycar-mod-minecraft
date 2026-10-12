@@ -64,6 +64,7 @@ class FlightSim {
 
   step(input: RawInput | undefined): TickOutcome {
     const out = this.vehicle.tick({
+      deckSeatInputs: [],
       tick: this.tick++,
       riders: [],
       testInput: input,
@@ -303,6 +304,7 @@ describe("Vehicle in flight (ADR 0021)", () => {
     let hits = 0;
     for (let i = 0; i < 40; i++) {
       const out = sim.vehicle.tick({
+        deckSeatInputs: [],
         tick: sim.tick++,
         riders: [],
         testInput: FORWARD,
@@ -423,6 +425,7 @@ describe("Vehicle landing gear (ADR 0033)", () => {
   function landOnce(yaw: number, solidAt: (offset: Vec3) => boolean) {
     const drive = new SuvDrive(yaw, { form: "landing" });
     const out = drive.step(undefined, {
+      deckSeatInputs: [],
       tick: 0,
       velocity: { x: 0, y: 0, z: 0 },
       onGround: false,

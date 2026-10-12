@@ -42,6 +42,7 @@ export class DriveVehicles {
         const out = vehicle.tick({
           tick,
           riders: snap.riders,
+          deckSeatInputs: snap.deckSeatInputs,
           testInput: snap.testInput,
           location: snap.location,
           velocity: snap.velocity,
@@ -58,6 +59,8 @@ export class DriveVehicles {
         if (out.riders.underwater)
           for (const rider of snap.riders) underwater.add(rider.id);
         if (!out.hold) this.world.applyMotion(snap.id, out.impulse, out.yaw);
+        if (out.boardDeckRiders) this.world.boardDeckRiders(snap.id);
+        this.world.keepDeckSeats(snap.id, out.deckSeats, out.yaw);
         this.world.layFloor(snap.id, out.floor);
         this.world.shineHeadlights(
           snap.id,
@@ -81,6 +84,7 @@ export class DriveVehicles {
       this.repo.remove(id);
       // Each release runs on its own so one failure does not skip the others.
       for (const release of [
+        () => this.world.keepDeckSeats(id, [], 0),
         () => this.world.shineHeadlights(id, []),
         () => this.world.layFloor(id, []),
         () => this.world.holdAt(id, undefined),

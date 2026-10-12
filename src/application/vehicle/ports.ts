@@ -17,6 +17,7 @@ export interface VehicleSnapshot {
   velocity: Vec3;
   onGround: boolean;
   riders: RiderView[];
+  deckSeatInputs: (RawInput | undefined)[];
   restored(): RestoredValues;
   headlights: boolean;
   testInput?: RawInput;
@@ -24,6 +25,12 @@ export interface VehicleSnapshot {
 
 export interface DriveWorld {
   loadedVehicles(): VehicleSnapshot[];
+  keepDeckSeats(
+    vehicleId: string,
+    positions: readonly (Vec3 | undefined)[],
+    yaw: number,
+  ): void;
+  boardDeckRiders(vehicleId: string): void;
   waterAt(vehicleId: string, offset: Vec3): boolean;
   solidAt(vehicleId: string, offset: Vec3): boolean;
   targetsNear(vehicleId: string): RamTarget[];

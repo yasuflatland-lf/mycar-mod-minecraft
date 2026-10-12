@@ -5,6 +5,7 @@ import { SUV_PROFILE } from "../../../src/domain/vehicle/kinds/suv/profile";
 import {
   nearestSeat,
   occupiedSeats,
+  seatWorldPositions,
   toLocal,
   vacatedSeats,
 } from "../../../src/domain/vehicle/seats";
@@ -99,4 +100,27 @@ describe("seats (ADR 0019)", () => {
     expect(vacatedSeats(prev, new Map([["b", 2]]))).toEqual([0]);
     expect(vacatedSeats(prev, prev)).toEqual([]);
   });
+});
+
+it("recovers every local seat from its world position at any hold pose", () => {
+  const coordinate = fc.double({ min: -1000, max: 1000, noNaN: true });
+  fc.assert(
+    fc.property(
+      fc.record({ x: coordinate, y: coordinate, z: coordinate, yaw }),
+      fc.array(fc.record({ x: coordinate, z: coordinate }), { maxLength: 8 }),
+      (pose, positions) => {
+        const world = seatWorldPositions(pose, positions);
+        expect(world).toHaveLength(positions.length);
+        for (const [index, point] of world.entries()) {
+          const local = toLocal(
+            { x: point.x - pose.x, z: point.z - pose.z },
+            forward(pose.yaw),
+          );
+          expect(local.x).toBeCloseTo(defined(positions[index], "seat").x, 8);
+          expect(local.z).toBeCloseTo(defined(positions[index], "seat").z, 8);
+          expect(point.y).toBe(pose.y);
+        }
+      },
+    ),
+  );
 });

@@ -4,16 +4,24 @@ import { type Dimension, type Entity, system, world } from "@minecraft/server";
 import { dot, forward, type Vec3 } from "../domain/shared/vec";
 import { headlightCells } from "../domain/vehicle/headlights";
 import { BoatDrive } from "../domain/vehicle/kinds/sportsboat/drive";
-import { SPORTSBOAT_MOTION } from "../domain/vehicle/kinds/sportsboat/profile";
+import {
+  SPORTSBOAT_MOTION,
+  SPORTSBOAT_PROFILE,
+} from "../domain/vehicle/kinds/sportsboat/profile";
 import type { SUV_ENTITY } from "../domain/vehicle/kinds/suv/entity";
 import { type Form, isForm } from "../domain/vehicle/kinds/suv/form";
 import { SUV_PROFILE } from "../domain/vehicle/kinds/suv/profile";
 import { SUV_SPEC } from "../domain/vehicle/kinds/suv/spec";
 import { PAINTS } from "../domain/vehicle/paint";
-import { nearestSeat, toLocal } from "../domain/vehicle/seats";
+import {
+  nearestSeat,
+  seatWorldPositions,
+  toLocal,
+} from "../domain/vehicle/seats";
 import { SPEC } from "../domain/vehicle/spec";
 import {
   DECK_FLOOR_BLOCK,
+  DECK_SEAT_TYPE,
   ENTITY_TYPE,
   entityPropertyId,
   HEADLIGHTS_PROPERTY,
@@ -801,6 +809,84 @@ const BOAT_DOCK_TEST = {
   minDeparture: 1,
 } as const;
 
+// Test bounds, not values from ADR 0063: the four seats lie within 0.9 blocks
+// of the boat, so a 4-block search finds them all; 0.1 allows for the seat
+// teleport tolerance; departure must clear every seat within the orphan-check
+// radius of deckSeats.ts within half a second.
+const BOAT_DECK_SEATS_TEST = {
+  count: 4,
+  radius: 4,
+  tolerance: 0.1,
+  clearRadius: 6,
+  clearTicks: 10,
+} as const;
+
+function boatDeckSeats(a: Arena): Promise<Outcome> {
+  return withPool(a, 3, () =>
+    withBoat(
+      a,
+      async (boat) => {
+        const docked = () =>
+          boat.getProperty(entityPropertyId("docked")) === true;
+        let ticks = 0;
+        while (!docked() && ticks < BOAT_DOCK_TEST.timeout) {
+          await wait(1);
+          ticks++;
+        }
+        if (!docked())
+          return { pass: false, detail: `not docked after ${ticks} ticks` };
+        const start = boat.location;
+        const seatsWithin = (maxDistance: number) =>
+          a.dim.getEntities({
+            type: DECK_SEAT_TYPE,
+            location: start,
+            maxDistance,
+          });
+        const seats = seatsWithin(BOAT_DECK_SEATS_TEST.radius);
+        const expected = seatWorldPositions(
+          { ...start, yaw: boat.getRotation().y },
+          SPORTSBOAT_PROFILE.seats.positions,
+        );
+        const unmatched = [...seats];
+        const positioned = expected.every((at) => {
+          const index = unmatched.findIndex(
+            (seat) =>
+              Math.hypot(
+                seat.location.x - at.x,
+                seat.location.y - at.y,
+                seat.location.z - at.z,
+              ) <= BOAT_DECK_SEATS_TEST.tolerance,
+          );
+          if (index < 0) return false;
+          unmatched.splice(index, 1);
+          return true;
+        });
+        drive(boat, 0, 1);
+        const remaining = () =>
+          seatsWithin(BOAT_DECK_SEATS_TEST.clearRadius).length;
+        let clearTicks = 0;
+        while (
+          remaining() > 0 &&
+          clearTicks < BOAT_DECK_SEATS_TEST.clearTicks
+        ) {
+          await wait(1);
+          clearTicks++;
+        }
+        const count = remaining();
+        return {
+          pass:
+            seats.length === BOAT_DECK_SEATS_TEST.count &&
+            positioned &&
+            count === 0,
+          detail: `seats=${seats.length} positioned=${positioned} clearTicks=${clearTicks} remaining=${count}`,
+        };
+      },
+      POOL_SOUTH_LANE,
+      0,
+    ),
+  );
+}
+
 function deckFloorCount(a: Arena, center: Vec3, radius: number): number {
   const cx = Math.floor(center.x);
   const cy = Math.floor(center.y);
@@ -929,6 +1015,7 @@ function boatDrag(a: Arena): Promise<Outcome> {
           const step = replica.step(
             { moveX: 0, moveY: throttle ? 1 : 0, jump: false },
             {
+              deckSeatInputs: [],
               tick: t,
               velocity: observed,
               onGround: false,
@@ -1419,6 +1506,7 @@ async function runAll({ runId, shard }: RunRequest): Promise<void> {
     ["vehicle_limit", 20, () => vehicleLimit(a)],
     ["boat_float", 105, () => boatFloat(a)],
     ["boat_dock", 110, () => boatDock(a)],
+    ["boat_deck_seats", 110, () => boatDeckSeats(a)],
     ["boat_drag", 138, () => boatDrag(a)],
     ["boat_cruise", 235, () => boatCruise(a)],
     ["boat_shore", 165, () => boatShore(a)],

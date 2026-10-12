@@ -1,5 +1,5 @@
 // The sports boat's drive: the engine floats the hull and the script drives only x and z (ADR 0051).
-import { clamp, dot, forward, type Vec2 } from "../../../shared/vec";
+import { clamp, dot, forward, type Vec2, type Vec3 } from "../../../shared/vec";
 import type {
   Drive,
   DriveStep,
@@ -27,6 +27,7 @@ import {
 } from "../../motion/motion";
 import { waterBelowAt, waterDepthAt } from "../../motion/water";
 import type { MotionLimits } from "../../profile";
+import { seatWorldPositions } from "../../seats";
 import { stepRoll, stepTrim } from "./attitude";
 import { DOCK, floorCells, holdHeight } from "./deck";
 import {
@@ -35,7 +36,7 @@ import {
   trimCommand,
   undockCommands,
 } from "./entity";
-import { SPORTSBOAT_MOTION } from "./profile";
+import { SPORTSBOAT_MOTION, SPORTSBOAT_PROFILE } from "./profile";
 
 // The height of the sportsboat collision box, which bounds the water depth
 // query; the boat only tests whether the depth is above zero.
@@ -86,6 +87,17 @@ export function estimateWaterDrag(
   );
 }
 
+function pushesStick(input: RawInput | undefined): boolean {
+  return (
+    input !== undefined &&
+    Math.max(Math.abs(input.moveX), Math.abs(input.moveY)) > DOCK.stick
+  );
+}
+
+function deckSeatPositions(pose: HoldPose): Vec3[] {
+  return seatWorldPositions(pose, SPORTSBOAT_PROFILE.seats.positions);
+}
+
 export function isAfloat(depth: number, below: () => boolean): boolean {
   return depth > 0 || below();
 }
@@ -95,13 +107,6 @@ export interface BoatDriveState {
   readonly motion: MotionState;
   /** The water drag estimate (ADR 0053): undefined until the boat first floats, kept while beached. */
   readonly waterDrag?: number;
-}
-
-function isDeparting(raw: RawInput | undefined): boolean {
-  return (
-    raw !== undefined &&
-    Math.max(Math.abs(raw.moveX), Math.abs(raw.moveY)) > DOCK.stick
-  );
 }
 
 export class BoatDrive implements Drive {
@@ -179,9 +184,12 @@ export class BoatDrive implements Drive {
       this.restoredDocked = false;
     }
     const commands: EngineCommand[] = [];
+    let boardDeckRiders = false;
     if (this.docked) {
-      if (!isDeparting(raw)) {
+      if (!pushesStick(raw)) {
         return {
+          deckSeats: deckSeatPositions(this.docked),
+          boardDeckRiders: pushesStick(ctx.deckSeatInputs[0]),
           impulse: { x: 0, y: 0, z: 0 },
           forward: forward(this.docked.yaw),
           commands: [],
@@ -190,6 +198,7 @@ export class BoatDrive implements Drive {
           floor: floorCells(this.docked),
         };
       }
+      boardDeckRiders = true;
       commands.push(...undockCommands());
       this.docked = undefined;
       this.stillTicks = 0;
@@ -269,6 +278,8 @@ export class BoatDrive implements Drive {
       forward: step.forward,
       commands,
       riders: { thirdPerson: false, underwater: false },
+      boardDeckRiders,
+      deckSeats: this.docked ? deckSeatPositions(this.docked) : [],
       ...(this.docked && { hold: this.docked, floor: floorCells(this.docked) }),
     };
   }

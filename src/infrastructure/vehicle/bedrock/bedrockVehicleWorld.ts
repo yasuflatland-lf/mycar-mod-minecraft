@@ -20,6 +20,7 @@ import type {
 } from "../../../application/vehicle/ports";
 import type { Vec3 } from "../../../domain/shared/vec";
 import type { EngineCommand } from "../../../domain/vehicle/drive";
+import type { RawInput } from "../../../domain/vehicle/driveInput";
 import type { FloorCell, HoldPose } from "../../../domain/vehicle/floor";
 import type { Cell } from "../../../domain/vehicle/headlights";
 import type { VehicleKind } from "../../../domain/vehicle/kind";
@@ -31,6 +32,7 @@ import { PAINTS, type Paint } from "../../../domain/vehicle/paint";
 import type { RamHit, RamTarget } from "../../../domain/vehicle/ram";
 import type { RiderView } from "../../../domain/vehicle/vehicle";
 import type { TestInputStore } from "../testInput/testInputStore";
+import { DeckSeats } from "./deckSeats";
 import { FloorBlocks } from "./floorBlocks";
 import { HeadlightBlocks, isLightBlock } from "./headlightBlocks";
 import {
@@ -55,6 +57,16 @@ import { isWaterAt } from "./water";
 const DIMENSIONS = ["overworld", "nether", "the_end"] as const;
 const isPlayer = (e: Entity): e is Player => e.typeId === PLAYER_TYPE;
 
+function rawInputOf(player: Player): RawInput {
+  const movement = player.inputInfo.getMovementVector();
+  return {
+    moveX: movement.x,
+    moveY: movement.y,
+    jump:
+      player.inputInfo.getButtonState(InputButton.Jump) === ButtonState.Pressed,
+  };
+}
+
 function offsetFrom(car: Entity, offset: Vec3): Vec3 {
   return {
     x: car.location.x + offset.x,
@@ -76,6 +88,7 @@ export class BedrockVehicleWorld
   /** Vehicles collected by loadedVehicles() for this tick. The other methods look them up here by id. */
   private current = new Map<string, Entity>();
   private readonly headlightBlocks = new HeadlightBlocks();
+  private readonly deckSeats = new DeckSeats();
   private readonly floorBlocks = new FloorBlocks();
   private readonly holds = new Map<string, HoldPose>();
 
@@ -120,6 +133,9 @@ export class BedrockVehicleWorld
           velocity: v,
           onGround: car.isOnGround,
           riders: this.riders(car),
+          deckSeatInputs: this.deckSeats
+            .riders(car)
+            .map((player) => (player ? rawInputOf(player) : undefined)),
           restored: () =>
             Object.fromEntries(
               entityContractOf(kind).restored.map((name) => [
@@ -136,6 +152,7 @@ export class BedrockVehicleWorld
     this.testInputs.retain(live);
     this.headlightBlocks.clearGone(live);
     this.floorBlocks.clearGone(live);
+    this.deckSeats.clearGone(live);
     for (const id of this.holds.keys())
       if (!live.has(id)) this.holds.delete(id);
     return snapshots;
@@ -145,7 +162,6 @@ export class BedrockVehicleWorld
     return (car.getComponent("minecraft:rideable")?.getRiders() ?? [])
       .filter(isPlayer)
       .map((p) => {
-        const mv = p.inputInfo.getMovementVector();
         return {
           id: p.id,
           offset: {
@@ -153,13 +169,7 @@ export class BedrockVehicleWorld
             z: p.location.z - car.location.z,
           },
           yaw: p.getRotation().y,
-          raw: {
-            moveX: mv.x,
-            moveY: mv.y,
-            jump:
-              p.inputInfo.getButtonState(InputButton.Jump) ===
-              ButtonState.Pressed,
-          },
+          raw: rawInputOf(p),
         };
       });
   }
@@ -235,6 +245,19 @@ export class BedrockVehicleWorld
       { rotation: { x: 0, y: pose.yaw } },
     );
     car.clearVelocity();
+  }
+
+  keepDeckSeats(
+    vehicleId: string,
+    positions: readonly (Vec3 | undefined)[],
+    yaw: number,
+  ): void {
+    this.deckSeats.keep(vehicleId, this.entity(vehicleId), positions, yaw);
+  }
+
+  boardDeckRiders(vehicleId: string): void {
+    const car = this.entity(vehicleId);
+    if (car) this.deckSeats.board(car);
   }
 
   layFloor(vehicleId: string, cells: readonly FloorCell[]): void {
@@ -381,6 +404,7 @@ export class BedrockVehicleWorld
     const car = this.entity(vehicleId);
     this.headlightBlocks.shine(vehicleId, car, []);
     this.floorBlocks.lay(vehicleId, car, []);
+    this.deckSeats.keep(vehicleId, car, [], 0);
     this.holds.delete(vehicleId);
     car?.remove();
   }

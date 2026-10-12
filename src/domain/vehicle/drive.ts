@@ -4,9 +4,10 @@ import type { RawInput } from "./driveInput";
 import type { FloorCell, HoldPose } from "./floor";
 import type { RamTarget } from "./ram";
 
-/** Sensors only. Riders and test input stay with the core. */
+/** Sensors and inputs from auxiliary seats. Vehicle riders stay with the core. */
 export interface TickContext {
   tick: number;
+  deckSeatInputs: readonly (RawInput | undefined)[];
   /** Entity feet in world coordinates. */
   location: Vec3;
   /** Engine velocity in blocks/tick. */
@@ -37,6 +38,8 @@ export interface RiderState {
 }
 
 export interface DriveStep {
+  deckSeats?: readonly Vec3[];
+  boardDeckRiders?: boolean;
   hold?: HoldPose;
   floor?: readonly FloorCell[];
   impulse: Vec3;

@@ -100,6 +100,7 @@ class DiveSim {
     const out = this.vehicle.tick({
       tick: this.tick++,
       riders: [],
+      deckSeatInputs: [],
       testInput: input,
       velocity: { ...this.body.vel, y: this.vy },
       onGround: this.y <= 0,
