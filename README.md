@@ -1,4 +1,4 @@
-# 🚗 Yasuflatland Ride
+# <img src="packs/yasu_ride_rp/pack_icon.png" width="64" alt="Hovering SUV pack icon"> Yasuflatland Ride
 
 [![Unit Tests](https://github.com/yasuflatland-lf/yasuflatland-ride-minecraft/actions/workflows/unit-test.yml/badge.svg?branch=main)](https://github.com/yasuflatland-lf/yasuflatland-ride-minecraft/actions/workflows/unit-test.yml)
 [![Integration Test](https://github.com/yasuflatland-lf/yasuflatland-ride-minecraft/actions/workflows/integration-test.yml/badge.svg?branch=main)](https://github.com/yasuflatland-lf/yasuflatland-ride-minecraft/actions/workflows/integration-test.yml)
@@ -110,13 +110,13 @@ pnpm lint            # format and lint check with Biome
 pnpm test            # unit tests, property-based tests, and the layer dependency check
 pnpm build           # bundle the TypeScript into the Behavior Pack
 pnpm package         # zip the packs into dist/yasuflatland-ride-<version>.mcaddon (run after build)
-pnpm model           # generate the vehicle model, texture, and README preview
-pnpm model:check     # fail if the README preview is out of date with the model
+pnpm model           # generate the vehicle model, texture, README previews, and pack icons
+pnpm model:check     # fail if the README previews or pack icons are out of date with the model
 pnpm server:up       # start the dev BDS in Docker
 pnpm test:game       # in-game tests
 ```
 
-CI runs the Biome check, the README preview check, type checking, tests, the build, and packaging on every pull request.
+CI runs the Biome check, the README preview and pack icon check, type checking, tests, the build, and packaging on every pull request.
 
 The dev world starts fresh as `yasuflatland-ride-dev`. The world from before the rename can be deleted by hand; its path is recorded in [ADR 0047](docs/adr/0047-rename-to-yasuflatland-ride.md). Before your first `pnpm server:up` after the rename, remove the dev container from before the rename once, since it still holds the server ports: find its name with `docker ps -a`, then run `docker rm -f <name>`.
 

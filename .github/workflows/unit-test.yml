@@ -34,7 +34,7 @@ jobs:
       # Unused files, exports, and dependencies (ADR 0048)
       - run: pnpm run lint:unused
 
-      # The README preview must be re-rendered whenever the model or its texture changes
+      # The README previews and pack icons must be re-rendered whenever the model or its texture changes
       - run: pnpm run model:check
 
       # main has no source code yet, so only run these once tsconfig.json exists

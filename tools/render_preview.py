@@ -1,7 +1,12 @@
-"""Render the README previews of the vehicle model from its front-left corner.
+"""Render the README previews and the pack icons from the vehicle model.
 
     python3 -I tools/render_preview.py <resource pack> <output dir>          write the images
     python3 -I tools/render_preview.py <resource pack> <output dir> --check  fail if any is stale
+
+Add --icons <pack dir> ... to either command to also write or check pack_icon.png in each pack: a
+256-pixel RGB icon of the flying pose with the lamps on, framed on its own, with a cyan glow behind
+each folded wheel over a charcoal and orange background. yasu_ride_test_bp gets it in grayscale, so
+the test pack stands out in the pack list.
 
 Four poses share one camera and one scale, so they line up side by side in the README: on the
 ground, with the headlights on at night, flying with the wheels folded (ADR 0027), and under water
@@ -12,6 +17,7 @@ last bit can differ between platforms' libm) so the same model renders to the sa
 and on the Linux CI runner. --check compares decoded pixels rather than PNG bytes, because zlib
 builds do not all compress identically.
 """
+import argparse
 import json
 import math
 import struct
@@ -71,34 +77,52 @@ SEABED_LAYERS = 10
 SEABED_ALPHA = 0.06
 SEABED_MARGIN = 14.0
 
+# Pack icon: the flying pose on a charcoal background with one orange band from the lower-left
+# corner to the middle of the right edge, and a cyan disc glowing under each folded wheel.
+ICON_SIZE = 256  # Bedrock wants a square power-of-two icon no larger than 256 px
+ICON_FILL = 0.8  # fraction of the icon width the vehicle spans
+ICON_BACKGROUND = (22, 24, 28)  # #16181C
+ICON_BAND_COLOR = (242, 140, 40)  # #F28C28
+ICON_BAND_HEIGHT = 0.18  # fraction of the icon height
+GLOW_DISC_COLOR = (90, 215, 255)  # #5AD7FF
+GLOW_DISC_ALPHA = 0.9  # at the center, falling linearly to 0 at the rim
+GLOW_DISC_REACH = 1.6  # rim radius in multiples of the wheel radius
+ICON_GRAYSCALE_PACK = "yasu_ride_test_bp"
+
 POSES = {
-    "suv-front-left.png": {"lamps": False, "hover": False, "submarine": False},
-    "suv-headlights.png": {"lamps": True, "hover": False, "submarine": False},
-    "suv-flying.png": {"lamps": False, "hover": True, "submarine": False},
-    "suv-submarine.png": {"lamps": False, "hover": False, "submarine": True},
+    "suv-front-left.png": {"lamps": False, "dusk": False, "hover": False, "submarine": False},
+    "suv-headlights.png": {"lamps": True, "dusk": True, "hover": False, "submarine": False},
+    "suv-flying.png": {"lamps": False, "dusk": False, "hover": True, "submarine": False},
+    "suv-submarine.png": {"lamps": False, "dusk": False, "hover": False, "submarine": True},
 }
 
 
 def read_png(path):
     """Decode an 8-bit RGB or RGBA PNG without interlacing into rows of RGBA tuples."""
     data = path.read_bytes()
-    pos, idat = 8, b""
+    pos, idat, header = 8, b"", None
     while pos < len(data):
         (length,) = struct.unpack(">I", data[pos : pos + 4])
         kind, body = data[pos + 4 : pos + 8], data[pos + 8 : pos + 8 + length]
         if kind == b"IHDR":
-            w, h, depth, color, _, _, interlace = struct.unpack(">IIBBBBB", body)
+            header = w, h, depth, color, _, _, interlace = struct.unpack(">IIBBBBB", body)
             if depth != 8 or color not in (2, 6) or interlace:
                 raise ValueError(f"{path}: only 8-bit RGB/RGBA PNGs without interlacing are supported")
         elif kind == b"IDAT":
             idat += body
         pos += 12 + length
+    if header is None:
+        raise ValueError(f"{path}: no IHDR chunk")
     channels = 4 if color == 6 else 3
     stride = w * channels
     raw = zlib.decompress(idat)
+    if len(raw) != h * (stride + 1):
+        raise ValueError(f"{path}: image data is {len(raw)} bytes, expected {h * (stride + 1)}")
     rows, prev = [], bytearray(stride)
     for y in range(h):
         filter_type = raw[y * (stride + 1)]
+        if filter_type > 4:
+            raise ValueError(f"{path}: unknown filter type {filter_type} on row {y}")
         line = bytearray(raw[y * (stride + 1) + 1 : (y + 1) * (stride + 1)])
         for i in range(stride):
             a = line[i - channels] if i >= channels else 0
@@ -119,13 +143,16 @@ def read_png(path):
     return rows
 
 
-def write_png(path, w, h, pixels):
-    raw = b"".join(b"\x00" + bytes(pixels[y * w * 4 : (y + 1) * w * 4]) for y in range(h))
+def write_png(path, w, h, pixels, rgb=False):
+    channels = 3 if rgb else 4
+    if rgb:
+        pixels = bytes(c for i, c in enumerate(pixels) if i % 4 != 3)
+    raw = b"".join(b"\x00" + bytes(pixels[y * w * channels : (y + 1) * w * channels]) for y in range(h))
 
     def chunk(t, d):
         return struct.pack(">I", len(d)) + t + d + struct.pack(">I", zlib.crc32(t + d) & 0xFFFFFFFF)
 
-    data = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 6, 0, 0, 0))
+    data = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2 if rgb else 6, 0, 0, 0))
     data += chunk(b"IDAT", zlib.compress(raw, 9)) + chunk(b"IEND", b"")
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(data)
@@ -236,7 +263,7 @@ def collect(geo, texture, folds, turns, pose):
     """Return the vehicle's faces as (quad, rgb, bloom group or None)."""
     desc = geo["description"]
     lift = FLIGHT_LIFT if pose["hover"] else 0.0
-    if pose["lamps"]:
+    if pose["dusk"]:
         tint = NIGHT_TINT
     elif pose["submarine"]:
         tint = WATER_TINT
@@ -386,38 +413,41 @@ def box_blur(plane, w, h, x0, y0, x1, y1, radius):
             plane[y * w + x] = sum(col[lo:hi]) / n
 
 
-def add_bloom(planes, body, source, config):
+def add_bloom(planes, body, source, config, width, height):
     """Blur the emissive samples in source (supersampled index -> rgb) and add them to planes."""
-    w, n = WIDTH * SUPERSAMPLE, SUPERSAMPLE * SUPERSAMPLE
-    bloom = [[0.0] * (WIDTH * HEIGHT) for _ in range(4)]
+    w, n = width * SUPERSAMPLE, SUPERSAMPLE * SUPERSAMPLE
+    bloom = [[0.0] * (width * height) for _ in range(4)]
     rows, cols = [], []
     for i, rgb in source.items():
         oy, ox = i // w // SUPERSAMPLE, (i % w) // SUPERSAMPLE
         rows.append(oy)
         cols.append(ox)
-        o = oy * WIDTH + ox
+        o = oy * width + ox
         for c in range(3):
             bloom[c][o] += rgb[c] / n
         bloom[3][o] += 1.0 / n
     # Only blur the box the bloom can reach, which keeps this fast in pure Python
     reach = BLOOM_RADIUS * BLOOM_PASSES
-    x0, x1 = max(0, min(cols) - reach), min(WIDTH, max(cols) + reach + 1)
-    y0, y1 = max(0, min(rows) - reach), min(HEIGHT, max(rows) + reach + 1)
+    x0, x1 = max(0, min(cols) - reach), min(width, max(cols) + reach + 1)
+    y0, y1 = max(0, min(rows) - reach), min(height, max(rows) + reach + 1)
     for plane in bloom:
         for _ in range(BLOOM_PASSES):
-            box_blur(plane, WIDTH, HEIGHT, x0, y0, x1, y1, BLOOM_RADIUS)
+            box_blur(plane, width, height, x0, y0, x1, y1, BLOOM_RADIUS)
     for y in range(y0, y1):
         for x in range(x0, x1):
-            o = y * WIDTH + x
+            o = y * width + x
             k = config["strength"] * (1.0 - body[o] if config["through_body"] else 1.0)
             for c in range(4):
                 planes[c][o] += bloom[c][o] * k
 
 
-def rasterize(polygons, layers, to_screen):
-    w, h = WIDTH * SUPERSAMPLE, HEIGHT * SUPERSAMPLE
+def rasterize(polygons, layers, to_screen, width=WIDTH, height=HEIGHT, background=None, bloom=BLOOM):
+    w, h = width * SUPERSAMPLE, height * SUPERSAMPLE
 
-    ground = [None] * (w * h)  # premultiplied (r, g, b, a) of the shadow and light pools
+    # Premultiplied (r, g, b, a) under the vehicle. The shadow and light pools add up on top of
+    # the background when one is given, and the downsample below scales any sum whose alpha
+    # exceeds 1 back to 1. The icon passes an opaque background and no pools.
+    ground = [None] * (w * h) if background is None else background
     for quad, alpha, rgb in layers:
 
         def lay(px, py, _, alpha=alpha, rgb=rgb):
@@ -441,10 +471,10 @@ def rasterize(polygons, layers, to_screen):
 
     # Average each SUPERSAMPLE x SUPERSAMPLE block with premultiplied alpha
     n = SUPERSAMPLE * SUPERSAMPLE
-    planes = [[0.0] * (WIDTH * HEIGHT) for _ in range(4)]
-    body = [0.0] * (WIDTH * HEIGHT)  # fraction of each output pixel the vehicle covers
-    for oy in range(HEIGHT):
-        for ox in range(WIDTH):
+    planes = [[0.0] * (width * height) for _ in range(4)]
+    body = [0.0] * (width * height)  # fraction of each output pixel the vehicle covers
+    for oy in range(height):
+        for ox in range(width):
             r = g = b = a = 0.0
             covered = 0
             for sy in range(oy * SUPERSAMPLE, (oy + 1) * SUPERSAMPLE):
@@ -457,11 +487,11 @@ def rasterize(polygons, layers, to_screen):
                         gr, gg, gb, ga = ground[i]
                         k = min(1.0, ga) / ga
                         r, g, b, a = r + gr * k, g + gg * k, b + gb * k, a + ga * k
-            o = oy * WIDTH + ox
+            o = oy * width + ox
             planes[0][o], planes[1][o], planes[2][o], planes[3][o] = r / n, g / n, b / n, a / n
             body[o] = covered / n
 
-    for group, config in BLOOM.items():
+    for group, config in bloom.items():
         source = {}
         for quad, rgb, emissive in polygons:
             if emissive != group:
@@ -474,10 +504,10 @@ def rasterize(polygons, layers, to_screen):
 
             fill(to_screen(quad), w, h, light)
         if source:
-            add_bloom(planes, body, source, config)
+            add_bloom(planes, body, source, config, width, height)
 
-    out = bytearray(WIDTH * HEIGHT * 4)
-    for o in range(WIDTH * HEIGHT):
+    out = bytearray(width * height * 4)
+    for o in range(width * height):
         a = planes[3][o]
         if a > 0:
             out[o * 4 : o * 4 + 4] = bytes(
@@ -486,7 +516,7 @@ def rasterize(polygons, layers, to_screen):
     return out
 
 
-def render(rp):
+def render(rp, icons=False):
     geo = json.loads((rp / GEOMETRY).read_text())["minecraft:geometry"][0]
     texture = read_png(rp / TEXTURE)
     animations = json.loads((rp / ANIMATIONS).read_text())
@@ -515,26 +545,121 @@ def render(rp):
     def to_screen(quad):
         return [(off_x + scale * x, off_y + scale * y, q) for x, y, q in map(camera.project, quad)]
 
-    return {name: rasterize(scenes[name], layers[name], to_screen) for name in POSES}
+    images = {name: rasterize(scenes[name], layers[name], to_screen) for name in POSES}
+    icon = None
+    if icons:
+        # Lamps lit without the dusk tint, so the body keeps its daylight colors
+        pose = {**POSES["suv-flying.png"], "lamps": True}
+        polygons = collect(geo, texture, folds, turns, pose)
+        icon = render_icon(geo, polygons, camera)
+    return images, icon
+
+
+def render_icon(geo, polygons, camera):
+    """Fit the vehicle to ICON_FILL of the width over the background and the wheel discs."""
+    size = ICON_SIZE
+    w = h = size * SUPERSAMPLE
+    projected = [camera.project(p) for quad, _, _ in polygons for p in quad]
+    xlo, xhi = min(p[0] for p in projected), max(p[0] for p in projected)
+    ylo, yhi = min(p[1] for p in projected), max(p[1] for p in projected)
+    scale = w * ICON_FILL / (xhi - xlo)
+    off_x = w / 2 - scale * (xlo + xhi) / 2
+    off_y = h / 2 - scale * (ylo + yhi) / 2
+
+    def to_screen(quad):
+        return [(off_x + scale * x, off_y + scale * y, q) for x, y, q in map(camera.project, quad)]
+
+    half_band = h * ICON_BAND_HEIGHT / 2
+
+    def in_band(x, y):
+        # The band's center line runs from the lower-left corner to the middle of the right edge
+        return abs((y + 0.5) - (h - (x + 0.5) * 0.5)) < half_band
+
+    background = [
+        (*(ICON_BAND_COLOR if in_band(x, y) else ICON_BACKGROUND), 1.0) for y in range(h) for x in range(w)
+    ]
+    bones = {bone["name"]: bone for bone in geo["bones"]}
+    for name, bone in bones.items():
+        if not name.startswith("glow_"):
+            continue
+        cube = bone["cubes"][0]
+        origin, extent = cube["origin"], cube["size"]
+        cx, cy, cz = -(origin[0] + extent[0] / 2), origin[1] + FLIGHT_LIFT, origin[2] + extent[2] / 2
+        wheel = bones[name.replace("glow_", "wheel_")]
+        # The tire is a ring of rotated cubes, so its radius is the farthest rotated corner from the hub
+        hub = wheel["pivot"]
+        wheel_radius = math.sqrt(max(
+            (p[1] - hub[1]) ** 2 + (p[2] - hub[2]) ** 2
+            for c in wheel["cubes"]
+            for _, face in cube_faces(c)
+            for p in face
+        ))
+        # A flat circle on screen rather than a disc lying under the wheel: seen from above, a
+        # horizontal disc would hide behind the folded wheel and leave only a thin rim of glow.
+        (sx, sy, inv_depth), = to_screen([(cx, cy, cz)])
+        radius = wheel_radius * GLOW_DISC_REACH * scale * inv_depth
+        x0, x1 = max(0, math.ceil(sx - radius - 0.5)), min(w, math.ceil(sx + radius - 0.5))
+        y0, y1 = max(0, math.ceil(sy - radius - 0.5)), min(h, math.ceil(sy + radius - 0.5))
+        for py in range(y0, y1):
+            for px in range(x0, x1):
+                dx, dy = px + 0.5 - sx, py + 0.5 - sy
+                alpha = GLOW_DISC_ALPHA * max(0.0, 1.0 - math.sqrt(dx * dx + dy * dy) / radius)
+                if alpha:
+                    i = py * w + px
+                    background[i] = (*(background[i][c] * (1 - alpha) + GLOW_DISC_COLOR[c] * alpha for c in range(3)), 1.0)
+    # Bloom would wash the lamp and disc halos over the orange band and blur the small icon.
+    return rasterize(polygons, [], to_screen, size, size, background, bloom={})
+
+
+def grayscale(rgba):
+    gray_rgba = bytearray(rgba)
+    for i in range(0, len(gray_rgba), 4):
+        # Integer Rec. 601 luminance, so no float rounding can differ between platforms
+        gray = (299 * gray_rgba[i] + 587 * gray_rgba[i + 1] + 114 * gray_rgba[i + 2] + 500) // 1000
+        gray_rgba[i : i + 3] = bytes((gray, gray, gray))
+    return gray_rgba
 
 
 def main():
-    rp, out_dir = Path(sys.argv[1]), Path(sys.argv[2])
-    images = render(rp)
-    if "--check" in sys.argv[3:]:
-        stale = []
-        for name, pixels in images.items():
-            target = out_dir / name
-            current = bytes(c for row in read_png(target) for px in row for c in px) if target.exists() else b""
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("resource_pack", type=Path)
+    parser.add_argument("output_dir", type=Path)
+    parser.add_argument("--check", action="store_true")
+    parser.add_argument("--icons", nargs="+", type=Path, default=[])
+    args = parser.parse_args()
+    # A mistyped pack dir would otherwise get a fresh pack_icon.png that no manifest uses
+    for pack in args.icons:
+        if not (pack / "manifest.json").is_file():
+            parser.error(f"--icons {pack}: no manifest.json, so it is not a pack")
+    # Renaming the test pack must not silently turn its icon into a color copy
+    if args.icons and not any(pack.name == ICON_GRAYSCALE_PACK for pack in args.icons):
+        parser.error(f"--icons must include {ICON_GRAYSCALE_PACK}, which gets the grayscale icon")
+    images, icon = render(args.resource_pack, bool(args.icons))
+    targets = [(args.output_dir / name, WIDTH, HEIGHT, pixels, False) for name, pixels in images.items()]
+    for pack in args.icons:
+        pixels = grayscale(icon) if pack.name == ICON_GRAYSCALE_PACK else icon
+        targets.append((pack / "pack_icon.png", ICON_SIZE, ICON_SIZE, pixels, True))
+    stale = []
+    for target, width, height, pixels, rgb in targets:
+        if args.check:
+            try:
+                current = bytes(c for row in read_png(target) for px in row for c in px)
+            except FileNotFoundError:
+                stale.append(f"{target} (missing)")
+                continue
+            except (OSError, ValueError, struct.error, zlib.error) as e:
+                stale.append(f"{target} ({e})")
+                continue
             if current != bytes(pixels):
                 stale.append(str(target))
-        if stale:
-            sys.exit(f"{', '.join(stale)} out of date with the model. Run `pnpm model` and commit the result.")
-        print(f"previews in {out_dir} are up to date")
-        return
-    for name, pixels in images.items():
-        write_png(out_dir / name, WIDTH, HEIGHT, pixels)
-        print(f"wrote {out_dir / name}")
+        else:
+            write_png(target, width, height, pixels, rgb=rgb)
+            print(f"wrote {target}")
+    if stale:
+        sys.exit(f"{', '.join(stale)} out of date with the model. Run `pnpm model` and commit the result.")
+    if args.check:
+        print("previews and requested icons are up to date")
 
 
-main()
+if __name__ == "__main__":
+    main()
