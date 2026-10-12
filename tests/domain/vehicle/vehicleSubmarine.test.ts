@@ -14,11 +14,15 @@ import {
   createVehicle,
   rebuildVehicle,
 } from "../../../src/domain/vehicle/kinds/index";
+import { SuvDrive } from "../../../src/domain/vehicle/kinds/suv/drive";
 import {
   type Form,
   verticalImpulse,
 } from "../../../src/domain/vehicle/kinds/suv/form";
-import { SUV_MOTION } from "../../../src/domain/vehicle/kinds/suv/profile";
+import {
+  SUV_MOTION,
+  SUV_PROFILE,
+} from "../../../src/domain/vehicle/kinds/suv/profile";
 import {
   AIR,
   SUV_SPEC,
@@ -30,7 +34,7 @@ import {
   stepFlightMotion,
 } from "../../../src/domain/vehicle/motion/motion";
 import type { RamTarget } from "../../../src/domain/vehicle/ram";
-import type { TickOutcome } from "../../../src/domain/vehicle/vehicle";
+import { type TickOutcome, Vehicle } from "../../../src/domain/vehicle/vehicle";
 import { propertyValue } from "../../support/engineCommands";
 import {
   type Body,
@@ -382,20 +386,39 @@ describe("Vehicle as a submarine", () => {
       fc.property(
         fc.array(rawInput, { minLength: 1, maxLength: 200 }),
         (inputs) => {
-          const sim = new DiveSim(1000);
+          const drive = new SuvDrive(0, {});
+          const sim = new DiveSim(
+            1000,
+            new Vehicle("vehicle", SUV_PROFILE, drive),
+          );
           sim.y = 500;
           let sent: number | undefined;
-          for (const input of inputs) {
+          let intermediateChanges = 0;
+          const controls = [
+            ...Array<RawInput>(40).fill(FORWARD),
+            ...Array<RawInput>(12).fill({ ...FORWARD, moveX: 1 }),
+            ...Array<RawInput>(12).fill(FORWARD),
+            ...inputs,
+          ];
+          for (const input of controls) {
             const out = sim.step(input);
-            expect(Math.abs(sim.bankAngle)).toBeLessThanOrEqual(
+            expect(Math.abs(drive.bankAngle)).toBeLessThanOrEqual(
               SUV_SPEC.maxBank + 1e-9,
             );
             expect(sim.wheelsDown).toBe(true);
             // The client sees every new angle: it is sent on the tick it
-            // changes, and on the first tick (ADR 0026).
-            if (sim.bankAngle !== sent)
-              expect(propertyValue(out.commands, "bank")).toBe(sim.bankAngle);
-            sent = sim.bankAngle;
+            // changes, and on the first tick (ADR 0026). The drive's own
+            // angle is the reference, so a skipped send cannot hide.
+            if (drive.bankAngle !== sent) {
+              expect(propertyValue(out.commands, "bank")).toBe(drive.bankAngle);
+              if (
+                Math.abs(drive.bankAngle) > 0 &&
+                Math.abs(drive.bankAngle) < SUV_SPEC.maxBank
+              )
+                intermediateChanges++;
+            }
+            const bank = propertyValue(out.commands, "bank");
+            if (typeof bank === "number") sent = bank;
             expect(
               propertyValue(out.commands, "gear_down") === undefined ||
                 propertyValue(out.commands, "gear_down"),
@@ -407,6 +430,7 @@ describe("Vehicle as a submarine", () => {
               SUV_SPEC.maxClimb + 1e-9,
             );
           }
+          expect(intermediateChanges).toBeGreaterThan(1);
         },
       ),
     );

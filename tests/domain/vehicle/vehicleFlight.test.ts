@@ -14,9 +14,10 @@ import {
 } from "../../../src/domain/vehicle/kinds/index";
 import { SuvDrive } from "../../../src/domain/vehicle/kinds/suv/drive";
 import type { Form } from "../../../src/domain/vehicle/kinds/suv/form";
+import { SUV_PROFILE } from "../../../src/domain/vehicle/kinds/suv/profile";
 import { SUV_SPEC } from "../../../src/domain/vehicle/kinds/suv/spec";
 import { SPEC } from "../../../src/domain/vehicle/spec";
-import type { Vehicle } from "../../../src/domain/vehicle/vehicle";
+import { type TickOutcome, Vehicle } from "../../../src/domain/vehicle/vehicle";
 import { propertyValue } from "../../support/engineCommands";
 import { AIR_DRAG, GRAVITY, VERTICAL_DRAG } from "../../support/engineModel";
 import { waterSensors } from "../../support/waterDepth";
@@ -61,7 +62,7 @@ class FlightSim {
     return this.onGround ? GROUND_FRICTION : AIR_DRAG;
   }
 
-  step(input: RawInput | undefined): void {
+  step(input: RawInput | undefined): TickOutcome {
     const out = this.vehicle.tick({
       tick: this.tick++,
       riders: [],
@@ -100,6 +101,7 @@ class FlightSim {
       vy = 0;
     }
     this.vy = vy * VERTICAL_DRAG;
+    return out;
   }
 
   run(input: RawInput | undefined, ticks: number): void {
@@ -325,6 +327,52 @@ describe("Vehicle in flight (ADR 0021)", () => {
 });
 
 describe("Vehicle banking (ADR 0026)", () => {
+  it("sends every changed bank angle and bounds the drive bank throughout random hover controls", () => {
+    const rawInput = fc.record({
+      moveX: fc.double({ min: -1, max: 1, noNaN: true }),
+      moveY: fc.double({ min: -1, max: 1, noNaN: true }),
+      jump: fc.boolean(),
+    });
+    fc.assert(
+      fc.property(
+        fc.array(rawInput, { minLength: 1, maxLength: 200 }),
+        (inputs) => {
+          const drive = new SuvDrive(0, { form: "hover" });
+          const sim = new FlightSim(
+            new Vehicle("car", SUV_PROFILE, drive),
+            "hover",
+          );
+          sim.y = 1000;
+          let sent: number | undefined;
+          let intermediateChanges = 0;
+          const controls = [
+            ...Array<RawInput>(40).fill(FORWARD),
+            ...Array<RawInput>(12).fill({ ...FORWARD, moveX: 1 }),
+            ...Array<RawInput>(12).fill(FORWARD),
+            ...inputs,
+          ];
+          for (const input of controls) {
+            const out = sim.step(input);
+            expect(Math.abs(drive.bankAngle)).toBeLessThanOrEqual(
+              SUV_SPEC.maxBank + 1e-9,
+            );
+            if (drive.bankAngle !== sent) {
+              expect(propertyValue(out.commands, "bank")).toBe(drive.bankAngle);
+              if (
+                Math.abs(drive.bankAngle) > 0 &&
+                Math.abs(drive.bankAngle) < SUV_SPEC.maxBank
+              )
+                intermediateChanges++;
+            }
+            const bank = propertyValue(out.commands, "bank");
+            if (typeof bank === "number") sent = bank;
+          }
+          expect(intermediateChanges).toBeGreaterThan(1);
+        },
+      ),
+    );
+  });
+
   function flying(): FlightSim {
     const sim = new FlightSim(
       rebuildVehicle("suv", "car", 0, [], { form: "hover" }),
