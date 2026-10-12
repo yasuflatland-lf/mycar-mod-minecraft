@@ -40,6 +40,7 @@ import {
   GRAVITY_ON_EVENT,
   HEADLIGHTS_PROPERTY,
   ITEM_TYPE,
+  isVehicleEntity,
   kindOfEntity,
   PAINT_VARIANT,
   PLAYER_TYPE,
@@ -84,7 +85,7 @@ export class BedrockVehicleWorld
       world
         .getDimension(dimId)
         .getEntities({ families: [VEHICLE_FAMILY] })
-        .filter((car) => kindOfEntity(car.typeId) !== undefined)
+        .filter((car) => isVehicleEntity(car.typeId))
         .map((car) => car.id),
     );
   }
@@ -207,10 +208,9 @@ export class BedrockVehicleWorld
           y: e.location.y - car.location.y,
           z: e.location.z - car.location.z,
         },
-        protectedOccupant:
-          kindOfEntity(
-            e.getComponent("minecraft:riding")?.entityRidingOn?.typeId,
-          ) !== undefined,
+        protectedOccupant: isVehicleEntity(
+          e.getComponent("minecraft:riding")?.entityRidingOn?.typeId,
+        ),
       }));
   }
 

@@ -237,25 +237,25 @@ body.append(box(7.2, F + 8, 13, 13.8, F + 11.8, 14, "gloss", pivot=SCREEN_PIVOT,
 body.append(box(7.6, F + 8.4, 12.8, 13.4, F + 11.4, 13.1, "screen", pivot=SCREEN_PIVOT, rotation=[20, 0, 0]))
 # Steering wheel as in the photo: a thick black rim, three broad black spokes at 10, 2, and 6 o'clock
 # with chrome accents where they meet the rim, and a large hub with a blue ring and a silver center.
-WHEEL = (6.25, F + 7.5, 8.2)
+WX, WY, WZ = 6.25, F + 7.5, 8.2  # wheel center
 for i in range(16):
     ang = i * 22.5
-    cx = WHEEL[0] + 2.7 * math.cos(math.radians(ang))
-    cy = WHEEL[1] + 2.7 * math.sin(math.radians(ang))
-    body.append(box(cx - 0.6, cy - 0.45, WHEEL[2], cx + 0.6, cy + 0.45, WHEEL[2] + 0.8, "gloss",
-                    pivot=[cx, cy, WHEEL[2] + 0.4], rotation=[0, 0, ang + 90]))
+    cx = WX + 2.7 * math.cos(math.radians(ang))
+    cy = WY + 2.7 * math.sin(math.radians(ang))
+    body.append(box(cx - 0.6, cy - 0.45, WZ, cx + 0.6, cy + 0.45, WZ + 0.8, "gloss",
+                    pivot=[cx, cy, WZ + 0.4], rotation=[0, 0, ang + 90]))
 for ang in (30, 150, 270):
-    cx = WHEEL[0] + 1.5 * math.cos(math.radians(ang))
-    cy = WHEEL[1] + 1.5 * math.sin(math.radians(ang))
-    body.append(box(cx - 1.1, cy - 0.55, WHEEL[2] + 0.15, cx + 1.1, cy + 0.55, WHEEL[2] + 0.6, "gloss",
-                    pivot=[cx, cy, WHEEL[2] + 0.4], rotation=[0, 0, ang]))
-    ax = WHEEL[0] + 2.0 * math.cos(math.radians(ang))
-    ay = WHEEL[1] + 2.0 * math.sin(math.radians(ang))
-    body.append(box(ax - 0.35, ay - 0.35, WHEEL[2] + 0.05, ax + 0.35, ay + 0.35, WHEEL[2] + 0.15, "steel",
-                    pivot=[ax, ay, WHEEL[2] + 0.1], rotation=[0, 0, ang]))
-body.append(box(WHEEL[0] - 1.0, WHEEL[1] - 1.0, WHEEL[2] + 0.1, WHEEL[0] + 1.0, WHEEL[1] + 1.0, WHEEL[2] + 0.7, "gloss"))
-body.append(box(WHEEL[0] - 0.75, WHEEL[1] - 0.75, WHEEL[2], WHEEL[0] + 0.75, WHEEL[1] + 0.75, WHEEL[2] + 0.1, "ring"))
-body.append(box(WHEEL[0] - 0.45, WHEEL[1] - 0.45, WHEEL[2] - 0.05, WHEEL[0] + 0.45, WHEEL[1] + 0.45, WHEEL[2], "steel"))
+    cx = WX + 1.5 * math.cos(math.radians(ang))
+    cy = WY + 1.5 * math.sin(math.radians(ang))
+    body.append(box(cx - 1.1, cy - 0.55, WZ + 0.15, cx + 1.1, cy + 0.55, WZ + 0.6, "gloss",
+                    pivot=[cx, cy, WZ + 0.4], rotation=[0, 0, ang]))
+    ax = WX + 2.0 * math.cos(math.radians(ang))
+    ay = WY + 2.0 * math.sin(math.radians(ang))
+    body.append(box(ax - 0.35, ay - 0.35, WZ + 0.05, ax + 0.35, ay + 0.35, WZ + 0.15, "steel",
+                    pivot=[ax, ay, WZ + 0.1], rotation=[0, 0, ang]))
+body.append(box(WX - 1.0, WY - 1.0, WZ + 0.1, WX + 1.0, WY + 1.0, WZ + 0.7, "gloss"))
+body.append(box(WX - 0.75, WY - 0.75, WZ, WX + 0.75, WY + 0.75, WZ + 0.1, "ring"))
+body.append(box(WX - 0.45, WY - 0.45, WZ - 0.05, WX + 0.45, WY + 0.45, WZ, "steel"))
 body.append(box(5.75, F + 4, 8.8, 6.75, F + 7.5, 9.6, "gloss"))  # column
 # Throttle on the right side wall beside the driver: a glossy black housing with a chrome
 # handle on a black lever arm, as in the photo
@@ -283,28 +283,24 @@ while z < FRONT_BASE:
     zc = z + SLICE / 2
     s, b, h = sheer(zc), beam(zc), glass_height(zc)
     if h > 0.3:
-        glass.extend(pair(b - 1.5, s, z, b - 1.0, s + h, z + SLICE, "glass"))
+        glass += pair(b - 1.5, s, z, b - 1.0, s + h, z + SLICE, "glass")
         body += pair(b - 1.7, s + h, z, b - 0.8, s + h + 0.7, z + SLICE, "frame")  # top rail
     z += SLICE
 s0 = sheer(FRONT_BASE)
-for r in range(WS_ROWS):
-    y0 = s0 + r * WS_HEIGHT / WS_ROWS
-    zf = FRONT_BASE - r * (FRONT_BASE - FRONT_TOP) / WS_ROWS
-    hw = beam(zf) - 1.0
+ROW_HEIGHT = WS_HEIGHT / WS_ROWS
+# (bottom y, front z) of each row of the front glass
+ROWS = [(s0 + r * WS_HEIGHT / WS_ROWS, FRONT_BASE - r * (FRONT_BASE - FRONT_TOP) / WS_ROWS) for r in range(WS_ROWS)]
+for y0, zf in ROWS:
     # The center section is the walk-through to the bow
-    glass.extend(pair(3.2, y0, zf - 0.9, hw, y0 + WS_HEIGHT / WS_ROWS, zf, "glass"))
+    glass += pair(3.2, y0, zf - 0.9, beam(zf) - 1.0, y0 + ROW_HEIGHT, zf, "glass")
 body += pair(3.0, s0 + WS_HEIGHT, FRONT_TOP - 1.0, beam(FRONT_TOP) - 1.0, s0 + WS_HEIGHT + 0.7, FRONT_TOP + 0.2, "frame")
 # Walk-through posts lean back with the glass: one short block per row
-for r in range(WS_ROWS):
-    y0 = s0 + r * WS_HEIGHT / WS_ROWS
-    zf = FRONT_BASE - r * (FRONT_BASE - FRONT_TOP) / WS_ROWS
-    body += pair(2.6, y0, zf - 0.9, 3.2, y0 + WS_HEIGHT / WS_ROWS + 0.05, zf, "frame")
+for y0, zf in ROWS:
+    body += pair(2.6, y0, zf - 0.9, 3.2, y0 + ROW_HEIGHT + 0.05, zf, "frame")
 # Corner posts where the front meets the sides, and a mid post on each side pane
-for r in range(WS_ROWS):
-    y0 = s0 + r * WS_HEIGHT / WS_ROWS
-    zf = FRONT_BASE - r * (FRONT_BASE - FRONT_TOP) / WS_ROWS
+for y0, zf in ROWS:
     hw = beam(zf) - 1.0
-    body += pair(hw - 0.6, y0, zf - 0.9, hw, y0 + WS_HEIGHT / WS_ROWS + 0.05, zf, "frame")
+    body += pair(hw - 0.6, y0, zf - 0.9, hw, y0 + ROW_HEIGHT + 0.05, zf, "frame")
 body += pair(beam(6) - 1.6, sheer(6), 5.6, beam(6) - 1.0, sheer(6) + glass_height(6) + 0.2, 6.4, "frame")
 
 # Wake tower: on each gunwale a raked rear and front strut with rungs and an X brace, then the top beam.
@@ -312,14 +308,14 @@ TX = 15.6  # inner face of the legs
 TOWER_TOP = 32.5  # the bimini top then sits 1.97 blocks over the waterline: 8 ft 1 in at this scale
 
 
-def strut(z0, y0, z1, y1, x0=TX, x1=TX + 1.6, t=1.6, color="frame"):
+def strut(z0, y0, z1, y1, t=1.6):
     dz, dy = z1 - z0, y1 - y0
     length = math.hypot(dz, dy)
     # Lean the box from vertical toward +z. In game a negative x rotation does this, before the
     # 180-degree turn; render_preview.py draws cube x rotations the other way round (ADR 0051).
     ang = math.degrees(math.atan2(dz, dy))
-    return pair(x0, y0, z0 - t / 2, x1, y0 + length, z0 + t / 2, color,
-                pivot=[(x0 + x1) / 2, y0, z0], rotation=[-ang, 0, 0])
+    return pair(TX, y0, z0 - t / 2, TX + 1.6, y0 + length, z0 + t / 2, "frame",
+                pivot=[TX + 0.8, y0, z0], rotation=[-ang, 0, 0])
 
 
 # Raked about 50 degrees, so both struts meet under the middle of the short top over the helm.
@@ -392,8 +388,8 @@ while zl < LAMP[1]:
     yc = sheer(zl + SLICE / 2) - 3.2 + 1.2 * t
     headlights += pair(hull_b - 0.05, yc - h / 2, zl, hull_b + 0.15, yc + h / 2, zl + SLICE, "light")
     # The step to the next, narrower slice exposes this segment's front face; cap it with lens too
-    next_b = beam(zl + SLICE * 1.5)
     if zl + SLICE < LAMP[1]:
+        next_b = beam(zl + SLICE * 1.5)
         headlights += pair(next_b, yc - h / 2, zl + SLICE - 0.15, hull_b + 0.15, yc + h / 2, zl + SLICE, "light")
     zl += SLICE
 
@@ -498,8 +494,7 @@ ICON_COLORS = {"K": (44, 44, 48), "F": (70, 70, 76), "G": (170, 205, 225), "T": 
 
 
 def icon(x, y):
-    c = ICON[y][x]
-    return ICON_COLORS[c] if c in ICON_COLORS else (0, 0, 0, 0)
+    return ICON_COLORS.get(ICON[y][x], (0, 0, 0, 0))
 
 
 ITEM_TEXTURES.mkdir(parents=True, exist_ok=True)
