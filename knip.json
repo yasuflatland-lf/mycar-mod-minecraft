@@ -3,6 +3,7 @@
   "entry": [
     "src/main.ts",
     "src/test-pack/runner.ts",
-    "scripts/check-rp-version.d.mts"
+    "scripts/check-rp-version.d.mts",
+    "scripts/dev-pack-version.d.mts"
   ]
 }

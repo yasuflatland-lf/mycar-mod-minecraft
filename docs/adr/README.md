@@ -18,7 +18,7 @@ This directory records design decisions and the reasons behind them. The format 
 | [0012](0012-ddd-layered-architecture.md) | Split the code into domain, application, and infrastructure layers | Accepted |
 | [0013](0013-dependency-updates-with-renovate.md) | Keep dependencies up to date with Renovate | Accepted |
 | [0014](0014-opt-in-nethernet-dev-server.md) | Offer NetherNet on the dev server as an opt-in transport | Superseded by 0015 |
-| [0015](0015-dev-server-docker-nethernet.md) | Run the development server as BDS in Docker with NetherNet | Accepted |
+| [0015](0015-dev-server-docker-nethernet.md) | Run the development server as BDS in Docker with NetherNet | Extended by 0062 |
 | [0016](0016-readme-preview-rendered-from-model.md) | Render the README preview from the model files | Superseded by 0027 |
 | [0017](0017-repaint-vehicles-with-dye.md) | Repaint vehicles with dye | Superseded by 0031 |
 | [0018](0018-sideways-stick-creeps-forward.md) | Treat a sideways stick as a slow forward turn | Accepted |
@@ -64,6 +64,7 @@ This directory records design decisions and the reasons behind them. The format 
 | [0058](0058-refine-the-sports-boat-interior.md) | Refine the sports boat interior from reference photos | Accepted |
 | [0059](0059-sports-boat-wake-trim-and-roll.md) | Sports boat wake, bow rise, and roll | Accepted |
 | [0060](0060-sports-boat-engine-sound.md) | Sports boat engine sound | Accepted |
+| [0062](0062-fresh-dev-pack-version-on-every-start.md) | Serve the dev BDS's packs under a fresh dev-only version on every start | Accepted |
 
 The measurements and in-game tests behind these decisions are in [the driving-core spike findings](../spike-driving-core.md).
 

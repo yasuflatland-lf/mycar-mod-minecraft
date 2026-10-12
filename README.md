@@ -53,6 +53,7 @@ pnpm package         # zip the packs into dist/yasuflatland-ride-<version>.mcadd
 pnpm model           # generate the SUV and sports boat models and textures, the README previews, and pack icons
 pnpm model:check     # fail if the README previews or pack icons are out of date with the model
 pnpm server:up       # start the dev BDS in Docker
+pnpm server:restart  # restart it under a new dev-only Resource Pack version
 pnpm test:game       # in-game tests
 ```
 

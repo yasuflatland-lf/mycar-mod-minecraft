@@ -19,6 +19,7 @@
     "model:check": "python3 -I tools/render_preview.py packs/yasu_ride_rp docs/images --check --icons packs/yasu_ride_rp packs/yasu_ride_bp packs/yasu_ride_test_bp",
     "server:up": "node scripts/server-up.mjs",
     "server:down": "docker compose -f server/compose.yaml down",
+    "server:restart": "docker compose -f server/compose.yaml down && node scripts/server-up.mjs",
     "test:game": "node scripts/game-test.mjs"
   },
   "devDependencies": {

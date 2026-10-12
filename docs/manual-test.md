@@ -2,6 +2,7 @@
 
 Dev server: `pnpm build && pnpm server:up`. Connect to the Mac's LAN IP address on port 19132.
 The server uses NetherNet (0015). Set `BDS_LAN_IP=<address>` if the script finds more than one LAN address. If joins fail, restart it with raknet: `pnpm server:down && BDS_TRANSPORT=raknet pnpm server:up`.
+After a Resource Pack or entity definition change, restart with `pnpm server:restart` (not `docker restart`), so the packs are served under a new dev-only version and devices do not show a cached copy (0062).
 To use commands, run `docker exec yasuflatland-ride-bds send-command op <player name>`.
 
 | # | Steps | Pass condition | PC | Mobile |
