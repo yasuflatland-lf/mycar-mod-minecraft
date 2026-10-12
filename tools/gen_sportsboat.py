@@ -181,6 +181,9 @@ for cx in (-5.0, 5.0):
                         pivot=[cx, cy, -50], rotation=[0, 0, rot]))
     body.append(box(cx - 0.8, cy - 0.8, -51.7, cx + 0.8, cy + 0.8, -51.5, "gloss"))  # bore
     body.append(box(cx - 2.0, cy + 0.8, -50.5, cx + 2.0, 5.6, -47.5, "jet"))  # bucket hood
+    # Aft lip of the hood, hinged at its top front edge. Its free aft edge (toward -z) droops toward
+    # the water. In game a negative x rotation tips +y toward +z, so it also lifts -z; a positive
+    # angle turns -z down, before the 180-degree turn (ADR 0051).
     body.append(box(cx - 1.6, cy + 0.2, -51.3, cx + 1.6, cy + 1.8, -50.5, "jet",
                     pivot=[cx, cy + 1.8, -50.5], rotation=[25, 0, 0]))
 body.append(box(-0.3, -2.5, -49, 0.3, 1.0, -44, "gloss"))  # articulating keel
@@ -230,11 +233,13 @@ body.append(box(2, F, 9, 15.4, F + 7, 16, "gloss"))
 body.append(box(2, F + 7, 10, 15.4, F + 8, 15.5, "gloss"))
 body.append(box(-15.4, F, 9, -2, F + 6.5, 16, "gloss"))
 body.append(box(-15.4, F + 6.5, 10, -2, F + 7.3, 15.5, "gloss"))
-# The display sits right of the wheel's center, smaller than the dash is wide. Its top leans away
-# from the driver in game; check the sign there, not in render_preview.py (ADR 0051).
+# The display sits right of the wheel's center, smaller than the dash is wide. It stands ahead of
+# the driver (bow at +z), and its top leans away from the driver, toward +z. In game a negative x
+# rotation tips +y toward +z before the 180-degree turn, so the angle is -20; render_preview.py
+# draws it leaning the other way (ADR 0051).
 SCREEN_PIVOT = [10.5, F + 8, 13.5]
-body.append(box(7.2, F + 8, 13, 13.8, F + 11.8, 14, "gloss", pivot=SCREEN_PIVOT, rotation=[20, 0, 0]))
-body.append(box(7.6, F + 8.4, 12.8, 13.4, F + 11.4, 13.1, "screen", pivot=SCREEN_PIVOT, rotation=[20, 0, 0]))
+body.append(box(7.2, F + 8, 13, 13.8, F + 11.8, 14, "gloss", pivot=SCREEN_PIVOT, rotation=[-20, 0, 0]))
+body.append(box(7.6, F + 8.4, 12.8, 13.4, F + 11.4, 13.1, "screen", pivot=SCREEN_PIVOT, rotation=[-20, 0, 0]))
 # Steering wheel as in the photo: a thick black rim, three broad black spokes at 10, 2, and 6 o'clock
 # with chrome accents where they meet the rim, and a large hub with a blue ring and a silver center.
 WX, WY, WZ = 6.25, F + 7.5, 8.2  # wheel center
