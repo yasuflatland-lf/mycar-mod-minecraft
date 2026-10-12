@@ -1,5 +1,6 @@
-# Dev Bedrock Dedicated Server (ADR 0015). Start it with `pnpm server:up`,
-# which sets BDS_TRANSPORT and BDS_UDP_PORTS.
+# Dev Bedrock Dedicated Server (ADR 0015). Start it with `pnpm server:up` or
+# `pnpm server:restart`, which set BDS_TRANSPORT and BDS_UDP_PORTS and write the
+# dev-only manifests in data/dev-manifests (ADR 0062).
 name: yasuflatland-ride-dev
 services:
   bds:
@@ -31,6 +32,21 @@ services:
       - ../packs/yasu_ride_bp:/data/behavior_packs/yasu_ride_bp:ro
       - ../packs/yasu_ride_test_bp:/data/behavior_packs/yasu_ride_test_bp:ro
       - ../packs/yasu_ride_rp:/data/resource_packs/yasu_ride_rp:ro
+      # Serve the Resource Pack under a fresh dev-only version (ADR 0062).
+      # Without create_host_path, Docker would mount an empty directory when
+      # the manifests were not generated; this way `up` fails instead.
+      - type: bind
+        source: ./data/dev-manifests/yasu_ride_rp/manifest.json
+        target: /data/resource_packs/yasu_ride_rp/manifest.json
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./data/dev-manifests/yasu_ride_bp/manifest.json
+        target: /data/behavior_packs/yasu_ride_bp/manifest.json
+        read_only: true
+        bind:
+          create_host_path: false
     network_mode: bridge
     stdin_open: true
     tty: true

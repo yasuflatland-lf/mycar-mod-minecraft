@@ -1,6 +1,6 @@
 # 0015. Run the development server as BDS in Docker with NetherNet
 
-- Status: Accepted
+- Status: Extended by 0062
 - Date: 2026-10-11
 - Supersedes: 0011, 0014
 

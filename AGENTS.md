@@ -29,6 +29,7 @@ pnpm model:check   # fail if the README previews in docs/images or the pack icon
 pnpm sounds        # regenerate the Resource Pack sounds (Python 3)
 pnpm server:up     # register the packs and start the dev BDS (Docker)
 pnpm server:down   # stop the dev BDS
+pnpm server:restart # stop the dev BDS and start it again under a new dev pack version
 pnpm test:game     # run the in-game tests on the running dev BDS (GAME_TEST_SHARD=2/3 runs one CI slice)
 ```
 
@@ -72,6 +73,7 @@ Design decisions live in [docs/adr](docs/adr/README.md). Read the ADRs that rela
 
 - Bump the Resource Pack manifest version whenever the Resource Pack changes. Otherwise devices keep using their cached copy (0015).
 - Script-only changes reload with `/reload`. Entity definition and Resource Pack changes need a server restart (0015).
+- The dev BDS serves the Resource Pack, and the Behavior Pack's dependency on it, under a fresh dev-only version on every `pnpm server:up` and `pnpm server:restart`: the committed major and minor with patch 10000 plus a counter kept in `server/data/dev-pack-version.json`. The committed manifests stay unchanged; the served ones are generated into `server/data/dev-manifests/`. Restart through `pnpm server:restart`, not `docker restart` or `docker compose restart`, so the version goes up and devices drop their cached copy (0062).
 - Start the dev BDS with `pnpm server:up`, not `docker compose up`. It uses NetherNet: TCP 19132 for signaling, and UDP 19140-19155 advertised on the Mac's LAN IP (`BDS_LAN_IP`, detected when unset). Without that advertisement, clients behind Docker's bridge network cannot reach their UDP port. `BDS_TRANSPORT=raknet` falls back to raknet on UDP 19132; ignore its "NetherNet is the only supported transport type" banner (0015).
 - Mobs spawned with `dimension.spawnEntity` far from players disappear within a tick, so tests use `summon`. `fill` is capped at 32,768 blocks per call (0010).
 
