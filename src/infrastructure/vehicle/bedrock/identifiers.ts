@@ -2,7 +2,11 @@ import { VEHICLE_KINDS, type VehicleKind } from "../../../domain/vehicle/kind";
 import { PAINTS, type Paint } from "../../../domain/vehicle/paint";
 import { id, NAMESPACE } from "../../shared/identifiers";
 
-/** Family every driven entity lists in minecraft:type_family. */
+/**
+ * Every ENTITY_TYPE entity must list this family in minecraft:type_family.
+ * loadedVehicles and loadedVehicleIds query entities by this family and then
+ * keep the known kinds, so an entity without it is never driven or counted.
+ */
 export const VEHICLE_FAMILY = "yasu_ride_vehicle";
 export const ENTITY_TYPE: Readonly<Record<VehicleKind, string>> = {
   suv: id("suv"),
