@@ -84,6 +84,6 @@ A new kind needs its folder under `kinds/`, a row in `kinds/index.ts`, rows in t
 
 The domain knows engine names (properties, events, animations), as it already knows bone names (0009), but it does not import `@minecraft/server` (0012). The compiler cannot catch a name or value that the packs do not define; the pack test and the property-based tests catch it in CI.
 
-The trace test pins exact behavior, which 0010 avoids for lasting tests, so it was removed in issue #173 (step 9/9), after step 7 of the Order list completed the refactoring.
+The trace test pins exact behavior, which 0010 avoids for lasting tests, so it was removed (#173) once step 7 completed the refactoring.
 
-0055 supersedes 0050's flat layout, SUV-only tuning in `SPEC`, motion limits in `VehicleProfile`, and aggregate-owned motion state, and extends 0046. Step 7 also updates the architecture rules in AGENTS.md. Revisit the command vocabulary if it grows past eight operations, or if the add-on is ported away from Bedrock.
+0055 supersedes 0050's flat layout, SUV-only tuning in `SPEC`, motion limits in `VehicleProfile`, and aggregate-owned motion state, and extends 0046. Step 7 also updated the architecture rules in AGENTS.md. Revisit the command vocabulary if it grows past eight operations, or if the add-on is ported away from Bedrock.
