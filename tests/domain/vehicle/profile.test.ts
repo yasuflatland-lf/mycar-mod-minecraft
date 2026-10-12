@@ -1,7 +1,6 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { dot, forward, rightOf } from "../../../src/domain/shared/vec";
-import { SPORTSBOAT_MOTION } from "../../../src/domain/vehicle/boatDrive";
 import { NEUTRAL_INPUT } from "../../../src/domain/vehicle/driveInput";
 import {
   cellKey,
@@ -10,25 +9,30 @@ import {
 import { isVehicleKind, VEHICLE_KINDS } from "../../../src/domain/vehicle/kind";
 import {
   createVehicle,
+  KINDS,
+  profileOf,
+  RAM_QUERY_RADIUS,
   rebuildVehicle,
 } from "../../../src/domain/vehicle/kinds/index";
+import {
+  SPORTSBOAT_MOTION,
+  SPORTSBOAT_PROFILE,
+} from "../../../src/domain/vehicle/kinds/sportsboat/profile";
+import {
+  SUV_MOTION,
+  SUV_PROFILE,
+} from "../../../src/domain/vehicle/kinds/suv/profile";
+import { SUV_SPEC } from "../../../src/domain/vehicle/kinds/suv/spec";
+import { MOTION } from "../../../src/domain/vehicle/motion/constants";
 import {
   initialMotion,
   stepFlightMotion,
   stepMotion,
   updateSpeed,
-} from "../../../src/domain/vehicle/motion";
-import {
-  PROFILES,
-  profileOf,
-  SPORTSBOAT_PROFILE,
-  SUV_PROFILE,
-} from "../../../src/domain/vehicle/profile";
+} from "../../../src/domain/vehicle/motion/motion";
 import { selectHits } from "../../../src/domain/vehicle/ram";
-import { RAM_QUERY_RADIUS } from "../../../src/domain/vehicle/ramQuery";
 import { SEAT_POSITIONS } from "../../../src/domain/vehicle/seats";
 import { SPEC } from "../../../src/domain/vehicle/spec";
-import { SUV_MOTION } from "../../../src/domain/vehicle/suvDrive";
 
 const number = (min: number, max: number) =>
   fc.double({ min, max, noNaN: true });
@@ -58,23 +62,23 @@ const velocity = fc.record({ x: number(-5, 5), z: number(-5, 5) });
 describe("vehicle profiles (ADR 0050)", () => {
   it("builds the SUV profile from the existing tuning and seat data", () => {
     expect(SUV_MOTION).toEqual({
-      maxSpeed: SPEC.maxSpeed,
-      maxReverse: SPEC.maxReverse,
-      accel: SPEC.accel,
-      reverseAccel: SPEC.reverseAccel,
-      brake: SPEC.brake,
-      drag: SPEC.drag,
-      turnRate: SPEC.turnRate,
-      steerFullSpeed: SPEC.steerFullSpeed,
-      grip: SPEC.grip,
-      handbrakeGrip: SPEC.handbrakeGrip,
-      creepSpeed: SPEC.creepSpeed,
+      maxSpeed: SUV_SPEC.maxSpeed,
+      maxReverse: SUV_SPEC.maxReverse,
+      accel: SUV_SPEC.accel,
+      reverseAccel: SUV_SPEC.reverseAccel,
+      brake: SUV_SPEC.brake,
+      drag: SUV_SPEC.drag,
+      turnRate: SUV_SPEC.turnRate,
+      steerFullSpeed: SUV_SPEC.steerFullSpeed,
+      grip: SUV_SPEC.grip,
+      handbrakeGrip: SUV_SPEC.handbrakeGrip,
+      creepSpeed: SUV_SPEC.creepSpeed,
     });
     expect(SUV_PROFILE).toEqual({
       kind: "suv",
-      ram: { front: SPEC.bodyFront, halfWidth: SPEC.bodyHalfWidth },
+      ram: { front: SUV_SPEC.bodyFront, halfWidth: SUV_SPEC.bodyHalfWidth },
       seats: { positions: SEAT_POSITIONS },
-      beams: { reach: SPEC.headlightReach, lanes: [0] },
+      beams: { reach: SUV_SPEC.headlightReach, lanes: [0] },
       placement: {
         surfaces: ["top"],
         clearance: { halfX: 1, halfZ: 1, height: 2 },
@@ -116,14 +120,15 @@ describe("vehicle profiles (ADR 0050)", () => {
         clearance: { halfX: 1, halfZ: 1, height: 2 },
       },
     });
-    expect(PROFILES.sportsboat).toBe(SPORTSBOAT_PROFILE);
+    expect(profileOf("sportsboat")).toBe(SPORTSBOAT_PROFILE);
   });
 
   it("freezes every profile and motion limit so a write cannot change all vehicles of a kind", () => {
-    expect(Object.isFrozen(PROFILES)).toBe(true);
+    expect(Object.isFrozen(KINDS)).toBe(true);
     expect(Object.isFrozen(SUV_MOTION)).toBe(true);
     expect(Object.isFrozen(SPORTSBOAT_MOTION)).toBe(true);
     for (const kind of VEHICLE_KINDS) {
+      expect(Object.isFrozen(KINDS[kind])).toBe(true);
       const profile = profileOf(kind);
       for (const part of [
         profile,
@@ -149,7 +154,9 @@ describe("vehicle profiles (ADR 0050)", () => {
     fc.assert(
       fc.property(fc.constantFrom(...VEHICLE_KINDS), yaw, (kind, heading) => {
         expect(isVehicleKind(kind)).toBe(true);
-        expect(profileOf(kind)).toBe(PROFILES[kind]);
+        expect(profileOf(kind)).toBe(
+          kind === "suv" ? SUV_PROFILE : SPORTSBOAT_PROFILE,
+        );
         expect(createVehicle(kind, "v", heading).kind).toBe(kind);
         expect(
           rebuildVehicle(kind, "v", heading, [], { form: "car" }).kind,
@@ -179,9 +186,9 @@ describe("vehicle profiles (ADR 0050)", () => {
     fc.assert(
       fc.property(number(1, 4), number(0.001, 0.1), (maxSpeed, accel) => {
         const motion = { ...SUV_MOTION, maxSpeed, accel };
-        expect(updateSpeed(SPEC.maxSpeed, 1, false, motion)).toBeGreaterThan(
-          SPEC.maxSpeed,
-        );
+        expect(
+          updateSpeed(SUV_SPEC.maxSpeed, 1, false, motion),
+        ).toBeGreaterThan(SUV_SPEC.maxSpeed);
         expect(updateSpeed(maxSpeed, 1, false, motion)).toBe(maxSpeed);
       }),
     );
@@ -256,8 +263,8 @@ describe("vehicle profiles (ADR 0050)", () => {
           expect(out.forward.z).toBeCloseTo(forward(heading - turn).z, 10);
           const sideways = dot(v, rightOf(out.forward));
           const given = {
-            x: (v.x + out.impulse.x) * SPEC.defaultFriction,
-            z: (v.z + out.impulse.z) * SPEC.defaultFriction,
+            x: (v.x + out.impulse.x) * MOTION.defaultFriction,
+            z: (v.z + out.impulse.z) * MOTION.defaultFriction,
           };
           expect(dot(given, rightOf(out.forward))).toBeCloseTo(
             sideways * (1 - (handbrake ? motion.handbrakeGrip : motion.grip)),
@@ -338,15 +345,22 @@ describe("vehicle profiles (ADR 0050)", () => {
             target("outside", reach + gap),
           ];
           expect(
-            selectHits(f, direction * SPEC.maxReverse, targets, new Map(), 0, {
-              front,
-              halfWidth,
-            }).map((hit) => hit.id),
+            selectHits(
+              f,
+              direction * SUV_SPEC.maxReverse,
+              targets,
+              new Map(),
+              0,
+              {
+                front,
+                halfWidth,
+              },
+            ).map((hit) => hit.id),
           ).toEqual(["inside"]);
           expect(
             selectHits(
               f,
-              direction * SPEC.maxReverse,
+              direction * SUV_SPEC.maxReverse,
               targets,
               new Map(),
               0,
@@ -389,10 +403,17 @@ describe("vehicle profiles (ADR 0050)", () => {
             target("outside", width + gap),
           ];
           expect(
-            selectHits(f, direction * SPEC.maxReverse, targets, new Map(), 0, {
-              front,
-              halfWidth,
-            }).map((hit) => hit.id),
+            selectHits(
+              f,
+              direction * SUV_SPEC.maxReverse,
+              targets,
+              new Map(),
+              0,
+              {
+                front,
+                halfWidth,
+              },
+            ).map((hit) => hit.id),
           ).toEqual(["inside"]);
         },
       ),

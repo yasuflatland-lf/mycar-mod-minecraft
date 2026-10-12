@@ -1,14 +1,14 @@
 import fc from "fast-check";
 import { expect, it } from "vitest";
-import { BoatDrive } from "../../../src/domain/vehicle/boatDrive";
 import type { Drive, TickContext } from "../../../src/domain/vehicle/drive";
-import { FORMS } from "../../../src/domain/vehicle/form";
 import {
   VEHICLE_KINDS,
   type VehicleKind,
 } from "../../../src/domain/vehicle/kind";
-import { SPEC } from "../../../src/domain/vehicle/spec";
-import { SuvDrive } from "../../../src/domain/vehicle/suvDrive";
+import { BoatDrive } from "../../../src/domain/vehicle/kinds/sportsboat/drive";
+import { SuvDrive } from "../../../src/domain/vehicle/kinds/suv/drive";
+import { FORMS } from "../../../src/domain/vehicle/kinds/suv/form";
+import { MOTION } from "../../../src/domain/vehicle/motion/constants";
 import { propertyValue } from "../../support/engineCommands";
 import { waterSensors } from "../../support/waterDepth";
 
@@ -83,7 +83,7 @@ it("turns every kind's drive to a new driver's yaw only below mountAlignSpeed, a
         const { speed, yaw: before } = drive;
         drive.onDriverMounted(driverYaw);
         expect(drive.yaw).toBe(
-          Math.abs(speed) < SPEC.mountAlignSpeed ? driverYaw : before,
+          Math.abs(speed) < MOTION.mountAlignSpeed ? driverYaw : before,
         );
         expect(drive.speed).toBe(speed);
       },

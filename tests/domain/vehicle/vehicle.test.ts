@@ -14,11 +14,13 @@ import {
   createVehicle,
   rebuildVehicle,
 } from "../../../src/domain/vehicle/kinds/index";
+import { DOOR_BY_SEAT } from "../../../src/domain/vehicle/kinds/suv/entity";
+import { SUV_SPEC } from "../../../src/domain/vehicle/kinds/suv/spec";
+import { MOTION } from "../../../src/domain/vehicle/motion/constants";
+import { STEP_LANES } from "../../../src/domain/vehicle/motion/stepUp";
 import type { RamTarget } from "../../../src/domain/vehicle/ram";
 import { SEAT_POSITIONS } from "../../../src/domain/vehicle/seats";
 import { SPEC } from "../../../src/domain/vehicle/spec";
-import { STEP_LANES } from "../../../src/domain/vehicle/stepUp";
-import { DOOR_BY_SEAT } from "../../../src/domain/vehicle/suvEntity";
 import type {
   RiderView,
   Vehicle,
@@ -208,7 +210,7 @@ describe("Vehicle (aggregate)", () => {
           const v = createVehicle("suv", "car", 0);
           sim.riders = [{ id: "d", seat: 0, yaw: 0, raw: FORWARD }];
           sim.run(v, 20);
-          expect(Math.abs(v.speed)).toBeGreaterThan(SPEC.mountAlignSpeed);
+          expect(Math.abs(v.speed)).toBeGreaterThan(MOTION.mountAlignSpeed);
           sim.riders = [
             { id: "e", seat: 0, yaw: normalizeYaw(viewOffset), raw: FORWARD },
           ];
@@ -230,12 +232,12 @@ describe("Vehicle (aggregate)", () => {
           sim.riders = [{ id: "d", seat: 0, yaw, raw: FORWARD }];
           sim.run(createVehicle("suv", "car", yaw), STEP_REACH_TICKS);
           expect(dot(sim.pos, forward(yaw))).toBeLessThan(
-            stepDistance - SPEC.hitboxFront,
+            stepDistance - SUV_SPEC.hitboxFront,
           );
           return sim.impulseY;
         };
-        expect(drive(2)).toContain(SPEC.stepVelocity);
-        expect(drive(1)).toContain(SPEC.oneStepVelocity);
+        expect(drive(2)).toContain(MOTION.stepVelocity);
+        expect(drive(1)).toContain(MOTION.oneStepVelocity);
         expect(drive(3).every((y) => y === 0)).toBe(true);
       }),
     );
@@ -252,8 +254,10 @@ describe("Vehicle (aggregate)", () => {
           sim.solid = stepOnLane(yaw, 8, 2, lane);
           sim.riders = [{ id: "d", seat: 0, yaw, raw: FORWARD }];
           sim.run(createVehicle("suv", "car", yaw), STEP_REACH_TICKS);
-          expect(dot(sim.pos, forward(yaw))).toBeLessThan(8 - SPEC.hitboxFront);
-          expect(sim.impulseY).toContain(SPEC.stepVelocity);
+          expect(dot(sim.pos, forward(yaw))).toBeLessThan(
+            8 - SUV_SPEC.hitboxFront,
+          );
+          expect(sim.impulseY).toContain(MOTION.stepVelocity);
         },
       ),
     );
@@ -323,7 +327,7 @@ describe("Vehicle (aggregate)", () => {
     // One tick of this throttle from a standstill gives exactly mountAlignSpeed.
     const creep: RawInput = {
       moveX: 0,
-      moveY: (SPEC.mountAlignSpeed / SPEC.accel) * SPEC.throttleFullAt,
+      moveY: (MOTION.mountAlignSpeed / SUV_SPEC.accel) * SPEC.throttleFullAt,
       jump: false,
     };
     const board = (raw: RawInput) => {
@@ -336,9 +340,9 @@ describe("Vehicle (aggregate)", () => {
       sim.run(v, 1, 1);
       return { speed, yaw: v.yaw };
     };
-    expect(board(creep)).toEqual({ speed: SPEC.mountAlignSpeed, yaw: 0 });
+    expect(board(creep)).toEqual({ speed: MOTION.mountAlignSpeed, yaw: 0 });
     const slower = board({ ...creep, moveY: creep.moveY * 0.99 });
-    expect(slower.speed).toBeLessThan(SPEC.mountAlignSpeed);
+    expect(slower.speed).toBeLessThan(MOTION.mountAlignSpeed);
     expect(slower.yaw).toBeCloseTo(90);
   });
 
@@ -347,10 +351,10 @@ describe("Vehicle (aggregate)", () => {
     const v = createVehicle("suv", "car", 0);
     sim.testInput = { moveX: 0, moveY: -1, jump: false };
     let tick = 0;
-    for (; tick < 40 && v.speed >= -SPEC.mountAlignSpeed; tick++) {
+    for (; tick < 40 && v.speed >= -MOTION.mountAlignSpeed; tick++) {
       sim.run(v, 1, tick);
     }
-    expect(v.speed).toBeLessThan(-SPEC.mountAlignSpeed);
+    expect(v.speed).toBeLessThan(-MOTION.mountAlignSpeed);
     const yaw = v.yaw;
     sim.riders = [{ id: "d", seat: 0, yaw: yaw + 90, raw: IDLE }];
     sim.run(v, 1, tick);
@@ -603,8 +607,8 @@ describe("Vehicle water depth context", () => {
     fc.assert(
       fc.property(
         fc.double({
-          min: SPEC.carHeight,
-          max: SPEC.carHeight + 1,
+          min: SUV_SPEC.carHeight,
+          max: SUV_SPEC.carHeight + 1,
           noNaN: true,
         }),
         (waterDepth) => {

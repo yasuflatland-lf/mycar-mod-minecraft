@@ -1,4 +1,4 @@
-import type { Vec3 } from "../shared/vec";
+import type { Vec3 } from "../../shared/vec";
 
 /**
  * Blocks of water above the feet, counting contiguous full cells upward from

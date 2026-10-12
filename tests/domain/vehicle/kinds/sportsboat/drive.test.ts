@@ -7,44 +7,47 @@ import {
   normalizeYaw,
   type Vec2,
   type Vec3,
-} from "../../../src/domain/shared/vec";
+} from "../../../../../src/domain/shared/vec";
+import {
+  type RawInput,
+  toDriveInput,
+} from "../../../../../src/domain/vehicle/driveInput";
+import type { VehicleKind } from "../../../../../src/domain/vehicle/kind";
+import {
+  createVehicle,
+  rebuildVehicle,
+} from "../../../../../src/domain/vehicle/kinds/index";
 import {
   BoatDrive,
   estimateWaterDrag,
   isAfloat,
   SPORTSBOAT_DRAG,
-  SPORTSBOAT_MOTION,
   SPORTSBOAT_WATER,
-} from "../../../src/domain/vehicle/boatDrive";
+} from "../../../../../src/domain/vehicle/kinds/sportsboat/drive";
 import {
-  type RawInput,
-  toDriveInput,
-} from "../../../src/domain/vehicle/driveInput";
-import { FORMS } from "../../../src/domain/vehicle/form";
-import type { VehicleKind } from "../../../src/domain/vehicle/kind";
+  SPORTSBOAT_MOTION,
+  SPORTSBOAT_PROFILE,
+} from "../../../../../src/domain/vehicle/kinds/sportsboat/profile";
+import { FORMS } from "../../../../../src/domain/vehicle/kinds/suv/form";
 import {
-  createVehicle,
-  rebuildVehicle,
-} from "../../../src/domain/vehicle/kinds/index";
+  SUV_MOTION,
+  SUV_PROFILE,
+} from "../../../../../src/domain/vehicle/kinds/suv/profile";
+import { MOTION } from "../../../../../src/domain/vehicle/motion/constants";
 import {
   initialMotion,
   type MotionState,
   stepFlightMotion,
-} from "../../../src/domain/vehicle/motion";
-import {
-  SPORTSBOAT_PROFILE,
-  SUV_PROFILE,
-} from "../../../src/domain/vehicle/profile";
-import type { RamTarget } from "../../../src/domain/vehicle/ram";
-import { SPEC } from "../../../src/domain/vehicle/spec";
-import { SUV_MOTION } from "../../../src/domain/vehicle/suvDrive";
+} from "../../../../../src/domain/vehicle/motion/motion";
+import type { RamTarget } from "../../../../../src/domain/vehicle/ram";
+import { SPEC } from "../../../../../src/domain/vehicle/spec";
 import type {
   TickOutcome,
   Vehicle,
   VehicleTickInput,
-} from "../../../src/domain/vehicle/vehicle";
-import { type Body, engineStep } from "../../support/engineModel";
-import { waterSensors } from "../../support/waterDepth";
+} from "../../../../../src/domain/vehicle/vehicle";
+import { type Body, engineStep } from "../../../../support/engineModel";
+import { waterSensors } from "../../../../support/waterDepth";
 
 const number = (min: number, max: number) =>
   fc.double({ min, max, noNaN: true });
@@ -206,7 +209,7 @@ describe("estimateWaterDrag (ADR 0053)", () => {
   });
 
   it("samples an axis that keeps just over half the estimate and skips one just under it, so the threshold follows the estimate", () => {
-    // Every ratio drawn here lies under the fixed 0.5 of SPEC.blockedRatio, so
+    // Every ratio drawn here lies under the fixed 0.5 of MOTION.blockedRatio, so
     // a threshold that ignored the estimate would skip the sampled side too.
     fc.assert(
       fc.property(
@@ -216,7 +219,7 @@ describe("estimateWaterDrag (ADR 0053)", () => {
         fc.boolean(),
         fc.boolean(),
         (prev, magnitude, t, onX, reverse) => {
-          const threshold = prev * SPEC.blockedRatio;
+          const threshold = prev * MOTION.blockedRatio;
           const axis = reverse ? -magnitude : magnitude;
           const given = { x: axis, z: axis };
           // The other axis sets the sample to the bound farther from prev.
@@ -230,7 +233,7 @@ describe("estimateWaterDrag (ADR 0053)", () => {
               ? { x: axis * ratio, z: axis * other }
               : { x: axis * other, z: axis * ratio };
           };
-          const above = threshold + t * (SPEC.blockedRatio - threshold);
+          const above = threshold + t * (MOTION.blockedRatio - threshold);
           const sampled = estimateWaterDrag(prev, given, at(above));
           expect(sampled).toBeCloseTo(prev * 0.9 + sample * 0.1, 12);
           expect(Math.abs(sampled - prev)).toBeGreaterThan(0.01);
@@ -357,14 +360,14 @@ describe("BoatDrive (ADR 0051)", () => {
             ...motion,
             airExpected: undefined,
           }).motion.speed;
-          const sampled = step(velocity(prev * SPEC.blockedRatio + over));
+          const sampled = step(velocity(prev * MOTION.blockedRatio + over));
           const raised = sampled.waterDrag ?? 0;
           expect(raised).toBeGreaterThan(prev);
-          expect(0.1 * (prev * SPEC.blockedRatio + over)).toBeLessThan(
-            0.1 * raised * SPEC.blockedRatio,
+          expect(0.1 * (prev * MOTION.blockedRatio + over)).toBeLessThan(
+            0.1 * raised * MOTION.blockedRatio,
           );
           expect(sampled.motion.speed).toBe(unblocked);
-          const skipped = step(velocity(prev * SPEC.blockedRatio - over));
+          const skipped = step(velocity(prev * MOTION.blockedRatio - over));
           expect(skipped.waterDrag).toBe(prev);
           expect(skipped.motion.speed).toBeCloseTo(0.95, 12);
         },
@@ -539,7 +542,7 @@ describe("BoatDrive (ADR 0051)", () => {
           maxLength: 80,
         }),
         (heading, afloatTicks, inputs) => {
-          const sim = new BoatSim(boat(heading), SPEC.defaultFriction);
+          const sim = new BoatSim(boat(heading), MOTION.defaultFriction);
           for (let i = 0; i < afloatTicks; i++) sim.step(FULL_THROTTLE, AFLOAT);
           let speed = Math.abs(sim.vehicle.speed);
           for (const raw of inputs) {
@@ -637,7 +640,7 @@ describe("a sports boat Vehicle (ADR 0051)", () => {
       const afloat = kind === "sportsboat";
       const sim = new BoatSim(
         vehicle,
-        afloat ? SPORTSBOAT_WATER.drag : SPEC.defaultFriction,
+        afloat ? SPORTSBOAT_WATER.drag : MOTION.defaultFriction,
       );
       const water = afloat ? AFLOAT : BEACHED;
       for (let i = 0; i < ticks; i++) sim.step(FULL_THROTTLE, water);

@@ -1,25 +1,51 @@
 // The only way to build a vehicle: every caller names the kind, so none falls back to SUV values (ADR 0055).
-import { BoatDrive } from "../boatDrive";
 import type { Drive, RestoredValues } from "../drive";
 import type { EntityContract } from "../entityContract";
 import type { VehicleKind } from "../kind";
-import { profileOf } from "../profile";
-import { SPORTSBOAT_ENTITY } from "../sportsboatEntity";
-import { SuvDrive } from "../suvDrive";
-import { SUV_ENTITY } from "../suvEntity";
+import type { VehicleProfile } from "../profile";
+import { ramQueryRadius } from "../ramQuery";
 import { type RiderView, Vehicle } from "../vehicle";
+import { BoatDrive } from "./sportsboat/drive";
+import { SPORTSBOAT_ENTITY } from "./sportsboat/entity";
+import { SPORTSBOAT_PROFILE } from "./sportsboat/profile";
+import { SuvDrive } from "./suv/drive";
+import { SUV_ENTITY } from "./suv/entity";
+import { SUV_PROFILE } from "./suv/profile";
+
+export type { RestoredValues };
+
+interface KindDefinition {
+  profile: VehicleProfile;
+  entity: EntityContract;
+  createDrive(yaw: number, restored: RestoredValues): Drive;
+}
+
+// Frozen, rows included, so a write cannot swap a kind's profile or drive for
+// every vehicle of that kind.
+export const KINDS: Readonly<Record<VehicleKind, Readonly<KindDefinition>>> =
+  Object.freeze({
+    suv: Object.freeze<KindDefinition>({
+      profile: SUV_PROFILE,
+      entity: SUV_ENTITY,
+      createDrive: (yaw, restored) => new SuvDrive(yaw, restored),
+    }),
+    sportsboat: Object.freeze<KindDefinition>({
+      profile: SPORTSBOAT_PROFILE,
+      entity: SPORTSBOAT_ENTITY,
+      createDrive: (yaw, restored) => new BoatDrive(yaw, restored),
+    }),
+  });
+
+export const RAM_QUERY_RADIUS = ramQueryRadius(
+  Object.values(KINDS).map(({ profile }) => profile),
+);
 
 function driveOf(
   kind: VehicleKind,
   yaw: number,
   restored: RestoredValues,
 ): Drive {
-  switch (kind) {
-    case "suv":
-      return new SuvDrive(yaw, restored);
-    case "sportsboat":
-      return new BoatDrive(yaw, restored);
-  }
+  return KINDS[kind].createDrive(yaw, restored);
 }
 
 export function createVehicle(
@@ -51,11 +77,10 @@ export function rebuildVehicle(
   return vehicle;
 }
 
+export function profileOf(kind: VehicleKind): VehicleProfile {
+  return KINDS[kind].profile;
+}
+
 export function entityContractOf(kind: VehicleKind): EntityContract {
-  switch (kind) {
-    case "suv":
-      return SUV_ENTITY;
-    case "sportsboat":
-      return SPORTSBOAT_ENTITY;
-  }
+  return KINDS[kind].entity;
 }

@@ -1,6 +1,8 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import type { Vec3 } from "../../../src/domain/shared/vec";
+import { SPORTSBOAT_PROFILE } from "../../../src/domain/vehicle/kinds/sportsboat/profile";
+import { SUV_PROFILE } from "../../../src/domain/vehicle/kinds/suv/profile";
 import {
   type BlockFace,
   canPlaceAt,
@@ -8,10 +10,6 @@ import {
   placementCell,
   surfaceCellY,
 } from "../../../src/domain/vehicle/placement";
-import {
-  SPORTSBOAT_PROFILE,
-  SUV_PROFILE,
-} from "../../../src/domain/vehicle/profile";
 
 const insideFootprint = fc.record({
   dx: fc.integer({ min: -1, max: 1 }),

@@ -1,7 +1,8 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { dot, forward, rightOf } from "../../../src/domain/shared/vec";
-import { SUV_PROFILE } from "../../../src/domain/vehicle/profile";
+import { SUV_PROFILE } from "../../../src/domain/vehicle/kinds/suv/profile";
+import { SUV_SPEC } from "../../../src/domain/vehicle/kinds/suv/spec";
 import {
   type RamHit,
   type RamTarget,
@@ -15,11 +16,11 @@ import { SPEC } from "../../../src/domain/vehicle/spec";
 const yaw = fc.integer({ min: -18_000, max: 18_000 }).map((c) => c / 100);
 const fastSpeed = fc.double({
   min: SPEC.ramMinSpeed + 0.001,
-  max: SPEC.maxSpeed,
+  max: SUV_SPEC.maxSpeed,
   noNaN: true,
 });
 const fastReverse = fc.double({
-  min: -SPEC.maxReverse,
+  min: -SUV_SPEC.maxReverse,
   max: -SPEC.ramMinSpeed - 0.001,
   noNaN: true,
 });
@@ -63,13 +64,13 @@ describe("ramDamage (ADR 0006)", () => {
   });
 
   it("is 18 at maximum speed", () => {
-    expect(ramDamage(SPEC.maxSpeed)).toBe(18);
+    expect(ramDamage(SUV_SPEC.maxSpeed)).toBe(18);
   });
 });
 
 describe("selectHits (ADR 0006)", () => {
-  const reach = SPEC.bodyFront + SPEC.targetHalfWidth;
-  const halfWidth = SPEC.bodyHalfWidth + SPEC.targetHalfWidth;
+  const reach = SUV_SPEC.bodyFront + SPEC.targetHalfWidth;
+  const halfWidth = SUV_SPEC.bodyHalfWidth + SPEC.targetHalfWidth;
   // A target exactly on the boundary can fall outside the area due to rounding in forward and rightOf, so generate only points slightly inside both ends
   const insideAhead = fc.double({ min: 1e-6, max: reach - 1e-6, noNaN: true });
   const insideSide = fc.double({

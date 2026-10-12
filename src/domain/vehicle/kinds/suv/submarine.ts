@@ -1,5 +1,5 @@
-import { clamp } from "../shared/vec";
-import { SPEC } from "./spec";
+import { clamp } from "../../../shared/vec";
+import { SUV_SPEC } from "./spec";
 
 export interface DiveInput {
   /** Climb command from climbInput(raw), from -1 to 1. */
@@ -19,13 +19,13 @@ export interface DiveInput {
  */
 export function submarineVerticalSpeed(input: DiveInput): number {
   if (input.controlled && Number.isFinite(input.climb) && input.climb !== 0)
-    return clamp(input.climb, -1, 1) * SPEC.maxClimb;
-  if (input.rising) return SPEC.maxClimb;
+    return clamp(input.climb, -1, 1) * SUV_SPEC.maxClimb;
+  if (input.rising) return SUV_SPEC.maxClimb;
   const depth = Number.isFinite(input.waterDepth) ? input.waterDepth : 0;
   const buoyancy = clamp(
-    (depth - SPEC.floatDraft) * SPEC.floatGain,
-    -SPEC.surfaceRise,
-    SPEC.surfaceRise,
+    (depth - SUV_SPEC.floatDraft) * SUV_SPEC.floatGain,
+    -SUV_SPEC.surfaceRise,
+    SUV_SPEC.surfaceRise,
   );
   return input.controlled ? Math.min(0, buoyancy) : buoyancy;
 }

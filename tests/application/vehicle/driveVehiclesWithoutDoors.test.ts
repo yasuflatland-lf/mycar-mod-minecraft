@@ -1,23 +1,26 @@
 import { expect, it, vi } from "vitest";
 import { DriveVehicles } from "../../../src/application/vehicle/driveVehicles";
-import { SUV_PROFILE } from "../../../src/domain/vehicle/profile";
+import { SUV_PROFILE } from "../../../src/domain/vehicle/kinds/suv/profile";
 import { defined } from "../../support/defined";
 import { FakeWorld, InMemoryRepo, snapshot } from "./fakes";
 
-vi.mock("../../../src/domain/vehicle/suvDrive", async (importOriginal) => {
-  const original =
-    await importOriginal<
-      typeof import("../../../src/domain/vehicle/suvDrive")
-    >();
-  return {
-    ...original,
-    SuvDrive: class extends original.SuvDrive {
-      onSeatVacated() {
-        return [];
-      }
-    },
-  };
-});
+vi.mock(
+  "../../../src/domain/vehicle/kinds/suv/drive",
+  async (importOriginal) => {
+    const original =
+      await importOriginal<
+        typeof import("../../../src/domain/vehicle/kinds/suv/drive")
+      >();
+    return {
+      ...original,
+      SuvDrive: class extends original.SuvDrive {
+        onSeatVacated() {
+          return [];
+        }
+      },
+    };
+  },
+);
 
 it("plays no door when a rider leaves a vehicle whose drive has no doors", () => {
   const world = new FakeWorld();

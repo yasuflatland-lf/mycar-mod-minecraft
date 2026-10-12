@@ -7,8 +7,8 @@ import {
   headlightCells,
   relight,
 } from "../../../src/domain/vehicle/headlights";
-import { SUV_PROFILE } from "../../../src/domain/vehicle/profile";
-import { SPEC } from "../../../src/domain/vehicle/spec";
+import { SUV_PROFILE } from "../../../src/domain/vehicle/kinds/suv/profile";
+import { SUV_SPEC } from "../../../src/domain/vehicle/kinds/suv/spec";
 
 const coord = fc.double({ min: -1e5, max: 1e5, noNaN: true });
 const location = fc.record({
@@ -34,14 +34,14 @@ describe("headlightCells (ADR 0020)", () => {
         const f = forward(y);
         const out = headlightCells(at, y, SUV_PROFILE.beams);
         expect(out.length).toBeGreaterThan(0);
-        expect(out.length).toBeLessThanOrEqual(SPEC.headlightReach.length);
+        expect(out.length).toBeLessThanOrEqual(SUV_SPEC.headlightReach.length);
         for (const c of out) {
           expect(c.y).toBe(Math.floor(at.y) + 1);
           // The cell's center, measured along and across the heading
           const d = { x: c.x + 0.5 - at.x, z: c.z + 0.5 - at.z };
           const ahead = dot(d, f);
-          expect(ahead).toBeGreaterThan(SPEC.bodyFront);
-          expect(ahead).toBeLessThan(Math.max(...SPEC.headlightReach) + 1);
+          expect(ahead).toBeGreaterThan(SUV_SPEC.bodyFront);
+          expect(ahead).toBeLessThan(Math.max(...SUV_SPEC.headlightReach) + 1);
           expect(Math.abs(dot(d, rightOf(f)))).toBeLessThan(1);
         }
       }),
@@ -63,7 +63,7 @@ describe("headlightCells (ADR 0020)", () => {
     fc.assert(
       fc.property(location, yaw, (at, y) => {
         expect(headlightCells(at, y, SUV_PROFILE.beams)).toHaveLength(
-          SPEC.headlightReach.length,
+          SUV_SPEC.headlightReach.length,
         );
       }),
     );

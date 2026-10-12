@@ -1,8 +1,8 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { SPEC } from "../../../src/domain/vehicle/spec";
-import { submarineVerticalSpeed } from "../../../src/domain/vehicle/submarine";
-import { waterDepth as depth } from "../../support/waterDepth";
+import { SUV_SPEC } from "../../../../../src/domain/vehicle/kinds/suv/spec";
+import { submarineVerticalSpeed } from "../../../../../src/domain/vehicle/kinds/suv/submarine";
+import { waterDepth as depth } from "../../../../support/waterDepth";
 
 const finite = (d: number) => (Number.isFinite(d) ? d : 0);
 const input = fc.record({
@@ -29,7 +29,7 @@ describe("submarineVerticalSpeed", () => {
               rising,
               waterDepth,
             }),
-          ).toBe(Math.max(-1, Math.min(1, climb)) * SPEC.maxClimb);
+          ).toBe(Math.max(-1, Math.min(1, climb)) * SUV_SPEC.maxClimb);
         },
       ),
     );
@@ -40,7 +40,7 @@ describe("submarineVerticalSpeed", () => {
       fc.property(input, (i) => {
         const climb = i.controlled ? 0 : i.climb;
         expect(submarineVerticalSpeed({ ...i, climb, rising: true })).toBe(
-          SPEC.maxClimb,
+          SUV_SPEC.maxClimb,
         );
       }),
     );
@@ -57,8 +57,8 @@ describe("submarineVerticalSpeed", () => {
         });
         const d = finite(waterDepth);
         expect(speed).toBeLessThanOrEqual(0);
-        expect(speed < 0).toBe(d < SPEC.floatDraft);
-        if (d >= SPEC.floatDraft) expect(speed).toBe(0);
+        expect(speed < 0).toBe(d < SUV_SPEC.floatDraft);
+        if (d >= SUV_SPEC.floatDraft) expect(speed).toBe(0);
       }),
     );
   });
@@ -73,12 +73,15 @@ describe("submarineVerticalSpeed", () => {
           waterDepth,
         });
         const d = finite(waterDepth);
-        expect(speed > 0).toBe(d > SPEC.floatDraft);
-        expect(speed < 0).toBe(d < SPEC.floatDraft);
+        expect(speed > 0).toBe(d > SUV_SPEC.floatDraft);
+        expect(speed < 0).toBe(d < SUV_SPEC.floatDraft);
         expect(speed).toBeCloseTo(
           Math.max(
-            -SPEC.surfaceRise,
-            Math.min(SPEC.surfaceRise, (d - SPEC.floatDraft) * SPEC.floatGain),
+            -SUV_SPEC.surfaceRise,
+            Math.min(
+              SUV_SPEC.surfaceRise,
+              (d - SUV_SPEC.floatDraft) * SUV_SPEC.floatGain,
+            ),
           ),
           12,
         );
@@ -90,7 +93,7 @@ describe("submarineVerticalSpeed", () => {
           climb: 0,
           controlled,
           rising: false,
-          waterDepth: SPEC.floatDraft,
+          waterDepth: SUV_SPEC.floatDraft,
         }),
       ).toBe(0);
     }
@@ -106,10 +109,10 @@ describe("submarineVerticalSpeed", () => {
             climb: 0,
             controlled,
             rising: false,
-            waterDepth: SPEC.floatDraft + delta,
+            waterDepth: SUV_SPEC.floatDraft + delta,
           });
           expect(Math.abs(speed)).toBeLessThanOrEqual(
-            (Math.abs(delta) + Number.EPSILON) * SPEC.floatGain,
+            (Math.abs(delta) + Number.EPSILON) * SUV_SPEC.floatGain,
           );
         },
       ),
@@ -121,7 +124,7 @@ describe("submarineVerticalSpeed", () => {
       fc.property(input, (i) => {
         const speed = submarineVerticalSpeed(i);
         expect(Number.isFinite(speed)).toBe(true);
-        expect(Math.abs(speed)).toBeLessThanOrEqual(SPEC.maxClimb);
+        expect(Math.abs(speed)).toBeLessThanOrEqual(SUV_SPEC.maxClimb);
       }),
     );
   });
@@ -133,7 +136,7 @@ describe("submarineVerticalSpeed", () => {
           for (const rising of [true, false]) {
             expect(
               submarineVerticalSpeed({ climb, waterDepth, controlled, rising }),
-            ).toBe(rising ? SPEC.maxClimb : -SPEC.surfaceRise);
+            ).toBe(rising ? SUV_SPEC.maxClimb : -SUV_SPEC.surfaceRise);
           }
   });
 });

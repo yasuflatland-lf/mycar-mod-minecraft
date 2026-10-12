@@ -1,11 +1,11 @@
 import fc from "fast-check";
 import { expect, it } from "vitest";
-import { FORMS } from "../../../src/domain/vehicle/form";
 import {
   DOOR_BY_SEAT,
   doorCommands,
   formCommands,
-} from "../../../src/domain/vehicle/suvEntity";
+} from "../../../../../src/domain/vehicle/kinds/suv/entity";
+import { FORMS } from "../../../../../src/domain/vehicle/kinds/suv/form";
 
 it("keeps gravity on only in car form and writes the form after the event (ADR 0021, 0039)", () => {
   fc.assert(

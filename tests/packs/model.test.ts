@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { DOOR_BY_SEAT } from "../../src/domain/vehicle/kinds/suv/entity";
 import { SEAT_POSITIONS } from "../../src/domain/vehicle/seats";
-import { DOOR_BY_SEAT } from "../../src/domain/vehicle/suvEntity";
 
 type Vec3 = [number, number, number];
 

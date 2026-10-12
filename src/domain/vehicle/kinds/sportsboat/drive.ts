@@ -1,18 +1,19 @@
 // The sports boat's drive: the engine floats the hull and the script drives only x and z (ADR 0051).
-import { clamp, dot, type Vec2 } from "../shared/vec";
+import { clamp, dot, type Vec2 } from "../../../shared/vec";
 import type {
   Drive,
   DriveStep,
   EngineCommand,
   RestoredValues,
   TickContext,
-} from "./drive";
+} from "../../drive";
 import {
   type DriveInput,
   NEUTRAL_INPUT,
   type RawInput,
   toDriveInput,
-} from "./driveInput";
+} from "../../driveInput";
+import { MOTION } from "../../motion/constants";
 import {
   alignOnMount,
   hitWall,
@@ -22,29 +23,14 @@ import {
   type MotionState,
   stepFlightMotion,
   stepMotion,
-} from "./motion";
-import type { MotionLimits } from "./profile";
-import { SPEC } from "./spec";
-import { waterBelowAt, waterDepthAt } from "./water";
+} from "../../motion/motion";
+import { waterBelowAt, waterDepthAt } from "../../motion/water";
+import type { MotionLimits } from "../../profile";
+import { SPORTSBOAT_MOTION } from "./profile";
 
 // The height of the sportsboat collision box, which bounds the water depth
 // query; the boat only tests whether the depth is above zero.
 const SPORTSBOAT_HEIGHT = 1.2;
-
-/** The sports boat's own limits (ADR 0051), written out even where they equal the SUV's today. */
-export const SPORTSBOAT_MOTION: MotionLimits = Object.freeze({
-  maxSpeed: 1.12, // ADR 0051
-  maxReverse: 0.2, // ADR 0051
-  accel: 0.0225, // ADR 0051
-  reverseAccel: 0.01125, // Half of accel, as on land
-  brake: 0.04,
-  drag: 0.02,
-  turnRate: 6, // degrees/tick at full steering input (ADR 0051)
-  steerFullSpeed: 0.08,
-  grip: 0.6,
-  handbrakeGrip: 0.6, // Equal to grip: the boat has no handbrake
-  creepSpeed: 0.12, // Below SPEC.ramMinSpeed, so creeping never rams (ADR 0006)
-});
 
 // boat_drag measured 0.833 at full speed, 0.916-0.927 on the 3 ticks of every
 // 14 at the top of the bob, and 0.815 the tick after; weight 0.1 keeps one bump
@@ -81,7 +67,7 @@ export function estimateWaterDrag(
   const givenSq = dot(given, given);
   if (
     givenSq <= SPORTSBOAT_DRAG.minGiven ** 2 ||
-    hitWall(observed, given, estimate * SPEC.blockedRatio)
+    hitWall(observed, given, estimate * MOTION.blockedRatio)
   )
     return estimate;
   const sample = boundDrag(dot(observed, given) / givenSq);

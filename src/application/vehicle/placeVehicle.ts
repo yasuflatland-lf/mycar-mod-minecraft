@@ -3,9 +3,8 @@
 // at the water surface from any face or the view ray, or on land from a top face (ADR 0051).
 import type { Vec3 } from "../../domain/shared/vec";
 import type { VehicleKind } from "../../domain/vehicle/kind";
-import { createVehicle } from "../../domain/vehicle/kinds/index";
+import { createVehicle, profileOf } from "../../domain/vehicle/kinds/index";
 import { canPlaceAt } from "../../domain/vehicle/placement";
-import { profileOf } from "../../domain/vehicle/profile";
 import type { VehicleRepository } from "../../domain/vehicle/vehicleRepository";
 import type { PlacementWorld } from "./ports";
 

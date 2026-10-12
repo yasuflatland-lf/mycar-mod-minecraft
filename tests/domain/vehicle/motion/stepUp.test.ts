@@ -1,11 +1,12 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import { SPEC } from "../../../src/domain/vehicle/spec";
+import { SUV_SPEC } from "../../../../src/domain/vehicle/kinds/suv/spec";
+import { MOTION } from "../../../../src/domain/vehicle/motion/constants";
 import {
+  stepHeight as probeStepHeight,
   type SolidAt,
   STEP_LANES,
-  stepHeight,
-} from "../../../src/domain/vehicle/stepUp";
+} from "../../../../src/domain/vehicle/motion/stepUp";
 
 interface Lane {
   start: number;
@@ -27,14 +28,14 @@ function terrain(lanes: (Lane | undefined)[], overhead = false): SolidAt {
   };
 }
 
-const scanStart = SPEC.hitboxFront + 0.1;
-const speed = fc.double({ min: 0, max: SPEC.maxSpeed, noNaN: true });
+const scanStart = SUV_SPEC.hitboxFront + 0.1;
+const speed = fc.double({ min: 0, max: SUV_SPEC.maxSpeed, noNaN: true });
 const lookahead = (s: number) =>
-  s * SPEC.stepLookaheadTicks + SPEC.stepLookaheadMargin;
+  s * MOTION.stepLookaheadTicks + MOTION.stepLookaheadMargin;
 const startIn = (s: number) =>
   fc.double({
     min: scanStart,
-    max: SPEC.hitboxFront + lookahead(s) - 0.2,
+    max: SUV_SPEC.hitboxFront + lookahead(s) - 0.2,
     noNaN: true,
   });
 const laneIndex = fc.integer({ min: 0, max: 2 });
@@ -93,9 +94,9 @@ describe("stepHeight (ADR 0004, 0035)", () => {
 
   // Terrain is made of whole blocks, so a ceiling starts at an integer height.
   const stepTop = 2;
-  const firstFreeCeiling = Math.ceil(stepTop + SPEC.carHeight);
+  const firstFreeCeiling = Math.ceil(stepTop + SUV_SPEC.carHeight);
 
-  it("does not jump if there is no room (SPEC.carHeight) for the vehicle above a step of height 2", () => {
+  it("does not jump if there is no room (SUV_SPEC.carHeight) for the vehicle above a step of height 2", () => {
     fc.assert(
       fc.property(
         speed.chain((s) => fc.tuple(fc.constant(s), startIn(s))),
@@ -109,7 +110,7 @@ describe("stepHeight (ADR 0004, 0035)", () => {
     );
   });
 
-  it("jumps onto a step of height 2 when the ceiling leaves room for SPEC.carHeight", () => {
+  it("jumps onto a step of height 2 when the ceiling leaves room for SUV_SPEC.carHeight", () => {
     fc.assert(
       fc.property(
         speed.chain((s) => fc.tuple(fc.constant(s), startIn(s))),
@@ -126,7 +127,7 @@ describe("stepHeight (ADR 0004, 0035)", () => {
   it("does not jump if blocked overhead", () => {
     expect(
       stepHeight(
-        terrain([{ start: SPEC.hitboxFront + 0.2, height: 2 }], true),
+        terrain([{ start: SUV_SPEC.hitboxFront + 0.2, height: 2 }], true),
         0.5,
       ),
     ).toBe(0);
@@ -147,7 +148,7 @@ describe("stepHeight (ADR 0004, 0035)", () => {
   });
 
   it("jumps the higher step whichever rays at the same distance find heights 1 and 2", () => {
-    const start = SPEC.hitboxFront + 0.2;
+    const start = SUV_SPEC.hitboxFront + 0.2;
     fc.assert(
       fc.property(laneIndex, laneIndex, (low, high) => {
         fc.pre(low !== high);
@@ -165,30 +166,39 @@ describe("stepHeight (ADR 0004, 0035)", () => {
         const lane = STEP_LANES[i];
         const underHitbox: SolidAt = (ahead, side, dy) =>
           side === lane &&
-          ahead > SPEC.hitboxFront - 1 &&
-          ahead <= SPEC.hitboxFront &&
+          ahead > SUV_SPEC.hitboxFront - 1 &&
+          ahead <= SUV_SPEC.hitboxFront &&
           dy < height;
         expect(stepHeight(underHitbox, s)).toBe(0);
       }),
     );
   });
 
-  it("does not jump a height-1 step without room (SPEC.carHeight) above it, but does with the room", () => {
-    const start = SPEC.hitboxFront + 0.2;
+  it("does not jump a height-1 step without room (SUV_SPEC.carHeight) above it, but does with the room", () => {
+    const start = SUV_SPEC.hitboxFront + 0.2;
     const ceilingFor = (c: number) =>
       terrain([{ start, height: 1, ceiling: c }]);
     expect(stepHeight(ceilingFor(2), 0.5)).toBe(0);
-    expect(stepHeight(ceilingFor(Math.ceil(1 + SPEC.carHeight)), 0.5)).toBe(1);
+    expect(stepHeight(ceilingFor(Math.ceil(1 + SUV_SPEC.carHeight)), 0.5)).toBe(
+      1,
+    );
   });
 
   it("does not jump yet for a step beyond look-ahead range", () => {
     expect(
       stepHeight(
         terrain([
-          { start: SPEC.hitboxFront + lookahead(0.2) + 0.5, height: 2 },
+          { start: SUV_SPEC.hitboxFront + lookahead(0.2) + 0.5, height: 2 },
         ]),
         0.2,
       ),
     ).toBe(0);
   });
 });
+
+function stepHeight(solid: SolidAt, speed: number): 0 | 1 | 2 {
+  return probeStepHeight(solid, speed, {
+    front: SUV_SPEC.hitboxFront,
+    height: SUV_SPEC.carHeight,
+  });
+}

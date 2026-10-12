@@ -1,19 +1,32 @@
 // The SUV's transforming drivetrain: forms, landing gear, bank, and vertical motion (ADR 0050).
-import { clamp, rightOf, type Vec2 } from "../shared/vec";
-import { bankSink, stepBank } from "./bank";
+import { clamp, rightOf, type Vec2 } from "../../../shared/vec";
 import type {
   Drive,
   DriveStep,
   EngineCommand,
   RestoredValues,
   TickContext,
-} from "./drive";
+} from "../../drive";
 import {
   type DriveInput,
   NEUTRAL_INPUT,
   type RawInput,
   toDriveInput,
-} from "./driveInput";
+} from "../../driveInput";
+import { MOTION } from "../../motion/constants";
+import {
+  alignOnMount,
+  initialMotion,
+  type MotionResult,
+  type MotionState,
+  type StepProbe,
+  stepFlightMotion,
+  stepMotion,
+} from "../../motion/motion";
+import { stepHeight } from "../../motion/stepUp";
+import { waterDepthAt } from "../../motion/water";
+import { bankSink, stepBank } from "./bank";
+import { bankCommand, doorCommands, formCommands, gearCommand } from "./entity";
 import {
   climbInput,
   type Form,
@@ -25,43 +38,9 @@ import {
   verticalSpeed,
 } from "./form";
 import { nextGearDown } from "./landingGear";
-import {
-  AIR,
-  alignOnMount,
-  initialMotion,
-  type MotionResult,
-  type MotionState,
-  type StepProbe,
-  stepFlightMotion,
-  stepMotion,
-  WATER,
-} from "./motion";
-import type { MotionLimits } from "./profile";
-import { SPEC } from "./spec";
-import { stepHeight } from "./stepUp";
+import { SUV_MOTION } from "./profile";
+import { AIR, SUV_SPEC, WATER } from "./spec";
 import { submarineVerticalSpeed } from "./submarine";
-import {
-  bankCommand,
-  doorCommands,
-  formCommands,
-  gearCommand,
-} from "./suvEntity";
-import { waterDepthAt } from "./water";
-
-// Frozen because every SUV drive shares this one object.
-export const SUV_MOTION: MotionLimits = Object.freeze({
-  maxSpeed: SPEC.maxSpeed,
-  maxReverse: SPEC.maxReverse,
-  accel: SPEC.accel,
-  reverseAccel: SPEC.reverseAccel,
-  brake: SPEC.brake,
-  drag: SPEC.drag,
-  turnRate: SPEC.turnRate,
-  steerFullSpeed: SPEC.steerFullSpeed,
-  grip: SPEC.grip,
-  handbrakeGrip: SPEC.handbrakeGrip,
-  creepSpeed: SPEC.creepSpeed,
-});
 
 function stepProbe(ctx: TickContext, drop = 0): StepProbe {
   return (f, speed) => {
@@ -74,6 +53,7 @@ function stepProbe(ctx: TickContext, drop = 0): StepProbe {
           z: f.z * ahead + r.z * side,
         }),
       speed,
+      { front: SUV_SPEC.hitboxFront, height: SUV_SPEC.carHeight },
     );
   };
 }
@@ -81,7 +61,7 @@ function stepProbe(ctx: TickContext, drop = 0): StepProbe {
 /** Whether there is a solid block within gearDownHeight below the center or a corner of the vehicle. */
 function groundNear(ctx: TickContext, f: Vec2): boolean {
   const r = rightOf(f);
-  const d = SPEC.gearProbeOffset;
+  const d = SUV_SPEC.gearProbeOffset;
   const spots = [
     [0, 0],
     [d, d],
@@ -89,7 +69,7 @@ function groundNear(ctx: TickContext, f: Vec2): boolean {
     [-d, d],
     [-d, -d],
   ] as const;
-  for (let dy = 1; dy <= SPEC.gearDownHeight; dy++)
+  for (let dy = 1; dy <= SUV_SPEC.gearDownHeight; dy++)
     for (const [ahead, side] of spots)
       if (
         ctx.solidAt({
@@ -162,7 +142,11 @@ export class SuvDrive implements Drive {
 
   step(raw: RawInput | undefined, ctx: TickContext): DriveStep {
     const motion = this.motion;
-    const waterDepth = waterDepthAt(ctx.location, ctx.waterAt, SPEC.carHeight);
+    const waterDepth = waterDepthAt(
+      ctx.location,
+      ctx.waterAt,
+      SUV_SPEC.carHeight,
+    );
     const velocity = { x: ctx.velocity.x, z: ctx.velocity.z };
     const before = this.formState.form;
     this.formState = stepForm(this.formState, {
@@ -204,9 +188,9 @@ export class SuvDrive implements Drive {
       const rising =
         input.throttle > 0 &&
         step.state.speed >= 0 &&
-        stepProbe(ctx, SPEC.submarineStepProbeDrop)(
+        stepProbe(ctx, SUV_SPEC.submarineStepProbeDrop)(
           step.forward,
-          Math.max(step.state.speed, SPEC.stepMinSpeed),
+          Math.max(step.state.speed, MOTION.stepMinSpeed),
         ) > 0;
       const targetVy = submarineVerticalSpeed({
         climb: climbInput(raw),
@@ -217,13 +201,13 @@ export class SuvDrive implements Drive {
       impulseY = verticalImpulse(
         targetVy,
         ctx.velocity.y,
-        SPEC.waterVerticalDrag,
+        SUV_SPEC.waterVerticalDrag,
       );
     } else {
       const targetVy = clamp(
         verticalSpeed(form, climbInput(raw)) - bankSink(form, this.bank),
-        -SPEC.maxClimb,
-        SPEC.maxClimb,
+        -SUV_SPEC.maxClimb,
+        SUV_SPEC.maxClimb,
       );
       impulseY = verticalImpulse(targetVy, ctx.velocity.y);
     }

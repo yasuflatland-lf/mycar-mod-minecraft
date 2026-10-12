@@ -1,12 +1,12 @@
-import type { EngineCommand } from "./drive";
-import type { EntityContract } from "./entityContract";
+import type { EngineCommand } from "../../drive";
+import type { EntityContract } from "../../entityContract";
 import { FORMS, type Form } from "./form";
-import { SPEC } from "./spec";
+import { SUV_SPEC } from "./spec";
 
 export const SUV_ENTITY = {
   properties: {
     form: { type: "enum", values: FORMS },
-    bank: { type: "float", range: [-SPEC.maxBank, SPEC.maxBank] },
+    bank: { type: "float", range: [-SUV_SPEC.maxBank, SUV_SPEC.maxBank] },
     gear_down: { type: "bool" },
   },
   events: ["gravity_on", "gravity_off"],
