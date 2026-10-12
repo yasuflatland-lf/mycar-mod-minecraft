@@ -1,5 +1,6 @@
 import type { Vec2 } from "../shared/vec";
 import type { VehicleKind } from "./kind";
+import type { PlacementRule } from "./placement";
 import { DOOR_BY_SEAT, SEAT_POSITIONS } from "./seats";
 import { SPEC } from "./spec";
 
@@ -43,6 +44,7 @@ export interface VehicleProfile {
   readonly ram: RamBody;
   readonly seats: SeatLayout;
   readonly beams: BeamPattern;
+  readonly placement: PlacementRule;
 }
 
 // Frozen because this one object is the default argument of the motion, ram
@@ -69,6 +71,8 @@ export const SUV_PROFILE: VehicleProfile = Object.freeze({
     reach: SPEC.headlightReach,
     lanes: Object.freeze([0]),
   }),
+  // On the top face of a block only (ADR 0008).
+  placement: Object.freeze({ onWater: false, anyFace: false }),
 });
 
 /** The sports boat's own values (ADR 0051), written out even where they equal the SUV's today. */
@@ -104,6 +108,8 @@ export const SPORTSBOAT_PROFILE: VehicleProfile = Object.freeze({
     ]),
     lanes: Object.freeze([-3, 3]),
   }),
+  // At the water surface from the bed, the water, or the side of a shore; on land from a top face (ADR 0051).
+  placement: Object.freeze({ onWater: true, anyFace: true }),
 });
 
 export const PROFILES: Readonly<Record<VehicleKind, VehicleProfile>> =

@@ -1,9 +1,17 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
+import type { Vec3 } from "../../../src/domain/shared/vec";
 import {
+  type BlockFace,
   canPlaceAt,
+  FACE_OFFSET,
+  placementCell,
   surfaceCellY,
 } from "../../../src/domain/vehicle/placement";
+import {
+  SPORTSBOAT_PROFILE,
+  SUV_PROFILE,
+} from "../../../src/domain/vehicle/profile";
 
 const insideFootprint = fc.record({
   dx: fc.integer({ min: -1, max: 1 }),
@@ -91,5 +99,110 @@ describe("surfaceCellY (ADR 0051)", () => {
         },
       ),
     );
+  });
+});
+
+const FACES: BlockFace[] = ["up", "down", "north", "south", "east", "west"];
+const key = ({ x, y, z }: Vec3) => `${x},${y},${z}`;
+const add = (a: Vec3, b: Vec3) => ({
+  x: a.x + b.x,
+  y: a.y + b.y,
+  z: a.z + b.z,
+});
+const cell = fc.record({
+  x: fc.integer({ min: -100, max: 100 }),
+  y: fc.integer({ min: -60, max: 300 }),
+  z: fc.integer({ min: -100, max: 100 }),
+});
+// Water cells scattered within two blocks of the clicked one.
+const near = fc.uniqueArray(
+  fc.record({
+    x: fc.integer({ min: -2, max: 2 }),
+    y: fc.integer({ min: -2, max: 2 }),
+    z: fc.integer({ min: -2, max: 2 }),
+  }),
+  { maxLength: 60, selector: key },
+);
+const waterOf = (clicked: Vec3, offsets: Vec3[]) => {
+  const cells = new Set(offsets.map((o) => key(add(clicked, o))));
+  return (at: Vec3) => cells.has(key(at));
+};
+
+describe("placementCell (ADR 0050, ADR 0051)", () => {
+  it("places a land kind only on the top face of the clicked block, ignoring water", () => {
+    fc.assert(
+      fc.property(
+        cell,
+        fc.constantFrom(...FACES),
+        near,
+        (clicked, face, offsets) => {
+          expect(
+            placementCell(
+              SUV_PROFILE.placement,
+              clicked,
+              face,
+              waterOf(clicked, offsets),
+            ),
+          ).toEqual(face === "up" ? clicked : undefined);
+        },
+      ),
+    );
+  });
+
+  it("places a water kind at the top of the water in the clicked cell or next to the clicked face, else only on a top face", () => {
+    fc.assert(
+      fc.property(
+        cell,
+        fc.constantFrom(...FACES),
+        near,
+        (clicked, face, offsets) => {
+          const isWater = waterOf(clicked, offsets);
+          const next = add(clicked, FACE_OFFSET[face]);
+          const wet = [clicked, next].find(isWater);
+          const result = placementCell(
+            SPORTSBOAT_PROFILE.placement,
+            clicked,
+            face,
+            isWater,
+          );
+          if (wet === undefined) {
+            expect(result).toEqual(face === "up" ? clicked : undefined);
+            return;
+          }
+          expect(result).toBeDefined();
+          if (!result) return;
+          expect({ x: result.x, z: result.z }).toEqual({ x: wet.x, z: wet.z });
+          expect(result.y).toBeGreaterThanOrEqual(wet.y);
+          for (let y = wet.y; y <= result.y; y++)
+            expect(isWater({ ...wet, y })).toBe(true);
+          expect(isWater({ ...wet, y: result.y + 1 })).toBe(false);
+        },
+      ),
+    );
+  });
+
+  it("puts a boat clicked on the side of a shore on the water beside it, and nowhere when the side faces air", () => {
+    // Shore block at (0, 62, 0); water fills x >= 1 from the bed at y 59 up to y 62.
+    const isWater = ({ x, y }: Vec3) => x >= 1 && y >= 60 && y <= 62;
+    const shore = { x: 0, y: 62, z: 0 };
+    const rule = SPORTSBOAT_PROFILE.placement;
+    expect(placementCell(rule, shore, "east", isWater)).toEqual({
+      x: 1,
+      y: 62,
+      z: 0,
+    });
+    expect(placementCell(rule, { x: 0, y: 60, z: 0 }, "east", isWater)).toEqual(
+      { x: 1, y: 62, z: 0 },
+    );
+    expect(placementCell(rule, shore, "west", isWater)).toBeUndefined();
+    expect(
+      placementCell(rule, { x: 0, y: 63, z: 0 }, "east", isWater),
+    ).toBeUndefined();
+    expect(placementCell(rule, shore, "up", isWater)).toEqual(shore);
+    expect(placementCell(rule, { x: 3, y: 59, z: 0 }, "up", isWater)).toEqual({
+      x: 3,
+      y: 62,
+      z: 0,
+    });
   });
 });
