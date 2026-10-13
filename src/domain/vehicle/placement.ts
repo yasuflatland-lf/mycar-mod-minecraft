@@ -71,7 +71,7 @@ export interface PlacementRule {
 /**
  * The cell the vehicle is placed on top of, or undefined when no surface
  * matches. "water" accepts any face but "top" only the top face, so a click on
- * the side of a shore with no water next to it never lifts a boat onto it.
+ * the side of a shore with no water next to it never lifts a vehicle onto it.
  */
 export function placementCell(
   rule: PlacementRule,
