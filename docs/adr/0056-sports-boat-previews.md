@@ -1,6 +1,6 @@
 # 0056. Render README previews of the sports boat
 
-- Status: Accepted
+- Status: Superseded in part by [0063](0063-sports-boat-previews-from-more-angles.md)
 - Date: 2026-10-12
 
 ## Context

@@ -59,13 +59,14 @@ This directory records design decisions and the reasons behind them. The format 
 | [0053](0053-estimate-buoyant-boat-water-drag.md) | Estimate the buoyant boat's water drag | Accepted |
 | [0054](0054-shard-in-game-tests-in-ci.md) | Shard the in-game tests across four CI jobs and run model:check beside the unit tests | Accepted |
 | [0055](0055-kind-neutral-vehicle-core.md) | Kind-neutral vehicle core | Accepted |
-| [0056](0056-sports-boat-previews.md) | Render README previews of the sports boat | Accepted |
+| [0056](0056-sports-boat-previews.md) | Render README previews of the sports boat | Superseded in part by 0063 |
 | [0057](0057-skip-model-check-when-inputs-unchanged.md) | Skip model:check on pull requests that leave the renderer's files alone | Accepted |
 | [0058](0058-refine-the-sports-boat-interior.md) | Refine the sports boat interior from reference photos | Accepted |
 | [0059](0059-sports-boat-wake-trim-and-roll.md) | Sports boat wake, bow rise, and roll | Superseded in part by 0061 |
 | [0060](0060-sports-boat-engine-sound.md) | Sports boat engine sound | Accepted |
 | [0061](0061-lift-the-bow-and-roll-further.md) | Lift the sports boat bow the right way and roll it further | Accepted |
 | [0062](0062-fresh-dev-pack-version-on-every-start.md) | Serve the dev BDS's packs under a fresh dev-only version on every start | Accepted |
+| [0063](0063-sports-boat-previews-from-more-angles.md) | Show the sports boat previews from the rear and from above | Accepted |
 | [0063](0063-walk-on-a-stopped-sports-boat.md) | Walk on a stopped sports boat | Accepted |
 
 The measurements and in-game tests behind these decisions are in [the driving-core spike findings](../spike-driving-core.md).

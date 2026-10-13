@@ -10,8 +10,9 @@ the test pack stands out in the pack list.
 
 Four SUV poses share one camera and one scale, so they line up side by side in the README: on the
 ground, with the headlights on at night, flying with the wheels folded (ADR 0027), and under water
-as a submarine (ADR 0045). Four sports boat poses share another camera and scale: afloat in its
-default black, with the headlights on at night, and in two paints (ADR 0056).
+as a submarine (ADR 0045). Four sports boat pictures share another scale: afloat in its default
+black and with the headlights on at night from the SUV's angle, from its rear-left corner, and from
+straight above (ADR 0056, 0063).
 
 Only the standard library is used, like gen_model.py. The arithmetic avoids math.sin/cos (their
 last bit can differ between platforms' libm) so the same model renders to the same pixels on a Mac
@@ -92,18 +93,23 @@ ICON_GRAYSCALE_PACK = "yasu_ride_test_bp"
 
 # The sports boat floats with its feet about 0.45 blocks under the surface (docs/spike-sportsboat.md)
 BOAT_GEOMETRY = "models/entity/yasu_ride/sportsboat.geo.json"
-BOAT_TEXTURES = "textures/entity/yasu_ride"
+BOAT_TEXTURE = "textures/entity/yasu_ride/sportsboat.png"
 BOAT_WATERLINE = 7.2
 BOAT_WATER_COLOR = (30, 105, 165)
 BOAT_WATER_LAYERS = 10
 BOAT_WATER_ALPHA = 0.07
 BOAT_WATER_MARGIN = 14.0
 BOAT_BEAM_LENGTH = 40.0
+# The rear view mirrors the SUV's angle front to back. The top view puts the bow on the right, so
+# the long hull fills the landscape frame.
+BOAT_REAR_VIEW = (-1.0, 0.65, 1.0)
+BOAT_TOP_VIEW = (0.0, 1.0, 0.0)
+BOAT_TOP_SCREEN_UP = (-1.0, 0.0, 0.0)
 BOAT_POSES = {
-    "sportsboat-afloat.png": {"lamps": False, "dusk": False, "paint": None},
-    "sportsboat-headlights.png": {"lamps": True, "dusk": True, "paint": None},
-    "sportsboat-red.png": {"lamps": False, "dusk": False, "paint": "red"},
-    "sportsboat-white.png": {"lamps": False, "dusk": False, "paint": "white"},
+    "sportsboat-afloat.png": {"lamps": False, "dusk": False, "view": VIEW_DIRECTION, "screen_up": None},
+    "sportsboat-headlights.png": {"lamps": True, "dusk": True, "view": VIEW_DIRECTION, "screen_up": None},
+    "sportsboat-rear.png": {"lamps": False, "dusk": False, "view": BOAT_REAR_VIEW, "screen_up": None},
+    "sportsboat-top.png": {"lamps": False, "dusk": False, "view": BOAT_TOP_VIEW, "screen_up": BOAT_TOP_SCREEN_UP},
 }
 
 POSES = {
@@ -432,14 +438,16 @@ def water_layers(polygons, pose):
 
 
 class Camera:
-    def __init__(self, points):
+    def __init__(self, points, view=VIEW_DIRECTION, screen_up=None):
+        """screen_up is the world direction that points up in the image; it is needed when the view
+        looks straight down, and defaults to the world's up."""
         lo = [min(p[i] for p in points) for i in range(3)]
         hi = [max(p[i] for p in points) for i in range(3)]
         self.target = tuple((lo[i] + hi[i]) / 2 for i in range(3))
         size = math.sqrt(dot(sub(hi, lo), sub(hi, lo)))
-        self.back = normalize(VIEW_DIRECTION)
+        self.back = normalize(view)
         self.eye = tuple(self.target[i] + self.back[i] * size * CAMERA_DISTANCE for i in range(3))
-        self.right = normalize(cross((0.0, 1.0, 0.0), self.back))
+        self.right = normalize(cross(screen_up or (0.0, 1.0, 0.0), self.back))
         self.up = cross(self.back, self.right)
 
     def project(self, p):
@@ -636,34 +644,59 @@ def render(rp, icons=False):
 
 def fit(camera, quads):
     """Return a to_screen function that centers the quads in the preview frame with MARGIN around them."""
-    projected = [camera.project(p) for quad in quads for p in quad]
-    sx_lo, sx_hi = min(p[0] for p in projected), max(p[0] for p in projected)
-    sy_lo, sy_hi = min(p[1] for p in projected), max(p[1] for p in projected)
+    return fit_views([(camera, quads)])[0]
+
+
+def fit_views(views):
+    """Return one to_screen function per (camera, quads), each centering its quads in the frame, all
+    with the largest scale that keeps every view inside MARGIN, so the vehicle has the same size in
+    each."""
     w, h = WIDTH * SUPERSAMPLE, HEIGHT * SUPERSAMPLE
-    scale = min(w * (1 - 2 * MARGIN) / (sx_hi - sx_lo), h * (1 - 2 * MARGIN) / (sy_hi - sy_lo))
-    off_x = w / 2 - scale * (sx_lo + sx_hi) / 2
-    off_y = h / 2 - scale * (sy_lo + sy_hi) / 2
+    bounds = []
+    for camera, quads in views:
+        projected = [camera.project(p) for quad in quads for p in quad]
+        bounds.append((
+            min(p[0] for p in projected), max(p[0] for p in projected),
+            min(p[1] for p in projected), max(p[1] for p in projected),
+        ))
+    scale = min(
+        min(w * (1 - 2 * MARGIN) / (sx_hi - sx_lo), h * (1 - 2 * MARGIN) / (sy_hi - sy_lo))
+        for sx_lo, sx_hi, sy_lo, sy_hi in bounds
+    )
 
-    def to_screen(quad):
-        return [(off_x + scale * x, off_y + scale * y, q) for x, y, q in map(camera.project, quad)]
+    def screen(camera, off_x, off_y):
+        def to_screen(quad):
+            return [(off_x + scale * x, off_y + scale * y, q) for x, y, q in map(camera.project, quad)]
 
-    return to_screen
+        return to_screen
+
+    return [
+        screen(camera, w / 2 - scale * (sx_lo + sx_hi) / 2, h / 2 - scale * (sy_lo + sy_hi) / 2)
+        for (camera, _), (sx_lo, sx_hi, sy_lo, sy_hi) in zip(views, bounds)
+    ]
 
 
 def render_boat(rp):
     geo = json.loads((rp / BOAT_GEOMETRY).read_text())["minecraft:geometry"][0]
-    scenes, layers = {}, {}
+    texture = read_png(rp / BOAT_TEXTURE)
+    scenes = {name: collect_boat(geo, texture, pose) for name, pose in BOAT_POSES.items()}
+    layers = {name: water_layers(scenes[name][0], pose) for name, pose in BOAT_POSES.items()}
+    points = [p for polygons, _ in scenes.values() for quad, _, _ in polygons for p in quad]
+    # Poses seen from the same direction share one frame, so the headlight beam keeps the hull
+    # where it is in the picture without the lamps
+    frames = {}
     for name, pose in BOAT_POSES.items():
-        suffix = f"_{pose['paint']}" if pose["paint"] else ""
-        texture = read_png(rp / BOAT_TEXTURES / f"sportsboat{suffix}.png")
-        scenes[name] = collect_boat(geo, texture, pose)
-        layers[name] = water_layers(scenes[name][0], pose)
-    camera = Camera([p for polygons, _ in scenes.values() for quad, _, _ in polygons for p in quad])
-    to_screen = fit(camera, [q for name in BOAT_POSES for q, _, _ in scenes[name][0] + layers[name]])
-    return {
-        name: rasterize(polygons, [], to_screen, see_through=glass + layers[name])
-        for name, (polygons, glass) in scenes.items()
-    }
+        frames.setdefault((pose["view"], pose["screen_up"]), []).append(name)
+    views = [
+        (Camera(points, view, screen_up), [q for name in names for q, _, _ in scenes[name][0] + layers[name]])
+        for (view, screen_up), names in frames.items()
+    ]
+    images = {}
+    for names, to_screen in zip(frames.values(), fit_views(views)):
+        for name in names:
+            polygons, glass = scenes[name]
+            images[name] = rasterize(polygons, [], to_screen, see_through=glass + layers[name])
+    return {name: images[name] for name in BOAT_POSES}
 
 
 def render_icon(geo, polygons, camera):
