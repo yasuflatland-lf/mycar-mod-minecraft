@@ -3,6 +3,7 @@
 - Status: Accepted
 - Date: 2026-10-13
 - Supersedes: 0038
+- Supersedes in part: 0051 (counting boats under the world limit of 10)
 
 ## Context
 

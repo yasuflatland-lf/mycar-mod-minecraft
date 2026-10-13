@@ -1,6 +1,6 @@
 # 0051. Sports boat
 
-- Status: Extended by 0058 and 0063
+- Status: Superseded in part by 0066 (counting boats under the world limit of 10); extended by 0058 and 0063
 - Date: 2026-10-12
 
 ## Context
