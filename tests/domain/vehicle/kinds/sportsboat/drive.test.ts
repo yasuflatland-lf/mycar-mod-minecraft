@@ -12,6 +12,7 @@ import {
   type RawInput,
   toDriveInput,
 } from "../../../../../src/domain/vehicle/driveInput";
+import type { HoldPose } from "../../../../../src/domain/vehicle/floor";
 import type { VehicleKind } from "../../../../../src/domain/vehicle/kind";
 import {
   createVehicle,
@@ -223,13 +224,11 @@ describe("sports boat docking (ADR 0063)", () => {
           expect(drive.speed).toBe(0);
           expect(out.commands).toStrictEqual(dockCommands());
           expect(out.dock?.hold).toStrictEqual(hold);
-          if (!out.dock?.hold) throw new Error("missing dock hold");
-          expect(out.dock?.floor ?? []).toStrictEqual(
-            floorCells(out.dock?.hold),
-          );
-          expect(out.dock?.seats ?? []).toStrictEqual(
+          if (!out.dock) throw new Error("missing dock hold");
+          expect(out.dock.floor).toStrictEqual(floorCells(out.dock.hold));
+          expect(out.dock.seats).toStrictEqual(
             seatWorldPositions(
-              out.dock?.hold,
+              out.dock.hold,
               SPORTSBOAT_PROFILE.seats.positions,
             ),
           );
@@ -381,13 +380,11 @@ describe("sports boat docking (ADR 0063)", () => {
             z,
             yaw: normalizeYaw(heading),
           });
-          if (!out.dock?.hold) throw new Error("missing dock hold");
-          expect(out.dock?.floor ?? []).toStrictEqual(
-            floorCells(out.dock?.hold),
-          );
-          expect(out.dock?.seats ?? []).toStrictEqual(
+          if (!out.dock) throw new Error("missing dock hold");
+          expect(out.dock.floor).toStrictEqual(floorCells(out.dock.hold));
+          expect(out.dock.seats).toStrictEqual(
             seatWorldPositions(
-              out.dock?.hold,
+              out.dock.hold,
               SPORTSBOAT_PROFILE.seats.positions,
             ),
           );
@@ -545,15 +542,15 @@ describe("sports boat docking (ADR 0063)", () => {
             yaw: driverYaw,
             raw: { moveX, moveY, jump: false },
           };
-          let hold: NonNullable<TickOutcome["dock"]>["hold"] | undefined;
+          let hold: HoldPose | undefined;
           for (let tick = 0; tick < DOCK.ticks; tick++) {
             const out = vehicle.tick({
               ...context(tick, undefined, { x: 0, z: 0 }, water),
               riders: [driver],
             });
-            if (!out.dock?.hold) throw new Error("the boat undocked");
-            hold ??= out.dock?.hold;
-            expect(out.dock?.hold).toBe(hold);
+            if (!out.dock) throw new Error("the boat undocked");
+            hold ??= out.dock.hold;
+            expect(out.dock.hold).toBe(hold);
             expect(out.yaw).toBe(hold.yaw);
             expect(out.yaw).toBe(normalizeYaw(heading));
             expect(out.driverId).toBe("driver");
