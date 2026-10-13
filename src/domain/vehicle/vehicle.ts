@@ -1,9 +1,9 @@
 // Aggregate for one vehicle: its drive, driver, seats, ram cooldowns, and the hit count.
 import { forward, type Vec2, type Vec3 } from "../shared/vec";
+import type { Dock } from "./dock";
 import type { Drive, EngineCommand, RiderState, TickContext } from "./drive";
 import type { RawInput } from "./driveInput";
 import type { VehicleEvent } from "./events";
-import type { FloorCell, HoldPose } from "./floor";
 import { EMPTY_COUNTER, type HitCounter, registerHit } from "./hitCounter";
 import type { VehicleKind } from "./kind";
 import type { VehicleProfile } from "./profile";
@@ -25,10 +25,7 @@ export interface VehicleTickInput extends TickContext {
 }
 
 export interface TickOutcome {
-  hold?: HoldPose;
-  floor: readonly FloorCell[];
-  /** Deck seat i belongs to boat seat i; it is undefined while boat seat i has a rider (ADR 0063). */
-  deckSeats: readonly (Vec3 | undefined)[];
+  dock?: Dock;
   boardDeckRiders: boolean;
   impulse: Vec3;
   yaw: number;
@@ -95,11 +92,12 @@ export class Vehicle {
     });
 
     return {
-      hold: step.hold,
-      floor: step.floor ?? [],
-      deckSeats: (step.deckSeats ?? []).map((at, seat) =>
-        taken.has(seat) ? undefined : at,
-      ),
+      dock: step.dock && {
+        ...step.dock,
+        seats: step.dock.seats.map((at, seat) =>
+          taken.has(seat) ? undefined : at,
+        ),
+      },
       boardDeckRiders: step.boardDeckRiders ?? false,
       impulse: step.impulse,
       yaw: this.drive.yaw,

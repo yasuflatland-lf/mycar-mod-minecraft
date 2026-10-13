@@ -1,6 +1,7 @@
 // Persistent auxiliary seats for held vehicles (ADR 0063).
 import { type Entity, type Player, world } from "@minecraft/server";
 import type { Vec3 } from "../../../domain/shared/vec";
+import { DECK_SEAT_REACH } from "../../../domain/vehicle/kinds/index";
 import {
   DECK_SEAT_OF_PROPERTY,
   DECK_SEAT_TYPE,
@@ -12,9 +13,12 @@ import {
 // Under a pixel (1/16 block): a seat this close to its spot is left alone, so a
 // seated player is not teleported every tick for drift nobody can see.
 const TELEPORT_TOLERANCE = 0.05;
-// The farthest seat in SPORTSBOAT_PROFILE.seats is 0.9 blocks from the boat's
-// location, so 6 blocks finds a loaded owner with a wide margin.
-const ORPHAN_RADIUS = 6;
+// A deck seat stays within TELEPORT_TOLERANCE of its spot, at most
+// DECK_SEAT_REACH from its vehicle; the margin finds a loaded owner even
+// when the seat loads a tick before the owner has been moved back to its
+// hold pose.
+const ORPHAN_MARGIN = 5;
+const ORPHAN_RADIUS = DECK_SEAT_REACH + ORPHAN_MARGIN;
 
 function savedIds(car: Entity): (string | null)[] {
   const raw = car.getDynamicProperty(DECK_SEATS_PROPERTY);

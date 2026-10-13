@@ -53,15 +53,15 @@ export class DriveVehicles {
         });
         // Commands are sent on change, so send them before anything else that could throw.
         this.world.run(snap.id, out.commands);
-        this.world.holdAt(snap.id, out.hold);
+        this.world.holdAt(snap.id, out.dock?.hold);
         if (out.riders.thirdPerson)
           for (const rider of snap.riders) offRoad.add(rider.id);
         if (out.riders.underwater)
           for (const rider of snap.riders) underwater.add(rider.id);
-        if (!out.hold) this.world.applyMotion(snap.id, out.impulse, out.yaw);
+        if (!out.dock) this.world.applyMotion(snap.id, out.impulse, out.yaw);
         if (out.boardDeckRiders) this.world.boardDeckRiders(snap.id);
-        this.world.keepDeckSeats(snap.id, out.deckSeats, out.yaw);
-        this.world.layFloor(snap.id, out.floor);
+        this.world.keepDeckSeats(snap.id, out.dock?.seats ?? [], out.yaw);
+        this.world.layFloor(snap.id, out.dock?.floor ?? []);
         this.world.shineHeadlights(
           snap.id,
           snap.headlights

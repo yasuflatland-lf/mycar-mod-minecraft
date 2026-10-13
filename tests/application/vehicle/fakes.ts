@@ -195,8 +195,8 @@ export class FakeWorld
   receivedStarter(playerId: string) {
     return this.starters.get(playerId);
   }
-  giveVehicleItem(playerId: string) {
-    this.calls.push(`give:${playerId}`);
+  giveVehicleItem(playerId: string, kind: VehicleKind) {
+    this.calls.push(`give:${playerId}:${kind}`);
   }
   markStarterReceived(playerId: string) {
     this.starters.set(playerId, true);

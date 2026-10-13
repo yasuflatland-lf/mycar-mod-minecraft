@@ -15,7 +15,7 @@ This directory records design decisions and the reasons behind them. The format 
 | [0009](0009-vehicle-model-conventions.md) | Vehicle model conventions, and accepting a square collision box | Accepted |
 | [0010](0010-testing-strategy.md) | Testing strategy | Accepted |
 | [0011](0011-dev-server-docker-raknet.md) | Run the development server as BDS in Docker with raknet | Superseded by 0015 |
-| [0012](0012-ddd-layered-architecture.md) | Split the code into domain, application, and infrastructure layers | Accepted |
+| [0012](0012-ddd-layered-architecture.md) | Split the code into domain, application, and infrastructure layers | Extended by 0065 |
 | [0013](0013-dependency-updates-with-renovate.md) | Keep dependencies up to date with Renovate | Accepted |
 | [0014](0014-opt-in-nethernet-dev-server.md) | Offer NetherNet on the dev server as an opt-in transport | Superseded by 0015 |
 | [0015](0015-dev-server-docker-nethernet.md) | Run the development server as BDS in Docker with NetherNet | Extended by 0062 |
@@ -49,7 +49,7 @@ This directory records design decisions and the reasons behind them. The format 
 | [0043](0043-wheel-arms.md) | Wheel arms in flight and under water | Accepted |
 | [0044](0044-bank-under-water.md) | Bank into turns under water | Accepted |
 | [0045](0045-submarine-preview.md) | Add a submarine pose to the README previews | Accepted |
-| [0046](0046-organize-each-layer-by-feature.md) | Organize each layer by feature | Extended by 0050, 0055 |
+| [0046](0046-organize-each-layer-by-feature.md) | Organize each layer by feature | Extended by 0050, 0055, 0065 |
 | [0047](0047-rename-to-yasuflatland-ride.md) | Rename to Yasuflatland Ride | Accepted |
 | [0048](0048-mutation-testing-and-unused-code-checks.md) | Mutation testing with Stryker, and unused code checks with knip | Accepted |
 | [0049](0049-pack-icons-rendered-from-model.md) | Render pack icons from the hovering SUV model | Accepted |
@@ -58,7 +58,7 @@ This directory records design decisions and the reasons behind them. The format 
 | [0052](0052-retry-camera-switches-and-break-seat-ties-low.md) | Retry camera switches in both directions, and break seat ties toward the lower index | Accepted |
 | [0053](0053-estimate-buoyant-boat-water-drag.md) | Estimate the buoyant boat's water drag | Accepted |
 | [0054](0054-shard-in-game-tests-in-ci.md) | Shard the in-game tests across four CI jobs and run model:check beside the unit tests | Accepted |
-| [0055](0055-kind-neutral-vehicle-core.md) | Kind-neutral vehicle core | Accepted |
+| [0055](0055-kind-neutral-vehicle-core.md) | Kind-neutral vehicle core | Extended by 0064, 0065 |
 | [0056](0056-sports-boat-previews.md) | Render README previews of the sports boat | Accepted |
 | [0057](0057-skip-model-check-when-inputs-unchanged.md) | Skip model:check on pull requests that leave the renderer's files alone | Accepted |
 | [0058](0058-refine-the-sports-boat-interior.md) | Refine the sports boat interior from reference photos | Accepted |
@@ -66,7 +66,9 @@ This directory records design decisions and the reasons behind them. The format 
 | [0060](0060-sports-boat-engine-sound.md) | Sports boat engine sound | Accepted |
 | [0061](0061-lift-the-bow-and-roll-further.md) | Lift the sports boat bow the right way and roll it further | Accepted |
 | [0062](0062-fresh-dev-pack-version-on-every-start.md) | Serve the dev BDS's packs under a fresh dev-only version on every start | Accepted |
-| [0063](0063-walk-on-a-stopped-sports-boat.md) | Walk on a stopped sports boat | Accepted |
+| [0063](0063-walk-on-a-stopped-sports-boat.md) | Walk on a stopped sports boat | Extended by 0064 |
+| [0064](0064-dock-step.md) | Group the hold, floor, and deck seats into an optional dock | Accepted |
+| [0065](0065-check-import-rules-with-dependency-cruiser.md) | Check the import rules with dependency-cruiser | Accepted |
 | [0066](0066-limit-vehicles-per-player-and-kind.md) | Limit vehicles per player and per kind | Accepted |
 
 The measurements and in-game tests behind these decisions are in [the driving-core spike findings](../spike-driving-core.md).
