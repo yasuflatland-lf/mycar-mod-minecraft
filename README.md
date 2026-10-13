@@ -23,7 +23,7 @@ This add-on holds only rides. House-building parts will ship as a separate add-o
 | **SUV** | Drives on land, flies, and dives as a submarine. Every player gets one on their first join | [Controls and details](docs/vehicles/suv.md) |
 | **Sports boat** | Drives on water; shores stop it | [Controls and details](docs/vehicles/sportsboat.md) |
 
-Both seat 4, can be repainted with any of the 16 dyes, and light the way with a headlight switch item. Each can be placed from its item and broken back into it. A world holds at most 10 vehicles: placing an eleventh removes the oldest.
+Both seat 4, can be repainted with any of the 16 dyes, and light the way with a headlight switch item. Each can be placed from its item and broken back into it. Each player keeps at most 10 SUVs and 1 sports boat: placing one more removes that player's oldest of that kind.
 
 ## Installing
 
