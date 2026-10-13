@@ -149,22 +149,21 @@ describe("Fleet (ADR 0038, ADR 0066)", () => {
   });
 
   it("matches a per-group model through random admissions, discoveries, and removals", () => {
-    // About half the admissions are unowned, so 60 steps admit around 20
-    // vehicles into the shared group of 10 and a few into each of the eight
-    // owned groups capped at 1 to 5: every group overflows in most runs. A
-    // pool of 40 ids makes forgetting, re-admitting, and re-finding an evicted
-    // vehicle common. The cap on the evicted list has its own example test.
+    // Owners are drawn evenly, so "a:suv" with an SUV must stay apart from "a"
+    // and from the unowned group. Sampling these arbitraries 2,000 times with
+    // fc.sample and this model, every one of the nine groups overflowed in at
+    // least 99.0% of runs and all nine in the same run in 94.2%. Comparing
+    // serialized states and restoring every tenth step and at the end keeps
+    // the test near 0.5 s with coverage, down from 8 s with toEqual and a
+    // restoration every step. The cap on the evicted list has its own test.
     const steps = fc.array(
       fc.record({
         op: fc.constantFrom("admit", "admitAsOldest", "forget"),
-        id: fc.nat(40).map((n) => `v${n}`),
+        id: fc.nat(300).map((n) => `v${n}`),
         kind: fc.constantFrom(...VEHICLE_KINDS),
-        owner: fc.oneof(
-          { arbitrary: fc.constant(undefined), weight: 4 },
-          fc.constantFrom("", "a", "b", "a:suv"),
-        ),
+        owner: fc.constantFrom(undefined, "", "a", "b", "a:suv"),
       }),
-      { minLength: 20, maxLength: 60 },
+      { minLength: 200, maxLength: 300 },
     );
     fc.assert(
       fc.property(
@@ -182,7 +181,13 @@ describe("Fleet (ADR 0038, ADR 0066)", () => {
             e.owner === undefined ? "" : `${e.owner}\u0000${e.kind}`;
           const groupLimit = (e: FleetEntry) =>
             e.owner === undefined ? SPEC.maxUnownedVehicles : limits[e.kind];
-          for (const { op, ...entry } of operations) {
+          const expectModel = (actual: Fleet) => {
+            const state = actual.state();
+            if (JSON.stringify(state) !== JSON.stringify({ order, evicted })) {
+              expect(state).toEqual({ order, evicted });
+            }
+          };
+          operations.forEach(({ op, ...entry }, step) => {
             if (op === "forget") {
               fleet.forget(entry.id);
               order = order.filter((e) => e.id !== entry.id);
@@ -197,26 +202,28 @@ describe("Fleet (ADR 0038, ADR 0066)", () => {
                 const peers = order.filter(
                   (e) => groupOf(e) === groupOf(entry),
                 );
-                const victims = peers.slice(
-                  0,
-                  Math.max(0, peers.length - groupLimit(entry)),
+                const victims = new Set(
+                  peers.slice(0, Math.max(0, peers.length - groupLimit(entry))),
                 );
-                order = order.filter((e) => !victims.includes(e));
-                evicted = [...evicted, ...victims.map((e) => e.id)].slice(
+                order = order.filter((e) => !victims.has(e));
+                evicted = [...evicted, ...[...victims].map((e) => e.id)].slice(
                   -SPEC.maxEvicted,
                 );
               }
             }
-            expect(fleet.state()).toEqual({ order, evicted });
+            expectModel(fleet);
             const sizes = new Map<string, number>();
             for (const e of order) {
               const size = (sizes.get(groupOf(e)) ?? 0) + 1;
               sizes.set(groupOf(e), size);
-              expect(size).toBeLessThanOrEqual(groupLimit(e));
+              if (size > groupLimit(e))
+                expect(size).toBeLessThanOrEqual(groupLimit(e));
             }
-            fleet = Fleet.restore(fleet.state(), limitOf);
-            expect(fleet.state()).toEqual({ order, evicted });
-          }
+            if (step % 10 === 9 || step === operations.length - 1) {
+              fleet = Fleet.restore(fleet.state(), limitOf);
+              expectModel(fleet);
+            }
+          });
         },
       ),
     );
