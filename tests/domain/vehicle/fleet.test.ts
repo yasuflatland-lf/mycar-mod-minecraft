@@ -149,14 +149,22 @@ describe("Fleet (ADR 0038, ADR 0066)", () => {
   });
 
   it("matches a per-group model through random admissions, discoveries, and removals", () => {
+    // About half the admissions are unowned, so 60 steps admit around 20
+    // vehicles into the shared group of 10 and a few into each of the eight
+    // owned groups capped at 1 to 5: every group overflows in most runs. A
+    // pool of 40 ids makes forgetting, re-admitting, and re-finding an evicted
+    // vehicle common. The cap on the evicted list has its own example test.
     const steps = fc.array(
       fc.record({
         op: fc.constantFrom("admit", "admitAsOldest", "forget"),
-        id: fc.nat(300).map((n) => `v${n}`),
+        id: fc.nat(40).map((n) => `v${n}`),
         kind: fc.constantFrom(...VEHICLE_KINDS),
-        owner: fc.constantFrom(undefined, "", "a", "b", "a:suv"),
+        owner: fc.oneof(
+          { arbitrary: fc.constant(undefined), weight: 4 },
+          fc.constantFrom("", "a", "b", "a:suv"),
+        ),
       }),
-      { minLength: 100, maxLength: 400 },
+      { minLength: 20, maxLength: 60 },
     );
     fc.assert(
       fc.property(
@@ -170,8 +178,8 @@ describe("Fleet (ADR 0038, ADR 0066)", () => {
           let fleet = Fleet.empty(limitOf);
           let order: FleetEntry[] = [];
           let evicted: string[] = [];
-          const sameGroup = (a: FleetEntry, b: FleetEntry) =>
-            a.owner === b.owner && (a.owner === undefined || a.kind === b.kind);
+          const groupOf = (e: FleetEntry) =>
+            e.owner === undefined ? "" : `${e.owner}\u0000${e.kind}`;
           const groupLimit = (e: FleetEntry) =>
             e.owner === undefined ? SPEC.maxUnownedVehicles : limits[e.kind];
           for (const { op, ...entry } of operations) {
@@ -186,7 +194,9 @@ describe("Fleet (ADR 0038, ADR 0066)", () => {
                 !evicted.includes(entry.id)
               ) {
                 order = op === "admit" ? [...order, entry] : [entry, ...order];
-                const peers = order.filter((e) => sameGroup(e, entry));
+                const peers = order.filter(
+                  (e) => groupOf(e) === groupOf(entry),
+                );
                 const victims = peers.slice(
                   0,
                   Math.max(0, peers.length - groupLimit(entry)),
@@ -198,10 +208,11 @@ describe("Fleet (ADR 0038, ADR 0066)", () => {
               }
             }
             expect(fleet.state()).toEqual({ order, evicted });
-            for (const entry of order) {
-              expect(
-                order.filter((e) => sameGroup(e, entry)).length,
-              ).toBeLessThanOrEqual(groupLimit(entry));
+            const sizes = new Map<string, number>();
+            for (const e of order) {
+              const size = (sizes.get(groupOf(e)) ?? 0) + 1;
+              sizes.set(groupOf(e), size);
+              expect(size).toBeLessThanOrEqual(groupLimit(e));
             }
             fleet = Fleet.restore(fleet.state(), limitOf);
             expect(fleet.state()).toEqual({ order, evicted });
