@@ -1,4 +1,4 @@
-// Reads back the fleet stored as JSON in a dynamic property (ADR 0038, ADR 0066).
+// Reads and writes the fleet stored as JSON in a dynamic property (ADR 0038, ADR 0066).
 import type { FleetEntry, FleetState } from "../../../domain/vehicle/fleet";
 import { isVehicleKind } from "../../../domain/vehicle/kind";
 
