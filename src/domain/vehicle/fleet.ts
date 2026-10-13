@@ -96,10 +96,8 @@ export class Fleet {
 
   private trim(): void {
     const excess = this.order.length - SPEC.maxVehicles;
-    if (excess > 0)
-      this.evicted.push(
-        ...this.order.splice(0, excess).map((entry) => entry.id),
-      );
+    for (const { id } of this.order.splice(0, Math.max(0, excess)))
+      this.evicted.push(id);
     this.evicted = this.evicted.slice(-SPEC.maxEvicted);
   }
 }

@@ -47,8 +47,7 @@ export class LimitVehicles {
 
   private removeLoadedEvicted(fleet: Fleet): boolean {
     let removed = false;
-    for (const entry of this.world.loadedFleetEntries()) {
-      const { id } = entry;
+    for (const { id } of this.world.loadedFleetEntries()) {
       if (!fleet.isEvicted(id)) continue;
       // One failure must not cost the others, or the save of the fleet.
       try {

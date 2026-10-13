@@ -15,9 +15,10 @@ function parseEntry(value: unknown): FleetEntry {
   const { id, kind, owner } = value as Record<string, unknown>;
   if (typeof id !== "string") throw new Error("order entry id is not a string");
   if (!isVehicleKind(kind)) throw new Error("order entry kind is unknown");
-  if ("owner" in value && typeof owner !== "string")
+  if (owner === undefined) return { id, kind };
+  if (typeof owner !== "string")
     throw new Error("order entry owner is not a string");
-  return { id, kind, ...(typeof owner === "string" ? { owner } : {}) };
+  return { id, kind, owner };
 }
 
 /** Throws with the reason when `raw` is not a stored fleet. */
