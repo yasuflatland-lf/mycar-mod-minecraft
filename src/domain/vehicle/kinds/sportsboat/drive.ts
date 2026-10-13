@@ -1,5 +1,6 @@
 // The sports boat's drive: the engine floats the hull and the script drives only x and z (ADR 0051).
-import { clamp, dot, forward, type Vec2, type Vec3 } from "../../../shared/vec";
+import { clamp, dot, forward, type Vec2 } from "../../../shared/vec";
+import type { Dock } from "../../dock";
 import type {
   Drive,
   DriveStep,
@@ -94,8 +95,12 @@ function pushesStick(input: RawInput | undefined): boolean {
   );
 }
 
-function deckSeatPositions(pose: HoldPose): Vec3[] {
-  return seatWorldPositions(pose, SPORTSBOAT_PROFILE.seats.positions);
+function dockAt(pose: HoldPose): Dock {
+  return {
+    hold: pose,
+    floor: floorCells(pose),
+    seats: seatWorldPositions(pose, SPORTSBOAT_PROFILE.seats.positions),
+  };
 }
 
 export function isAfloat(depth: number, below: () => boolean): boolean {
@@ -188,14 +193,12 @@ export class BoatDrive implements Drive {
     if (this.docked) {
       if (!pushesStick(raw)) {
         return {
-          deckSeats: deckSeatPositions(this.docked),
+          dock: dockAt(this.docked),
           boardDeckRiders: pushesStick(ctx.deckSeatInputs[0]),
           impulse: { x: 0, y: 0, z: 0 },
           forward: forward(this.docked.yaw),
           commands: [],
           riders: { thirdPerson: false, underwater: false },
-          hold: this.docked,
-          floor: floorCells(this.docked),
         };
       }
       boardDeckRiders = true;
@@ -279,8 +282,7 @@ export class BoatDrive implements Drive {
       commands,
       riders: { thirdPerson: false, underwater: false },
       boardDeckRiders,
-      deckSeats: this.docked ? deckSeatPositions(this.docked) : [],
-      ...(this.docked && { hold: this.docked, floor: floorCells(this.docked) }),
+      ...(this.docked && { dock: dockAt(this.docked) }),
     };
   }
 }

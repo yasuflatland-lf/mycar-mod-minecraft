@@ -63,8 +63,7 @@ describe("DriveVehicles", () => {
         ),
         (hold, floor) => {
           const step: DriveStep = {
-            hold,
-            floor,
+            dock: { hold, floor, seats: [] },
             impulse: { x: 0, y: 0, z: 1 },
             forward: { x: 0, z: 1 },
             commands: [],

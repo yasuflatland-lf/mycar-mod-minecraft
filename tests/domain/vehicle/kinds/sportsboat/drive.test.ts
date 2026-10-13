@@ -156,6 +156,42 @@ function boat(heading: number): Vehicle {
 }
 
 describe("sports boat docking (ADR 0063)", () => {
+  it("returns a complete dock matching its hold on every tick", () => {
+    fc.assert(
+      fc.property(
+        yaw,
+        afloatWater,
+        number(-100, 100),
+        number(-100, 100),
+        fc.array(fc.option(rawInput, { nil: undefined }), {
+          minLength: 1,
+          maxLength: 50,
+        }),
+        (heading, water, x, z, inputs) => {
+          const drive = new BoatDrive(heading, {});
+          const ctx = context(0, undefined, { x: 0, z: 0 }, water);
+          ctx.location = { ...ctx.location, x, z };
+          const sequence = [
+            ...Array<undefined>(DOCK.ticks + 1).fill(undefined),
+            FULL_THROTTLE,
+            ...inputs,
+          ];
+          sequence.forEach((raw, tick) => {
+            const step = drive.step(raw, { ...ctx, tick });
+            if (step.dock === undefined) return;
+            expect(step.dock.floor).toStrictEqual(floorCells(step.dock.hold));
+            expect(step.dock.seats).toStrictEqual(
+              seatWorldPositions(
+                step.dock.hold,
+                SPORTSBOAT_PROFILE.seats.positions,
+              ),
+            );
+          });
+        },
+      ),
+    );
+  });
+
   it("docks exactly on the twentieth consecutive still tick with a water-relative hold and floor", () => {
     fc.assert(
       fc.property(
@@ -170,8 +206,8 @@ describe("sports boat docking (ADR 0063)", () => {
           for (let tick = 1; tick < DOCK.ticks; tick++) {
             const out = drive.step(undefined, ctx);
             expect(drive.isDocked).toBe(false);
-            expect(out.hold).toBeUndefined();
-            expect(out.floor).toBeUndefined();
+            expect(out.dock?.hold).toBeUndefined();
+            expect(out.dock?.floor).toBeUndefined();
             expect(out.commands).toStrictEqual(tick === 1 ? LEVEL : []);
           }
           const out = drive.step(undefined, ctx);
@@ -186,11 +222,16 @@ describe("sports boat docking (ADR 0063)", () => {
           expect(drive.isDocked).toBe(true);
           expect(drive.speed).toBe(0);
           expect(out.commands).toStrictEqual(dockCommands());
-          expect(out.hold).toStrictEqual(hold);
-          if (!out.hold) throw new Error("missing dock hold");
-          expect(out.floor).toStrictEqual(floorCells(out.hold));
-          expect(out.deckSeats).toStrictEqual(
-            seatWorldPositions(out.hold, SPORTSBOAT_PROFILE.seats.positions),
+          expect(out.dock?.hold).toStrictEqual(hold);
+          if (!out.dock?.hold) throw new Error("missing dock hold");
+          expect(out.dock?.floor ?? []).toStrictEqual(
+            floorCells(out.dock?.hold),
+          );
+          expect(out.dock?.seats ?? []).toStrictEqual(
+            seatWorldPositions(
+              out.dock?.hold,
+              SPORTSBOAT_PROFILE.seats.positions,
+            ),
           );
         },
       ),
@@ -211,18 +252,18 @@ describe("sports boat docking (ADR 0063)", () => {
           drive.step(undefined, ctx);
         drive.step(raw, ctx);
         for (let tick = 1; tick < DOCK.ticks; tick++) {
-          expect(drive.step(undefined, ctx).hold).toBeUndefined();
+          expect(drive.step(undefined, ctx).dock?.hold).toBeUndefined();
         }
-        expect(drive.step(undefined, ctx).hold).toBeDefined();
+        expect(drive.step(undefined, ctx).dock?.hold).toBeDefined();
         const occupied = new BoatDrive(heading, {});
         for (let tick = 0; tick < DOCK.ticks * 3; tick++) {
-          expect(occupied.step(raw, ctx).hold).toBeUndefined();
+          expect(occupied.step(raw, ctx).dock?.hold).toBeUndefined();
           expect(occupied.isDocked).toBe(false);
         }
         const idle = new BoatDrive(heading, {});
         for (let tick = 0; tick < DOCK.ticks * 3; tick++) {
           expect(
-            idle.step({ moveX: 0, moveY: 0, jump: raw.jump }, ctx).hold,
+            idle.step({ moveX: 0, moveY: 0, jump: raw.jump }, ctx).dock?.hold,
           ).toBeUndefined();
         }
       }),
@@ -249,7 +290,7 @@ describe("sports boat docking (ADR 0063)", () => {
           let out = drive.step(undefined, ctx);
           for (let tick = 1; tick < DOCK.ticks; tick++)
             out = drive.step(undefined, ctx);
-          const hold = out.hold;
+          const hold = out.dock?.hold;
           if (!hold) throw new Error("missing dock hold");
           const state = drive.state;
           for (const raw of [
@@ -262,8 +303,8 @@ describe("sports boat docking (ADR 0063)", () => {
               velocity: { x: 1, y: 1, z: 1 },
               waterAt: () => false,
             });
-            expect(out.hold).toBe(hold);
-            expect(out.floor).toStrictEqual(floorCells(hold));
+            expect(out.dock?.hold).toBe(hold);
+            expect(out.dock?.floor ?? []).toStrictEqual(floorCells(hold));
             expect(out.impulse).toStrictEqual({ x: 0, y: 0, z: 0 });
             expect(out.forward).toStrictEqual(forward(drive.yaw));
             expect(out.commands).toStrictEqual([]);
@@ -304,16 +345,16 @@ describe("sports boat docking (ADR 0063)", () => {
             ...expected,
             commands: [...undockCommands(), ...expected.commands],
             boardDeckRiders: true,
-            deckSeats: [],
           });
           expect(drive.isDocked).toBe(false);
-          expect(out.hold).toBeUndefined();
-          expect(out.floor).toBeUndefined();
+          expect(out.dock?.hold).toBeUndefined();
+          expect(out.dock?.floor).toBeUndefined();
+          expect(out.dock?.seats ?? []).toStrictEqual([]);
           expect(drive.state).toStrictEqual(normal.state);
           drive.restore({ motion: initialMotion(drive.yaw) });
           for (let tick = 1; tick < DOCK.ticks; tick++)
-            expect(drive.step(undefined, ctx).hold).toBeUndefined();
-          expect(drive.step(undefined, ctx).hold).toBeDefined();
+            expect(drive.step(undefined, ctx).dock?.hold).toBeUndefined();
+          expect(drive.step(undefined, ctx).dock?.hold).toBeDefined();
         },
       ),
     );
@@ -334,22 +375,27 @@ describe("sports boat docking (ADR 0063)", () => {
           };
           const out = drive.step(undefined, ctx);
           expect(drive.isDocked).toBe(true);
-          expect(out.hold).toStrictEqual({
+          expect(out.dock?.hold).toStrictEqual({
             x,
             y,
             z,
             yaw: normalizeYaw(heading),
           });
-          if (!out.hold) throw new Error("missing dock hold");
-          expect(out.floor).toStrictEqual(floorCells(out.hold));
-          expect(out.deckSeats).toStrictEqual(
-            seatWorldPositions(out.hold, SPORTSBOAT_PROFILE.seats.positions),
+          if (!out.dock?.hold) throw new Error("missing dock hold");
+          expect(out.dock?.floor ?? []).toStrictEqual(
+            floorCells(out.dock?.hold),
+          );
+          expect(out.dock?.seats ?? []).toStrictEqual(
+            seatWorldPositions(
+              out.dock?.hold,
+              SPORTSBOAT_PROFILE.seats.positions,
+            ),
           );
           expect(out.commands).toStrictEqual([]);
           expect(
             drive.step(undefined, { ...ctx, location: { x: 0, y: 0, z: 0 } })
-              .hold,
-          ).toBe(out.hold);
+              .dock?.hold,
+          ).toBe(out.dock?.hold);
         },
       ),
     );
@@ -373,7 +419,7 @@ describe("sports boat docking (ADR 0063)", () => {
           drive.restore({
             motion: { ...initialMotion(heading), speed: sign * DOCK.maxSpeed },
           });
-          expect(drive.step(undefined, ctx).hold).toBeUndefined();
+          expect(drive.step(undefined, ctx).dock?.hold).toBeUndefined();
           expect(drive.speed).toBe(sign * DOCK.maxSpeed);
           const speed = (sign * DOCK.maxSpeed) / 2;
           drive.restore({ motion: { ...initialMotion(heading), speed } });
@@ -383,8 +429,8 @@ describe("sports boat docking (ADR 0063)", () => {
             velocity: { x: f.x * speed, y: 0, z: f.z * speed },
           };
           for (let tick = 1; tick < DOCK.ticks; tick++)
-            expect(drive.step(undefined, still).hold).toBeUndefined();
-          expect(drive.step(undefined, still).hold).toBeDefined();
+            expect(drive.step(undefined, still).dock?.hold).toBeUndefined();
+          expect(drive.step(undefined, still).dock?.hold).toBeDefined();
           expect(drive.speed).toBe(0);
         },
       ),
@@ -400,12 +446,12 @@ describe("sports boat docking (ADR 0063)", () => {
           waterAt: (o: Vec3) => o.y === -0.3,
         };
         for (let tick = 0; tick < DOCK.ticks * 2; tick++) {
-          expect(drive.step(undefined, ctx).hold).toBeUndefined();
+          expect(drive.step(undefined, ctx).dock?.hold).toBeUndefined();
           expect(drive.isDocked).toBe(false);
         }
         expect(
           drive.step(undefined, context(0, undefined, { x: 0, z: 0 }, AFLOAT))
-            .hold,
+            .dock?.hold,
         ).toBeDefined();
       }),
     );
@@ -458,12 +504,12 @@ describe("sports boat docking (ADR 0063)", () => {
             undefined,
             context(tick, undefined, { x: 0, z: 0 }, BEACHED),
           );
-          expect(out.hold).toBeUndefined();
+          expect(out.dock?.hold).toBeUndefined();
           expect(drive.isDocked).toBe(false);
         }
         for (let tick = 1; tick < DOCK.ticks; tick++)
-          expect(drive.step(undefined, ctx).hold).toBeUndefined();
-        expect(drive.step(undefined, ctx).hold).toBeDefined();
+          expect(drive.step(undefined, ctx).dock?.hold).toBeUndefined();
+        expect(drive.step(undefined, ctx).dock?.hold).toBeDefined();
       }),
     );
   });
@@ -499,15 +545,15 @@ describe("sports boat docking (ADR 0063)", () => {
             yaw: driverYaw,
             raw: { moveX, moveY, jump: false },
           };
-          let hold: TickOutcome["hold"];
+          let hold: NonNullable<TickOutcome["dock"]>["hold"] | undefined;
           for (let tick = 0; tick < DOCK.ticks; tick++) {
             const out = vehicle.tick({
               ...context(tick, undefined, { x: 0, z: 0 }, water),
               riders: [driver],
             });
-            if (!out.hold) throw new Error("the boat undocked");
-            hold ??= out.hold;
-            expect(out.hold).toBe(hold);
+            if (!out.dock?.hold) throw new Error("the boat undocked");
+            hold ??= out.dock?.hold;
+            expect(out.dock?.hold).toBe(hold);
             expect(out.yaw).toBe(hold.yaw);
             expect(out.yaw).toBe(normalizeYaw(heading));
             expect(out.driverId).toBe("driver");
@@ -1236,15 +1282,15 @@ it("only the deck driver above the stick threshold requests boarding and keeps t
               DOCK.stick,
         );
         expect(drive.isDocked).toBe(true);
-        expect(out.hold).toBeDefined();
-        expect(out.deckSeats).toHaveLength(4);
+        expect(out.dock?.hold).toBeDefined();
+        expect(out.dock?.seats ?? []).toHaveLength(4);
         expect(out.commands).toEqual([]);
         const passengersOnly = drive.step(undefined, {
           ...ctx,
           deckSeatInputs: [undefined, ...inputs.slice(1)],
         });
         expect(passengersOnly.boardDeckRiders).toBe(false);
-        expect(passengersOnly.hold).toEqual(out.hold);
+        expect(passengersOnly.dock?.hold).toEqual(out.dock?.hold);
         for (const magnitude of [DOCK.stick, -DOCK.stick]) {
           expect(
             drive.step(undefined, {
@@ -1296,9 +1342,9 @@ it("keeps deck seats only at empty boat seats and ignores the deck driver while 
           riders,
           deckSeatInputs: inputs,
         });
-        expect(out.hold).toBeDefined();
-        expect(out.deckSeats).toHaveLength(4);
-        for (const [seat, at] of out.deckSeats.entries())
+        expect(out.dock?.hold).toBeDefined();
+        expect(out.dock?.seats ?? []).toHaveLength(4);
+        for (const [seat, at] of (out.dock?.seats ?? []).entries())
           expect(at === undefined).toBe(taken.includes(seat));
         expect(out.boardDeckRiders).toBe(
           !taken.includes(0) && pushes(inputs[0]),
