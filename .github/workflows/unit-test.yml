@@ -40,6 +40,10 @@ jobs:
       - if: steps.src.outputs.present == 'true'
         run: pnpm run typecheck
 
+      # Import rules between layers, features, and kinds (ADR 0065)
+      - if: steps.src.outputs.present == 'true'
+        run: pnpm run lint:deps
+
       - if: steps.src.outputs.present == 'true'
         run: pnpm run test:coverage
 
