@@ -34,6 +34,8 @@ export const PLAYER_TYPE = "minecraft:player";
 export const STARTER_RECEIVED_PROPERTY = id("starter_received");
 /** World dynamic property holding the fleet as JSON (ADR 0038). */
 export const FLEET_PROPERTY = id("fleet");
+/** Entity dynamic property on a vehicle placed from its item: the placing player's id (ADR 0066). */
+export const OWNER_PROPERTY = id("owner");
 /** Item a rider uses to switch the headlights (ADR 0020). */
 export const HEADLIGHT_SWITCH_TYPE = id("headlight_switch");
 /** Entity property in packs/yasu_ride_bp/entities/yasu_ride/suv.se.json; the render controller makes the lamps glow by it. */

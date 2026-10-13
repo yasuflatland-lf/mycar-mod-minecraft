@@ -63,6 +63,7 @@ export class FakeWorld
   loadedIds: string[] = [];
   targets: RamTarget[] = [];
   readonly paints = new Map<string, Paint>();
+  readonly owners = new Map<string, string>();
   readonly headlights = new Map<string, boolean>();
   /** Players in the world, and whether each has received the starter item. */
   readonly starters = new Map<string, boolean>();
@@ -170,8 +171,15 @@ export class FakeWorld
   isAir(_dim: string, at: Vec3) {
     return this.air(at);
   }
-  spawnVehicle(dim: string, at: Vec3, yaw: number, kind: VehicleKind) {
+  spawnVehicle(
+    dim: string,
+    at: Vec3,
+    yaw: number,
+    kind: VehicleKind,
+    ownerId: string,
+  ) {
     const id = `v${this.nextId++}`;
+    this.owners.set(id, ownerId);
     this.calls.push(`spawn:${dim}:${at.x},${at.y},${at.z}:${yaw}:${kind}`);
     return id;
   }

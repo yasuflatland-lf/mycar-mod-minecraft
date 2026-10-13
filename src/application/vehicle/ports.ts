@@ -62,6 +62,7 @@ export interface PlacementWorld {
     at: Vec3,
     yaw: number,
     kind: VehicleKind,
+    ownerId: string,
   ): string;
   /** Takes one vehicle item from `slot`. False when that slot no longer holds one. */
   consumeVehicleItem(

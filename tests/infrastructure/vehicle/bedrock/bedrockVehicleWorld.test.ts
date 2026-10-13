@@ -14,6 +14,7 @@ import {
   ENTITY_TYPE,
   HEADLIGHTS_PROPERTY,
   ITEM_TYPE,
+  OWNER_PROPERTY,
   PLAYER_TYPE,
   VEHICLE_FAMILY,
 } from "../../../../src/infrastructure/vehicle/bedrock/identifiers";
@@ -48,6 +49,7 @@ function fixture() {
     getBlock: vi.fn(),
     getEntities: vi.fn(),
     spawnItem: vi.fn(),
+    spawnEntity: vi.fn(),
     playSound: vi.fn(),
   };
   const car = {
@@ -98,6 +100,32 @@ function fixture() {
     world: new BedrockVehicleWorld(inputs),
   };
 }
+
+describe("BedrockVehicleWorld placement (ADR 0066)", () => {
+  beforeEach(() => vi.resetAllMocks());
+
+  it.each(VEHICLE_KINDS)(
+    "records the owner synchronously when spawning a %s",
+    (kind) => {
+      const { dimension, car, world } = fixture();
+      dimension.spawnEntity.mockReturnValue(car);
+      const ownerId = "placing-player";
+      expect(
+        world.spawnVehicle("overworld", car.location, 45, kind, ownerId),
+      ).toBe(car.id);
+      expect(dimension.spawnEntity).toHaveBeenCalledExactlyOnceWith(
+        ENTITY_TYPE[kind],
+        car.location,
+      );
+      expect(car.setRotation).toHaveBeenCalledExactlyOnceWith({ x: 0, y: 45 });
+      expect(car.setDynamicProperty).toHaveBeenCalledExactlyOnceWith(
+        OWNER_PROPERTY,
+        ownerId,
+      );
+      expect(OWNER_PROPERTY).toBe("yasu_ride:owner");
+    },
+  );
+});
 
 describe("BedrockVehicleWorld submarine wiring (ADR 0040)", () => {
   beforeEach(() => vi.resetAllMocks());
