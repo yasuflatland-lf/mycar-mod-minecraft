@@ -74,8 +74,8 @@ export interface PlacementWorld {
 export interface StarterWorld {
   /** undefined when the player is no longer in the world. */
   receivedStarter(playerId: string): boolean | undefined;
-  /** Puts one vehicle item in the inventory, or at the player's feet when it is full. */
-  giveVehicleItem(playerId: string): void;
+  /** Puts one item of this kind in the inventory, or at the player's feet when it is full. */
+  giveVehicleItem(playerId: string, kind: VehicleKind): void;
   markStarterReceived(playerId: string): void;
 }
 

@@ -379,11 +379,11 @@ export class BedrockVehicleWorld
     return player.getDynamicProperty(STARTER_RECEIVED_PROPERTY) === true;
   }
 
-  giveVehicleItem(playerId: string): void {
+  giveVehicleItem(playerId: string, kind: VehicleKind): void {
     const player = this.player(playerId);
     if (!player) return;
     const inv = player.getComponent("minecraft:inventory")?.container;
-    const item = new ItemStack(ITEM_TYPE.suv, 1);
+    const item = new ItemStack(ITEM_TYPE[kind], 1);
     const leftover = inv ? inv.addItem(item) : item;
     if (leftover) player.dimension.spawnItem(leftover, player.location);
   }

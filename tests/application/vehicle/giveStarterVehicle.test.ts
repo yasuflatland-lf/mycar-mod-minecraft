@@ -15,7 +15,7 @@ describe("GiveStarterVehicle (ADR 0023)", () => {
           for (const id of joins) give.execute(id);
           const players = [...new Set(joins)];
           expect(world.calls.filter((c) => c.startsWith("give:"))).toEqual(
-            players.map((id) => `give:${id}`),
+            players.map((id) => `give:${id}:suv`),
           );
           for (const id of players) expect(world.starters.get(id)).toBe(true);
         },
@@ -27,7 +27,7 @@ describe("GiveStarterVehicle (ADR 0023)", () => {
     const world = new FakeWorld();
     world.starters.set("p", false);
     expect(new GiveStarterVehicle(world).execute("p")).toBe(true);
-    expect(world.calls).toEqual(["give:p", "mark:p"]);
+    expect(world.calls).toEqual(["give:p:suv", "mark:p"]);
   });
 
   it("does nothing for a player who already received it, or who left", () => {
