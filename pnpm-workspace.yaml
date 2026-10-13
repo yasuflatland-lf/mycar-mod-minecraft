@@ -1,4 +1,6 @@
 allowBuilds:
+  # Its postinstall only checks the native binary, which comes from the platform package.
+  '@swc/core': false
   esbuild: true
 # Vitest 5 matches testNamePattern against suite and test names joined with
 # " > ", but the Stryker runner joins them with spaces, so no test ran for any

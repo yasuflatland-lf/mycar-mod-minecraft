@@ -18,6 +18,7 @@ pnpm lint          # Biome format + lint check (CI runs `biome ci`)
 pnpm lint:fix      # apply Biome fixes
 pnpm lint:lang     # fail on Japanese/CJK text in tracked and unignored files
 pnpm lint:unused   # knip: fail on unused files, exports, and dependencies
+pnpm lint:deps     # dependency-cruiser: fail on imports that break the layer, feature, or kind rules
 pnpm typecheck     # tsc --noEmit
 pnpm test          # vitest + fast-check
 pnpm test:coverage # same, with a coverage report in coverage/ (CI uploads it to Codecov)
@@ -33,7 +34,7 @@ pnpm server:restart # stop the dev BDS and start it again under a new dev pack v
 pnpm test:game     # run the in-game tests on the running dev BDS (GAME_TEST_SHARD=2/3 runs one CI slice)
 ```
 
-Before you say a change is done, run `pnpm lint`, `pnpm lint:lang`, `pnpm lint:unused`, `pnpm typecheck`, and `pnpm test`. When you change `src/infrastructure`, `src/test-pack`, or the packs, also run `pnpm build`, restart the dev BDS, and run `pnpm test:game` if Docker is available. CI runs the lint, unused code, test, build, and package checks on every pull request ([unit-test.yml](.github/workflows/unit-test.yml), which also uploads coverage to Codecov) and runs the in-game tests against a BDS container ([integration-test.yml](.github/workflows/integration-test.yml)).
+Before you say a change is done, run `pnpm lint`, `pnpm lint:lang`, `pnpm lint:unused`, `pnpm lint:deps`, `pnpm typecheck`, and `pnpm test`. When you change `src/infrastructure`, `src/test-pack`, or the packs, also run `pnpm build`, restart the dev BDS, and run `pnpm test:game` if Docker is available. CI runs the lint, unused code, test, build, and package checks on every pull request ([unit-test.yml](.github/workflows/unit-test.yml), which also uploads coverage to Codecov) and runs the in-game tests against a BDS container ([integration-test.yml](.github/workflows/integration-test.yml)).
 
 ## Language and comments
 
@@ -56,9 +57,9 @@ velocity = velocity.scale(friction);
 Design decisions live in [docs/adr](docs/adr/README.md). Read the ADRs that relate to the area you are changing before you change it. The rules that are easiest to break:
 
 - **Stable APIs only (0001).** Do not use beta Script APIs, experimental toggles, or `@minecraft/server-gametest`.
-- **Three layers with one-way dependencies (0012):** `src/infrastructure` → `src/application` → `src/domain`. Only `src/infrastructure` may import `@minecraft/server`. `src/main.ts` only calls `bootstrap()`. `tests/architecture.test.ts` checks the import graph. `src/test-pack/` sits outside the layers.
+- **Three layers with one-way dependencies (0012):** `src/infrastructure` → `src/application` → `src/domain`. Only `src/infrastructure` may import `@minecraft/server`. `src/main.ts` only calls `bootstrap()`. `pnpm lint:deps` (`.dependency-cruiser.cjs`) checks the import graph (0065). `src/test-pack/` sits outside the layers.
 - **Feature boundaries ([0046](docs/adr/0046-organize-each-layer-by-feature.md)).** Every layer file lives in a feature folder or `shared/`, except `infrastructure/bootstrap.ts`. Features cannot import other features, and shared code cannot import features. All driven entities, including boats, belong to `vehicle`. Wire each feature through its infrastructure install function.
-- **Vehicle kinds ([0055](docs/adr/0055-kind-neutral-vehicle-core.md)).** Keep the shared core in `src/domain/vehicle/`, movement building blocks in `motion/`, and each kind in `src/domain/vehicle/kinds/<kind>/`. Kinds talk to the engine only through engine commands and declare an entity contract. Kinds cannot import other kinds. The core and motion cannot import kinds, and the core cannot import motion. Application and infrastructure import kinds only through `kinds/index.ts`. `kind.ts` imports nothing. `tests/architecture.test.ts` enforces these rules in the three layers; `src/test-pack/` is excluded.
+- **Vehicle kinds ([0055](docs/adr/0055-kind-neutral-vehicle-core.md)).** Keep the shared core in `src/domain/vehicle/`, movement building blocks in `motion/`, and each kind in `src/domain/vehicle/kinds/<kind>/`. Kinds talk to the engine only through engine commands and declare an entity contract. Kinds cannot import other kinds. The core and motion cannot import kinds, and the core cannot import motion. Application and infrastructure import kinds only through `kinds/index.ts`. `kind.ts` imports nothing. `pnpm lint:deps` enforces these rules in the three layers; `src/test-pack/` is excluded (0065).
 - **Movement is script-driven (0002).** The script sets velocity every tick. Each tuning value lives in one place: `SPEC` for the core, `MOTION` in `motion/constants.ts` for shared motion, and `kinds/<kind>/spec.ts` for kind tuning (`SUV_SPEC` for the SUV; the boat keeps its values in its profile and drive). Do not scatter magic numbers.
 - **Per-vehicle parameters ([0050](docs/adr/0050-vehicle-kinds-and-per-kind-profiles.md)).** When a new kind of vehicle, such as the boat, needs a value that differs from the SUV (speed, acceleration, body size, ram reach, seats, lights, placement, paint), first refactor so that the value is set per vehicle type with the SUV's behavior unchanged, in its own commit or pull request, and only then implement the new vehicle on top. Do not reuse an SUV constant for another vehicle, and do not branch on the vehicle type inside shared logic to work around a missing parameter.
 - **Testing (0010).** Pure logic gets property-based tests (fast-check + vitest) with only a few example tests. Integration with the game is covered by in-game tests started with `scriptevent`, not by GameTest.

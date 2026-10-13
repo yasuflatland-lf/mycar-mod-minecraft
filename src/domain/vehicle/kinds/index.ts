@@ -5,6 +5,7 @@ import type { FleetLimitOf } from "../fleet";
 import type { VehicleKind } from "../kind";
 import type { VehicleProfile } from "../profile";
 import { ramQueryRadius } from "../ramQuery";
+import { farthestSeatReach } from "../seats";
 import { type RiderView, Vehicle } from "../vehicle";
 import { BoatDrive } from "./sportsboat/drive";
 import { SPORTSBOAT_ENTITY } from "./sportsboat/entity";
@@ -42,6 +43,11 @@ export const fleetLimitOf: FleetLimitOf = (kind) =>
 
 export const RAM_QUERY_RADIUS = ramQueryRadius(
   Object.values(KINDS).map(({ profile }) => profile),
+);
+
+/** How far any kind's deck seat can stand from its vehicle; every kind is included so a new kind with farther seats is covered (ADR 0063). */
+export const DECK_SEAT_REACH = farthestSeatReach(
+  Object.values(KINDS).map(({ profile }) => profile.seats),
 );
 
 export function createVehicle(
