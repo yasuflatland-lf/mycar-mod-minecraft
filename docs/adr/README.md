@@ -41,7 +41,7 @@ This directory records design decisions and the reasons behind them. The format 
 | [0035](0035-jump-one-block-steps-in-the-script.md) | Jump one-block steps in the script, and skip blocks without a collision box | Accepted |
 | [0036](0036-paint-by-hitting-with-a-dye.md) | Paint by hitting with a dye, and get in by interacting | Accepted |
 | [0037](0037-one-dye-per-repaint-within-a-tick.md) | Use one dye per repaint within a tick | Accepted |
-| [0038](0038-keep-at-most-ten-vehicles-in-a-world.md) | Keep at most ten vehicles in a world | Accepted |
+| [0038](0038-keep-at-most-ten-vehicles-in-a-world.md) | Keep at most ten vehicles in a world | Superseded by 0066 |
 | [0039](0039-vehicle-forms.md) | Vehicle forms | Accepted |
 | [0040](0040-submarine.md) | Submarine form | Superseded in part by 0042, 0044, and 0045 |
 | [0041](0041-sonar-sound-under-water.md) | Sonar sound under water | Accepted |
@@ -67,6 +67,7 @@ This directory records design decisions and the reasons behind them. The format 
 | [0061](0061-lift-the-bow-and-roll-further.md) | Lift the sports boat bow the right way and roll it further | Accepted |
 | [0062](0062-fresh-dev-pack-version-on-every-start.md) | Serve the dev BDS's packs under a fresh dev-only version on every start | Accepted |
 | [0063](0063-walk-on-a-stopped-sports-boat.md) | Walk on a stopped sports boat | Accepted |
+| [0066](0066-limit-vehicles-per-player-and-kind.md) | Limit vehicles per player and per kind | Accepted |
 
 The measurements and in-game tests behind these decisions are in [the driving-core spike findings](../spike-driving-core.md).
 
