@@ -34,6 +34,7 @@ import type { TestInputStore } from "../testInput/testInputStore";
 import { standsOnDeck } from "./deck";
 import { removeOrphanDeckSeat } from "./deckSeats";
 import {
+  fleetEntryOf,
   HEADLIGHT_SWITCH_TYPE,
   isVehicleEntity,
   kindOfItem,
@@ -76,17 +77,20 @@ export function registerSubscriptions(
   system.run(() => useCases.limit.start());
   world.afterEvents.entityLoad.subscribe((ev) => {
     removeOrphanDeckSeat(ev.entity);
-    if (isVehicleEntity(ev.entity.typeId) && ev.entity.isValid)
-      useCases.limit.found([ev.entity.id]);
+    if (!ev.entity.isValid) return;
+    const entry = fleetEntryOf(ev.entity);
+    if (entry) useCases.limit.found([entry]);
   });
   world.afterEvents.entitySpawn.subscribe((ev) => {
     if (ev.cause === EntityInitializationCause.Loaded)
       removeOrphanDeckSeat(ev.entity);
-    if (!isVehicleEntity(ev.entity.typeId) || !ev.entity.isValid) return;
+    if (!ev.entity.isValid) return;
+    const entry = fleetEntryOf(ev.entity);
+    if (!entry) return;
     if (ev.cause === EntityInitializationCause.Loaded) {
-      useCases.limit.found([ev.entity.id]);
+      useCases.limit.found([entry]);
     } else {
-      useCases.limit.spawned(ev.entity.id);
+      useCases.limit.spawned(entry);
     }
   });
 

@@ -1,18 +1,26 @@
 // The vehicles in a world in the order they appeared, and the ones evicted to
 // keep their number at the limit (ADR 0038). A script cannot remove an entity in
 // an unloaded chunk, so an evicted vehicle waits here until its chunk loads.
+import type { VehicleKind } from "./kind";
 import { SPEC } from "./spec";
+
+export interface FleetEntry {
+  readonly id: string;
+  readonly kind: VehicleKind;
+  /** Player.id of the player who placed it; undefined when summoned by command or placed before ADR 0066. */
+  readonly owner?: string;
+}
 
 export interface FleetState {
   /** Oldest first. */
-  readonly order: readonly string[];
+  readonly order: readonly FleetEntry[];
   /** Oldest eviction first. */
   readonly evicted: readonly string[];
 }
 
 export class Fleet {
   private constructor(
-    private order: string[],
+    private order: FleetEntry[],
     private evicted: string[],
   ) {}
 
@@ -25,8 +33,13 @@ export class Fleet {
    * hand, so a repeated id counts once and a tracked id is not also evicted.
    */
   static restore(state: FleetState): Fleet {
-    const order = [...new Set(state.order)];
-    const tracked = new Set(order);
+    const tracked = new Set<string>();
+    const order: FleetEntry[] = [];
+    for (const entry of state.order) {
+      if (tracked.has(entry.id)) continue;
+      tracked.add(entry.id);
+      order.push({ ...entry });
+    }
     const evicted = [...new Set(state.evicted)].filter(
       (id) => !tracked.has(id),
     );
@@ -36,11 +49,14 @@ export class Fleet {
   }
 
   state(): FleetState {
-    return { order: [...this.order], evicted: [...this.evicted] };
+    return {
+      order: this.order.map((entry) => ({ ...entry })),
+      evicted: [...this.evicted],
+    };
   }
 
   has(id: string): boolean {
-    return this.order.includes(id);
+    return this.order.some((entry) => entry.id === id);
   }
 
   isEvicted(id: string): boolean {
@@ -55,9 +71,9 @@ export class Fleet {
    * Adds a vehicle as the newest one. A vehicle already known keeps its place,
    * so a repeated event for the same vehicle changes nothing.
    */
-  admit(id: string): void {
-    if (this.knows(id)) return;
-    this.order.push(id);
+  admit(entry: FleetEntry): void {
+    if (this.knows(entry.id)) return;
+    this.order.push({ ...entry });
     this.trim();
   }
 
@@ -65,21 +81,22 @@ export class Fleet {
    * Adds a vehicle that was already in the world when the fleet first saw it,
    * so it goes before every vehicle the fleet watched appear.
    */
-  admitAsOldest(id: string): void {
-    if (this.knows(id)) return;
-    this.order.unshift(id);
+  admitAsOldest(entry: FleetEntry): void {
+    if (this.knows(entry.id)) return;
+    this.order.unshift({ ...entry });
     this.trim();
   }
 
   /** Stops tracking a vehicle that is gone. */
   forget(id: string): void {
-    this.order = this.order.filter((o) => o !== id);
+    this.order = this.order.filter((entry) => entry.id !== id);
     this.evicted = this.evicted.filter((e) => e !== id);
   }
 
   private trim(): void {
     const excess = this.order.length - SPEC.maxVehicles;
-    if (excess > 0) this.evicted.push(...this.order.splice(0, excess));
+    if (excess > 0)
+      this.evicted.push(...this.order.splice(0, excess).map((e) => e.id));
     this.evicted = this.evicted.slice(-SPEC.maxEvicted);
   }
 }

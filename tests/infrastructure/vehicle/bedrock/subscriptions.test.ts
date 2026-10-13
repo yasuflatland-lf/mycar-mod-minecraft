@@ -1,4 +1,5 @@
 import {
+  type EntityLoadAfterEvent,
   type EntitySpawnAfterEvent,
   type ItemUseAfterEvent,
   type PlayerInteractWithBlockBeforeEvent,
@@ -9,7 +10,9 @@ import { beforeEach, expect, it, vi } from "vitest";
 import {
   DECK_SEAT_OF_PROPERTY,
   DECK_SEAT_TYPE,
+  ENTITY_TYPE,
   ITEM_TYPE,
+  OWNER_PROPERTY,
 } from "../../../../src/infrastructure/vehicle/bedrock/identifiers";
 import { registerSubscriptions } from "../../../../src/infrastructure/vehicle/bedrock/subscriptions";
 import { TestInputStore } from "../../../../src/infrastructure/vehicle/testInput/testInputStore";
@@ -320,4 +323,44 @@ it("removes an orphan deck seat that loads with a chunk, but not one that is jus
   expect(spawned.remove).not.toHaveBeenCalled();
   expect(limit.found).not.toHaveBeenCalled();
   expect(limit.spawned).not.toHaveBeenCalled();
+});
+
+it("passes fleet metadata on spawn and load and skips invalid or unrelated entities", () => {
+  const limit = { start: vi.fn(), found: vi.fn(), spawned: vi.fn() };
+  registerSubscriptions(
+    { limit } as unknown as Parameters<typeof registerSubscriptions>[0],
+    new TestInputStore(),
+  );
+  const spawn = vi
+    .mocked(world.afterEvents.entitySpawn.subscribe)
+    .mock.calls.at(-1)?.[0];
+  const load = vi
+    .mocked(world.afterEvents.entityLoad.subscribe)
+    .mock.calls.at(-1)?.[0];
+  if (!spawn || !load) throw new Error("fleet events not subscribed");
+  const entity = {
+    id: "boat",
+    typeId: ENTITY_TYPE.sportsboat,
+    isValid: true,
+    getDynamicProperty: (key: string) =>
+      key === OWNER_PROPERTY ? "player" : undefined,
+  };
+  const entry = { id: "boat", kind: "sportsboat", owner: "player" };
+  spawn({ entity, cause: "Spawned" } as unknown as EntitySpawnAfterEvent);
+  expect(limit.spawned).toHaveBeenCalledExactlyOnceWith(entry);
+  spawn({ entity, cause: "Loaded" } as unknown as EntitySpawnAfterEvent);
+  load({ entity } as unknown as EntityLoadAfterEvent);
+  expect(limit.found.mock.calls).toEqual([[[entry]], [[entry]]]);
+  for (const skipped of [
+    { ...entity, isValid: false },
+    { ...entity, typeId: "minecraft:cow" },
+  ]) {
+    spawn({
+      entity: skipped,
+      cause: "Spawned",
+    } as unknown as EntitySpawnAfterEvent);
+    load({ entity: skipped } as unknown as EntityLoadAfterEvent);
+  }
+  expect(limit.spawned).toHaveBeenCalledTimes(1);
+  expect(limit.found).toHaveBeenCalledTimes(2);
 });

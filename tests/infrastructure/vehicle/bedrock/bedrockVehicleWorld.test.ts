@@ -236,7 +236,16 @@ describe("BedrockVehicleWorld snapshots", () => {
       fc.property(fc.subarray(["overworld", "nether", "the_end"]), (dimIds) => {
         const { car, world } = fixture();
         const cars = new Map(
-          dimIds.map((dimId) => [dimId, { ...car, id: `car-${dimId}` }]),
+          dimIds.map((dimId) => [
+            dimId,
+            {
+              ...car,
+              id: `car-${dimId}`,
+              typeId: ENTITY_TYPE.sportsboat,
+              getDynamicProperty: (key: string) =>
+                key === OWNER_PROPERTY ? `owner-${dimId}` : undefined,
+            },
+          ]),
         );
         game.getDimension.mockImplementation((id: string) => {
           const inDim = cars.get(id);
@@ -244,18 +253,26 @@ describe("BedrockVehicleWorld snapshots", () => {
         });
         const ids = dimIds.map((dimId) => `car-${dimId}`);
         expect(world.loadedVehicles().map((s) => s.id)).toEqual(ids);
-        expect(world.loadedVehicleIds()).toEqual(ids);
+        expect(world.loadedFleetEntries()).toEqual(
+          dimIds.map((dimId) => ({
+            id: `car-${dimId}`,
+            kind: "sportsboat",
+            owner: `owner-${dimId}`,
+          })),
+        );
       }),
     );
   });
 
-  it("skips an unknown entity in the vehicle family in snapshots and fleet IDs", () => {
+  it("skips an unknown entity in the vehicle family in snapshots and fleet entries", () => {
     const { entities, car, world } = fixture();
     entities.push({ ...car, id: "unknown", typeId: "yasu_ride:unknown" });
     expect(
       world.loadedVehicles().map((s) => ({ id: s.id, kind: s.kind })),
     ).toEqual([{ id: car.id, kind: "suv" }]);
-    expect(world.loadedVehicleIds()).toEqual([car.id]);
+    expect(world.loadedFleetEntries()).toEqual([
+      { id: car.id, kind: "suv", owner: undefined },
+    ]);
   });
 
   it("drops the item of the broken entity's kind at its location", () => {

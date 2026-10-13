@@ -27,9 +27,17 @@ describe("DynamicPropertyFleetRepository (ADR 0038)", () => {
 
   it("loads back the order and the evicted list it saved", () => {
     const { repo } = repository();
-    const state = { order: ["a", "b"], evicted: ["c"] };
+    const state = {
+      order: [
+        { id: "a", kind: "suv" as const, owner: "player" },
+        { id: "b", kind: "sportsboat" as const },
+      ],
+      evicted: ["c"],
+    };
     repo.save(Fleet.restore(state));
-    expect(stored.get(FLEET_PROPERTY)).toBe(JSON.stringify(state));
+    expect(stored.get(FLEET_PROPERTY)).toBe(
+      JSON.stringify({ version: 2, ...state }),
+    );
     expect(repo.load().state()).toEqual(state);
   });
 

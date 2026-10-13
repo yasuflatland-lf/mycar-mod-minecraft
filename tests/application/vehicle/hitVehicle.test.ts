@@ -10,7 +10,10 @@ describe("HitVehicle (ADR 0008)", () => {
     const repo = new InMemoryRepo();
     repo.save(createVehicle("suv", "a", 0));
     const fleets = new FakeFleetRepository();
-    fleets.state = { order: ["a", "b"], evicted: [] };
+    fleets.state = {
+      order: ["a", "b"].map((id) => ({ id, kind: "suv" as const })),
+      evicted: [],
+    };
     const uc = new HitVehicle(world, repo, fleets);
     expect(
       [1, 2, 3].map((tick) =>
@@ -20,7 +23,7 @@ describe("HitVehicle (ADR 0008)", () => {
     expect(world.calls).toEqual(["drop:a", "remove:a"]);
     expect(repo.get("a")).toBeUndefined();
     // A broken vehicle no longer counts toward the limit (ADR 0038).
-    expect(fleets.state.order).toEqual(["b"]);
+    expect(fleets.state.order).toEqual([{ id: "b", kind: "suv" }]);
   });
 
   it("never counts hits from the deck toward breaking the vehicle", () => {

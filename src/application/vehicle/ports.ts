@@ -2,6 +2,7 @@
 import type { Vec3 } from "../../domain/shared/vec";
 import type { EngineCommand, RestoredValues } from "../../domain/vehicle/drive";
 import type { RawInput } from "../../domain/vehicle/driveInput";
+import type { FleetEntry } from "../../domain/vehicle/fleet";
 import type { FloorCell, HoldPose } from "../../domain/vehicle/floor";
 import type { Cell } from "../../domain/vehicle/headlights";
 import type { VehicleKind } from "../../domain/vehicle/kind";
@@ -87,7 +88,7 @@ export interface BreakWorld {
 
 export interface LimitWorld {
   /** Vehicles in loaded chunks, in every dimension. */
-  loadedVehicleIds(): string[];
+  loadedFleetEntries(): FleetEntry[];
   removeVehicle(vehicleId: string): void;
 }
 
