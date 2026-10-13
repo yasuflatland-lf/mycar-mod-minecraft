@@ -9,11 +9,13 @@ import {
   type Vec2,
   type Vec3,
 } from "../../../src/domain/shared/vec";
+import type { Drive } from "../../../src/domain/vehicle/drive";
 import type { RawInput } from "../../../src/domain/vehicle/driveInput";
 import {
   createVehicle,
   rebuildVehicle,
 } from "../../../src/domain/vehicle/kinds/index";
+import { SPORTSBOAT_PROFILE } from "../../../src/domain/vehicle/kinds/sportsboat/profile";
 import { DOOR_BY_SEAT } from "../../../src/domain/vehicle/kinds/suv/entity";
 import { SUV_PROFILE } from "../../../src/domain/vehicle/kinds/suv/profile";
 import { SUV_SPEC } from "../../../src/domain/vehicle/kinds/suv/spec";
@@ -21,10 +23,10 @@ import { MOTION } from "../../../src/domain/vehicle/motion/constants";
 import { STEP_LANES } from "../../../src/domain/vehicle/motion/stepUp";
 import type { RamTarget } from "../../../src/domain/vehicle/ram";
 import { SPEC } from "../../../src/domain/vehicle/spec";
-import type {
-  RiderView,
+import {
+  type RiderView,
   Vehicle,
-  VehicleTickInput,
+  type VehicleTickInput,
 } from "../../../src/domain/vehicle/vehicle";
 import { defined } from "../../support/defined";
 import { propertyValue } from "../../support/engineCommands";
@@ -715,4 +717,47 @@ it("concatenates seat commands in seat order when multiple riders leave", () => 
       { type: "playSound", name: "random.door_open" },
     ]),
   );
+});
+
+it("blanks only the occupied dock seat in the outcome", () => {
+  const seats = [
+    { x: 1, y: 2, z: 3 },
+    { x: 4, y: 5, z: 6 },
+    { x: 7, y: 8, z: 9 },
+    { x: 10, y: 11, z: 12 },
+  ];
+  const drive: Drive = {
+    speed: 0,
+    yaw: 0,
+    onDriverMounted() {},
+    onSeatVacated: () => [],
+    step: () => ({
+      impulse: { x: 0, y: 0, z: 0 },
+      forward: { x: 0, z: 1 },
+      commands: [],
+      riders: { thirdPerson: false, underwater: false },
+      dock: { hold: { x: 0, y: 0, z: 0, yaw: 0 }, floor: [], seats },
+    }),
+  };
+  const vehicle = new Vehicle("v", SPORTSBOAT_PROFILE, drive);
+  const outcome = vehicle.tick({
+    tick: 0,
+    riders: [
+      {
+        id: "r",
+        offset: defined(SPORTSBOAT_PROFILE.seats.positions[2], "seat 2"),
+        yaw: 0,
+        raw: IDLE,
+      },
+    ],
+    deckSeatInputs: [],
+    velocity: { x: 0, y: 0, z: 0 },
+    onGround: false,
+    ...waterSensors(),
+    solidAt: () => false,
+    targets: () => [],
+  });
+  expect(outcome.dock?.seats[2]).toBeUndefined();
+  for (const seat of [0, 1, 3])
+    expect(outcome.dock?.seats[seat]).toEqual(seats[seat]);
 });
