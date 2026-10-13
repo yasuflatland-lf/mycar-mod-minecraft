@@ -303,7 +303,7 @@ describe("sports boat docking (ADR 0063)", () => {
               waterAt: () => false,
             });
             expect(out.dock?.hold).toBe(hold);
-            expect(out.dock?.floor ?? []).toStrictEqual(floorCells(hold));
+            expect(out.dock?.floor).toStrictEqual(floorCells(hold));
             expect(out.impulse).toStrictEqual({ x: 0, y: 0, z: 0 });
             expect(out.forward).toStrictEqual(forward(drive.yaw));
             expect(out.commands).toStrictEqual([]);
@@ -1280,7 +1280,7 @@ it("only the deck driver above the stick threshold requests boarding and keeps t
         );
         expect(drive.isDocked).toBe(true);
         expect(out.dock?.hold).toBeDefined();
-        expect(out.dock?.seats ?? []).toHaveLength(4);
+        expect(out.dock?.seats).toHaveLength(4);
         expect(out.commands).toEqual([]);
         const passengersOnly = drive.step(undefined, {
           ...ctx,
@@ -1340,8 +1340,9 @@ it("keeps deck seats only at empty boat seats and ignores the deck driver while 
           deckSeatInputs: inputs,
         });
         expect(out.dock?.hold).toBeDefined();
-        expect(out.dock?.seats ?? []).toHaveLength(4);
-        for (const [seat, at] of (out.dock?.seats ?? []).entries())
+        if (!out.dock) throw new Error("missing dock hold");
+        expect(out.dock.seats).toHaveLength(4);
+        for (const [seat, at] of out.dock.seats.entries())
           expect(at === undefined).toBe(taken.includes(seat));
         expect(out.boardDeckRiders).toBe(
           !taken.includes(0) && pushes(inputs[0]),
