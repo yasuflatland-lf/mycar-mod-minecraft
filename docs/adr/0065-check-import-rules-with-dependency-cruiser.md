@@ -16,7 +16,7 @@ Use dependency-cruiser 18.5.0 with the existing import rules in `.dependency-cru
 
 Use the `swc` parser through `@swc/core` 1.16.13. dependency-cruiser supports the JavaScript API of `typescript` below 7, while this repository uses TypeScript 7.0.2, the Go port without that API. Without swc, the checker silently skips TypeScript files. The `missing-typescript-transpiler` warning is expected and does not change the exit code; keep TypeScript 7.
 
-`tests/architecture.test.ts` keeps the folder layout tests and a fixture self-test of every rule. Fixtures use the real configuration, real paths, and validation enabled so the rules run on macOS as well as in CI.
+`tests/architecture.test.ts` keeps the folder layout tests and a fixture self-test of every rule. The fixtures cruise a temporary directory with the configuration's options and `forbidden` rules, minus its `tsConfig`, which points at the repository's tsconfig. They pass `validate: true` because without it dependency-cruiser runs no rules on any platform, and they resolve the directory with `realpathSync` because on macOS the temporary directory sits behind the `/var` to `/private/var` symlink, which would leave module paths outside `^src/`.
 
 ## Consequences
 
