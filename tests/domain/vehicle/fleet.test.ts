@@ -147,6 +147,7 @@ describe("Fleet (ADR 0038, ADR 0066)", () => {
     expect(fleet.state().order).toEqual(entries(ids(12).slice(2)));
     expect(fleet.state().evicted).toEqual(["v0", "v1"]);
   });
+
   it("matches a per-group model through random admissions, discoveries, and removals", () => {
     const steps = fc.array(
       fc.record({
@@ -171,6 +172,8 @@ describe("Fleet (ADR 0038, ADR 0066)", () => {
           let evicted: string[] = [];
           const sameGroup = (a: FleetEntry, b: FleetEntry) =>
             a.owner === b.owner && (a.owner === undefined || a.kind === b.kind);
+          const groupLimit = (e: FleetEntry) =>
+            e.owner === undefined ? SPEC.maxUnownedVehicles : limits[e.kind];
           for (const { op, ...entry } of operations) {
             if (op === "forget") {
               fleet.forget(entry.id);
@@ -184,13 +187,9 @@ describe("Fleet (ADR 0038, ADR 0066)", () => {
               ) {
                 order = op === "admit" ? [...order, entry] : [entry, ...order];
                 const peers = order.filter((e) => sameGroup(e, entry));
-                const limit =
-                  entry.owner === undefined
-                    ? SPEC.maxUnownedVehicles
-                    : limits[entry.kind];
                 const victims = peers.slice(
                   0,
-                  Math.max(0, peers.length - limit),
+                  Math.max(0, peers.length - groupLimit(entry)),
                 );
                 order = order.filter((e) => !victims.includes(e));
                 evicted = [...evicted, ...victims.map((e) => e.id)].slice(
@@ -200,13 +199,9 @@ describe("Fleet (ADR 0038, ADR 0066)", () => {
             }
             expect(fleet.state()).toEqual({ order, evicted });
             for (const entry of order) {
-              const limit =
-                entry.owner === undefined
-                  ? SPEC.maxUnownedVehicles
-                  : limits[entry.kind];
               expect(
                 order.filter((e) => sameGroup(e, entry)).length,
-              ).toBeLessThanOrEqual(limit);
+              ).toBeLessThanOrEqual(groupLimit(entry));
             }
             fleet = Fleet.restore(fleet.state(), limitOf);
             expect(fleet.state()).toEqual({ order, evicted });

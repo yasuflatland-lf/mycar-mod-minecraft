@@ -44,10 +44,10 @@ export class InMemoryRepo implements VehicleRepository {
 
 export class FakeFleetRepository implements FleetRepository {
   state: FleetState;
+  saves = 0;
   constructor(private readonly limitOf: FleetLimitOf) {
     this.state = Fleet.empty(limitOf).state();
   }
-  saves = 0;
   load() {
     return Fleet.restore(this.state, this.limitOf);
   }

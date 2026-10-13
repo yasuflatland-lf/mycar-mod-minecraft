@@ -113,7 +113,9 @@ export class Fleet {
         first.owner === undefined
           ? SPEC.maxUnownedVehicles
           : this.limitOf(first.kind);
-      for (const entry of group.slice(0, Math.max(0, group.length - limit))) {
+      const excess = group.length - limit;
+      if (excess <= 0) continue;
+      for (const entry of group.slice(0, excess)) {
         removed.add(entry.id);
         this.evicted.push(entry.id);
       }
