@@ -1,6 +1,6 @@
 # 0056. Render README previews of the sports boat
 
-- Status: Superseded in part by [0063](0063-sports-boat-previews-from-more-angles.md)
+- Status: Accepted
 - Date: 2026-10-12
 
 ## Context
@@ -9,8 +9,9 @@ The README shows four previews of the SUV, rendered from the model files (0016, 
 
 ## Decision
 
-- `tools/render_preview.py` also writes four boat images into `docs/images`: `sportsboat-afloat.png` (default black), `sportsboat-headlights.png` (headlights on at dusk), `sportsboat-red.png`, and `sportsboat-white.png` (the red and white paint textures). The README shows them as a second row of the SUV's four-column table
-- The four boat images share one camera and one scale, fitted to the union of the boat scenes, separate from the SUV's. The view direction, image size, and margin are the SUV's
+- `tools/render_preview.py` also writes four boat images into `docs/images`, all in the default black texture: `sportsboat-afloat.png` and `sportsboat-headlights.png` (headlights on at dusk) from the SUV's front-left view, `sportsboat-rear.png` from the rear-left corner, and `sportsboat-top.png` from straight above. The README shows them as a second row of the SUV's four-column table, so a reader sees the stern deck, the swim platform, and the deck plan as well as the bow
+- The rear view mirrors the SUV's view direction front to back, `(-1, 0.65, 1)`. The top view looks along `(0, 1, 0)` with the world's -x pointing up in the image, so the bow points right and the long hull fills the landscape frame
+- Poses seen from the same direction share one camera and frame. Each view is centered on its own, and all four share one scale, separate from the SUV's: the largest that keeps every view inside the margin, so the boat has the same size in each picture. The image size and margin are the SUV's
 - The boat's cube x rotations are negated before drawing, so the tower struts, the helm display, and the jet bucket hoods lean the way they do in game
 - Faces whose texel alpha is below 255 are drawn see-through: blended over whatever opaque surface is behind them, farthest first
 - The water is a see-through blue plane at the waterline, 7.2 model pixels (0.45 blocks) above the feet, in 10 layers that fade out 14 pixels beyond the hull's footprint. The hull below the waterline shows through it. With the headlights on, a beam lies on the water ahead of the lamps, 40 pixels long, with the SUV's dusk tint, spread, and bloom
