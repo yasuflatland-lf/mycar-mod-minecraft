@@ -3,6 +3,16 @@ import { dot, forward, leftOf, type Vec2, type Vec3 } from "../shared/vec";
 import type { HoldPose } from "./floor";
 import type { SeatLayout } from "./profile";
 
+/** The farthest any seat in these layouts sits from its vehicle's location, in blocks on the ground plane. Deck seats stand at these spots at the vehicle's own height (seatWorldPositions), so this bounds their distance to the vehicle. */
+export function farthestSeatReach(layouts: readonly SeatLayout[]): number {
+  return Math.max(
+    0,
+    ...layouts.flatMap(({ positions }) =>
+      positions.map(({ x, z }) => Math.hypot(x, z)),
+    ),
+  );
+}
+
 /** Converts a world-space offset into seat coordinates for a vehicle facing `f`. */
 export function toLocal(offset: Vec2, f: Vec2): Vec2 {
   return { x: dot(offset, leftOf(f)), z: dot(offset, f) };
