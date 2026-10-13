@@ -34,13 +34,12 @@ export class Fleet {
    */
   static restore(state: FleetState): Fleet {
     const tracked = new Set<string>();
-    const order = state.order
-      .filter((entry) => {
-        if (tracked.has(entry.id)) return false;
-        tracked.add(entry.id);
-        return true;
-      })
-      .map((entry) => ({ ...entry }));
+    const order: FleetEntry[] = [];
+    for (const entry of state.order) {
+      if (tracked.has(entry.id)) continue;
+      tracked.add(entry.id);
+      order.push({ ...entry });
+    }
     const evicted = [...new Set(state.evicted)].filter(
       (id) => !tracked.has(id),
     );
@@ -96,8 +95,8 @@ export class Fleet {
 
   private trim(): void {
     const excess = this.order.length - SPEC.maxVehicles;
-    for (const { id } of this.order.splice(0, Math.max(0, excess)))
-      this.evicted.push(id);
+    if (excess > 0)
+      this.evicted.push(...this.order.splice(0, excess).map((e) => e.id));
     this.evicted = this.evicted.slice(-SPEC.maxEvicted);
   }
 }
