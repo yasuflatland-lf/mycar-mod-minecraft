@@ -1,8 +1,8 @@
 # Sports boat
 
-| On the water | Headlights on | Red paint | White paint |
+| On the water | Headlights on | From the rear | From above |
 |:---:|:---:|:---:|:---:|
-| ![The black sports boat afloat, seen from its front-left corner](../images/sportsboat-afloat.png) | ![The sports boat with its headlights on, lighting the water ahead](../images/sportsboat-headlights.png) | ![The sports boat with a red hull](../images/sportsboat-red.png) | ![The sports boat with a white hull](../images/sportsboat-white.png) |
+| ![The black sports boat afloat, seen from its front-left corner](../images/sportsboat-afloat.png) | ![The sports boat with its headlights on, lighting the water ahead](../images/sportsboat-headlights.png) | ![The sports boat seen from its rear-left corner, showing the stern deck and the swim platform](../images/sportsboat-rear.png) | ![The sports boat seen from straight above, bow to the right](../images/sportsboat-top.png) |
 
 A four-seat wake boat that drives on water. Back to the [README](../../README.md).
 

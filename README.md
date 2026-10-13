@@ -9,8 +9,8 @@
 | SUV on the ground | Headlights on | Flying | Under water |
 |:---:|:---:|:---:|:---:|
 | ![The SUV on the ground, seen from its front-left corner](docs/images/suv-front-left.png) | ![The SUV with its headlights on, lighting the ground ahead](docs/images/suv-headlights.png) | ![The SUV flying with its wheels folded flat on gunmetal arms and glowing blue underneath](docs/images/suv-flying.png) | ![The SUV as a submarine, with sealed blue windows and its rear wheels turned backward on gunmetal arms](docs/images/suv-submarine.png) |
-| **Sports boat on the water** | **Headlights on** | **Red paint** | **White paint** |
-| ![The black sports boat afloat, seen from its front-left corner](docs/images/sportsboat-afloat.png) | ![The sports boat with its headlights on, lighting the water ahead](docs/images/sportsboat-headlights.png) | ![The sports boat with a red hull](docs/images/sportsboat-red.png) | ![The sports boat with a white hull](docs/images/sportsboat-white.png) |
+| **Sports boat on the water** | **Headlights on** | **From the rear** | **From above** |
+| ![The black sports boat afloat, seen from its front-left corner](docs/images/sportsboat-afloat.png) | ![The sports boat with its headlights on, lighting the water ahead](docs/images/sportsboat-headlights.png) | ![The sports boat seen from its rear-left corner, showing the stern deck and the swim platform](docs/images/sportsboat-rear.png) | ![The sports boat seen from straight above, bow to the right](docs/images/sportsboat-top.png) |
 
 A vehicle add-on for Minecraft Bedrock Edition. It is built as a Behavior Pack + Resource Pack driven by the stable Script API (`@minecraft/server` 2.x), with no experimental toggles required. The target setup is a Bedrock Dedicated Server on a home LAN, with players joining from PC (keyboard) and mobile (touch).
 
