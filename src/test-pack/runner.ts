@@ -1448,12 +1448,12 @@ function submarineShallow(a: Arena): Promise<Outcome> {
   );
 }
 
-// Summons one more car than the limit; the first one summoned is the oldest
-// and must go (ADR 0038).
+// Summoned cars have no owner, so they share the unowned group (ADR 0066).
+// One more than its limit removes the first car summoned.
 async function vehicleLimit(a: Arena): Promise<Outcome> {
   const cars: Entity[] = [];
   try {
-    for (let i = 0; i <= SPEC.maxVehicles; i++) {
+    for (let i = 0; i <= SPEC.maxUnownedVehicles; i++) {
       cars.push(
         spawnCar(a, 60.5 + (i % 6) * 6, 30.5 + Math.floor(i / 6) * 6, 0),
       );
@@ -1467,7 +1467,7 @@ async function vehicleLimit(a: Arena): Promise<Outcome> {
       pass:
         summoned === cars.length &&
         !oldest?.isValid &&
-        restValid === SPEC.maxVehicles,
+        restValid === SPEC.maxUnownedVehicles,
       detail: `summoned=${summoned} oldestRemoved=${!oldest?.isValid} restValid=${restValid}`,
     };
   } finally {

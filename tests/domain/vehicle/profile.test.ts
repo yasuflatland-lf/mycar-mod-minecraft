@@ -75,6 +75,7 @@ describe("vehicle profiles (ADR 0050)", () => {
     });
     expect(SUV_PROFILE).toEqual({
       kind: "suv",
+      fleetLimit: 10,
       ram: { front: SUV_SPEC.bodyFront, halfWidth: SUV_SPEC.bodyHalfWidth },
       seats: {
         positions: [
@@ -108,6 +109,7 @@ describe("vehicle profiles (ADR 0050)", () => {
     });
     expect(SPORTSBOAT_PROFILE).toStrictEqual({
       kind: "sportsboat",
+      fleetLimit: 1,
       ram: { front: 3.0, halfWidth: 1.06 },
       seats: {
         positions: [

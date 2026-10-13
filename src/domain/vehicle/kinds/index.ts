@@ -1,6 +1,7 @@
 // The only way to build a vehicle: every caller names the kind, so none falls back to SUV values (ADR 0055).
 import type { Drive, RestoredValues } from "../drive";
 import type { EntityContract } from "../entityContract";
+import type { FleetLimitOf } from "../fleet";
 import type { VehicleKind } from "../kind";
 import type { VehicleProfile } from "../profile";
 import { ramQueryRadius } from "../ramQuery";
@@ -36,6 +37,9 @@ export const KINDS: Readonly<Record<VehicleKind, Readonly<KindDefinition>>> =
       createDrive: (yaw, restored) => new BoatDrive(yaw, restored),
     }),
   });
+
+export const fleetLimitOf: FleetLimitOf = (kind) =>
+  KINDS[kind].profile.fleetLimit;
 
 export const RAM_QUERY_RADIUS = ramQueryRadius(
   Object.values(KINDS).map(({ profile }) => profile),

@@ -6,6 +6,7 @@ import { SUV_SPEC } from "./spec";
 // all of them at once and leave RAM_QUERY_RADIUS, computed at load, stale.
 export const SUV_PROFILE: VehicleProfile = Object.freeze({
   kind: "suv",
+  fleetLimit: 10, // Per player (ADR 0066).
   ram: Object.freeze({
     front: SUV_SPEC.bodyFront,
     halfWidth: SUV_SPEC.bodyHalfWidth,

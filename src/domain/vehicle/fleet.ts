@@ -1,8 +1,10 @@
 // The vehicles in a world in the order they appeared, and the ones evicted to
-// keep their number at the limit (ADR 0038). A script cannot remove an entity in
-// an unloaded chunk, so an evicted vehicle waits here until its chunk loads.
+// keep each owner and kind at its limit (ADR 0038, ADR 0066). A script cannot
+// remove an entity in an unloaded chunk, so it waits until its chunk loads.
 import type { VehicleKind } from "./kind";
 import { SPEC } from "./spec";
+
+export type FleetLimitOf = (kind: VehicleKind) => number;
 
 export interface FleetEntry {
   readonly id: string;
@@ -22,17 +24,18 @@ export class Fleet {
   private constructor(
     private order: FleetEntry[],
     private evicted: string[],
+    private readonly limitOf: FleetLimitOf,
   ) {}
 
-  static empty(): Fleet {
-    return new Fleet([], []);
+  static empty(limitOf: FleetLimitOf): Fleet {
+    return new Fleet([], [], limitOf);
   }
 
   /**
    * A stored state may come from a build with a higher limit or be edited by
    * hand, so a repeated id counts once and a tracked id is not also evicted.
    */
-  static restore(state: FleetState): Fleet {
+  static restore(state: FleetState, limitOf: FleetLimitOf): Fleet {
     const tracked = new Set<string>();
     const order: FleetEntry[] = [];
     for (const entry of state.order) {
@@ -43,7 +46,7 @@ export class Fleet {
     const evicted = [...new Set(state.evicted)].filter(
       (id) => !tracked.has(id),
     );
-    const fleet = new Fleet(order, evicted);
+    const fleet = new Fleet(order, evicted, limitOf);
     fleet.trim();
     return fleet;
   }
@@ -94,9 +97,30 @@ export class Fleet {
   }
 
   private trim(): void {
-    const excess = this.order.length - SPEC.maxVehicles;
-    if (excess > 0)
-      this.evicted.push(...this.order.splice(0, excess).map((e) => e.id));
+    const groups = new Map<string, FleetEntry[]>();
+    for (const entry of this.order) {
+      const key =
+        entry.owner === undefined ? "" : `${entry.owner}\u0000${entry.kind}`;
+      const group = groups.get(key) ?? [];
+      group.push(entry);
+      groups.set(key, group);
+    }
+    const removed = new Set<string>();
+    for (const group of groups.values()) {
+      const first = group[0];
+      if (!first) continue;
+      const limit =
+        first.owner === undefined
+          ? SPEC.maxUnownedVehicles
+          : this.limitOf(first.kind);
+      const excess = group.length - limit;
+      if (excess <= 0) continue;
+      for (const entry of group.slice(0, excess)) {
+        removed.add(entry.id);
+        this.evicted.push(entry.id);
+      }
+    }
+    this.order = this.order.filter((entry) => !removed.has(entry.id));
     this.evicted = this.evicted.slice(-SPEC.maxEvicted);
   }
 }

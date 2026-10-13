@@ -4,6 +4,7 @@ import type { MotionLimits, VehicleProfile } from "../../profile";
 /** The sports boat's own values (ADR 0051), written out even where they equal the SUV's today. */
 export const SPORTSBOAT_PROFILE: VehicleProfile = Object.freeze({
   kind: "sportsboat",
+  fleetLimit: 1, // Per player (ADR 0066).
   ram: Object.freeze({ front: 3.0, halfWidth: 1.06 }), // ADR 0051
   // Must match minecraft:rideable in packs/yasu_ride_bp/entities/yasu_ride/sportsboat.se.json; the SUV's x/z, no doors (ADR 0051).
   seats: Object.freeze({

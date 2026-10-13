@@ -7,6 +7,7 @@ import { LimitVehicles } from "../../application/vehicle/limitVehicles";
 import { PaintVehicle } from "../../application/vehicle/paintVehicle";
 import { PlaceVehicle } from "../../application/vehicle/placeVehicle";
 import { SwitchHeadlights } from "../../application/vehicle/switchHeadlights";
+import { fleetLimitOf } from "../../domain/vehicle/kinds/index";
 import { NAMESPACE } from "../shared/identifiers";
 import { BedrockVehicleWorld } from "./bedrock/bedrockVehicleWorld";
 import { registerSubscriptions } from "./bedrock/subscriptions";
@@ -19,7 +20,7 @@ export function installVehicles(): void {
   const store = new TestInputStore();
   const bedrock = new BedrockVehicleWorld(store);
   const log = { warn: (m: string) => console.warn(`[${NAMESPACE}] ${m}`) };
-  const fleets = new DynamicPropertyFleetRepository(log);
+  const fleets = new DynamicPropertyFleetRepository(log, fleetLimitOf);
   registerSubscriptions(
     {
       drive: new DriveVehicles(bedrock, repo, log),
