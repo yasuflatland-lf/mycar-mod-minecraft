@@ -15,6 +15,7 @@ import {
   HEADLIGHTS_PROPERTY,
   ITEM_TYPE,
   OWNER_PROPERTY,
+  PLAYER_TYPE,
   VEHICLE_FAMILY,
 } from "../../../../src/infrastructure/vehicle/bedrock/identifiers";
 import { TestInputStore } from "../../../../src/infrastructure/vehicle/testInput/testInputStore";
@@ -264,6 +265,31 @@ describe("BedrockVehicleWorld snapshots", () => {
       expect.objectContaining({ typeId: ITEM_TYPE.suv, amount: 1 }),
       car.location,
     );
+  });
+
+  it("gives the item of the requested kind", () => {
+    for (const kind of VEHICLE_KINDS) {
+      const { world } = fixture();
+      const playerId = "player";
+      const addItem = vi.fn();
+      const player = {
+        id: playerId,
+        typeId: PLAYER_TYPE,
+        getComponent: (name: string) =>
+          name === "minecraft:inventory"
+            ? { container: { addItem } }
+            : undefined,
+      };
+      game.getEntity.mockImplementation((id: string) =>
+        id === playerId ? player : undefined,
+      );
+
+      world.giveVehicleItem(playerId, kind);
+
+      expect(addItem).toHaveBeenCalledWith(
+        expect.objectContaining({ typeId: ITEM_TYPE[kind], amount: 1 }),
+      );
+    }
   });
 
   it("reports the headlights as the vehicle's headlights property says (ADR 0020)", () => {

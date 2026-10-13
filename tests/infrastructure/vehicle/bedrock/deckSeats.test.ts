@@ -2,6 +2,7 @@ import type { Entity } from "@minecraft/server";
 import fc from "fast-check";
 import { expect, it, vi } from "vitest";
 import type { Vec3 } from "../../../../src/domain/shared/vec";
+import { DECK_SEAT_REACH } from "../../../../src/domain/vehicle/kinds/index";
 import {
   DeckSeats,
   removeOrphanDeckSeat,
@@ -168,7 +169,7 @@ it("removes a loaded orphan and preserves a seat with a nearby loaded owner", ()
   expect(seat.remove).not.toHaveBeenCalled();
   expect(f.dimension.getEntities).toHaveBeenCalledWith({
     location: seat.location,
-    maxDistance: 6,
+    maxDistance: DECK_SEAT_REACH + 5,
   });
   f.boat.remove();
   removeOrphanDeckSeat(seat as unknown as Entity);
