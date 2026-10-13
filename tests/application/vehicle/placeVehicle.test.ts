@@ -1,8 +1,10 @@
+import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import {
   PlaceVehicle,
   type PlaceVehicleCommand,
 } from "../../../src/application/vehicle/placeVehicle";
+import { VEHICLE_KINDS } from "../../../src/domain/vehicle/kind";
 import { FakeWorld, InMemoryRepo } from "./fakes";
 
 const cmd: PlaceVehicleCommand = {
@@ -16,6 +18,25 @@ const cmd: PlaceVehicleCommand = {
 };
 
 describe("PlaceVehicle (ADR 0008)", () => {
+  it("records the placing player as the owner of each vehicle (ADR 0066)", () => {
+    fc.assert(
+      fc.property(
+        fc.array(fc.string(), { minLength: 1 }),
+        fc.constantFrom(...VEHICLE_KINDS),
+        fc.boolean(),
+        (playerIds, kind, creative) => {
+          const world = new FakeWorld();
+          const placement = new PlaceVehicle(world, new InMemoryRepo());
+          for (const playerId of playerIds)
+            expect(
+              placement.execute({ ...cmd, playerId, kind, creative }),
+            ).toBe(true);
+          expect([...world.owners.values()]).toEqual(playerIds);
+        },
+      ),
+    );
+  });
+
   it("consumes one item of the command's kind from the slot it was used from, then places a vehicle on the block and saves the aggregate", () => {
     const world = new FakeWorld();
     const repo = new InMemoryRepo();
@@ -44,6 +65,7 @@ describe("PlaceVehicle (ADR 0008)", () => {
       false,
     );
     expect(world.calls).toEqual([]);
+    expect(world.owners.size).toBe(0);
   });
 
   it("does not place a vehicle when the slot no longer holds the item, such as after switching slots or dropping it (ADR 0024)", () => {
@@ -53,6 +75,7 @@ describe("PlaceVehicle (ADR 0008)", () => {
     expect(new PlaceVehicle(world, repo).execute(cmd)).toBe(false);
     expect(world.calls).toEqual([]);
     expect(repo.get("v1")).toBeUndefined();
+    expect(world.owners.size).toBe(0);
   });
 
   it("places a vehicle in creative mode without needing the item in the slot", () => {

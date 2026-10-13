@@ -53,6 +53,7 @@ export class PlaceVehicle {
       { x: block.x + 0.5, y: block.y + 1, z: block.z + 0.5 },
       cmd.yaw,
       cmd.kind,
+      cmd.playerId,
     );
     this.repo.save(createVehicle(cmd.kind, id, cmd.yaw));
     return true;

@@ -45,6 +45,7 @@ import {
   ITEM_TYPE,
   isVehicleEntity,
   kindOfEntity,
+  OWNER_PROPERTY,
   PAINT_VARIANT,
   PLAYER_TYPE,
   paintEvent,
@@ -335,11 +336,13 @@ export class BedrockVehicleWorld
     at: Vec3,
     yaw: number,
     kind: VehicleKind,
+    ownerId: string,
   ): string {
     const car = world
       .getDimension(dimensionId)
       .spawnEntity(ENTITY_TYPE[kind], at);
     car.setRotation({ x: 0, y: yaw });
+    car.setDynamicProperty(OWNER_PROPERTY, ownerId);
     return car.id;
   }
 
