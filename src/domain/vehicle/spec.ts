@@ -20,7 +20,7 @@ export const SPEC = {
   headlightSwitchCooldown: 10, // ticks of idle switch; a held touch repeats the use every 4-6 ticks on mobile (ADR 0024)
   waterBreathingInterval: 20, // ticks
   waterBreathingTicks: 60, // ticks
-  // Vehicle limit (ADR 0038)
-  maxVehicles: 10, // per world, across all players and dimensions
+  // Vehicle limit (ADR 0038, ADR 0066)
+  maxUnownedVehicles: 10, // vehicles with no owner (summoned, or placed before ADR 0066), all kinds together
   maxEvicted: 64, // evicted vehicles remembered until their chunk loads; one dropped from the list joins again as the oldest when it loads
 } as const;

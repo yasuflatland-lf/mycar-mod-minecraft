@@ -1,7 +1,10 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { HitVehicle } from "../../../src/application/vehicle/hitVehicle";
-import { createVehicle } from "../../../src/domain/vehicle/kinds/index";
+import {
+  createVehicle,
+  fleetLimitOf,
+} from "../../../src/domain/vehicle/kinds/index";
 import { FakeFleetRepository, FakeWorld, InMemoryRepo } from "./fakes";
 
 describe("HitVehicle (ADR 0008)", () => {
@@ -9,7 +12,7 @@ describe("HitVehicle (ADR 0008)", () => {
     const world = new FakeWorld();
     const repo = new InMemoryRepo();
     repo.save(createVehicle("suv", "a", 0));
-    const fleets = new FakeFleetRepository();
+    const fleets = new FakeFleetRepository(fleetLimitOf);
     fleets.state = {
       order: ["a", "b"].map((id) => ({ id, kind: "suv" as const })),
       evicted: [],
@@ -33,7 +36,11 @@ describe("HitVehicle (ADR 0008)", () => {
         const repo = new InMemoryRepo();
         const vehicle = createVehicle("sportsboat", "a", 0);
         repo.save(vehicle);
-        const uc = new HitVehicle(world, repo, new FakeFleetRepository());
+        const uc = new HitVehicle(
+          world,
+          repo,
+          new FakeFleetRepository(fleetLimitOf),
+        );
         for (let tick = 1; tick <= hits; tick++) {
           expect(uc.execute({ vehicleId: "a", tick, fromDeck: true })).toBe(
             false,
@@ -60,7 +67,7 @@ describe("HitVehicle (ADR 0008)", () => {
       new HitVehicle(
         world,
         new InMemoryRepo(),
-        new FakeFleetRepository(),
+        new FakeFleetRepository(fleetLimitOf),
       ).execute({
         vehicleId: "x",
         tick: 0,

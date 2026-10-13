@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Fleet } from "../../../../src/domain/vehicle/fleet";
+import { fleetLimitOf } from "../../../../src/domain/vehicle/kinds/index";
 import { FLEET_PROPERTY } from "../../../../src/infrastructure/vehicle/bedrock/identifiers";
 import { DynamicPropertyFleetRepository } from "../../../../src/infrastructure/vehicle/persistence/dynamicPropertyFleetRepository";
 
@@ -13,7 +14,7 @@ vi.mock("@minecraft/server", () => ({
 
 function repository() {
   const log = { warn: vi.fn<(message: string) => void>() };
-  return { repo: new DynamicPropertyFleetRepository(log), log };
+  return { repo: new DynamicPropertyFleetRepository(log, fleetLimitOf), log };
 }
 
 beforeEach(() => stored.clear());
@@ -34,7 +35,7 @@ describe("DynamicPropertyFleetRepository (ADR 0038)", () => {
       ],
       evicted: ["c"],
     };
-    repo.save(Fleet.restore(state));
+    repo.save(Fleet.restore(state, fleetLimitOf));
     expect(stored.get(FLEET_PROPERTY)).toBe(
       JSON.stringify({ version: 2, ...state }),
     );

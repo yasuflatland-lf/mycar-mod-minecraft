@@ -1,7 +1,6 @@
-// Use case: keep at most SPEC.maxVehicles vehicles in a world by removing the oldest (ADR 0038).
+// Use case: remove the oldest vehicles over each owner and kind limit (ADR 0066).
 import type { Fleet, FleetEntry } from "../../domain/vehicle/fleet";
 import type { FleetRepository } from "../../domain/vehicle/fleetRepository";
-import { SPEC } from "../../domain/vehicle/spec";
 import type { VehicleRepository } from "../../domain/vehicle/vehicleRepository";
 import type { LimitWorld, Logger } from "./ports";
 
@@ -55,7 +54,7 @@ export class LimitVehicles {
         this.repo.remove(id);
         fleet.forget(id);
         removed = true;
-        this.log.warn(`${id}: removed, over ${SPEC.maxVehicles}`);
+        this.log.warn(`${id}: removed, over the limit`);
       } catch (e) {
         this.log.warn(`${id}: ${e}`);
       }

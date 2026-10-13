@@ -37,6 +37,8 @@ export interface BeamPattern {
 
 export interface VehicleProfile {
   readonly kind: VehicleKind;
+  /** Most vehicles of this kind one player keeps; one more removes their oldest (ADR 0066). */
+  readonly fleetLimit: number;
   readonly ram: RamBody;
   readonly seats: SeatLayout;
   readonly beams: BeamPattern;

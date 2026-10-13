@@ -13,6 +13,7 @@ import type { EngineCommand } from "../../../src/domain/vehicle/drive";
 import {
   Fleet,
   type FleetEntry,
+  type FleetLimitOf,
   type FleetState,
 } from "../../../src/domain/vehicle/fleet";
 import type { FleetRepository } from "../../../src/domain/vehicle/fleetRepository";
@@ -42,10 +43,13 @@ export class InMemoryRepo implements VehicleRepository {
 }
 
 export class FakeFleetRepository implements FleetRepository {
-  state: FleetState = Fleet.empty().state();
+  state: FleetState;
+  constructor(private readonly limitOf: FleetLimitOf) {
+    this.state = Fleet.empty(limitOf).state();
+  }
   saves = 0;
   load() {
-    return Fleet.restore(this.state);
+    return Fleet.restore(this.state, this.limitOf);
   }
   save(fleet: Fleet) {
     this.state = fleet.state();
