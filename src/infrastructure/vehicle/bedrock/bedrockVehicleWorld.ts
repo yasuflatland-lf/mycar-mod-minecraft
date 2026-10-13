@@ -21,6 +21,7 @@ import type {
 import type { Vec3 } from "../../../domain/shared/vec";
 import type { EngineCommand } from "../../../domain/vehicle/drive";
 import type { RawInput } from "../../../domain/vehicle/driveInput";
+import type { FleetEntry } from "../../../domain/vehicle/fleet";
 import type { FloorCell, HoldPose } from "../../../domain/vehicle/floor";
 import type { Cell } from "../../../domain/vehicle/headlights";
 import type { VehicleKind } from "../../../domain/vehicle/kind";
@@ -41,6 +42,7 @@ import {
   entityAnimationId,
   entityEventId,
   entityPropertyId,
+  fleetEntryOf,
   HEADLIGHTS_PROPERTY,
   ITEM_TYPE,
   isVehicleEntity,
@@ -105,13 +107,13 @@ export class BedrockVehicleWorld
     return player && isPlayer(player) ? player : undefined;
   }
 
-  loadedVehicleIds(): string[] {
+  loadedFleetEntries(): FleetEntry[] {
     return DIMENSIONS.flatMap((dimId) =>
       world
         .getDimension(dimId)
         .getEntities({ families: [VEHICLE_FAMILY] })
-        .filter((car) => isVehicleEntity(car.typeId))
-        .map((car) => car.id),
+        .map(fleetEntryOf)
+        .filter((entry) => entry !== undefined),
     );
   }
 

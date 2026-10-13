@@ -1,10 +1,11 @@
+import type { FleetEntry } from "../../../domain/vehicle/fleet";
 import { VEHICLE_KINDS, type VehicleKind } from "../../../domain/vehicle/kind";
 import { PAINTS, type Paint } from "../../../domain/vehicle/paint";
 import { id, NAMESPACE } from "../../shared/identifiers";
 
 /**
  * Every ENTITY_TYPE entity must list this family in minecraft:type_family.
- * loadedVehicles and loadedVehicleIds query entities by this family and then
+ * loadedVehicles and loadedFleetEntries query entities by this family and then
  * keep the known kinds, so an entity without it is never driven or counted.
  */
 export const VEHICLE_FAMILY = "yasu_ride_vehicle";
@@ -83,3 +84,18 @@ export const PAINT_VARIANT: Readonly<Record<Paint, number>> =
   >;
 /** Entity event in packs/yasu_ride_bp/entities/yasu_ride/suv.se.json that sets the variant for a paint. */
 export const paintEvent = (paint: Paint): string => id(`paint_${paint}`);
+
+export function fleetEntryOf(entity: {
+  id: string;
+  typeId: string;
+  getDynamicProperty(id: string): unknown;
+}): FleetEntry | undefined {
+  const kind = kindOfEntity(entity.typeId);
+  if (kind === undefined) return undefined;
+  const owner = entity.getDynamicProperty(OWNER_PROPERTY);
+  return {
+    id: entity.id,
+    kind,
+    owner: typeof owner === "string" && owner.length > 0 ? owner : undefined,
+  };
+}

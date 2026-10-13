@@ -5,7 +5,7 @@ import type { Logger } from "../../../application/vehicle/ports";
 import { Fleet } from "../../../domain/vehicle/fleet";
 import type { FleetRepository } from "../../../domain/vehicle/fleetRepository";
 import { FLEET_PROPERTY } from "../bedrock/identifiers";
-import { parseFleetState } from "./fleetJson";
+import { parseFleetState, serializeFleetState } from "./fleetJson";
 
 export class DynamicPropertyFleetRepository implements FleetRepository {
   constructor(private readonly log: Logger) {}
@@ -26,6 +26,9 @@ export class DynamicPropertyFleetRepository implements FleetRepository {
   }
 
   save(fleet: Fleet): void {
-    world.setDynamicProperty(FLEET_PROPERTY, JSON.stringify(fleet.state()));
+    world.setDynamicProperty(
+      FLEET_PROPERTY,
+      serializeFleetState(fleet.state()),
+    );
   }
 }

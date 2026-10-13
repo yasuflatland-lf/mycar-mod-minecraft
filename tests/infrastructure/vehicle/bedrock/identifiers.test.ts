@@ -11,12 +11,14 @@ import {
   entityEventId,
   entityPropertyId,
   FLEET_PROPERTY,
+  fleetEntryOf,
   HEADLIGHT_SWITCH_TYPE,
   HEADLIGHTS_PROPERTY,
   ITEM_TYPE,
   kindOfEntity,
   kindOfItem,
   LIT_CELLS_PROPERTY,
+  OWNER_PROPERTY,
   paintEvent,
   STARTER_RECEIVED_PROPERTY,
   TEST_INPUT_EVENT,
@@ -68,6 +70,7 @@ describe("identifiers (ADR 0047)", () => {
       ...Object.values(ITEM_TYPE),
       STARTER_RECEIVED_PROPERTY,
       FLEET_PROPERTY,
+      OWNER_PROPERTY,
       HEADLIGHT_SWITCH_TYPE,
       HEADLIGHTS_PROPERTY,
       LIT_CELLS_PROPERTY,
@@ -80,5 +83,37 @@ describe("identifiers (ADR 0047)", () => {
       expect(id).toMatch(new RegExp(`^${NAMESPACE}:[a-z][a-z0-9_]*$`));
     }
     expect(new Set(ids).size).toBe(ids.length);
+  });
+  it.each(VEHICLE_KINDS)(
+    "reads the fleet entry and ownership of %s (ADR 0066)",
+    (kind) => {
+      for (const owner of ["player", undefined, "", 42, false, null]) {
+        const entity = {
+          id: "vehicle",
+          typeId: ENTITY_TYPE[kind],
+          getDynamicProperty: (key: string) => {
+            expect(key).toBe(OWNER_PROPERTY);
+            return owner;
+          },
+        };
+        expect(fleetEntryOf(entity)).toEqual({
+          id: entity.id,
+          kind,
+          owner: owner === "player" ? owner : undefined,
+        });
+      }
+    },
+  );
+
+  it("does not read ownership for a non-vehicle entity", () => {
+    expect(
+      fleetEntryOf({
+        id: "cow",
+        typeId: "minecraft:cow",
+        getDynamicProperty: () => {
+          throw new Error("must not read");
+        },
+      }),
+    ).toBeUndefined();
   });
 });

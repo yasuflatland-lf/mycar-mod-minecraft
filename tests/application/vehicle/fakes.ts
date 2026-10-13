@@ -10,7 +10,11 @@ import type {
 } from "../../../src/application/vehicle/ports";
 import type { Vec3 } from "../../../src/domain/shared/vec";
 import type { EngineCommand } from "../../../src/domain/vehicle/drive";
-import { Fleet, type FleetState } from "../../../src/domain/vehicle/fleet";
+import {
+  Fleet,
+  type FleetEntry,
+  type FleetState,
+} from "../../../src/domain/vehicle/fleet";
 import type { FleetRepository } from "../../../src/domain/vehicle/fleetRepository";
 import type { FloorCell, HoldPose } from "../../../src/domain/vehicle/floor";
 import type { Cell } from "../../../src/domain/vehicle/headlights";
@@ -60,7 +64,7 @@ export class FakeWorld
     LimitWorld
 {
   snapshots: VehicleSnapshot[] = [];
-  loadedIds: string[] = [];
+  loaded: FleetEntry[] = [];
   targets: RamTarget[] = [];
   readonly paints = new Map<string, Paint>();
   readonly owners = new Map<string, string>();
@@ -86,8 +90,8 @@ export class FakeWorld
   loadedVehicles() {
     return this.snapshots;
   }
-  loadedVehicleIds() {
-    return this.loadedIds;
+  loadedFleetEntries() {
+    return this.loaded;
   }
   solidAt() {
     return false;
